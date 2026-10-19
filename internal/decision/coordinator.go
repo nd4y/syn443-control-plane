@@ -35,6 +35,11 @@ func (c *Coordinator) intent(on bool) (Context, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.state.Context.ActivationGeneration == MaxGeneration {
+		if !on {
+			c.state.DesiredOn = false
+			c.state.ActivePathID = ""
+			return c.state.Context, nil
+		}
 		return c.state.Context, errors.New("generation exhausted")
 	}
 	c.state.Context.ActivationGeneration++

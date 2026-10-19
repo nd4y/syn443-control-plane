@@ -250,8 +250,8 @@ func TestCoordinatorOverflowAtomic(t *testing.T) {
 				t.Fatal("overflow Start")
 			}
 			_, err = c.Stop()
-			if err == nil {
-				t.Fatal("overflow Stop")
+			if err != nil {
+				t.Fatal("Stop must succeed at exhaustion")
 			}
 			_, err = c.Activate("cfg-2", "alg-2", strings.Repeat("b", 64))
 		case 1:
@@ -267,6 +267,22 @@ func TestCoordinatorOverflowAtomic(t *testing.T) {
 	bad.NetworkEpoch = -1
 	if _, err := NewCoordinator(bad); err == nil {
 		t.Fatal("invalid context accepted")
+	}
+	last := first(t).Context
+	last.ActivationGeneration = MaxGeneration - 1
+	c, _ := NewCoordinator(last)
+	token, _ := c.Start()
+	if !c.TryApply(token, "p") {
+		t.Fatal("last generation should be usable")
+	}
+	if _, err := c.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if c.Snapshot().DesiredOn || c.Snapshot().ActivePathID != "" || c.TryApply(token, "p") {
+		t.Fatal("exhaustion prevented Stop")
+	}
+	if _, err := c.Start(); err == nil {
+		t.Fatal("exhausted generation restarted")
 	}
 }
 func FuzzDecode(f *testing.F) {
