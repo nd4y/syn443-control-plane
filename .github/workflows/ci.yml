@@ -4,6 +4,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '23 2 * * *'
 permissions:
   contents: read
 concurrency:
@@ -18,3 +20,36 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 tools/check_documents.py
+      - run: python3 tools/check_contracts.py
+  go:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.2'
+          cache: true
+      - run: test -z "$(gofmt -l cmd internal contracts)"
+      - run: go mod verify
+      - run: go vet ./...
+      - run: go test -race -count=1 -coverprofile=coverage.out ./...
+      - run: python3 tools/check_coverage.py
+      - run: go test ./internal/decision -run '^$' -fuzz '^FuzzDecode$' -fuzztime=15s -parallel=2
+      - run: go build -o bin/syn443-api ./cmd/api
+      - run: python3 tools/smoke_api.py bin/syn443-api
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: Workflow validation
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -color
+      - name: Dependency inventory
+        run: go list -m -json all > dependency-inventory.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: control-plane-test-evidence
+          path: |
+            coverage.out
+            dependency-inventory.json
+          retention-days: 14

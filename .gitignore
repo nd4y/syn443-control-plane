@@ -10,6 +10,7 @@ local.properties
 *.pem
 *.key
 coverage.out
+/bin/
 __pycache__/
 node_modules/
 dist/

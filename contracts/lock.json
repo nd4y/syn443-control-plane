@@ -1,0 +1,8 @@
+{
+  "version": "0.1.0",
+  "upstream": "https://github.com/nd4y/syn443-control-plane",
+  "files": {
+    "decision-request.schema.json": "9397ac45f540e9ab09e88e146f46adb8b51cb73b0141c9a20c0b90bded7eafa3",
+    "decision-vectors.json": "9eb5f12dad9d48bf2df95ff4e60f579c6b5e1a976a223b9bcf119acf47790bf0"
+  }
+}

@@ -16,3 +16,8 @@ One Remnawave API resource and NetBird are in version 1.0.
 Multiple Remnawave resources, x-ui/3x-ui and Tailscale/ZeroTier are extension contracts only.
 Copyright (c) 2026 SYN443 contributors. All rights reserved pending an explicit product license.
 Third-party dependencies retain their own licenses.
+
+## M0 prototype
+See [implementation status](docs/M0_IMPLEMENTATION.md) for implemented paths and limitations.
+
+Run: go test ./...; go run ./cmd/api. The preview binds127.0.0.1:8080 only; it does not provide VPN/provisioning.
