@@ -1860,6 +1860,162 @@
           }
         ]
       }
+    },
+    {
+      "name": "known-unstable-is-not-unknown",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "known-bad",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 20,
+            "failures": 4,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 0,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "unproven",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 2,
+            "failures": 0,
+            "trailingSuccesses": 2,
+            "bytesPerMinute": 9000,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 500,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "unproven",
+        "orderedPathIds": [
+          "unproven",
+          "known-bad"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "recent-failure-is-not-unknown",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "known-bad",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 20,
+            "failures": 1,
+            "trailingSuccesses": 2,
+            "bytesPerMinute": 0,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "unproven",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 2,
+            "failures": 0,
+            "trailingSuccesses": 2,
+            "bytesPerMinute": 9000,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 500,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "unproven",
+        "orderedPathIds": [
+          "unproven",
+          "known-bad"
+        ],
+        "rejected": []
+      }
     }
   ],
   "invalidCases": [

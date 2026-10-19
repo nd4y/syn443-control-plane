@@ -87,6 +87,14 @@ func requestSchema() (*jsonschema.Schema, error) {
 
 // Validate rejects malformed aggregates and duplicates before any ranking.
 func Validate(r Request) error {
+	if len(r.Candidates) > 4096 || !validContext(r.Context) || !identifier.MatchString(r.MetricGroup) || len(r.Intent) > 8 {
+		return errors.New("invalid decision request")
+	}
+	for _, c := range r.Candidates {
+		if !validContext(c.Context) || !identifier.MatchString(c.ID) || !identifier.MatchString(c.MetricGroup) || len(c.ExitClass) > 8 {
+			return errors.New("invalid decision request")
+		}
+	}
 	s, err := requestSchema()
 	if err != nil {
 		return err
@@ -151,6 +159,8 @@ func rank(r Request, c Candidate) [4]int64 {
 		stability = 2
 	} else if c.Samples >= 5 && c.TrailingSuccesses >= 3 && c.Failures*100 <= c.Samples*5 {
 		stability = 0
+	} else if c.Samples >= 5 {
+		stability = 2
 	}
 	energy := max(band(c.BytesPerMinute, 2048, 8192), band(c.HandshakesPerMinute, 1, 4), band(c.ActiveBackups, 1, 2))
 	latency := int64(24001)

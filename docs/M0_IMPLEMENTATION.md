@@ -1,6 +1,6 @@
 # M0 implementation status
 Implemented:
-- Contract0.1.0, strict bounded integer/JSON parsing, 28 valid and12 invalid shared vectors.
+- Contract0.1.0, strict bounded integer/JSON parsing, 30 valid and12 invalid shared vectors.
 - Go and Kotlin deterministic route selection: eligibility, six-field context, freshness, stability/energy/latency/confidence/ID.
 - Synchronized coordinator model: desiredOn, Stop precedence, network/activation/engine generations and overflow rejection.
 - Go loopback-only side-effect-free preview HTTP API; no authentication placeholder and no network probing.

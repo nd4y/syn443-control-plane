@@ -5,7 +5,7 @@ Context equality includes all six fields. Timestamps are in the same monotonic e
 A candidate is rejected, in order, for context mismatch, disallowed policy, wrong exit, required check failure, hard failure or stale/future evidence.
 Evidence expires at age >= TTL. Duplicate IDs and inconsistent sample aggregates invalidate the request.
 Rank is lexicographic: stability, energy, latency band, confidence, ASCII path ID.
-Stability: optional-degraded=2; else stable=0 if >=5 samples, >=3 trailing successes and failures*100<=samples*5; otherwise provisional=1.
+Stability: optional-degraded=2; else stable=0 if >=5 samples, >=3 trailing successes and failures*100<=samples*5; else known poor history=2 if >=5 samples; otherwise provisional=1.
 Aggregates describe at most the last20 results within10 minutes and must be measured on the requested complete path. M0 does not collect network evidence yet.
 Energy: worst of bytes/min (<=2048/<=8192/above), handshakes/min (<=1/<=4/above), active backups (<=1/<=2/above); unknown=high2.
 Latency: floor(ms/25), unknown or incomparable metric group=24001. Max supported latency600000ms. Units and target group must match.

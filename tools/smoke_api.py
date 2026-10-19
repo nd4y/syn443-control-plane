@@ -32,5 +32,5 @@ finally:
     except subprocess.TimeoutExpired:
         p.kill();p.wait();raise
     if os.name!="nt": assert code==0,code
-print("Real API binary: loopback bind, public-bind rejection, health, all28 vectors and shutdown passed")
+print("Real API binary: loopback bind, public-bind rejection, health, all30 vectors and shutdown passed")
 
