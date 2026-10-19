@@ -46,6 +46,8 @@ jobs:
       - name: Dependency inventory
         run: go list -m -json all > dependency-inventory.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        id: evidence-upload
+        continue-on-error: true
         if: always()
         with:
           name: control-plane-test-evidence
@@ -53,3 +55,5 @@ jobs:
             coverage.out
             dependency-inventory.json
           retention-days: 14
+      - if: always() && steps.evidence-upload.outcome == 'failure'
+        run: echo 'Artifact delivery failed (see upload log). Tests remain mandatory; retain logs and publish evidence as private prerelease assets.' >> "$GITHUB_STEP_SUMMARY"
