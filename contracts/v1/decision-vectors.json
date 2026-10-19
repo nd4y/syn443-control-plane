@@ -1,0 +1,2588 @@
+{
+  "contractVersion": "0.1.0",
+  "cases": [
+    {
+      "name": "stability-before-energy-and-latency",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "stable",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 9000,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 500,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "quick",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 2,
+            "failures": 0,
+            "trailingSuccesses": 2,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "stable",
+        "orderedPathIds": [
+          "stable",
+          "quick"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "energy-before-latency",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "low",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 400,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "fast",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 3000,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "low",
+        "orderedPathIds": [
+          "low",
+          "fast"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "latency-before-confidence",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "fast",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 5,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 24,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "certain",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 20,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 25,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "fast",
+        "orderedPathIds": [
+          "fast",
+          "certain"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "confidence-before-id",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "a",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 5,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "z",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 20,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "z",
+        "orderedPathIds": [
+          "z",
+          "a"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "stable-ascii-tie-break",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "z",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "a",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "a",
+        "orderedPathIds": [
+          "a",
+          "z"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "wrong-exit-cannot-win",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "ru-ingress-only",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "foreign",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "foreign",
+        "orderedPathIds": [
+          "foreign"
+        ],
+        "rejected": [
+          {
+            "pathId": "ru-ingress-only",
+            "reason": "wrong_exit"
+          }
+        ]
+      }
+    },
+    {
+      "name": "policy-cannot-be-offset-by-speed",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "forbidden",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": false,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "allowed",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "allowed",
+        "orderedPathIds": [
+          "allowed"
+        ],
+        "rejected": [
+          {
+            "pathId": "forbidden",
+            "reason": "disallowed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "required-target-failure",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "bad",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": false,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": [
+          {
+            "pathId": "bad",
+            "reason": "required_check_failed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "hard-failure",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "bad",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": true,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": [
+          {
+            "pathId": "bad",
+            "reason": "hard_failure"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expired-at-exact-deadline",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 61000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "old",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": [
+          {
+            "pathId": "old",
+            "reason": "stale_evidence"
+          }
+        ]
+      }
+    },
+    {
+      "name": "valid-one-ms-before-deadline",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 60999,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "fresh",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "fresh",
+        "orderedPathIds": [
+          "fresh"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "future-evidence",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "future",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 2001,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": [
+          {
+            "pathId": "future",
+            "reason": "stale_evidence"
+          }
+        ]
+      }
+    },
+    {
+      "name": "optional-degradation-loses-to-provisional",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "degraded",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": true,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "provisional",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 1,
+            "failures": 0,
+            "trailingSuccesses": 1,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "provisional",
+        "orderedPathIds": [
+          "provisional",
+          "degraded"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "unknown-energy-is-high",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "unknown",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": null,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "known",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "known",
+        "orderedPathIds": [
+          "known",
+          "unknown"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "unknown-latency-is-last",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "unknown",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": null,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "known",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "known",
+        "orderedPathIds": [
+          "known",
+          "unknown"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "different-metric-not-false-fast",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "ping",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "icmp"
+          },
+          {
+            "id": "https",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 500,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "https",
+        "orderedPathIds": [
+          "https",
+          "ping"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "energy-threshold-inclusive",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "low",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 2048,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "medium",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 2049,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "low",
+        "orderedPathIds": [
+          "low",
+          "medium"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "medium-threshold-inclusive",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "medium",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 8192,
+            "handshakesPerMinute": 4,
+            "activeBackups": 2,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "high",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 8193,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "medium",
+        "orderedPathIds": [
+          "medium",
+          "high"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "five-percent-is-integer-exact",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "stable",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 20,
+            "failures": 1,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 500,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "provisional",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 19,
+            "failures": 1,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "stable",
+        "orderedPathIds": [
+          "stable",
+          "provisional"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "empty-is-unavailable",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": []
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": []
+      }
+    },
+    {
+      "name": "ru-intent",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "ru",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "foreign",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "ru",
+        "orderedPathIds": [
+          "ru"
+        ],
+        "rejected": [
+          {
+            "pathId": "foreign",
+            "reason": "wrong_exit"
+          }
+        ]
+      }
+    },
+    {
+      "name": "internal-intent",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "INTERNAL",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "home",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "INTERNAL",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "home",
+        "orderedPathIds": [
+          "home"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "stale-networkEpoch",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "old",
+            "context": {
+              "networkEpoch": 2,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": [
+          {
+            "pathId": "old",
+            "reason": "context_mismatch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stale-activationGeneration",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "old",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 2,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": [
+          {
+            "pathId": "old",
+            "reason": "context_mismatch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stale-configRevision",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "old",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "other",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": [
+          {
+            "pathId": "old",
+            "reason": "context_mismatch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stale-algorithmRevision",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "old",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "other",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": [
+          {
+            "pathId": "old",
+            "reason": "context_mismatch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stale-engineGeneration",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "old",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 2,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": [
+          {
+            "pathId": "old",
+            "reason": "context_mismatch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stale-dependencyHash",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "old",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": null,
+        "orderedPathIds": [],
+        "rejected": [
+          {
+            "pathId": "old",
+            "reason": "context_mismatch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "known-unstable-is-not-unknown",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "known-bad",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 20,
+            "failures": 4,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 0,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "unproven",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 2,
+            "failures": 0,
+            "trailingSuccesses": 2,
+            "bytesPerMinute": 9000,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 500,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "unproven",
+        "orderedPathIds": [
+          "unproven",
+          "known-bad"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "recent-failure-is-not-unknown",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "known-bad",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 20,
+            "failures": 1,
+            "trailingSuccesses": 2,
+            "bytesPerMinute": 0,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 1,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "unproven",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 2,
+            "failures": 0,
+            "trailingSuccesses": 2,
+            "bytesPerMinute": 9000,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 500,
+            "metricGroup": "https-reference"
+          }
+        ]
+      },
+      "expected": {
+        "selectedPathId": "unproven",
+        "orderedPathIds": [
+          "unproven",
+          "known-bad"
+        ],
+        "rejected": []
+      }
+    }
+  ],
+  "invalidCases": [
+    {
+      "name": "unknown-field",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ],
+        "allowInsecure": true
+      }
+    },
+    {
+      "name": "unknown-version",
+      "input": {
+        "schemaVersion": 2,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    },
+    {
+      "name": "negative-epoch",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": -1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    },
+    {
+      "name": "fractional-time",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 1.5,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overflow-time",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 9007199254740992,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    },
+    {
+      "name": "zero-ttl",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 0,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing-allowed",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown-exit",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "ANY",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    },
+    {
+      "name": "duplicate-id",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          },
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inconsistent-failures",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 11,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inconsistent-trailing",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "x",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 9,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    },
+    {
+      "name": "invalid-id",
+      "input": {
+        "schemaVersion": 1,
+        "context": {
+          "networkEpoch": 1,
+          "activationGeneration": 1,
+          "configRevision": "cfg-1",
+          "algorithmRevision": "alg-1",
+          "engineGeneration": 1,
+          "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "nowMs": 2000,
+        "evidenceTtlMs": 60000,
+        "intent": "NON_RU",
+        "metricGroup": "https-reference",
+        "candidates": [
+          {
+            "id": "../secret",
+            "context": {
+              "networkEpoch": 1,
+              "activationGeneration": 1,
+              "configRevision": "cfg-1",
+              "algorithmRevision": "alg-1",
+              "engineGeneration": 1,
+              "dependencyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "allowed": true,
+            "exitClass": "NON_RU",
+            "requiredHealthy": true,
+            "optionalDegraded": false,
+            "hardFailure": false,
+            "observedAtMs": 1000,
+            "samples": 10,
+            "failures": 0,
+            "trailingSuccesses": 3,
+            "bytesPerMinute": 1024,
+            "handshakesPerMinute": 1,
+            "activeBackups": 1,
+            "latencyMs": 50,
+            "metricGroup": "https-reference"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -16,8 +16,11 @@
     {
       "id": "ARC-03",
       "text": "Все фоновые результаты несут context token: networkEpoch, activationGeneration, configRevision, algorithmRevision, engineGeneration и dependency hash. Один activation coordinator сериализует apply/mode switch/secret rotation; устаревший результат не меняет active/desired pointer. Worker compilation обновляет desired pointer только по CAS publication revision; поздний job не возвращает старую версию.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/decision/decision_test.go",
+        "contracts/README.md"
+      ]
     },
     {
       "id": "ARC-04",
@@ -40,8 +43,11 @@
     {
       "id": "ARC-07",
       "text": "Эталонный comparator даёт rank tuple: stabilityClass, energyClass, latencyBand, confidenceClass, stablePathId; меньше лучше. До сравнения выполняются жёсткие eligibility filters; они не являются trade-off. Измерения целочисленные/квантизованные; NaN/overflow/unknown явно обработаны. Thresholds, окна, aging, PRNG/jitter и event order включены в reference policy и одинаковые Android/replay fixtures; promotion после evidence, hard failure demotion немедленно. Новые кандидаты получают отдельную bounded exploration, а не вечное проигрывание старой истории.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/decision/decision_test.go",
+        "contracts/README.md"
+      ]
     },
     {
       "id": "MOD-01",
@@ -1576,8 +1582,11 @@
     {
       "id": "ENG-01",
       "text": "Явный Stop пользователя через UI/notification/system имеет приоритет над queued reconnect: intent generation изменяется, старые задания не включают VPN. UI process death не означает Stop. Force-stop, revoke VpnService или другой активный VPN не обходятся автоциклом; требуется предусмотренное ОС/пользователем восстановление. Always-on/lockdown отображаются и соблюдаются, не имитируются флагом конфигурации.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/decision/decision_test.go",
+        "contracts/README.md"
+      ]
     },
     {
       "id": "ENG-02",
@@ -1606,8 +1615,11 @@
     {
       "id": "ENG-06",
       "text": "Нормативные схемы задают JSON/number/time limits, enum extension, error codes, CAS и idempotency payload hashing. Shared fixtures проверяют backend compiler/replay, Android parser/evaluator и ADB. Unknown field/action там, где влияет на безопасность/семантику, не игнорируется. Property/fuzz/model-based tests покрывают state machine, path enumeration и bounded expressions.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/decision/decision_test.go",
+        "contracts/README.md"
+      ]
     },
     {
       "id": "ENG-07",
@@ -2016,8 +2028,11 @@
     {
       "id": "AC66",
       "specRow": " Эталонные comparator/transition fixtures Android и server replay | Одинаковые input/seed/order дают одинаковый rank/action/explain; unknown/aging/tie/promotion имеют однозначный результат |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/decision/decision_test.go",
+        "contracts/README.md"
+      ]
     },
     {
       "id": "AC67",
