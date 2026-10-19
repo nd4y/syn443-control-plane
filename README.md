@@ -21,3 +21,5 @@ Third-party dependencies retain their own licenses.
 See [implementation status](docs/M0_IMPLEMENTATION.md) for implemented paths and limitations.
 
 Run: go test ./...; go run ./cmd/api. The preview binds127.0.0.1:8080 only; it does not provide VPN/provisioning.
+
+See [CI delivery limitations](docs/CI_DELIVERY.md) for current artifact-quota and private branch-protection constraints.

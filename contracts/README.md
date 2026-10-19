@@ -14,3 +14,5 @@ All rejected records and candidate ties are ordered by ASCII ID, independent of 
 No hysteresis, real graph enumeration, signed policy, identity or network probing is claimed by this version.
 Coordinator model: Start/Stop/NetworkChanged/Activate/EngineChanged increment relevant generations and clear prior selections.
 Stop wins later completion; comparison/commit is synchronized. Overflow rejects before mutation; no counter wraps.
+
+The implemented preview API is specified in v1/openapi.json and its result schema. In-process transitions are specified in ../docs/coordinator-transitions.md. All transport and schema limits apply together.

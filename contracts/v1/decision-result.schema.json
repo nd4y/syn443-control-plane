@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.syn443.invalid/v1/decision-result.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "selectedPathId",
+    "orderedPathIds",
+    "rejected"
+  ],
+  "properties": {
+    "selectedPathId": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "orderedPathIds": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+      }
+    },
+    "rejected": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pathId",
+          "reason"
+        ],
+        "properties": {
+          "pathId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "reason": {
+            "enum": [
+              "context_mismatch",
+              "disallowed",
+              "wrong_exit",
+              "required_check_failed",
+              "hard_failure",
+              "stale_evidence"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
+
