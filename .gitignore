@@ -1,0 +1,15 @@
+.idea/
+.gradle/
+**/build/
+local.properties
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.pem
+*.key
+coverage.out
+__pycache__/
+node_modules/
+dist/
