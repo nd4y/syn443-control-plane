@@ -12,7 +12,19 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  public-data:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - run: python3 -m unittest discover -s tools -p 'test_public_data.py'
+      - run: python3 tools/check_public_data.py --history
+      - run: bash tools/scan_secrets.sh
   documents:
+    needs: public-data
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -22,6 +34,7 @@ jobs:
       - run: python3 tools/check_documents.py
       - run: python3 tools/check_contracts.py
   go:
+    needs: public-data
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -45,15 +58,19 @@ jobs:
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -color
       - name: Dependency inventory
         run: go list -m -json all > dependency-inventory.json
+      - name: Scan evidence payloads
+        id: evidence-scan
+        if: always()
+        run: |
+          test -s coverage.out && test -s dependency-inventory.json
+          python3 tools/check_public_data.py coverage.out dependency-inventory.json
+          bash tools/scan_secrets.sh coverage.out dependency-inventory.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         id: evidence-upload
-        continue-on-error: true
-        if: always()
+        if: always() && steps.evidence-scan.outcome == 'success'
         with:
           name: control-plane-test-evidence
           path: |
             coverage.out
             dependency-inventory.json
           retention-days: 14
-      - if: always() && steps.evidence-upload.outcome == 'failure'
-        run: echo 'Artifact delivery failed (see upload log). Tests remain mandatory; retain logs and publish evidence as private prerelease assets.' >> "$GITHUB_STEP_SUMMARY"
