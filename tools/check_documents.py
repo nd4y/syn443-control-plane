@@ -7,8 +7,8 @@ for name,digest in manifest["files"].items():
     assert hashlib.sha256((root/"docs/spec"/name).read_bytes()).hexdigest()==digest, name
 ids=re.findall(r"^([A-Z]+-\d{2})\.",spec,re.M)
 cases=re.findall(r"^\| AC(\d+) \|",spec,re.M)
-assert len(ids)==len(set(ids))==270
-assert list(map(int,cases))==list(range(1,81))
+assert len(ids)==len(set(ids))==271
+assert list(map(int,cases))==list(range(1,82))
 assert "managedvpn://" not in spec and "marshrut://" not in spec
 register=json.loads((root/"docs/requirements-register.json").read_text(encoding="utf-8"))
 assert [r["id"] for r in register["requirements"]]==ids
@@ -18,4 +18,4 @@ for row in register["requirements"]+register["acceptanceCases"]:
     if row["status"]!="planned": assert row["evidence"], row["id"]
     for evidence in row["evidence"]:
         assert (root/evidence.split("#")[0]).is_file(), (row["id"],evidence)
-print("Spec v0.6: 270 unique requirements, 80 scenarios, source hashes and evidence links valid")
+print("Spec v0.7: 271 unique requirements, 81 scenarios, source hashes and evidence links valid")

@@ -1,7 +1,7 @@
 {
-  "specVersion": "0.6",
+  "specVersion": "0.7",
   "files": {
-    "TECHNICAL_SPEC_RU.md": "22b6ce4c9b29794ab276ec52f2fd1b9b17545b7f1e0500dc2e3ef1257f57406c",
+    "TECHNICAL_SPEC_RU.md": "ba089af447258c3c8a8e34a8c4ed0f30ebff4a40bc8ba59a0ca3c9685e630a1d",
     "ARCHITECTURE_REVIEW_RU.md": "0e4dab016bae157deef98d698932e1db754472b6f1f8ca3b828ba37c304c5c60"
   }
 }
