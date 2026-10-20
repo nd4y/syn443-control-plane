@@ -1,0 +1,14 @@
+title = "SYN443 public source"
+[extend]
+useDefault = true
+
+# This exact value is the public OpenAPI file SHA-256, not an API credential.
+# Keep the default detector and constrain the exception to one field/value/path.
+[[rules]]
+id = "generic-api-key"
+[[rules.allowlists]]
+description = "Reviewed public OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"openapi\.json": "9a6327cdc04b5d1b91b85a3c600ffa90fe4ece339179230793190f5bdf650359",?\s*$''']

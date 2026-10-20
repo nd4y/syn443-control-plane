@@ -1,0 +1,40 @@
+"""Exercise the real pinned scanner without printing any synthetic secret values."""
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import zipfile
+
+root = Path(__file__).resolve().parent.parent
+scanner = str(Path(sys.argv[1]).resolve())
+config = root / '.gitleaks.toml'
+digest = json.loads((root / 'contracts/lock.json').read_text())['files']['openapi.json']
+with tempfile.TemporaryDirectory() as directory:
+    work = Path(directory)
+    subprocess.run(['git', 'init', '-q', str(work)], check=True)
+    (work / 'contracts').mkdir()
+    target = work / 'contracts/lock.json'
+    def scan(expected):
+        subprocess.run(['git', '-C', str(work), 'add', '.'], check=True)
+        result = subprocess.run([scanner, 'git', '.', '--pre-commit', '--staged',
+                                 '--config', str(config), '--redact=100', '--no-banner'],
+                                cwd=work, capture_output=True)
+        assert result.returncode == expected, 'Secret gate test outcome mismatch'
+    target.write_text(json.dumps({'openapi.json': digest}, indent=2))
+    scan(0)
+    # Changing one byte must remove the narrowly reviewed exemption.
+    target.write_text(json.dumps({'openapi.json': ('0' if digest[0] != '0' else '1') + digest[1:]}, indent=2))
+    scan(1)
+    target.unlink()
+    (work / 'unreviewed.json').write_text(json.dumps({'openapi.json': digest}, indent=2))
+    scan(1)
+    # A detector must inspect APK assets rather than silently skip the binary container.
+    apk = work / 'synthetic.apk'
+    for payload, expected in (({'safe': 'synthetic'}, 0), ({'openapi.json': digest}, 1)):
+        with zipfile.ZipFile(apk, 'w') as z:
+            z.writestr('assets/synthetic.json', json.dumps(payload, indent=2))
+        result = subprocess.run([sys.executable, str(root / 'tools/check_apk_secrets.py'), scanner, str(apk)],
+                                capture_output=True)
+        assert (result.returncode != 0) == bool(expected), 'APK asset scanner test outcome mismatch'
+print('Secret scanner: exact digest exception and APK asset detection verified')
