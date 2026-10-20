@@ -19,3 +19,11 @@ human review remains required, and any exposure requires removal and credential 
 
 Local history preflight: `python3 tools/check_public_data.py --history` and
 `bash tools/scan_secrets.sh`. Run the same payload checks before manual release uploads.
+
+Before development, install local guards with `git config core.hooksPath .githooks`.
+Python 3 and Gitleaks 8.30.1 are required. Optional machine-local Git config keys
+`syn443.python` and `syn443.gitleaks` select executable paths without storing them in source.
+Pre-commit inspects the actual staged bytes; pre-push checks all reachable history.
+Missing scanners fail closed. Hooks are a local safeguard, not a server-side access boundary.
+CI tests that the exact digest exception accepts its reviewed value and rejects changed
+values or the same value at another path.

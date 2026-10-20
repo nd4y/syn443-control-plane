@@ -81,14 +81,31 @@ def scan_files(paths):
     return problems
 
 
+def scan_staged():
+    problems = []
+    names = git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z").decode().split("\0")
+    for name in filter(None, names):
+        data = git("show", ":" + name)
+        rules = findings(data)
+        if FORBIDDEN.search(name) and name != ".env.example":
+            rules.add("private-file")
+        if b"\0" in data and name != "gradle/wrapper/gradle-wrapper.jar":
+            rules.add("unreviewed-binary")
+        problems.extend((name, rule) for rule in sorted(rules))
+    return problems
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--history", action="store_true")
+    parser.add_argument("--staged", action="store_true")
     parser.add_argument("paths", nargs="*", type=Path)
     args = parser.parse_args()
-    if not args.history and not args.paths:
+    if not args.history and not args.staged and not args.paths:
         parser.error("select history or files to scan")
     problems = scan_history() if args.history else []
+    if args.staged:
+        problems += scan_staged()
     problems += scan_files(args.paths)
     for location, rule in problems:
         print(f"Privacy gate: {rule}: {location}")

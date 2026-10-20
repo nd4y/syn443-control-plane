@@ -9,6 +9,7 @@ curl --fail --silent --show-error --location --retry 2 \
   --output "$task_dir/gitleaks.tar.gz"
 printf '%s  %s\n' "$digest" "$task_dir/gitleaks.tar.gz" | sha256sum --check --status
 tar -xzf "$task_dir/gitleaks.tar.gz" -C "$task_dir" gitleaks
+python3 tools/test_secret_gate.py "$task_dir/gitleaks"
 if [ "$#" -eq 0 ]; then
   "$task_dir/gitleaks" git . --log-opts=--all --config .gitleaks.toml --redact=100 --no-banner
 else
