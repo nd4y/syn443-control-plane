@@ -8,6 +8,7 @@ class PublicDataTest(unittest.TestCase):
             self.assertIn("private-address", findings(".".join(map(str, octets)).encode()))
 
     def test_documentation_and_loopback(self):
+        self.assertFalse(findings(b"100.64.0.0/10"))
         for address in (b"127.0.0.1", b"0.0.0.0", b"192.0.2.4", b"198.51.100.8", b"203.0.113.9"):
             self.assertFalse(findings(address))
 

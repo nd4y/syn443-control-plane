@@ -25,6 +25,10 @@ def findings(data):
     text = data.decode("utf-8", errors="replace")
     result = {name for name, pattern in PATTERNS.items() if pattern.search(text)}
     for match in IPV4.finditer(text):
+        # The standard shared-address allocation itself is public documentation.
+        # Individual addresses in that range remain forbidden.
+        if text[match.start():match.end() + 3] == "100.64.0.0/10":
+            continue
         try:
             address = ipaddress.ip_address(match[0])
         except ValueError:
