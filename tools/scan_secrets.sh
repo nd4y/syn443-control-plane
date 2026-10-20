@@ -13,6 +13,7 @@ python3 tools/verify_secret_gate.py "$task_dir/gitleaks"
 if [ "$#" -eq 0 ]; then
   "$task_dir/gitleaks" git . --log-opts=--all --config .gitleaks.toml --redact=100 --no-banner
 else
+  python3 tools/check_apk_secrets.py "$task_dir/gitleaks" "$@"
   for path in "$@"; do
     "$task_dir/gitleaks" dir "$path" --config .gitleaks.toml --redact=100 --no-banner --max-archive-depth=3
   done

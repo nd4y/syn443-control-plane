@@ -27,3 +27,6 @@ Pre-commit inspects the actual staged bytes; pre-push checks all reachable histo
 Missing scanners fail closed. Hooks are a local safeguard, not a server-side access boundary.
 CI tests that the exact digest exception accepts its reviewed value and rejects changed
 values or the same value at another path.
+APK payloads are additionally scanned as ZIP containers: Gitleaks otherwise skips the
+binary `.apk` file. The real scanner self-test checks both a clean APK and detection
+inside an embedded synthetic asset. Upload allowlists match the scanned report paths.
