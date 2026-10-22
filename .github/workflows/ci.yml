@@ -51,8 +51,11 @@ jobs:
       - run: go test -race -count=1 -coverprofile=coverage.out ./...
       - run: python3 tools/check_coverage.py
       - run: go test ./internal/decision -run '^$' -fuzz '^FuzzDecode$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/policy -run '^$' -fuzz '^FuzzPolicyDecode$' -fuzztime=15s -parallel=2
       - run: go build -o bin/syn443-api ./cmd/api
       - run: python3 tools/smoke_api.py bin/syn443-api
+      - run: go build -o bin/syn443-policy-sign ./cmd/policy-sign && go build -o bin/syn443-policy-serve ./cmd/policy-serve
+      - run: python3 tools/smoke_policy.py bin/syn443-policy-serve bin/syn443-policy-sign
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - name: Workflow validation
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -color

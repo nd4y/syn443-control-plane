@@ -1,0 +1,21 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "SYN443 M1 pilot policy delivery", "version": "1.0.0"},
+  "servers": [{"url": "https://control.example.org"}],
+  "paths": {
+    "/v1/device/policy": {
+      "get": {
+        "operationId": "getDevicePolicy",
+        "description": "Immutable device-scoped compact ES256 JWS. No signing or enrollment endpoint. External delivery requires HTTPS; loopback cleartext exists only for the explicit debug pilot harness.",
+        "security": [{"pilotDeviceBearer": []}],
+        "parameters": [{"name": "X-SYN443-Device", "in": "header", "required": true, "schema": {"type": "string", "pattern": "^[a-zA-Z0-9_-]{8,64}$"}}],
+        "responses": {
+          "200": {"description": "Downloaded artifact, not activation acknowledgement", "headers": {"Date": {"schema": {"type": "string"}}, "Cache-Control": {"schema": {"const": "no-store"}}}, "content": {"application/jose": {"schema": {"type": "string", "maxLength": 524288}}}},
+          "401": {"description": "Missing, invalid or cross-device capability; no private data returned"},
+          "503": {"description": "No valid publication available"}
+        }
+      }
+    }
+  },
+  "components": {"securitySchemes": {"pilotDeviceBearer": {"type": "http", "scheme": "bearer", "bearerFormat": "out-of-band device capability"}}, "schemas": {"Payload": {"$ref": "./policy-payload.schema.json"}}}
+}
