@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.example.org/syn443/policy-payload-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "revision",
+    "securityEpoch",
+    "revocationFloor",
+    "targetDevice",
+    "audience",
+    "issuedAtMs",
+    "notBeforeMs",
+    "refreshAfterMs",
+    "offlineUntilMs",
+    "requiredCapabilities",
+    "algorithmRevision",
+    "engineConfigB64",
+    "contentHash",
+    "activation",
+    "operation"
+  ],
+  "properties": {
+    "operation": {
+      "enum": [
+        "configure",
+        "release"
+      ]
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "securityEpoch": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "revocationFloor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "targetDevice": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{8,64}$"
+    },
+    "audience": {
+      "const": "syn443-device"
+    },
+    "issuedAtMs": {
+      "$ref": "#/$defs/time"
+    },
+    "notBeforeMs": {
+      "$ref": "#/$defs/time"
+    },
+    "refreshAfterMs": {
+      "$ref": "#/$defs/time"
+    },
+    "offlineUntilMs": {
+      "$ref": "#/$defs/time"
+    },
+    "requiredCapabilities": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "engine-config.v1",
+          "policy.es256.v1",
+          "netbird.direct",
+          "netbird.vless",
+          "tun.lease.v1"
+        ]
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "engine-config.v1"
+          }
+        },
+        {
+          "contains": {
+            "const": "tun.lease.v1"
+          }
+        }
+      ]
+    },
+    "algorithmRevision": {
+      "const": "m1-local-v1"
+    },
+    "engineConfigB64": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 349526,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeoutSeconds",
+        "allowDegraded",
+        "checks"
+      ],
+      "properties": {
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 120
+        },
+        "allowDegraded": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "time": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "target",
+        "port",
+        "expected",
+        "required"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]{1,48}$"
+        },
+        "type": {
+          "enum": [
+            "https_204",
+            "tcp_banner"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^[ -~]+$"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "expected": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[ -~]*$"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

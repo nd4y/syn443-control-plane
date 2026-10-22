@@ -29,12 +29,22 @@ with tempfile.TemporaryDirectory() as directory:
     target.unlink()
     (work / 'unreviewed.json').write_text(json.dumps({'openapi.json': digest}, indent=2))
     scan(1)
+    policy_digest = json.loads((root / 'contracts/lock.json').read_text())['files']['policy-openapi.json']
+    (work / 'unreviewed.json').unlink()
+    target.write_text(json.dumps({'policy-openapi.json': policy_digest}, indent=2))
+    scan(0)
+    target.write_text(json.dumps({'policy-openapi.json': ('0' if policy_digest[0] != '0' else '1') + policy_digest[1:]}, indent=2))
+    scan(1)
+    target.unlink()
+    (work / 'unreviewed.json').write_text(json.dumps({'policy-openapi.json': policy_digest}, indent=2))
+    scan(1)
     # A detector must inspect APK assets rather than silently skip the binary container.
-    apk = work / 'synthetic.apk'
-    for payload, expected in (({'safe': 'synthetic'}, 0), ({'openapi.json': digest}, 1)):
-        with zipfile.ZipFile(apk, 'w') as z:
-            z.writestr('assets/synthetic.json', json.dumps(payload, indent=2))
-        result = subprocess.run([sys.executable, str(root / 'tools/check_apk_secrets.py'), scanner, str(apk)],
-                                capture_output=True)
-        assert (result.returncode != 0) == bool(expected), 'APK asset scanner test outcome mismatch'
-print('Secret scanner: exact digest exception and APK asset detection verified')
+    for suffix in ('apk', 'aar'):
+        apk = work / ('synthetic.' + suffix)
+        for payload, expected in (({'safe': 'synthetic'}, 0), ({'openapi.json': digest}, 1)):
+            with zipfile.ZipFile(apk, 'w') as z:
+                z.writestr('assets/synthetic.json', json.dumps(payload, indent=2))
+            result = subprocess.run([sys.executable, str(root / 'tools/check_apk_secrets.py'), scanner, str(apk)],
+                                    capture_output=True)
+            assert (result.returncode != 0) == bool(expected), suffix + ' asset scanner test outcome mismatch'
+print('Secret scanner: exact digest exception and APK/AAR asset detection verified')

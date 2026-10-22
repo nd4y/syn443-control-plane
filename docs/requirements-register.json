@@ -10,8 +10,10 @@
     {
       "id": "ARC-02",
       "text": "Первый gate - вертикальный Android прототип до полной панели: физическая Network/TUN binding, прямой путь, двухпереходная RU-ingress/NON_RU-exit цепочка, NetBird/internal probe, смена Wi-Fi/restricted cellular, cache/circuit breaker, получение policy и offline rollback. Он включает искусственные отказы ingress/exit/DNS/check target, native hang/crash и ресурсные замеры. До полной панели также обязательны устойчивый контроллер REC-01-06, частичная доступность и сценарии AC82-AC90: воспроизводимые отказы в CI и физические переходы/ограничения ОС на Pixel. Все обязательные протоколы остаются в scope1.0; порядок работ снижает основной технический риск.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "ARC-03",
@@ -19,14 +21,17 @@
       "status": "partial",
       "evidence": [
         "internal/decision/decision_test.go",
-        "contracts/README.md"
+        "contracts/README.md",
+        "docs/managed-policy.md"
       ]
     },
     {
       "id": "ARC-04",
       "text": "Activation gate описывается по intent: required/optional checks, baseline старой версии, timeout, допустимость degraded и критерий regression. Невалидная схема/подпись/capability - reject до запуска; невозможность запустить новый engine - rollback; внешний target, который не работал и на baseline, - degraded по policy. Candidate retry требует нового evidence, а не просто следующего poll.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "ARC-05",
@@ -316,14 +321,18 @@
     {
       "id": "CFG-04",
       "text": "Для полей задаётся locked, пользовательский выбор из списка либо свободное изменение в проверяемом диапазоне. Обновление сохраняет разрешённые локальные значения; удалённое переопределение показывается пользователю и аудируется. В режиме управления импорт/ADB не обходят эти права. Для администратора сервер может разрешить отдельную публикацию правок даже для locked полей обычного пользователя; право не выводится из наличия debug APK или ADB.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "CFG-05",
       "text": "Конфиг - декларативный документ со schemaVersion, policyRevision, targetDevice, generatedAt, notBefore, refreshAfter, offlineUntil, requiredCapabilities, contentHash и отдельной подписью. Секреты выдаются адресно через ссылки на секреты и защищённые ответы. Телефон всё равно должен получить необходимые для подключения параметры; это не схема скрытия секретов от самого телефона. Документ ссылается на подписанный decision policy bundle с собственной версией, hash и required evaluator capabilities; активная пара configRevision/algorithmRevision фиксируется вместе.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "CFG-06",
@@ -334,38 +343,50 @@
     {
       "id": "PROV-01",
       "text": "Подпись проверяется доверенным ключом публикации, встроенным в приложение или полученным через заранее доверенную цепочку ротации. TLS и подпись конфига решают разные задачи. Корневой ключ не заменяется произвольным ответом сервера.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "PROV-02",
       "text": "Обновление выполняется по этапам: скачать, проверить подпись/адресата/срок/возможности, проверить схему и ссылки, получить необходимые секреты, скомпилировать, выполнить preflight, сохранить кандидата, переключить движок, проверить критические пути, подтвердить активную ревизию. На каждом этапе есть timeout и код ошибки. Каждый apply использует immutable dependency snapshot и activationGeneration по ARC-03; внешняя недоступность отдельного target оценивается по activation gate, а не автоматически считается сломанным конфигом.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "PROV-03",
       "text": "Desired, downloaded, validated, active и last-known-good ревизии показываются отдельно. HTTP200 при скачивании не считается успешным применением. Применение не перерегистрирует NetBird и не сбрасывает его идентичность. Локально изменённый тестовый конфиг показывается как local experiment с базовой серверной ревизией; он не выдаётся за подтверждённую серверную публикацию.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "PROV-04",
       "text": "Активация имеет durable journal и состояния prepared/applying/committed/degraded/rolled_back/rejected. Snapshot включает config/policy/secrets/engine versions и gates. До переключения сохраняется разрешённый baseline; commit active pointer выполняется один раз. Ошибка нового native запуска или доказанная регрессия обязательного пути вызывает один bounded rollback; выключенный до обновления необязательный домашний сервис сам по себе отката не вызывает. Тот же отказавший candidate не активируется вновь до существенного изменения evidence. Revocation floor и expiry важнее возврата доступности.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "PROV-05",
       "text": "Откат содержимого публикуется как новая ревизия с более новым порядковым номером. Воспроизведение старого подписанного документа не должно обходить отзыв. Откат локального кандидата допускается только к ещё разрешённой last-known-good версии. Сроки и security epoch проверяются по SEC-06; локальный возврат не обновляет offline lease и не возвращает отозванные секреты.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "PROV-06",
       "text": "Недоступный control plane не останавливает действующий разрешённый путь. Начальные параметры - refreshAfter5минут при активном VPN и offlineUntil7суток; фактический предел определяется ближайшим expiry обязательного config/policy/credential и SEC-06. Access token/API session и offline lease - разные сроки. После истечения клиент блокирует управляемые пользовательские потоки согласно policy, сохраняя строго ограниченный доверенный management/re-auth recovery path, если он технически доступен. Этот путь не является общим direct fallback. При невозможности восстановления UI предлагает доступный Wi-Fi/действие пользователя; общий device kill switch требует Android lockdown.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "PROV-07",
@@ -579,8 +600,10 @@
     },
     {
       "id": "REC-01",
-      "status": "planned",
-      "evidence": [],
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ],
       "text": "Одно нажатие «Подключиться» в приложении или плитке Android транзакционно сохраняет desiredOn=true, ссылку на проверенную желаемую конфигурацию/configRevision, режим и монотонный intentGeneration до запуска побочных эффектов. UI, плитка, уведомление и разрешённый ADB/API используют один сериализованный контракт команд и один источник состояния; создание Activity не является командой подключения. Намерение и конфигурация переживают смерть UI/контроллера/сервиса и допустимый ОС перезапуск, не зависят от памяти процесса и восстанавливаются с проверкой schema/signature/lease/capability и доступности ключей. Ошибка записи намерения явно возвращается, ложное подтверждение отсутствует. Недоступная или невалидная конфигурация не заменяется произвольным профилем и не сбрасывает намерение; серверный desired pointer и пользовательское намерение имеют разные области версионирования."
     },
     {
@@ -1582,14 +1605,18 @@
     {
       "id": "SEC-06",
       "text": "Config/decision policy/release manifest используют нормативный JWS envelope с ES256 и защищёнными alg/kid/type, audience service/device, securityEpoch, revision, issuedAt/notBefore/expiry и hash зависимостей. Payload canonical JSON по RFC8785, неизвестные alg/jku/jwk roots не принимаются. Хранятся максимальный принятый epoch и revocation floor; root rotation проверяется старой и новой доверенными ролями. Lease ограничена минимальным expiry обязательных компонентов и не продлевается от повторных байтов, rollback, reboot или изменения wall clock. В процессе используется monotonic anchor доверенного серверного времени; после reboot/clock uncertainty разрешён bounded recovery доверенного времени/lease, а не автоматическое добавление7суток. Rollback допускает только явно разрешённый dependency snapshot выше revocation floor. Root compromise восстанавливается отдельным доверенным каналом/подписанным APK, не ключом из того же недоверенного ответа. [JCS](https://www.rfc-editor.org/rfc/rfc8785), [принципы обновления доверия](https://theupdateframework.github.io/specification/latest/).",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "SEC-07",
       "text": "Offline root/recovery, online publication и APK signing keys раздельны. Signer - отдельная изолированная привилегированная роль/контейнер, parser/fetch/diagnostic workers её key и credentials не имеют. Signer получает канонический проверенный artifact и разрешённое publication job со scope/revision/audience, повторно проверяет grant/CAS и аудит. Он не подписывает произвольные данные по RPC от worker. Для пилота допустим локально защищённый key store без обязательного HSM; ротация, компрометация и восстановление проверяются учением.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "SEC-08",
@@ -1627,14 +1654,17 @@
       "status": "partial",
       "evidence": [
         "internal/decision/decision_test.go",
-        "contracts/README.md"
+        "contracts/README.md",
+        "docs/managed-policy.md"
       ]
     },
     {
       "id": "ENG-02",
       "text": "Lifecycle table ниже является обязательным контрактом для boot locked/unlocked, app/native/service/controller process death, permission revoke, competing VPN, airplane/NoNetwork, Doze, APK update, logout и explicit Stop. На каждом разрешённом restart до побочных эффектов читаются REC-01, последний intentGeneration, валидность config/lease и реальные OS permission/always-on/lockdown. До unlock недоступные credential-encrypted секреты не обходятся; состояние NeedsUnlock честное. Повторный NetBird enrollment или сброс retry budgets из-за рестарта запрещён. Результат зависит от разрешённого ОС триггера: гарантированный самозапуск после любого уничтожения не обещается.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-policy.md"
+      ]
     },
     {
       "id": "ENG-03",

@@ -9,7 +9,7 @@ import (
 
 func TestNormativeSchemasAndVectors(t *testing.T) {
 	schemas := map[string]*jsonschema.Schema{}
-	for _, name := range []string{"decision-request", "decision-result"} {
+	for _, name := range []string{"decision-request", "decision-result", "policy-payload"} {
 		raw, err := Files.ReadFile("v1/" + name + ".schema.json")
 		if err != nil {
 			t.Fatal(err)

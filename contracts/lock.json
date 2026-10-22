@@ -5,6 +5,9 @@
     "decision-request.schema.json": "9397ac45f540e9ab09e88e146f46adb8b51cb73b0141c9a20c0b90bded7eafa3",
     "decision-vectors.json": "2993d7ba0f312b475d34a5142759e7dbc5c605594558e1663b54f48859039d47",
     "decision-result.schema.json": "3239654e14d1ce99b30c0309c7c6519f8fec5f72bf8c04d136eb704da088ffc5",
-    "openapi.json": "9a6327cdc04b5d1b91b85a3c600ffa90fe4ece339179230793190f5bdf650359"
+    "openapi.json": "9a6327cdc04b5d1b91b85a3c600ffa90fe4ece339179230793190f5bdf650359",
+    "policy-payload.schema.json": "47f9872ef4681a5b24656d111ea0cb6d8f93ca9f048bb2c84c8ca7662360a006",
+    "policy-vectors.json": "a4a5381e5bb39b91abe71149f47c7e2ec62790ba9afa0a68e41c58ef6af1b788",
+    "policy-openapi.json": "11a4f22cf7ce3a8391499e7fcdbd8ff6ab7e1b5743167377ee236b13d9470c28"
   }
 }
