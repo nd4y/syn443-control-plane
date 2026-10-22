@@ -75,3 +75,5 @@ VPN follows the OS permission path. Actual reboot/unlock, Always-on/lockdown,
 Doze and energy observations must be reported separately from emulator evidence.
 
 Managed bundles must require `tun.lease.v1`. A native CLOCK_BOOTTIME guard checks TUN reads (including after a blocking read), writes and batched I/O. Expiry permanently retires that TUN owner; a renewal needs a new owner. No wakeup alarm or Java timer is required to deny data packets after suspend. Delivery admission is persisted across controller death, with a five-second manual minimum and a bounded 30-300-second automatic interval.
+
+Candidate activation time starts only after local restart admission is available. Expired/revoked access is closed immediately while its healthy replacement stays prepared; waiting does not poison the snapshot or consume starts. Native start authorization is rechecked under the durable intent fence immediately before IPC. The Force stop token is retained by one inexact ELAPSED_REALTIME (non-wakeup) alarm ten years ahead; Stop cancels it. It never reconnects VPN. ActivityManager weak references alone are not used as durable ownership.
