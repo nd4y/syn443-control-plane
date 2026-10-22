@@ -12,7 +12,7 @@ def main():
     apks = []
     for value in sys.argv[2:]:
         path = Path(value)
-        apks += list(path.rglob('*.apk')) if path.is_dir() else ([path] if path.suffix == '.apk' else [])
+        apks += [p for suffix in ('*.apk', '*.aar') for p in path.rglob(suffix)] if path.is_dir() else ([path] if path.suffix in {'.apk', '.aar'} else [])
     if not apks:
         return
     with tempfile.TemporaryDirectory() as directory:
