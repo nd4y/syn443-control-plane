@@ -1,0 +1,13 @@
+# Isolated identity-provider integration
+
+`deploy/keycloak/syn443-test-realm.json` is a secret-free test-realm representation. It contains no user, password, private key, provider URL or operator hostname. Import it into a separately owned test realm; do not overwrite a realm owned by another application. Keep real issuer URLs, credentials and private operator evidence outside this public repository.
+
+Both public clients require authorization code with S256 PKCE and exact redirect URIs. Password, implicit and service-account grants are disabled, as are public registration and password reset. The mobile callback is `syn443://oauth/callback`; the local test callback is `http://127.0.0.1:17843/callback`. Short access tokens and refresh rotation with zero reuse are explicit. The user/admin realm roles are application roles and grant no Keycloak administrative authority.
+
+`bash tools/test_keycloak.sh` starts a digest-pinned Keycloak 26.7.4 with synthetic credentials and a temporary store. It only binds loopback, waits for discovery, creates a random test user and removes its own container on completion. The integration harness refuses non-loopback issuers. No working IdP, production enrollment or production credentials are used in Actions. On build-01, run it within an isolated source directory with the existing Go toolchain/cache; preserve unrelated containers.
+
+Tests exercise both exact callbacks, code redemption/replay, wrong/missing/plain PKCE, foreign redirects, implicit/password grants, and refresh rotation/reuse. Real JWT RSA signatures, issuer, subject, expiry, ID-token audience/nonce, state and the assigned test role are verified. Expected OAuth error redirects can use query or fragment; no returned authorization code or token is accepted as rejection. A rejected grant is distinct from an unreachable IdP.
+
+This is an identity-provider integration foundation. It does not implement Android browser login, control-plane API token validation, API audience/resource mapping, DPoP/device binding, invitation enrollment, RBAC enforcement, persistent sessions, account revocation or the full panel. A live operator-realm test and this loopback fixture have separate evidence. Successful IdP login does not satisfy full M2 provisioning or physical VPN acceptance.
+
+Configuration follows [Keycloak's public-client and PKCE settings](https://www.keycloak.org/docs/26.7.0/server_admin/) and the native-app requirements in [RFC 8252](https://www.rfc-editor.org/rfc/rfc8252.html). Real installations must use HTTPS with normal certificate verification; HTTP is restricted to this temporary loopback fixture.

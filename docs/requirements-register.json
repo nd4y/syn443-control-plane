@@ -117,8 +117,10 @@
     {
       "id": "AUTH-01",
       "text": "Основной вход - OIDC Authorization Code + PKCE S256 через системный браузер/Custom Tabs. В APK нет клиентского секрета и формы, перехватывающей пароль Keycloak. Проверяются state, nonce, issuer, audience, подписи и точные redirect URI. [RFC 8252](https://www.rfc-editor.org/rfc/rfc8252), [Keycloak OIDC](https://www.keycloak.org/securing-apps/oidc-layers).",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/keycloak-test-realm.md"
+      ]
     },
     {
       "id": "AUTH-02",
