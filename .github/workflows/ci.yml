@@ -52,6 +52,7 @@ jobs:
       - run: python3 tools/check_coverage.py
       - run: go test ./internal/decision -run '^$' -fuzz '^FuzzDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/policy -run '^$' -fuzz '^FuzzPolicyDecode$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/identity -run '^$' -fuzz '^FuzzIdentityDecode$' -fuzztime=15s -parallel=2
       - run: go build -o bin/syn443-api ./cmd/api
       - run: python3 tools/smoke_api.py bin/syn443-api
       - run: go build -o bin/syn443-policy-sign ./cmd/policy-sign && go build -o bin/syn443-policy-serve ./cmd/policy-serve
@@ -91,3 +92,29 @@ jobs:
           cache: true
       - run: bash -n tools/test_keycloak.sh
       - run: bash tools/test_keycloak.sh
+  enrollment:
+    needs: public-data
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.2'
+          cache: true
+      - run: bash -n tools/test_enrollment.sh
+      - run: bash tools/test_enrollment.sh
+      - name: Check and scan enrollment evidence
+        id: enrollment-scan
+        run: |
+          python3 tools/check_enrollment_coverage.py enrollment-coverage.out
+          python3 tools/check_public_data.py enrollment-coverage.out
+          bash tools/scan_secrets.sh enrollment-coverage.out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.enrollment-scan.outcome == 'success'
+        with:
+          name: enrollment-test-evidence
+          path: enrollment-coverage.out
+          retention-days: 14

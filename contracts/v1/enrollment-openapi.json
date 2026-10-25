@@ -1,0 +1,537 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SYN443 M2 enrollment pilot",
+    "version": "0.2.0",
+    "description": "Bounded loopback-hosted pilot over HTTPS. No invites, admin session or full panel. Successful OIDC login alone grants nothing; an owner assignment is required. Duplicate/case-variant/unknown request members and any URL query are rejected. No caller-supplied issuer/key URL is followed."
+  },
+  "paths": {
+    "/v1/devices/enroll": {
+      "post": {
+        "operationId": "enroll",
+        "security": [
+          {
+            "oidcDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict or fresh authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Separate opaque key-bound device session; never a user/admin session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Enroll"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/device/session/refresh": {
+      "post": {
+        "operationId": "refresh",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict or fresh authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Separate opaque key-bound device session; never a user/admin session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Mutation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/device/revoke": {
+      "post": {
+        "operationId": "revoke",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict or fresh authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "204": {
+            "description": "Device revoked, including matching fresh-proof retry within three minutes."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Mutation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/device/policy": {
+      "get": {
+        "operationId": "policy",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict or fresh authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Device-scoped ES256/JCS policy signed by a pretrusted publication key.",
+            "content": {
+              "application/jose": {
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 524288
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Assignment exists but its independently signed publication is pending. Retry-After: 2.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "oidcDPoP": {
+        "type": "http",
+        "scheme": "DPoP",
+        "description": "Keycloak RS256 access JWT with pinned issuer, syn443-api audience, syn443-android azp and cnf.jkt."
+      },
+      "deviceDPoP": {
+        "type": "http",
+        "scheme": "DPoP",
+        "description": "Opaque ten-minute access token; refresh endpoint uses rotating key-bound refresh token."
+      }
+    },
+    "schemas": {
+      "PublicKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kty",
+          "crv",
+          "x",
+          "y"
+        ],
+        "properties": {
+          "kty": {
+            "const": "EC"
+          },
+          "crv": {
+            "const": "P-256"
+          },
+          "x": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "y": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        }
+      },
+      "Enroll": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "key",
+          "capabilities"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "minLength": 24,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]{24,128}$"
+          },
+          "key": {
+            "$ref": "#/components/schemas/PublicKey"
+          },
+          "capabilities": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        }
+      },
+      "Mutation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "minLength": 24,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]{24,128}$"
+          }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "deviceId",
+          "accessToken",
+          "refreshToken",
+          "accessUntilMs",
+          "refreshUntilMs",
+          "generation",
+          "nonce"
+        ],
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "accessToken": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "refreshToken": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "accessUntilMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "refreshUntilMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "nonce": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "enum": [
+              "identity_invalid",
+              "access_denied",
+              "idempotency_conflict",
+              "proof_replayed",
+              "session_reuse",
+              "provisioning_pending",
+              "reauthentication_required",
+              "use_dpop_nonce",
+              "temporarily_unavailable"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "x-syn443-limits": {
+    "requestBodyBytes": 8192,
+    "acceptedProofPastSeconds": 60,
+    "acceptedProofFutureSeconds": 10,
+    "proofReplaySeconds": 180,
+    "idempotencyReplySeconds": 180,
+    "accessSeconds": 600,
+    "refreshFamilySeconds": 86400,
+    "publicationSeconds": 3600,
+    "activeDevicesPerAccountMaximum": 16
+  },
+  "x-syn443-storage": "PostgreSQL transactions, explicit owner/API/publisher roles, encrypted receipt/reply/publication, hashed opaque tokens, durable nonce/replay/time fence. POST requestId reuse requires identical raw payload hash. No secrets in errors or logs."
+}

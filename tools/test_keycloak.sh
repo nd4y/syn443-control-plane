@@ -23,9 +23,16 @@ container_id=$(docker run -d --cpus=1 --memory=640m \
   quay.io/keycloak/keycloak@sha256:82a77884f3af238beab1e7afd63b5f530e1b5c0590bd7aa60b40a40463e29b2c \
   start-dev --import-realm)
 ready=false
-for ((i=0; i<90; i++)); do
+# A fresh, one-CPU Quarkus augmentation plus schema import can exceed 90 seconds.
+for ((i=0; i<150; i++)); do
   if curl --silent --fail --max-time 2 "$SYN443_TEST_ISSUER/.well-known/openid-configuration" >/dev/null; then ready=true; break; fi
   sleep 1
 done
-if [ "$ready" != true ]; then echo 'Temporary Keycloak fixture did not become ready'; exit 1; fi
+if [ "$ready" != true ]; then
+  echo 'Temporary Keycloak fixture did not become ready'
+  docker inspect --format 'fixture exit={{.State.ExitCode}} oom={{.State.OOMKilled}} running={{.State.Running}}' "$container_id"
+  # Only startup, before any user/token request. Still redact the generated fixture secret.
+  docker logs "$container_id" 2>&1 | python3 -c 'import os,sys; s=sys.stdin.read(); p=os.environ["KC_BOOTSTRAP_ADMIN_PASSWORD"]; print(s.replace(p,"[redacted]")[-8000:])'
+  exit 1
+fi
 go test -tags keycloak -race -count=1 -timeout=3m -v ./integration/keycloak

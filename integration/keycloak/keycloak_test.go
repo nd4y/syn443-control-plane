@@ -4,13 +4,17 @@
 package keycloak_test
 
 import (
+	"context"
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"html"
 	"io"
 	"math/big"
@@ -28,6 +32,8 @@ import (
 type fixture struct {
 	t                                                 *testing.T
 	issuer, origin, admin, username, password, userID string
+	mobileKey                                         *ecdsa.PrivateKey
+	mobileNonce                                       string
 }
 type reply struct {
 	status  int
@@ -98,7 +104,48 @@ func object(t *testing.T, b []byte) map[string]any {
 	return v
 }
 func (f *fixture) token(fields url.Values) reply {
+	if fields.Get("client_id") == "syn443-android" {
+		endpoint := f.issuer + "/protocol/openid-connect/token"
+		for attempt := 0; attempt < 2; attempt++ {
+			req, _ := http.NewRequest("POST", endpoint, strings.NewReader(fields.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Set("DPoP", f.proof(endpoint, f.mobileKey))
+			r, e := browser().Do(req)
+			if e != nil {
+				f.t.Fatal("DPoP transport failed")
+			}
+			body, e := io.ReadAll(io.LimitReader(r.Body, 65537))
+			r.Body.Close()
+			if e != nil || len(body) > 65536 {
+				f.t.Fatal("DPoP response limit")
+			}
+			if nonce := r.Header.Get("DPoP-Nonce"); nonce != "" {
+				if len(nonce) > 256 {
+					f.t.Fatal("nonce limit")
+				}
+				f.mobileNonce = nonce
+				if r.StatusCode == 401 && attempt == 0 {
+					continue
+				}
+			}
+			return reply{r.StatusCode, r.Header, body}
+		}
+		f.t.Fatal("DPoP retry limit")
+	}
 	return f.form(browser(), f.issuer+"/protocol/openid-connect/token", fields)
+}
+func (f *fixture) proof(endpoint string, key *ecdsa.PrivateKey) string {
+	f.t.Helper()
+	header, _ := json.Marshal(map[string]any{"typ": "dpop+jwt", "alg": "ES256", "jwk": identity.PublicJWK(&key.PublicKey)})
+	claims, _ := json.Marshal(identity.ProofClaims{Jti: random(), Htm: "POST", Htu: endpoint, Iat: time.Now().Unix(), Nonce: f.mobileNonce})
+	b64 := base64.RawURLEncoding
+	input := b64.EncodeToString(header) + "." + b64.EncodeToString(claims)
+	sum := sha256.Sum256([]byte(input))
+	r, s, e := ecdsa.Sign(rand.Reader, key, sum[:])
+	if e != nil {
+		f.t.Fatal("proof signing")
+	}
+	return input + "." + b64.EncodeToString(append(r.FillBytes(make([]byte, 32)), s.FillBytes(make([]byte, 32))...))
 }
 func (f *fixture) authorize(client, redirect string, extra url.Values) (reply, string, string) {
 	state, nonce := random(), random()
@@ -115,6 +162,12 @@ func (f *fixture) login(client, redirect string) (code, verifier, nonce string) 
 	state := random()
 	nonce = random()
 	fields := url.Values{"client_id": {client}, "redirect_uri": {redirect}, "response_type": {"code"}, "scope": {"openid"}, "state": {state}, "nonce": {nonce}, "code_challenge": {base64.RawURLEncoding.EncodeToString(sum[:])}, "code_challenge_method": {"S256"}}
+	if client == "syn443-android" {
+		f.mobileKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		f.mobileNonce = ""
+		thumb, _ := identity.PublicJWK(&f.mobileKey.PublicKey).Thumbprint()
+		fields.Set("dpop_jkt", thumb)
+	}
 	c := browser()
 	r := f.request(c, "GET", f.issuer+"/protocol/openid-connect/auth?"+fields.Encode(), "", nil, false)
 	requireStatus(f.t, r, 200)
@@ -264,6 +317,20 @@ func TestIsolatedRealm(t *testing.T) {
 				t.Fatal("ID audience/nonce")
 			}
 			access := f.verified(tokens["access_token"].(string))
+			if v.client == "syn443-android" {
+				if tokens["token_type"] != "DPoP" {
+					t.Fatal("mobile bearer token")
+				}
+				provider, e := identity.NewProvider(context.Background(), f.issuer, "syn443-api", v.client, nil, true)
+				if e != nil {
+					t.Fatal(e)
+				}
+				p, e := provider.Verify(context.Background(), tokens["access_token"].(string), time.Now())
+				thumb, _ := identity.PublicJWK(&f.mobileKey.PublicKey).Thumbprint()
+				if e != nil || p.Thumbprint != thumb || p.Subject != f.userID {
+					t.Fatal("mobile API audience/key binding")
+				}
+			}
 			roles := access["realm_access"].(map[string]any)["roles"].([]any)
 			found := false
 			for _, role := range roles {
@@ -341,6 +408,38 @@ func TestIsolatedRealm(t *testing.T) {
 		if object(t, r.body)["error"] != "invalid_grant" {
 			t.Fatal("refresh replay accepted")
 		}
+	})
+	t.Run("mobile-proof-required-and-code-key-bound", func(t *testing.T) {
+		f.t = t
+		mobile := "syn443-android"
+		callback := "syn443://oauth/callback"
+		code, verifier, _ := f.login(mobile, callback)
+		fields := url.Values{"grant_type": {"authorization_code"}, "client_id": {mobile}, "redirect_uri": {callback}, "code": {code}, "code_verifier": {verifier}}
+		r := f.form(browser(), f.issuer+"/protocol/openid-connect/token", fields)
+		if r.status < 400 || r.status > 499 {
+			t.Fatal("missing DPoP accepted")
+		}
+		code, verifier, _ = f.login(mobile, callback)
+		f.mobileKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		r = f.redeem(mobile, callback, code, verifier)
+		if r.status < 400 || r.status > 499 {
+			t.Fatal("authorization code rebound to another key")
+		}
+	})
+	t.Run("mobile-refresh-requires-original-key", func(t *testing.T) {
+		f.t = t
+		mobile := "syn443-android"
+		code, verifier, _ := f.login(mobile, "syn443://oauth/callback")
+		r := f.redeem(mobile, "syn443://oauth/callback", code, verifier)
+		requireStatus(t, r, 200)
+		refresh := object(t, r.body)["refresh_token"].(string)
+		original := f.mobileKey
+		f.mobileKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		r = f.token(url.Values{"grant_type": {"refresh_token"}, "client_id": {mobile}, "refresh_token": {refresh}})
+		if r.status < 400 || r.status > 499 {
+			t.Fatal("refresh rebound to another key")
+		}
+		f.mobileKey = original
 	})
 	f.t = t
 }
