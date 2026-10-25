@@ -111,7 +111,7 @@ type fixture struct {
 func newFixture(t *testing.T, limit int) *fixture {
 	t.Helper()
 	ctx := context.Background()
-	_, e := fixtureOwner.Exec(`TRUNCATE identity_accounts,identity_devices,identity_challenges,identity_sessions,identity_requests,identity_refresh_history,identity_replays,identity_revocations CASCADE;UPDATE identity_clock SET second=0`)
+	_, e := fixtureOwner.Exec(`TRUNCATE identity_accounts,identity_devices,identity_challenges,identity_sessions,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations CASCADE;UPDATE identity_clock SET second=0`)
 	if e != nil {
 		t.Fatal(e)
 	}

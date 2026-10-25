@@ -41,6 +41,11 @@ CREATE TABLE IF NOT EXISTS identity_revocations (
  body_hash text NOT NULL, access_hash text NOT NULL, jkt text NOT NULL, nonce text NOT NULL,
  expires bigint NOT NULL, PRIMARY KEY(device,request_id)
 );
+CREATE TABLE IF NOT EXISTS identity_owner_revocations (
+ owner text NOT NULL REFERENCES identity_accounts(owner), auth_jkt text NOT NULL,
+ request_id text NOT NULL, body_hash text NOT NULL, expires bigint NOT NULL,
+ PRIMARY KEY(owner,auth_jkt,request_id)
+);
 -- The API can insert an unapproved enrollment and revoke it, never revive it or change identity.
 CREATE OR REPLACE FUNCTION identity_device_invariants() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
@@ -60,3 +65,5 @@ CREATE INDEX IF NOT EXISTS identity_session_device ON identity_sessions(device);
 CREATE INDEX IF NOT EXISTS identity_refresh_expiry ON identity_refresh_history(expires);
 CREATE INDEX IF NOT EXISTS identity_request_expiry ON identity_requests(expires);
 CREATE INDEX IF NOT EXISTS identity_revocation_expiry ON identity_revocations(expires);
+CREATE INDEX IF NOT EXISTS identity_challenge_expiry ON identity_challenges(expires);
+CREATE INDEX IF NOT EXISTS identity_owner_revocation_expiry ON identity_owner_revocations(expires);

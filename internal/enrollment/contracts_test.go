@@ -30,7 +30,7 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 		t.Fatal(e)
 	}
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	values := map[string]any{"Enroll": Request{random(), identity.PublicJWK(&key.PublicKey), []string{"engine-config.v1", "tun.lease.v1"}}, "Mutation": map[string]string{"requestId": random()}, "Session": Session{random(), random(), random(), 1800000600000, 1800086400000, 0, random()}}
+	values := map[string]any{"Enroll": Request{random(), identity.PublicJWK(&key.PublicKey), []string{"engine-config.v1", "tun.lease.v1"}}, "Cleanup": Cleanup{random(), []string{random()}}, "Mutation": map[string]string{"requestId": random()}, "Session": Session{random(), random(), random(), 1800000600000, 1800086400000, 0, random()}}
 	for name, value := range values {
 		schema, e := compiler.Compile(base + "#/components/schemas/" + name)
 		if e != nil {
@@ -60,7 +60,7 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 		}
 	}
 	paths := doc["paths"].(map[string]any)
-	if len(paths) != 4 {
+	if len(paths) != 5 {
 		t.Fatal("unexpected API scope")
 	}
 	for path, value := range paths {
