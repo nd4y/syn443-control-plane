@@ -98,7 +98,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := r.URL.Path
-	allowed := r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
+	allowed := r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
 	if !allowed {
 		http.NotFound(w, r)
 		return
@@ -155,10 +155,18 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(w, e)
 		return
 	}
-	if path == "/v1/devices/enroll" {
+	if path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" {
 		principal, e := a.Verifier.Verify(ctx, token, now)
 		if e != nil {
 			failure(w, identity.ErrInvalid)
+			return
+		}
+		if path == "/v1/identity/devices/revoke" {
+			if e = a.Store.Cleanup(ctx, principal, proof, raw, now); e != nil {
+				failure(w, e)
+				return
+			}
+			w.WriteHeader(204)
 			return
 		}
 		value, e := a.Store.Register(ctx, principal, proof, raw, Receipt{token, r.Header.Get("DPoP"), a.Origin + path, now.Unix()}, now)

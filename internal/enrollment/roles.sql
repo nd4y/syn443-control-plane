@@ -12,6 +12,6 @@ GRANT INSERT(id,owner,jkt,request_body,receipt),UPDATE(active,request_body,recei
 GRANT UPDATE(approved,publication,revision,refresh_after,offline_until,retry_after,publication_error)
  ON identity_devices TO syn443_identity_publisher;
 GRANT SELECT,INSERT,UPDATE,DELETE ON identity_challenges,identity_sessions,identity_refresh_history,
- identity_replays,identity_requests,identity_revocations TO syn443_identity_api;
+ identity_replays,identity_requests,identity_revocations,identity_owner_revocations TO syn443_identity_api;
 -- Publisher cannot mint or inspect device session hashes, challenges or idempotent replies.
 REVOKE ALL ON FUNCTION identity_device_invariants() FROM PUBLIC;

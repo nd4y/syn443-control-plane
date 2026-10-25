@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "SYN443 M2 enrollment pilot",
-    "version": "0.2.0",
-    "description": "Bounded loopback-hosted pilot over HTTPS. No invites, admin session or full panel. Successful OIDC login alone grants nothing; an owner assignment is required. Duplicate/case-variant/unknown request members and any URL query are rejected. No caller-supplied issuer/key URL is followed."
+    "version": "0.2.1",
+    "description": "Bounded loopback-hosted pilot over HTTPS. No invites, admin session or full panel. Successful OIDC login alone grants nothing; an owner assignment is required. Duplicate/case-variant/unknown request members and any URL query are rejected. No caller-supplied issuer/key URL is followed. Fresh OIDC identity can revoke its own prior keys after logout/lost enrollment response. Cleanup grants no session/config and never mutates another account."
   },
   "paths": {
     "/v1/devices/enroll": {
@@ -352,6 +352,87 @@
           }
         }
       }
+    },
+    "/v1/identity/devices/revoke": {
+      "post": {
+        "operationId": "cleanupOwnedRegistrations",
+        "security": [
+          {
+            "oidcDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict or fresh authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "204": {
+            "description": "Matching owned registrations revoked. Unknown or foreign thumbprints have the same response, with no foreign mutation. Fresh OIDC/DPoP only; no old device credential required. Denied accounts may only perform this cleanup."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Cleanup"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -519,6 +600,34 @@
             ]
           }
         }
+      },
+      "Cleanup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "thumbprints"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "minLength": 24,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]{24,128}$"
+          },
+          "thumbprints": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 43,
+              "maxLength": 43,
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          }
+        }
       }
     }
   },
@@ -531,7 +640,8 @@
     "accessSeconds": 600,
     "refreshFamilySeconds": 86400,
     "publicationSeconds": 3600,
-    "activeDevicesPerAccountMaximum": 16
+    "activeDevicesPerAccountMaximum": 16,
+    "activeIdentityChallengesPerAccount": 32
   },
   "x-syn443-storage": "PostgreSQL transactions, explicit owner/API/publisher roles, encrypted receipt/reply/publication, hashed opaque tokens, durable nonce/replay/time fence. POST requestId reuse requires identical raw payload hash. No secrets in errors or logs."
 }

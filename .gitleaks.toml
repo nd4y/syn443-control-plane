@@ -26,3 +26,10 @@ condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"enrollment-openapi\.json": "f54887f5b48faf9447274b7283e1ed8baeed4ee3d620c6b922d291b7009df5d5",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public M2 owner-cleanup OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"enrollment-openapi\.json": "54f1c5bce2af819f68531417a654c175e53f60acde38a546d175f834411f9527",?\s*$''']

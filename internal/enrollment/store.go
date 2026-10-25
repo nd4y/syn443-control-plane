@@ -201,23 +201,17 @@ func (s *Store) Register(ctx context.Context, principal identity.Principal, proo
 	if e != nil {
 		return result, e
 	}
-	var nonce string
-	var expires int64
-	e = tx.QueryRowContext(ctx, `SELECT nonce,expires FROM identity_challenges WHERE owner=$1 AND jkt=$2`, owner, thumb).Scan(&nonce, &expires)
-	if e != nil && !errors.Is(e, sql.ErrNoRows) {
+	e = challenge(ctx, tx, owner, thumb, proof.Claims.Nonce, n)
+	if e != nil {
+		var nonce NonceRequired
+		if errors.As(e, &nonce) {
+			if err := tx.Commit(); err != nil {
+				return result, err
+			}
+		}
 		return result, e
 	}
-	if e != nil || expires <= n || proof.Claims.Nonce != nonce {
-		nonce = random()
-		_, e = tx.ExecContext(ctx, `INSERT INTO identity_challenges(owner,jkt,nonce,expires) VALUES($1,$2,$3,$4) ON CONFLICT(owner,jkt) DO UPDATE SET nonce=excluded.nonce,expires=excluded.expires`, owner, thumb, nonce, n+180)
-		if e != nil {
-			return result, e
-		}
-		if e = tx.Commit(); e != nil {
-			return result, e
-		}
-		return result, NonceRequired{nonce}
-	}
+
 	if e = replay(ctx, tx, proof, n); e != nil {
 		return result, e
 	}
