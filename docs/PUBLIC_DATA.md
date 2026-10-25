@@ -7,8 +7,8 @@ Use GitHub noreply email for commits. Never paste device output into issues or C
 
 Before publication, all reachable source history, GitHub discussions and delivery assets are reviewed.
 The privacy gate checks history, deleted files, author emails and selected artifact payloads.
-Gitleaks uses pinned, checksum-verified binaries and default secret detectors. Its only exception
-is one exact public OpenAPI content digest in the contract lock file. No directories or commits
+Gitleaks uses pinned, checksum-verified binaries and default secret detectors. Its exceptions
+are exact reviewed public OpenAPI content digests in the contract lock file, scoped to each field/value/path. No directories or commits
 are excluded from secret scanning. Detection logs redact values.
 
 All PRs and main runs must pass `public-data`. Artifact uploads must pass payload checks;
@@ -25,7 +25,7 @@ Python 3 and Gitleaks 8.30.1 are required. Optional machine-local Git config key
 `syn443.python` and `syn443.gitleaks` select executable paths without storing them in source.
 Pre-commit inspects the actual staged bytes; pre-push checks all reachable history.
 Missing scanners fail closed. Hooks are a local safeguard, not a server-side access boundary.
-CI tests that the exact digest exception accepts its reviewed value and rejects changed
+CI tests that each exact digest exception accepts its reviewed value and rejects changed
 values or the same value at another path.
 APK payloads are additionally scanned as ZIP containers: Gitleaks otherwise skips the
 binary `.apk` file. The real scanner self-test checks both a clean APK and detection

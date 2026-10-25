@@ -8,6 +8,7 @@
     "openapi.json": "9a6327cdc04b5d1b91b85a3c600ffa90fe4ece339179230793190f5bdf650359",
     "policy-payload.schema.json": "3002668270ac0e377db17b989b9ced2982655ed4f3c581d3bdb7ef0d12e46f52",
     "policy-vectors.json": "a4a5381e5bb39b91abe71149f47c7e2ec62790ba9afa0a68e41c58ef6af1b788",
-    "policy-openapi.json": "11a4f22cf7ce3a8391499e7fcdbd8ff6ab7e1b5743167377ee236b13d9470c28"
+    "policy-openapi.json": "11a4f22cf7ce3a8391499e7fcdbd8ff6ab7e1b5743167377ee236b13d9470c28",
+    "enrollment-openapi.json": "f54887f5b48faf9447274b7283e1ed8baeed4ee3d620c6b922d291b7009df5d5"
   }
 }

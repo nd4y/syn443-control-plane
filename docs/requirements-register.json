@@ -119,14 +119,17 @@
       "text": "Основной вход - OIDC Authorization Code + PKCE S256 через системный браузер/Custom Tabs. В APK нет клиентского секрета и формы, перехватывающей пароль Keycloak. Проверяются state, nonce, issuer, audience, подписи и точные redirect URI. [RFC 8252](https://www.rfc-editor.org/rfc/rfc8252), [Keycloak OIDC](https://www.keycloak.org/securing-apps/oidc-layers).",
       "status": "partial",
       "evidence": [
-        "docs/keycloak-test-realm.md"
+        "docs/keycloak-test-realm.md",
+        "docs/enrollment-pilot.md"
       ]
     },
     {
       "id": "AUTH-02",
       "text": "После Keycloak/OIDC или одобренного QR enrollment сервер регистрирует случайный deviceId и ключ устройства, независимо от IMEI/IMSI/MAC. Доступ к device API использует короткоживущую сессию, связанную с ключом по SEC-04; Keycloak user identity, device session и admin session различаются. Приглашение не создаёт административную сессию; ID устройства без доказательства владения ключом не является авторизацией.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/enrollment-pilot.md"
+      ]
     },
     {
       "id": "AUTH-03",
@@ -137,14 +140,18 @@
     {
       "id": "AUTH-04",
       "text": "Отзыв устройства блокирует новые конфиги, секреты и сессии. Прокси-учётные данные и NetBird peer отзываются отдельно через адаптеры. Отключение только в нашей панели не гарантирует прекращения работы ранее выданного стороннего конфига.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/enrollment-pilot.md"
+      ]
     },
     {
       "id": "AUTH-05",
       "text": "Выйти из аккаунта и выключить VPN - разные действия. Выход удаляет локальные сессии и секреты приложения, завершает VPN и снимает локальную регистрацию; серверный отзыв выполняется идемпотентно. Системные настройки Android пользователь меняет средствами ОС.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/enrollment-pilot.md"
+      ]
     },
     {
       "id": "ONB-01",
@@ -155,8 +162,10 @@
     {
       "id": "ONB-02",
       "text": "Успешный вход в Keycloak подтверждает личность, но не право пользования сервисом. Сервер отдельно проверяет приглашение/назначение, статус пользователя и лимит устройств. Для запрещённого или ожидающего назначения аккаунта показывается соответствующее состояние; чужой, общий или демонстрационный конфиг не выдаётся.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/enrollment-pilot.md"
+      ]
     },
     {
       "id": "ONB-03",
@@ -1595,8 +1604,10 @@
     {
       "id": "SEC-04",
       "text": "Device API использует HTTPS и sender-constrained access token через DPoP RFC9449 с P-256/ES256 ключом Keystore. Начальный access TTL10минут; refresh family связана с ключом, ротируется с reuse detection. Проверяются key/token binding, method/URI, iat/jti, ath и server nonce по протоколу, replay cache и audience; DPoP не заменяет первоначальную аутентификацию OIDC/одобренного приглашения. API проверяет device status и права, один deviceId или украденный bearer недостаточны. Идемпотентные изменения связывают key с payload hash; потеря ключа требует нового подтверждённого enrollment. Срок device API token не продлевает offline lease. [DPoP](https://www.rfc-editor.org/rfc/rfc9449), [OAuth security](https://www.rfc-editor.org/rfc/rfc9700).",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/enrollment-pilot.md"
+      ]
     },
     {
       "id": "SEC-05",
@@ -1609,7 +1620,8 @@
       "text": "Config/decision policy/release manifest используют нормативный JWS envelope с ES256 и защищёнными alg/kid/type, audience service/device, securityEpoch, revision, issuedAt/notBefore/expiry и hash зависимостей. Payload canonical JSON по RFC8785, неизвестные alg/jku/jwk roots не принимаются. Хранятся максимальный принятый epoch и revocation floor; root rotation проверяется старой и новой доверенными ролями. Lease ограничена минимальным expiry обязательных компонентов и не продлевается от повторных байтов, rollback, reboot или изменения wall clock. В процессе используется monotonic anchor доверенного серверного времени; после reboot/clock uncertainty разрешён bounded recovery доверенного времени/lease, а не автоматическое добавление7суток. Rollback допускает только явно разрешённый dependency snapshot выше revocation floor. Root compromise восстанавливается отдельным доверенным каналом/подписанным APK, не ключом из того же недоверенного ответа. [JCS](https://www.rfc-editor.org/rfc/rfc8785), [принципы обновления доверия](https://theupdateframework.github.io/specification/latest/).",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/enrollment-pilot.md"
       ]
     },
     {
@@ -1617,7 +1629,8 @@
       "text": "Offline root/recovery, online publication и APK signing keys раздельны. Signer - отдельная изолированная привилегированная роль/контейнер, parser/fetch/diagnostic workers её key и credentials не имеют. Signer получает канонический проверенный artifact и разрешённое publication job со scope/revision/audience, повторно проверяет grant/CAS и аудит. Он не подписывает произвольные данные по RPC от worker. Для пилота допустим локально защищённый key store без обязательного HSM; ротация, компрометация и восстановление проверяются учением.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/enrollment-pilot.md"
       ]
     },
     {

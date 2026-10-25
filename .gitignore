@@ -11,6 +11,9 @@ local.properties
 *.key
 coverage.out
 /bin/
+/.fixture-cache/
+identity-coverage.out
+enrollment-coverage.out
 __pycache__/
 node_modules/
 dist/

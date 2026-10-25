@@ -51,8 +51,23 @@
       "webOrigins": [],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "oauth2.device.authorization.grant.enabled": "false"
-      }
+        "oauth2.device.authorization.grant.enabled": "false",
+        "dpop.bound.access.tokens": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "syn443-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "syn443-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "syn443-test-web",
