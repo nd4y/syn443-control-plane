@@ -13,4 +13,6 @@ Coverage applies to implemented code; line coverage alone is not behavioral cove
 All fixtures use synthetic endpoints, identifiers and secrets. No real provider credentials are needed in CI.
 Every later feature PR updates requirements-register with scope and concrete evidence.
 
+The mandatory `keycloak` Actions job uses a digest-pinned temporary IdP and generated fixture credentials. It validates the isolated test-realm representation and real authorization-code/PKCE, token verification, disabled grants and refresh-replay behavior. See [scope and limits](keycloak-test-realm.md); it does not close Android enrollment, API authorization or the M2 provisioning gate.
+
 M1 recovery gates (REC-01-06 / AC82-AC90) remain planned. At implementation, deterministic model/trace tests and Android fault injection must cover durable intent/config, exponential backoff/jitter and flapping, Stop/stale effects, optional-outbound partial startup without private leaks, full native hang and controller/service death, truthful status with detailed logs disabled, and persisted budgets across restart/reboot/clock changes. Physical Pixel evidence separately covers Wi-Fi/LTE/restricted LTE, actual OS restart/Force stop/revoke/Always-on behavior, Doze and energy. A live control looper, a JVM timeout, or process isolation alone does not prove these gates.
