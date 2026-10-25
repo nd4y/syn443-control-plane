@@ -43,7 +43,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.2'
+          go-version: '1.27.3'
           cache: true
       - run: test -z "$(gofmt -l cmd internal contracts integration)"
       - run: go mod verify
@@ -88,7 +88,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.2'
+          go-version: '1.27.3'
           cache: true
       - run: bash -n tools/test_keycloak.sh
       - run: bash tools/test_keycloak.sh
@@ -102,7 +102,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.2'
+          go-version: '1.27.3'
           cache: true
       - run: bash -n tools/test_enrollment.sh
       - run: bash tools/test_enrollment.sh
