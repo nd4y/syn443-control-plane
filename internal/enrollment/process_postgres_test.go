@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -81,6 +82,15 @@ func startProcess(t *testing.T, binary string, env []string) (stop func(), logs 
 }
 
 func TestActualAPIPublisherProcessesAndRestart(t *testing.T) {
+	for _, secure := range []bool{false, true} {
+		name := "http"
+		if secure {
+			name = "https-with-loopback-identity-fixture"
+		}
+		t.Run(name, func(t *testing.T) { actualAPIPublisherProcessesAndRestart(t, secure) })
+	}
+}
+func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool) {
 	f := newFixture(t, 1)
 	f.now = time.Now().UTC().Truncate(time.Second)
 	rsaKey, e := rsa.GenerateKey(rand.Reader, 2048)
@@ -114,13 +124,37 @@ func TestActualAPIPublisherProcessesAndRestart(t *testing.T) {
 	address := listener.Addr().String()
 	listener.Close()
 	origin := "http://" + address
+	if secure {
+		origin = "https://" + address
+	}
 	public, _ := x509.MarshalPKIXPublicKey(&f.key.PublicKey)
 	config := Config{Listen: address, Origin: origin, Issuer: issuer, Audience: "syn443-api", ClientID: "syn443-android", Database: fixtureAPIDSN, EncryptionKey: base64.StdEncoding.EncodeToString(f.encryption), Roots: map[string]string{"fixture-root": base64.StdEncoding.EncodeToString(public)}, FixtureHTTP: true}
 	dir := t.TempDir()
 	apiFile := filepath.Join(dir, "api.json")
+	client := &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	if secure {
+		fixture := httptest.NewTLSServer(http.NotFoundHandler())
+		certificate := fixture.TLS.Certificates[0]
+		fixture.Close()
+		config.Certificate = filepath.Join(dir, "server.crt")
+		config.CertificateKey = filepath.Join(dir, "server.key")
+		keyDER, e := x509.MarshalPKCS8PrivateKey(certificate.PrivateKey)
+		if e != nil {
+			t.Fatal("fixture TLS key")
+		}
+		if os.WriteFile(config.Certificate, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600) != nil || os.WriteFile(config.CertificateKey, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}), 0600) != nil {
+			t.Fatal("fixture TLS files")
+		}
+		cert, e := x509.ParseCertificate(certificate.Certificate[0])
+		if e != nil {
+			t.Fatal("fixture certificate")
+		}
+		roots := x509.NewCertPool()
+		roots.AddCert(cert)
+		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}}
+	}
 	privateJSON(t, apiFile, config)
 	stopAPI, apiLog := startProcess(t, "enrollment-api", []string{"SYN443_ENROLLMENT_CONFIG=" + apiFile})
-	client := &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	ready := false
 	for i := 0; i < 50; i++ {
 		r, e := client.Get(origin + "/v1/device/policy")

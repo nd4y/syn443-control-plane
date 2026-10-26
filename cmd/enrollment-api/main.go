@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -65,7 +66,7 @@ func run() error {
 		defer cancel()
 		_ = server.Shutdown(shut)
 	}()
-	if c.FixtureHTTP {
+	if c.FixtureHTTP && strings.HasPrefix(c.Origin, "http://") {
 		e = server.ListenAndServe()
 	} else {
 		if _, e = enrollment.PrivateFile(c.CertificateKey, 8192); e != nil {
