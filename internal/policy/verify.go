@@ -13,6 +13,16 @@ import (
 	"time"
 )
 
+// VerifyBound rejects identity substitution through an otherwise valid signed device ID.
+// The caller derives the expected thumbprint from its own key, never the delivery response.
+func VerifyBound(envelope string, keys map[string]*ecdsa.PublicKey, device, jkt string, now time.Time) (Payload, error) {
+	p, e := Verify(envelope, keys, device, now)
+	if e != nil || p.SchemaVersion != 2 || p.KeyThumbprint != jkt {
+		return Payload{}, errors.New("untrusted key-bound publication")
+	}
+	return p, nil
+}
+
 // Verify prevents the delivery role from disclosing a misfiled/forged recipient's
 // artifact. Root authority comes from a separate, operator-owned read-only file.
 func Verify(envelope string, keys map[string]*ecdsa.PublicKey, device string, now time.Time) (Payload, error) {

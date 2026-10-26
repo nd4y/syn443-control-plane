@@ -71,7 +71,7 @@ func TestOwnerCleanupCannotRevokeAnotherUserAndWorksAfterAssignmentDenial(t *tes
 	expect(t, f.call(t, foreignKey, "POST", path, token, nonce, body), 403)
 	expect(t, f.call(t, fresh, "POST", path, own.AccessToken, nonce, body), 401)
 	// It is a cleanup-only credential: a disabled account still cannot enroll or receive config.
-	enroll, _ := json.Marshal(Request{random(), identity.PublicJWK(&fresh.PublicKey), []string{"engine-config.v1", "tun.lease.v1"}})
+	enroll, _ := json.Marshal(Request{random(), identity.PublicJWK(&fresh.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}})
 	expect(t, f.call(t, fresh, "POST", "/v1/devices/enroll", token, nonce, enroll), 403)
 }
 func TestCleanupShapeAndChallengeAdmission(t *testing.T) {

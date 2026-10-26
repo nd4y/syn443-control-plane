@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "SYN443 M2 enrollment pilot",
-    "version": "0.2.1",
+    "version": "0.3.0",
     "description": "Bounded loopback-hosted pilot over HTTPS. No invites, admin session or full panel. Successful OIDC login alone grants nothing; an owner assignment is required. Duplicate/case-variant/unknown request members and any URL query are rejected. No caller-supplied issuer/key URL is followed. Fresh OIDC identity can revoke its own prior keys after logout/lost enrollment response. Cleanup grants no session/config and never mutates another account."
   },
   "paths": {
@@ -329,7 +329,7 @@
             "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
           },
           "200": {
-            "description": "Device-scoped ES256/JCS policy signed by a pretrusted publication key.",
+            "description": "Device/key-scoped payload version2: ES256/JCS policy binds targetDevice and keyThumbprint to the client-owned P-256 key. A registration response device ID alone is insufficient.",
             "content": {
               "application/jose": {
                 "schema": {
@@ -499,14 +499,31 @@
           },
           "capabilities": {
             "type": "array",
-            "minItems": 2,
+            "minItems": 3,
             "maxItems": 16,
             "uniqueItems": true,
             "items": {
               "type": "string",
               "minLength": 1,
               "maxLength": 64
-            }
+            },
+            "allOf": [
+              {
+                "contains": {
+                  "const": "engine-config.v1"
+                }
+              },
+              {
+                "contains": {
+                  "const": "tun.lease.v1"
+                }
+              },
+              {
+                "contains": {
+                  "const": "policy.keybound.v2"
+                }
+              }
+            ]
           }
         }
       },

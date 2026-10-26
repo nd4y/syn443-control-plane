@@ -173,7 +173,7 @@ func (s *Store) cache(ctx context.Context, tx *sql.Tx, owner, jkt, kind, id, has
 func (s *Store) Register(ctx context.Context, principal identity.Principal, proof identity.Proof, raw []byte, receipt Receipt, now time.Time) (Session, error) {
 	var result Session
 	var req Request
-	if identity.Decode(raw, &req, true) != nil || !idPattern.MatchString(req.RequestID) || len(req.Capabilities) < 2 || len(req.Capabilities) > 16 {
+	if identity.Decode(raw, &req, true) != nil || !idPattern.MatchString(req.RequestID) || len(req.Capabilities) < 3 || len(req.Capabilities) > 16 {
 		return result, identity.ErrInvalid
 	}
 	caps := map[string]bool{}
@@ -183,7 +183,7 @@ func (s *Store) Register(ctx context.Context, principal identity.Principal, proo
 		}
 		caps[v] = true
 	}
-	if !caps["engine-config.v1"] || !caps["tun.lease.v1"] {
+	if !caps["engine-config.v1"] || !caps["tun.lease.v1"] || !caps["policy.keybound.v2"] {
 		return result, identity.ErrInvalid
 	}
 	thumb, e := req.Key.Thumbprint()

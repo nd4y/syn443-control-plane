@@ -47,6 +47,24 @@ with tempfile.TemporaryDirectory() as directory:
     target.unlink()
     (work / 'unreviewed.json').write_text(json.dumps({'enrollment-openapi.json': enrollment_digest}, indent=2))
     scan(1)
+    (work / 'unreviewed.json').unlink()
+    # The signature fixture has a public RFC7638 hash, not an API credential.
+    # Exercise the actual recursive-hex decoder; changed value/other path still fail.
+    fixture = json.loads((root / 'contracts/v1/policy-device-signature.json').read_text())
+    fixture_path = work / 'contracts/v1/policy-device-signature.json'
+    fixture_path.parent.mkdir()
+    fixture_path.write_text(json.dumps(fixture, indent=2))
+    scan(0)
+    payload = json.loads(bytes.fromhex(fixture['payloadHex']))
+    digest_value = payload['keyThumbprint']
+    payload['keyThumbprint'] = ('A' if digest_value[0] != 'A' else 'B') + digest_value[1:]
+    changed = dict(fixture)
+    changed['payloadHex'] = json.dumps(payload, separators=(',', ':')).encode().hex()
+    fixture_path.write_text(json.dumps(changed, indent=2))
+    scan(1)
+    fixture_path.unlink()
+    (work / 'unreviewed.json').write_text(json.dumps(fixture, indent=2))
+    scan(1)
     # A detector must inspect APK assets rather than silently skip the binary container.
     for suffix in ('apk', 'aar'):
         apk = work / ('synthetic.' + suffix)

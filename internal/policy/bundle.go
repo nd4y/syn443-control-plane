@@ -41,6 +41,7 @@ type Payload struct {
 	SecurityEpoch        int64    `json:"securityEpoch"`
 	RevocationFloor      int64    `json:"revocationFloor"`
 	TargetDevice         string   `json:"targetDevice"`
+	KeyThumbprint        string   `json:"keyThumbprint,omitempty"`
 	Audience             string   `json:"audience"`
 	IssuedAtMs           int64    `json:"issuedAtMs"`
 	NotBeforeMs          int64    `json:"notBeforeMs"`
@@ -67,10 +68,14 @@ func ascii(s string) bool {
 }
 func (p Payload) Validate(now time.Time) error {
 	bad := errors.New("invalid policy")
+	keyBytes, keyError := base64.RawURLEncoding.Strict().DecodeString(p.KeyThumbprint)
+	if p.SchemaVersion == 1 && p.KeyThumbprint != "" || p.SchemaVersion == 2 && (keyError != nil || len(keyBytes) != 32 || base64.RawURLEncoding.EncodeToString(keyBytes) != p.KeyThumbprint) {
+		return bad
+	}
 	if p.Operation != "configure" && p.Operation != "release" {
 		return bad
 	}
-	if p.SchemaVersion != 1 || p.Revision < 1 || p.Revision > 9007199254740991 || p.SecurityEpoch < 0 || p.SecurityEpoch > 9007199254740991 || p.RevocationFloor < 0 || p.RevocationFloor > p.Revision || !identifier.MatchString(p.TargetDevice) || len(p.TargetDevice) < 8 || p.Audience != "syn443-device" {
+	if (p.SchemaVersion != 1 && p.SchemaVersion != 2) || p.Revision < 1 || p.Revision > 9007199254740991 || p.SecurityEpoch < 0 || p.SecurityEpoch > 9007199254740991 || p.RevocationFloor < 0 || p.RevocationFloor > p.Revision || !identifier.MatchString(p.TargetDevice) || len(p.TargetDevice) < 8 || p.Audience != "syn443-device" {
 		return bad
 	}
 	n := now.UnixMilli()
@@ -78,7 +83,7 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	caps := map[string]bool{}
-	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true}
+	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true}
 	if len(p.RequiredCapabilities) < 1 || len(p.RequiredCapabilities) > 16 || p.AlgorithmRevision != "m1-local-v1" {
 		return bad
 	}
@@ -89,6 +94,9 @@ func (p Payload) Validate(now time.Time) error {
 		caps[c] = true
 	}
 	if !caps["engine-config.v1"] || !caps["tun.lease.v1"] {
+		return bad
+	}
+	if (p.SchemaVersion == 2) != caps["policy.keybound.v2"] {
 		return bad
 	}
 	engine, err := base64.RawURLEncoding.Strict().DecodeString(p.EngineConfigB64)

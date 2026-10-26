@@ -29,7 +29,10 @@
       ]
     },
     "schemaVersion": {
-      "const": 1
+      "enum": [
+        1,
+        2
+      ]
     },
     "revision": {
       "type": "integer",
@@ -76,7 +79,8 @@
           "policy.es256.v1",
           "netbird.direct",
           "netbird.vless",
-          "tun.lease.v1"
+          "tun.lease.v1",
+          "policy.keybound.v2"
         ]
       },
       "allOf": [
@@ -131,6 +135,10 @@
           }
         }
       }
+    },
+    "keyThumbprint": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$"
     }
   },
   "$defs": {
@@ -182,5 +190,44 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": {
+            "const": 2
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "keyThumbprint"
+        ],
+        "properties": {
+          "requiredCapabilities": {
+            "contains": {
+              "const": "policy.keybound.v2"
+            }
+          }
+        }
+      },
+      "else": {
+        "not": {
+          "required": [
+            "keyThumbprint"
+          ]
+        },
+        "properties": {
+          "requiredCapabilities": {
+            "not": {
+              "contains": {
+                "const": "policy.keybound.v2"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

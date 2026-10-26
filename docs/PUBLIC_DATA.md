@@ -8,7 +8,7 @@ Use GitHub noreply email for commits. Never paste device output into issues or C
 Before publication, all reachable source history, GitHub discussions and delivery assets are reviewed.
 The privacy gate checks history, deleted files, author emails and selected artifact payloads.
 Gitleaks uses pinned, checksum-verified binaries and default secret detectors. Its exceptions
-are exact reviewed public OpenAPI content digests in the contract lock file, scoped to each field/value/path. No directories or commits
+are exact reviewed public OpenAPI content digests in the contract lock file and one synthetic public-key thumbprint, each scoped to its value/path. Recursive hex decoding remains enabled; Go/Kotlin derive that thumbprint from the public SPKI fixture, and scanner tests reject a changed value or another path. No directories or commits
 are excluded from secret scanning. Detection logs redact values.
 
 All PRs and main runs must pass `public-data`. Artifact uploads must pass payload checks;
