@@ -26,6 +26,24 @@ func run() error {
 		return identity.ErrInvalid
 	}
 	switch os.Args[1] {
+	case "chat-admin":
+		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_CHAT_ADMIN_GRANT"), 8192)
+		if e != nil {
+			return e
+		}
+		var g struct {
+			Issuer  string `json:"issuer"`
+			Subject string `json:"subject"`
+			Enabled bool   `json:"enabled"`
+		}
+		if identity.Decode(raw, &g, true) != nil || g.Issuer != c.Issuer || len(g.Subject) < 1 || len(g.Subject) > 256 {
+			return identity.ErrInvalid
+		}
+		_, e = store.DB.ExecContext(ctx, `INSERT INTO chat_admins(owner,enabled) VALUES($1,$2) ON CONFLICT(owner) DO UPDATE SET enabled=excluded.enabled`, enrollment.Owner(g.Issuer, g.Subject), g.Enabled)
+		return e
+	case "chat-cleanup":
+		_, e = store.DB.ExecContext(ctx, `DELETE FROM chat_uploads WHERE id IN (SELECT id FROM chat_uploads WHERE message_id IS NULL AND expires_at<=$1 ORDER BY expires_at LIMIT 128)`, time.Now().Unix())
+		return e
 	case "migrate":
 		_, e = store.DB.ExecContext(ctx, enrollment.Schema)
 		return e

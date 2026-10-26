@@ -10,6 +10,7 @@ import (
 	"errors"
 	"github.com/jackc/pgx/v5"
 	"io"
+	"net/url"
 	"os"
 	"time"
 
@@ -18,17 +19,21 @@ import (
 )
 
 type Config struct {
-	Listen         string            `json:"listen"`
-	Origin         string            `json:"origin"`
-	Issuer         string            `json:"issuer"`
-	Audience       string            `json:"audience"`
-	ClientID       string            `json:"clientId"`
-	Database       string            `json:"database"`
-	EncryptionKey  string            `json:"encryptionKey"`
-	Roots          map[string]string `json:"roots"`
-	Certificate    string            `json:"certificate"`
-	CertificateKey string            `json:"certificateKey"`
-	FixtureHTTP    bool              `json:"fixtureHttp"`
+	Listen          string            `json:"listen"`
+	Origin          string            `json:"origin"`
+	Issuer          string            `json:"issuer"`
+	Audience        string            `json:"audience"`
+	ClientID        string            `json:"clientId"`
+	Database        string            `json:"database"`
+	EncryptionKey   string            `json:"encryptionKey"`
+	Roots           map[string]string `json:"roots"`
+	Certificate     string            `json:"certificate"`
+	CertificateKey  string            `json:"certificateKey"`
+	FixtureHTTP     bool              `json:"fixtureHttp"`
+	ChatEnabled     bool              `json:"chatEnabled"`
+	ChatWebOrigin   string            `json:"chatWebOrigin"`
+	ChatWebClientID string            `json:"chatWebClientId"`
+	ChatWebAudience string            `json:"chatWebAudience"`
 }
 
 func PrivateFile(path string, max int64) ([]byte, error) {
@@ -60,7 +65,20 @@ func ReadConfig(path string) (Config, error) {
 	if identity.Decode(raw, &c, true) != nil {
 		return c, identity.ErrInvalid
 	}
+	if c.ValidateChat() != nil {
+		return c, identity.ErrInvalid
+	}
 	return c, nil
+}
+func (c Config) ValidateChat() error {
+	if c.ChatWebOrigin == "" && c.ChatWebClientID == "" && c.ChatWebAudience == "" {
+		return nil
+	}
+	u, e := url.Parse(c.ChatWebOrigin)
+	if !c.ChatEnabled || e != nil || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Scheme != "https" && !(c.FixtureHTTP && u.Scheme == "http" && u.Hostname() == "127.0.0.1" && u.Port() != "") || len(c.ChatWebClientID) < 1 || len(c.ChatWebClientID) > 128 || len(c.ChatWebAudience) < 1 || len(c.ChatWebAudience) > 128 || c.ChatWebClientID == c.ClientID || c.ChatWebAudience == c.Audience {
+		return identity.ErrInvalid
+	}
+	return nil
 }
 func OpenStore(c Config) (*Store, error) {
 	key, e := base64.StdEncoding.Strict().DecodeString(c.EncryptionKey)
@@ -135,6 +153,9 @@ func (s *Store) RuntimeRole(ctx context.Context, publisher bool) error {
 	}
 	if !publisher {
 		if e = s.DB.QueryRowContext(ctx, `SELECT has_column_privilege(current_user,'identity_devices','publication','UPDATE') OR has_column_privilege(current_user,'identity_devices','approved','UPDATE')`).Scan(&unsafe); e != nil || unsafe {
+			return ErrDenied
+		}
+		if e = s.DB.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,'chat_admins','INSERT') OR has_column_privilege(current_user,'chat_admins','enabled','UPDATE')`).Scan(&unsafe); e != nil || unsafe {
 			return ErrDenied
 		}
 	}

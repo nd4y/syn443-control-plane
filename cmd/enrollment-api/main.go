@@ -50,6 +50,14 @@ func run() error {
 	if e != nil {
 		return e
 	}
+	api.ChatEnabled = c.ChatEnabled
+	api.ChatWebOrigin = c.ChatWebOrigin
+	if c.ChatWebOrigin != "" {
+		api.ChatVerifier, e = identity.NewProvider(ctx, c.Issuer, c.ChatWebAudience, c.ChatWebClientID, nil, c.FixtureHTTP)
+		if e != nil {
+			return e
+		}
+	}
 	server := &http.Server{Addr: c.Listen, Handler: api, ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 16384}
 	go func() {
 		<-ctx.Done()

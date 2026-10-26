@@ -1,6 +1,6 @@
 # Testing and release gates
 All automatable implemented behavior must run on pull requests and main in GitHub Actions.
-- Documents: source hashes, 277 unique requirements, 90 unique sequential scenarios, traceability/evidence integrity.
+- Documents: source hashes, 292 unique requirements, 98 unique sequential scenarios, traceability/evidence integrity.
 - Contracts: strict schema validation, shared fixtures, unsupported fields/versions and bounded numeric inputs.
 - Go: unit, property/permutation, fuzz seed/smoke, race detector, vet, coverage and HTTP boundary tests.
 - Android: same fixtures on JVM, lifecycle/state tests, lint, APK build and connected instrumentation on emulator API 29 and 35.

@@ -29,10 +29,10 @@ if [ -n "${SYN443_GO_IMAGE:-}" ]; then
   docker run --rm --network host --cpus=1 --memory=768m -e GOMAXPROCS=2 -e SYN443_TEST_DATABASE -e PGPASSWORD \
     -v "$PWD:/src" -v "$PWD/.fixture-cache/mod:/go/pkg/mod" \
     -v "$PWD/.fixture-cache/build:/root/.cache/go-build" -w /src "$SYN443_GO_IMAGE" \
-    sh -c 'export SYN443_TEST_BINARY_DIR="$PWD/bin"; go build -o bin/enrollment-api ./cmd/enrollment-api && go build -o bin/enrollment-worker ./cmd/enrollment-worker && go test -p 1 -tags postgres -race -count=1 -timeout=2m -coverprofile=enrollment-coverage.out -v ./internal/enrollment'
+    sh -c 'export SYN443_TEST_BINARY_DIR="$PWD/bin"; go build -o bin/enrollment-api ./cmd/enrollment-api && go build -o bin/enrollment-worker ./cmd/enrollment-worker && go test -p 1 -tags postgres -race -count=1 -timeout=2m -coverpkg=./internal/enrollment,./internal/supportchat -coverprofile=enrollment-coverage.out -v ./internal/enrollment ./internal/supportchat'
 else
   export SYN443_TEST_BINARY_DIR="$PWD/bin"
   go build -o bin/enrollment-api ./cmd/enrollment-api
   go build -o bin/enrollment-worker ./cmd/enrollment-worker
-  go test -tags postgres -race -count=1 -timeout=2m -coverprofile=enrollment-coverage.out -v ./internal/enrollment
+  go test -tags postgres -race -count=1 -timeout=2m -coverpkg=./internal/enrollment,./internal/supportchat -coverprofile=enrollment-coverage.out -v ./internal/enrollment ./internal/supportchat
 fi

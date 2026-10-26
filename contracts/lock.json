@@ -10,6 +10,7 @@
     "policy-vectors.json": "a4a5381e5bb39b91abe71149f47c7e2ec62790ba9afa0a68e41c58ef6af1b788",
     "policy-openapi.json": "11a4f22cf7ce3a8391499e7fcdbd8ff6ab7e1b5743167377ee236b13d9470c28",
     "enrollment-openapi.json": "2b2c5cd3b2491c8c81985f27cf999e78a1fe71984837778f2e48f4fcff3c9056",
-    "policy-device-signature.json": "08d74647c816787c85ddd00a9089e3efdaa278b48848723f51a71e26ce5bf15e"
+    "policy-device-signature.json": "08d74647c816787c85ddd00a9089e3efdaa278b48848723f51a71e26ce5bf15e",
+    "chat-openapi.json": "505800fd34c456c86c31345ec18b20be5009e233b1e69f4d637c6688b9b5e3ed"
   }
 }
