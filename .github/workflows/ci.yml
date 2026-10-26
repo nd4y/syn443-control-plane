@@ -92,6 +92,38 @@ jobs:
           cache: true
       - run: bash -n tools/test_keycloak.sh
       - run: bash tools/test_keycloak.sh
+  support-web:
+    needs: public-data
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.21.0'
+          cache: npm
+          cache-dependency-path: web-tests/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: web-tests
+      - run: npx playwright install --with-deps chromium
+        working-directory: web-tests
+      - run: npm test
+        working-directory: web-tests
+      - name: Scan synthetic browser evidence
+        id: web-scan
+        if: always()
+        run: |
+          test -s web-tests/results.xml
+          python3 tools/check_public_data.py web-tests/results.xml
+          bash tools/scan_secrets.sh web-tests/results.xml
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && steps.web-scan.outcome == 'success'
+        with:
+          name: support-web-test-evidence
+          path: web-tests/results.xml
+          retention-days: 14
   enrollment:
     needs: public-data
     runs-on: ubuntu-24.04

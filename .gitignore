@@ -17,3 +17,6 @@ enrollment-coverage.out
 __pycache__/
 node_modules/
 dist/
+/web-tests/test-results/
+/web-tests/results.xml
+/web-tests/playwright-report/
