@@ -6,10 +6,12 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"github.com/nd4y/syn443-control-plane/contracts"
+	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"math/big"
 	"strings"
 	"testing"
@@ -72,6 +74,91 @@ func TestSignScopeAndRawES256(t *testing.T) {
 		if _, e = Inspect(bad, "device-example"); e == nil {
 			t.Fatal("malformed envelope accepted")
 		}
+	}
+}
+
+func TestVersionTwoPublicationBindsClientOwnedKey(t *testing.T) {
+	_, p, now := sample(t)
+	root, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	keys := map[string]*ecdsa.PublicKey{"fixture-root": &root.PublicKey}
+	own := base64.RawURLEncoding.EncodeToString(make([]byte, 32))
+	other := base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{1}, 32))
+	legacy, _ := json.Marshal(p)
+	old, e := Sign(legacy, "fixture-root", root, p.TargetDevice, p.Revision, now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = VerifyBound(old, keys, p.TargetDevice, own, now); e == nil {
+		t.Fatal("legacy publication used as identity enrollment")
+	}
+	p.SchemaVersion = 2
+	p.KeyThumbprint = own
+	p.RequiredCapabilities = append(p.RequiredCapabilities, "policy.keybound.v2")
+	raw, _ := json.Marshal(p)
+	envelope, e := Sign(raw, "fixture-root", root, p.TargetDevice, p.Revision, now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = VerifyBound(envelope, keys, p.TargetDevice, own, now); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = VerifyBound(envelope, keys, p.TargetDevice, other, now); e == nil {
+		t.Fatal("delivery-chosen device ID substituted another client's policy")
+	}
+	for _, change := range []func(*Payload){func(v *Payload) { v.KeyThumbprint = "" }, func(v *Payload) { v.KeyThumbprint = strings.Repeat("x", 43) }, func(v *Payload) { v.RequiredCapabilities = v.RequiredCapabilities[:2] }, func(v *Payload) { v.SchemaVersion = 1 }, func(v *Payload) { v.SchemaVersion = 3 }} {
+		v := p
+		change(&v)
+		raw, _ := json.Marshal(v)
+		if _, e = Sign(raw, "fixture-root", root, v.TargetDevice, v.Revision, now); e == nil {
+			t.Fatal("invalid key/version/capability combination")
+		}
+	}
+}
+
+func TestLockedDeviceSignatureFixture(t *testing.T) {
+	raw, e := contracts.Files.ReadFile("v1/policy-device-signature.json")
+	if e != nil {
+		t.Fatal(e)
+	}
+	var f struct {
+		Device    string `json:"device"`
+		Now       int64  `json:"nowMs"`
+		Root      string `json:"spkiHex"`
+		Key       string `json:"deviceSpkiHex"`
+		Header    string `json:"headerHex"`
+		Payload   string `json:"payloadHex"`
+		Signature string `json:"signatureHex"`
+	}
+	if e = json.Unmarshal(raw, &f); e != nil {
+		t.Fatal(e)
+	}
+	decode := func(value string) []byte {
+		t.Helper()
+		v, e := hex.DecodeString(value)
+		if e != nil {
+			t.Fatal(e)
+		}
+		return v
+	}
+	root, e := x509.ParsePKIXPublicKey(decode(f.Root))
+	if e != nil {
+		t.Fatal(e)
+	}
+	device, e := x509.ParsePKIXPublicKey(decode(f.Key))
+	if e != nil {
+		t.Fatal(e)
+	}
+	jkt, e := identity.PublicJWK(device.(*ecdsa.PublicKey)).Thumbprint()
+	if e != nil {
+		t.Fatal(e)
+	}
+	parts := []string{}
+	for _, v := range []string{f.Header, f.Payload, f.Signature} {
+		parts = append(parts, base64.RawURLEncoding.EncodeToString(decode(v)))
+	}
+	p, e := VerifyBound(strings.Join(parts, "."), map[string]*ecdsa.PublicKey{"test-root": root.(*ecdsa.PublicKey)}, f.Device, jkt, time.UnixMilli(f.Now))
+	if e != nil || p.KeyThumbprint != jkt {
+		t.Fatal("cross-platform device-key fixture", e)
 	}
 }
 func TestDecodeNegativeAndBoundary(t *testing.T) {

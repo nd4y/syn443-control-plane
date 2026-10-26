@@ -123,7 +123,7 @@ func newFixture(t *testing.T, limit int) *fixture {
 	now := time.Unix(1800000000, 0)
 	engine := []byte(`{"outbounds":[{"type":"direct","tag":"direct"}],"route":{"final":"direct"}}`)
 	sum := sha256.Sum256(engine)
-	grant := Grant{Issuer: "https://id.example.invalid/realms/test", Subject: "synthetic-user", DeviceLimit: limit, Until: now.Unix() + 7200, Template: policy.Payload{SchemaVersion: 1, Operation: "configure", Revision: 1, Audience: "syn443-device", RequiredCapabilities: []string{"engine-config.v1", "tun.lease.v1"}, AlgorithmRevision: "m1-local-v1", EngineConfigB64: b64.EncodeToString(engine), ContentHash: hex.EncodeToString(sum[:]), Activation: policy.Gate{TimeoutSeconds: 30, Checks: []policy.Check{{ID: "internet", Type: "https_204", Target: "https://health.example.org/generate_204", Required: true}}}}}
+	grant := Grant{Issuer: "https://id.example.invalid/realms/test", Subject: "synthetic-user", DeviceLimit: limit, Until: now.Unix() + 7200, Template: policy.Payload{SchemaVersion: 1, Operation: "configure", Revision: 1, Audience: "syn443-device", RequiredCapabilities: []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}, AlgorithmRevision: "m1-local-v1", EngineConfigB64: b64.EncodeToString(engine), ContentHash: hex.EncodeToString(sum[:]), Activation: policy.Gate{TimeoutSeconds: 30, Checks: []policy.Check{{ID: "internet", Type: "https_204", Target: "https://health.example.org/generate_204", Required: true}}}}}
 	if e = Authorize(ctx, fixtureOwner, grant, now); e != nil {
 		t.Fatal(e)
 	}
@@ -186,7 +186,7 @@ func expect(t *testing.T, r *httptest.ResponseRecorder, status int) {
 func (f *fixture) register(t *testing.T, key *ecdsa.PrivateKey) (Session, []byte, string) {
 	t.Helper()
 	token := f.token(key)
-	raw, _ := json.Marshal(Request{random(), identity.PublicJWK(&key.PublicKey), []string{"engine-config.v1", "tun.lease.v1"}})
+	raw, _ := json.Marshal(Request{random(), identity.PublicJWK(&key.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}})
 	r := f.call(t, key, "POST", "/v1/devices/enroll", token, "", raw)
 	expect(t, r, 401)
 	nonce := r.Header().Get("DPoP-Nonce")
@@ -241,9 +241,13 @@ func TestEnrollmentSessionAndPublication(t *testing.T) {
 	}
 	r := f.call(t, k, "GET", "/v1/device/policy", session.AccessToken, session.Nonce, nil)
 	expect(t, r, 200)
-	p, e := policy.Verify(r.Body.String(), f.api.Roots, session.DeviceID, f.now)
+	thumb, _ := identity.PublicJWK(&k.PublicKey).Thumbprint()
+	p, e := policy.VerifyBound(r.Body.String(), f.api.Roots, session.DeviceID, thumb, f.now)
 	if e != nil || p.Revision != 1 || p.EngineConfigB64 != f.grant.Template.EngineConfigB64 {
 		t.Fatal("wrong assigned publication", e)
+	}
+	if p.SchemaVersion != 2 || p.KeyThumbprint != thumb {
+		t.Fatal("unsigned enrollment key binding")
 	}
 	if _, e = policy.Verify(r.Body.String(), f.api.Roots, "other-device", f.now); e == nil {
 		t.Fatal("cross-device publication")
@@ -329,7 +333,7 @@ func TestConcurrentDeviceLimitAndReplay(t *testing.T) {
 	nonces := make([]string, 2)
 	for i, k := range keys {
 		tokens[i] = f.token(k)
-		raws[i], _ = json.Marshal(Request{random(), identity.PublicJWK(&k.PublicKey), []string{"engine-config.v1", "tun.lease.v1"}})
+		raws[i], _ = json.Marshal(Request{random(), identity.PublicJWK(&k.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}})
 		r := f.call(t, k, "POST", "/v1/devices/enroll", tokens[i], "", raws[i])
 		expect(t, r, 401)
 		nonces[i] = r.Header().Get("DPoP-Nonce")
@@ -383,7 +387,7 @@ func TestPublisherScopeAndDatabaseRoles(t *testing.T) {
 	// A compromised API can create a pending row, but cannot forge the independent key-bound receipt.
 	bad := key(t)
 	thumb, _ := identity.PublicJWK(&bad.PublicKey).Thumbprint()
-	body, _ := json.Marshal(Request{random(), identity.PublicJWK(&bad.PublicKey), []string{"engine-config.v1", "tun.lease.v1"}})
+	body, _ := json.Marshal(Request{random(), identity.PublicJWK(&bad.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}})
 	receipt, _ := json.Marshal(Receipt{Token: f.token(k), Proof: signed(t, bad, "POST", f.origin+"/v1/devices/enroll", "other", random(), body, f.now), URI: f.origin + "/v1/devices/enroll", AcceptedAt: f.now.Unix()})
 	fake := random()
 	if _, e := fixtureAPI.Exec(`INSERT INTO identity_devices(id,owner,jkt,request_body,receipt) VALUES($1,$2,$3,$4,$5)`, fake, Owner(f.grant.Issuer, f.grant.Subject), thumb, body, f.store.Seal(receipt, "receipt/v1/"+fake)); e != nil {
@@ -548,5 +552,53 @@ func TestRenewalAndFailedPublicationKeepLastAuthorizedSnapshot(t *testing.T) {
 	fixtureOwner.QueryRow(`SELECT approved FROM identity_devices WHERE id=$1`, s.DeviceID).Scan(&approved)
 	if approved {
 		t.Fatal("corrupted receipt accepted")
+	}
+}
+
+func TestEnrollmentRequiresKeyBoundCapabilityBeforeConsumingQuota(t *testing.T) {
+	f := newFixture(t, 1)
+	k := key(t)
+	token := f.token(k)
+	body, _ := json.Marshal(Request{random(), identity.PublicJWK(&k.PublicKey), []string{"engine-config.v1", "tun.lease.v1"}})
+	expect(t, f.call(t, k, "POST", "/v1/devices/enroll", token, "", body), 401)
+	var devices, challenges int
+	fixtureOwner.QueryRow(`SELECT count(*) FROM identity_devices`).Scan(&devices)
+	fixtureOwner.QueryRow(`SELECT count(*) FROM identity_challenges`).Scan(&challenges)
+	if devices != 0 || challenges != 0 {
+		t.Fatal("unsupported client consumed registration state")
+	}
+}
+func TestDeliveryRejectsValidSignatureForAnotherDeviceKey(t *testing.T) {
+	f := newFixture(t, 1)
+	k := key(t)
+	session, _, _ := f.register(t, k)
+	if e := f.publisher().RunOnce(context.Background(), f.now); e != nil {
+		t.Fatal(e)
+	}
+	r := f.call(t, k, "GET", "/v1/device/policy", session.AccessToken, session.Nonce, nil)
+	expect(t, r, 200)
+	p, e := policy.Verify(r.Body.String(), f.api.Roots, session.DeviceID, f.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	p.KeyThumbprint, _ = identity.PublicJWK(&key(t).PublicKey).Thumbprint()
+	raw, _ := json.Marshal(p)
+	wrong, e := policy.Sign(raw, "fixture-root", f.key, session.DeviceID, p.Revision, f.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = fixtureOwner.Exec(`UPDATE identity_devices SET publication=$2 WHERE id=$1`, session.DeviceID, f.store.Seal([]byte(wrong), "publication/v1/"+session.DeviceID+"/"+formatInt(p.Revision))); e != nil {
+		t.Fatal(e)
+	}
+	expect(t, f.call(t, k, "GET", "/v1/device/policy", session.AccessToken, session.Nonce, nil), 503)
+	grant := f.grant
+	grant.Template.KeyThumbprint = p.KeyThumbprint
+	if grant.Validate(f.now) == nil {
+		t.Fatal("owner template chose a device key")
+	}
+	grant = f.grant
+	grant.Template.SchemaVersion = 99
+	if grant.Validate(f.now) == nil {
+		t.Fatal("unknown template version")
 	}
 }

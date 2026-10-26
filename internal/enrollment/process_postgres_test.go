@@ -166,7 +166,7 @@ func TestActualAPIPublisherProcessesAndRestart(t *testing.T) {
 		}
 		return r.StatusCode, r.Header, raw
 	}
-	raw, _ := json.Marshal(Request{random(), identity.PublicJWK(&k.PublicKey), []string{"engine-config.v1", "tun.lease.v1"}})
+	raw, _ := json.Marshal(Request{random(), identity.PublicJWK(&k.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}})
 	status, h, _ := call("POST", "/v1/devices/enroll", token, "", "", raw)
 	if status != 401 || h.Get("DPoP-Nonce") == "" {
 		t.Fatal("real nonce challenge")
@@ -241,7 +241,7 @@ func TestActualAPIPublisherProcessesAndRestart(t *testing.T) {
 	if !published {
 		t.Fatal("publication worker did not deliver")
 	}
-	if _, e = policy.Verify(string(bundle), map[string]*ecdsa.PublicKey{"fixture-root": &f.key.PublicKey}, session.DeviceID, time.Now()); e != nil {
+	if _, e = policy.VerifyBound(string(bundle), map[string]*ecdsa.PublicKey{"fixture-root": &f.key.PublicKey}, session.DeviceID, thumb, time.Now()); e != nil {
 		t.Fatal("real signed publication")
 	}
 	if strings.Contains(workerLog.String(), token) || strings.Contains(workerLog.String(), f.grant.Template.EngineConfigB64) {

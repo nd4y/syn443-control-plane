@@ -224,7 +224,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(w, e)
 		return
 	}
-	if _, e = policy.Verify(bundle, a.Roots, binding.Device, now); e != nil {
+	if _, e = policy.VerifyBound(bundle, a.Roots, binding.Device, binding.Jkt, now); e != nil {
 		failure(w, ErrUnavailable)
 		return
 	}

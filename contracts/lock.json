@@ -6,9 +6,10 @@
     "decision-vectors.json": "2993d7ba0f312b475d34a5142759e7dbc5c605594558e1663b54f48859039d47",
     "decision-result.schema.json": "3239654e14d1ce99b30c0309c7c6519f8fec5f72bf8c04d136eb704da088ffc5",
     "openapi.json": "9a6327cdc04b5d1b91b85a3c600ffa90fe4ece339179230793190f5bdf650359",
-    "policy-payload.schema.json": "3002668270ac0e377db17b989b9ced2982655ed4f3c581d3bdb7ef0d12e46f52",
+    "policy-payload.schema.json": "fb5eced8d11fc38489e5e17493f23a087663f7fa1f409013cad5034f678ad60f",
     "policy-vectors.json": "a4a5381e5bb39b91abe71149f47c7e2ec62790ba9afa0a68e41c58ef6af1b788",
     "policy-openapi.json": "11a4f22cf7ce3a8391499e7fcdbd8ff6ab7e1b5743167377ee236b13d9470c28",
-    "enrollment-openapi.json": "54f1c5bce2af819f68531417a654c175e53f60acde38a546d175f834411f9527"
+    "enrollment-openapi.json": "2b2c5cd3b2491c8c81985f27cf999e78a1fe71984837778f2e48f4fcff3c9056",
+    "policy-device-signature.json": "08d74647c816787c85ddd00a9089e3efdaa278b48848723f51a71e26ce5bf15e"
   }
 }

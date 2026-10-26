@@ -33,3 +33,19 @@ condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"enrollment-openapi\.json": "54f1c5bce2af819f68531417a654c175e53f60acde38a546d175f834411f9527",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public M2 key-bound OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"enrollment-openapi\.json": "2b2c5cd3b2491c8c81985f27cf999e78a1fe71984837778f2e48f4fcff3c9056",?\s*$''']
+
+# Public RFC7638 digest, independently derived from deviceSpkiHex by Go/Kotlin tests.
+# Keep recursive hex decoding enabled; only this exact synthetic digest/path is exempt.
+[[rules.allowlists]]
+description = "Reviewed public device thumbprint in synthetic signature evidence"
+condition = "AND"
+paths = ['''^contracts/v1/policy-device-signature\.json$''']
+regexTarget = "secret"
+regexes = ['''^slcBR6U\-6TWXIkqTYwlBfYO18sfH8S3E4_em\-n_l2ng$''']

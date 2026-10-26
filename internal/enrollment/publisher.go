@@ -23,10 +23,19 @@ type Grant struct {
 
 func (g Grant) Hash() string { raw, _ := json.Marshal(g); return identity.Hash(raw) }
 func (g Grant) Validate(now time.Time) error {
+	if g.Template.KeyThumbprint != "" || g.Template.Operation != "configure" || (g.Template.SchemaVersion != 1 && g.Template.SchemaVersion != 2) {
+		return identity.ErrInvalid
+	}
 	if g.Issuer == "" || g.Subject == "" || g.DeviceLimit < 1 || g.DeviceLimit > 16 || g.Until <= now.Unix() || g.Until > now.Unix()+604800 {
 		return identity.ErrInvalid
 	}
 	p := g.Template
+	p.RequiredCapabilities = append([]string(nil), g.Template.RequiredCapabilities...)
+	p.SchemaVersion = 2
+	p.KeyThumbprint = identity.Hash([]byte("synthetic-validation-key"))
+	if !hasCapability(p.RequiredCapabilities, "policy.keybound.v2") {
+		p.RequiredCapabilities = append(p.RequiredCapabilities, "policy.keybound.v2")
+	}
 	p.TargetDevice = "synthetic-device"
 	p.Revision = 1
 	p.IssuedAtMs = now.UnixMilli()
@@ -34,6 +43,14 @@ func (g Grant) Validate(now time.Time) error {
 	p.RefreshAfterMs = p.IssuedAtMs + 30000
 	p.OfflineUntilMs = min(p.IssuedAtMs+3600000, g.Until*1000)
 	return p.Validate(now)
+}
+func hasCapability(values []string, value string) bool {
+	for _, v := range values {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }
 func Authorize(ctx context.Context, db *sql.DB, grant Grant, now time.Time) error {
 	if e := grant.Validate(now); e != nil {
@@ -143,7 +160,16 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 			return ErrDenied
 		}
 	}
+	if !caps["policy.keybound.v2"] {
+		return ErrDenied
+	}
 	payload := g.Template
+	payload.RequiredCapabilities = append([]string(nil), g.Template.RequiredCapabilities...)
+	payload.SchemaVersion = 2
+	payload.KeyThumbprint = s.Jkt
+	if !hasCapability(payload.RequiredCapabilities, "policy.keybound.v2") {
+		payload.RequiredCapabilities = append(payload.RequiredCapabilities, "policy.keybound.v2")
+	}
 	payload.TargetDevice = id
 	payload.Revision = s.Revision + 1
 	payload.IssuedAtMs = now.UnixMilli()

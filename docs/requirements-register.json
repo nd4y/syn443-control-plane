@@ -120,7 +120,8 @@
       "status": "partial",
       "evidence": [
         "docs/keycloak-test-realm.md",
-        "docs/enrollment-pilot.md"
+        "docs/enrollment-pilot.md",
+        "docs/identity-lifecycle.md"
       ]
     },
     {
@@ -128,7 +129,8 @@
       "text": "После Keycloak/OIDC или одобренного QR enrollment сервер регистрирует случайный deviceId и ключ устройства, независимо от IMEI/IMSI/MAC. Доступ к device API использует короткоживущую сессию, связанную с ключом по SEC-04; Keycloak user identity, device session и admin session различаются. Приглашение не создаёт административную сессию; ID устройства без доказательства владения ключом не является авторизацией.",
       "status": "partial",
       "evidence": [
-        "docs/enrollment-pilot.md"
+        "docs/enrollment-pilot.md",
+        "docs/identity-lifecycle.md"
       ]
     },
     {
@@ -150,7 +152,8 @@
       "text": "Выйти из аккаунта и выключить VPN - разные действия. Выход удаляет локальные сессии и секреты приложения, завершает VPN и снимает локальную регистрацию; серверный отзыв выполняется идемпотентно. Системные настройки Android пользователь меняет средствами ОС.",
       "status": "partial",
       "evidence": [
-        "docs/enrollment-pilot.md"
+        "docs/enrollment-pilot.md",
+        "docs/identity-lifecycle.md"
       ]
     },
     {
@@ -164,7 +167,8 @@
       "text": "Успешный вход в Keycloak подтверждает личность, но не право пользования сервисом. Сервер отдельно проверяет приглашение/назначение, статус пользователя и лимит устройств. Для запрещённого или ожидающего назначения аккаунта показывается соответствующее состояние; чужой, общий или демонстрационный конфиг не выдаётся.",
       "status": "partial",
       "evidence": [
-        "docs/enrollment-pilot.md"
+        "docs/enrollment-pilot.md",
+        "docs/identity-lifecycle.md"
       ]
     },
     {
@@ -1606,7 +1610,8 @@
       "text": "Device API использует HTTPS и sender-constrained access token через DPoP RFC9449 с P-256/ES256 ключом Keystore. Начальный access TTL10минут; refresh family связана с ключом, ротируется с reuse detection. Проверяются key/token binding, method/URI, iat/jti, ath и server nonce по протоколу, replay cache и audience; DPoP не заменяет первоначальную аутентификацию OIDC/одобренного приглашения. API проверяет device status и права, один deviceId или украденный bearer недостаточны. Идемпотентные изменения связывают key с payload hash; потеря ключа требует нового подтверждённого enrollment. Срок device API token не продлевает offline lease. [DPoP](https://www.rfc-editor.org/rfc/rfc9449), [OAuth security](https://www.rfc-editor.org/rfc/rfc9700).",
       "status": "partial",
       "evidence": [
-        "docs/enrollment-pilot.md"
+        "docs/enrollment-pilot.md",
+        "docs/identity-lifecycle.md"
       ]
     },
     {
@@ -1621,7 +1626,8 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/enrollment-pilot.md"
+        "docs/enrollment-pilot.md",
+        "docs/identity-lifecycle.md"
       ]
     },
     {
@@ -1630,7 +1636,8 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/enrollment-pilot.md"
+        "docs/enrollment-pilot.md",
+        "docs/identity-lifecycle.md"
       ]
     },
     {
