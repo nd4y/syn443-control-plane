@@ -23,6 +23,11 @@ FORBIDDEN = re.compile(r"(?:^|/)(?:\.env(?:\..*)?|local\.properties|[^/]*\.(?:jk
 
 def findings(data):
     text = data.decode("utf-8", errors="replace")
+    if data.startswith(b"\x7fELF"):
+        # Exact Go standard-library type/symbol encodings, not hostnames.
+        # Keep textual source/configuration and all other .local names scanned.
+        text = text.replace("crypto/x509." + "local string; crypto/x509.domain string", "[go-x509-mailbox-fields]")
+        text = text.replace("\x00time." + "Local\x00", "\x00[go-time-symbol]\x00")
     result = {name for name, pattern in PATTERNS.items() if pattern.search(text)}
     for match in IPV4.finditer(text):
         # The standard shared-address allocation itself is public documentation.

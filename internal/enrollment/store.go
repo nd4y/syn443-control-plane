@@ -16,13 +16,16 @@ import (
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/supportchat"
 )
 
 //go:embed schema.sql
-var Schema string
+var identitySchema string
 
 //go:embed roles.sql
-var Roles string
+var identityRoles string
+var Schema = identitySchema + "\n" + supportchat.Schema
+var Roles = identityRoles + "\n" + supportchat.Roles
 var ErrDenied = errors.New("access_denied")
 var ErrConflict = errors.New("idempotency_conflict")
 var ErrReplay = errors.New("proof_replayed")

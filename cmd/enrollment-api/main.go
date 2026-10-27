@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -50,6 +51,14 @@ func run() error {
 	if e != nil {
 		return e
 	}
+	api.ChatEnabled = c.ChatEnabled
+	api.ChatWebOrigin = c.ChatWebOrigin
+	if c.ChatWebOrigin != "" {
+		api.ChatVerifier, e = identity.NewProvider(ctx, c.Issuer, c.ChatWebAudience, c.ChatWebClientID, nil, c.FixtureHTTP)
+		if e != nil {
+			return e
+		}
+	}
 	server := &http.Server{Addr: c.Listen, Handler: api, ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 16384}
 	go func() {
 		<-ctx.Done()
@@ -57,7 +66,7 @@ func run() error {
 		defer cancel()
 		_ = server.Shutdown(shut)
 	}()
-	if c.FixtureHTTP {
+	if c.FixtureHTTP && strings.HasPrefix(c.Origin, "http://") {
 		e = server.ListenAndServe()
 	} else {
 		if _, e = enrollment.PrivateFile(c.CertificateKey, 8192); e != nil {

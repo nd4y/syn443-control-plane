@@ -49,3 +49,10 @@ condition = "AND"
 paths = ['''^contracts/v1/policy-device-signature\.json$''']
 regexTarget = "secret"
 regexes = ['''^slcBR6U\-6TWXIkqTYwlBfYO18sfH8S3E4_em\-n_l2ng$''']
+
+[[rules.allowlists]]
+description = "Reviewed public support chat OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"chat-openapi\.json": "505800fd34c456c86c31345ec18b20be5009e233b1e69f4d637c6688b9b5e3ed",?\s*$''']

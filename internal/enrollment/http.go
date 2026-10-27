@@ -21,14 +21,18 @@ type Verifier interface {
 	Verify(context.Context, string, time.Time) (identity.Principal, error)
 }
 type API struct {
-	Store    *Store
-	Verifier Verifier
-	Origin   string
-	Roots    map[string]*ecdsa.PublicKey
-	Clock    func() time.Time
-	mu       sync.Mutex
-	buckets  map[string]bucket
-	slots    chan struct{}
+	Store         *Store
+	Verifier      Verifier
+	Origin        string
+	Roots         map[string]*ecdsa.PublicKey
+	Clock         func() time.Time
+	mu            sync.Mutex
+	buckets       map[string]bucket
+	slots         chan struct{}
+	chatSlots     chan struct{}
+	ChatEnabled   bool
+	ChatVerifier  Verifier
+	ChatWebOrigin string
 }
 type bucket struct {
 	minute int64
@@ -40,7 +44,7 @@ func NewAPI(store *Store, verifier Verifier, origin string, roots map[string]*ec
 	if e != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.ForceQuery || u.Host == "" || u.Scheme != "https" && !(fixture && u.Scheme == "http" && u.Hostname() == "127.0.0.1" && u.Port() != "") || len(roots) == 0 || len(roots) > 4 {
 		return nil, identity.ErrInvalid
 	}
-	return &API{Store: store, Verifier: verifier, Origin: origin, Roots: roots, Clock: time.Now, buckets: map[string]bucket{}, slots: make(chan struct{}, 16)}, nil
+	return &API{Store: store, Verifier: verifier, Origin: origin, Roots: roots, Clock: time.Now, buckets: map[string]bucket{}, slots: make(chan struct{}, 16), chatSlots: make(chan struct{}, 2)}, nil
 }
 func (a *API) admit(ip string, now time.Time) bool {
 	a.mu.Lock()
@@ -98,6 +102,10 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := r.URL.Path
+	if strings.HasPrefix(path, "/v1/chat/") || strings.HasPrefix(path, "/v1/admin/chat/") {
+		a.chatHTTP(w, r)
+		return
+	}
 	allowed := r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
 	if !allowed {
 		http.NotFound(w, r)

@@ -1,0 +1,1888 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SYN443 support chat API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/chat/self": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Self"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/chat/inbox": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Inbox"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/chat/messages": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/History"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/chat/read": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Read"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OK"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/chat/send": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Send"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/chat/uploads/begin": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Begin"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/chat/uploads/part": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Part"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OK"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/chat/uploads/status": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Upload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/chat/uploads/complete": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Upload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/chat/uploads/cancel": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Upload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OK"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/chat/download": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Download"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Chunk"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/self": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Self"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/inbox": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Inbox"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/messages": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/History"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/read": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Read"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OK"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/send": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Send"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/uploads/begin": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Begin"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/uploads/part": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Part"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OK"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/uploads/status": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Upload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/uploads/complete": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Upload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/uploads/cancel": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Upload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OK"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/download": {
+      "post": {
+        "description": "Device session or separately verified web access token; live SQL owner/admin ACL on every operation. DPoP req_hash covers exact request bytes. 25 MiB per file, 256 KiB chunks; stateful validation also applies.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Download"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Chunk"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "DPoP": {
+        "type": "http",
+        "scheme": "DPoP"
+      }
+    },
+    "schemas": {
+      "Empty": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "Inbox": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "before",
+          "beforeId"
+        ],
+        "properties": {
+          "before": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "beforeId": {
+            "type": "string",
+            "pattern": "^(|[0-9a-f]{32})$"
+          }
+        }
+      },
+      "History": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "conversation",
+          "before",
+          "after"
+        ],
+        "properties": {
+          "conversation": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "before": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "after": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "Read": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "conversation",
+          "sequence"
+        ],
+        "properties": {
+          "conversation": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "Send": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "conversation",
+          "clientId",
+          "text",
+          "attachments"
+        ],
+        "properties": {
+          "conversation": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "clientId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "attachments": {
+            "type": "array",
+            "maxItems": 4,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$"
+            }
+          }
+        }
+      },
+      "Begin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "conversation",
+          "clientId",
+          "name",
+          "mime",
+          "kind",
+          "size",
+          "sha256"
+        ],
+        "properties": {
+          "conversation": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "clientId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "mime": {
+            "enum": [
+              "application/octet-stream",
+              "application/pdf",
+              "application/zip",
+              "text/plain",
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "video/mp4"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "file",
+              "photo",
+              "video"
+            ]
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 26214400
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "Upload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "upload"
+        ],
+        "properties": {
+          "upload": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      },
+      "Part": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "upload",
+          "part",
+          "data",
+          "sha256"
+        ],
+        "properties": {
+          "upload": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "part": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 99
+          },
+          "data": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 349528,
+            "contentEncoding": "base64"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "Download": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "attachment",
+          "part"
+        ],
+        "properties": {
+          "attachment": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "part": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 99
+          }
+        }
+      },
+      "Conversation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "owner",
+          "updatedAt",
+          "lastSeq",
+          "readSeq"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "owner": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "updatedAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "lastSeq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "readSeq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "mime",
+          "size",
+          "sha256",
+          "kind"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 26214400
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "kind": {
+            "enum": [
+              "file",
+              "photo",
+              "video"
+            ]
+          }
+        }
+      },
+      "OK": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "conversation",
+          "sender",
+          "senderRole",
+          "clientId",
+          "sequence",
+          "text",
+          "createdAt",
+          "attachments"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "conversation": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "sender": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "senderRole": {
+            "enum": [
+              "user",
+              "admin"
+            ]
+          },
+          "clientId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "createdAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "attachments": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          }
+        }
+      },
+      "Self": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "conversation",
+          "admin"
+        ],
+        "properties": {
+          "conversation": {
+            "$ref": "#/components/schemas/Conversation"
+          },
+          "admin": {
+            "type": "boolean"
+          }
+        }
+      },
+      "InboxResult": {
+        "type": "array",
+        "maxItems": 50,
+        "items": {
+          "$ref": "#/components/schemas/Conversation"
+        }
+      },
+      "HistoryResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "messages",
+          "peerRead"
+        ],
+        "properties": {
+          "messages": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            }
+          },
+          "peerRead": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "UploadResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "attachment",
+          "complete",
+          "parts"
+        ],
+        "properties": {
+          "attachment": {
+            "$ref": "#/components/schemas/Attachment"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "parts": {
+            "type": "array",
+            "maxItems": 100,
+            "uniqueItems": true,
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 99
+            }
+          }
+        }
+      },
+      "Chunk": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "sha256"
+        ],
+        "properties": {
+          "data": {
+            "type": "string",
+            "maxLength": 349528,
+            "contentEncoding": "base64"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

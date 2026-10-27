@@ -22,3 +22,11 @@ class PublicDataTest(unittest.TestCase):
     def test_credential_url(self):
         self.assertIn("credential-url", findings(("https://" + "synthetic:placeholder@" + "example.invalid").encode()))
         self.assertFalse(findings(b"https://example.invalid:443/path"))
+
+    def test_only_exact_go_elf_symbols_are_not_mistaken_for_domains(self):
+        fields = b"crypto/x509." + b"local string; crypto/x509.domain string"
+        symbol = b"\x00time." + b"Local\x00"
+        self.assertFalse(findings(b"\x7fELF\x00" + fields + symbol))
+        self.assertIn("private-domain", findings(fields + symbol))
+        for value in (b"time." + b"local", b"other." + b"local", b"x509." + b"local"):
+            self.assertIn("private-domain", findings(b"\x7fELF\x00" + value + b"\x00"))

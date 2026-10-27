@@ -33,6 +33,12 @@ func Decode(raw []byte, dst any, closed bool) error {
 	return decode(raw, dst, closed, 65536, 16384)
 }
 
+// DecodeAttachmentChunk is restricted to a bounded chat chunk envelope. Ordinary
+// identity requests retain their smaller limits and cannot opt into this path.
+func DecodeAttachmentChunk(raw []byte, dst any) error {
+	return decode(raw, dst, true, 352*1024, 349528)
+}
+
 // DecodeOperatorDocument is only for an owner-only grant file, never a network request.
 func DecodeOperatorDocument(raw []byte, dst any) error { return decode(raw, dst, true, 524288, 350000) }
 func decode(raw []byte, dst any, closed bool, limit, maxString int) error {
