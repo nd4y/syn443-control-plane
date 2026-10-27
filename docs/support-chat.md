@@ -59,6 +59,19 @@ OAuth callbacks, proof binding, refresh, nonce, session expiry/logout, CSRF,
 request bounds and capacity. Independent chat SQL and authenticated HTTP coverage
 gates are part of the existing enrollment Actions job.
 
-This is a draft implementation. Browser E2E, Android/web exchange, actual video
-compression and physical acceptance are still being completed. It is not a
-production deployment or completion of the full control-panel milestone.
+Actions checks include real PostgreSQL process/role tests over HTTP and pinned
+HTTPS, real temporary Keycloak web-client conformance, and five browser cases.
+Browser cases validate actual 25 MiB download bytes, upload bounds, role withdrawal
+and clearing an authorized save link on logout. A verified Blob link is explicit
+and expires after 120 seconds. Physical Edge download persistence is not confirmed
+by the automation tool; Android SAF download was checked against the source hash.
+
+A disposable deployment of the Actions binaries preserved SQL history and file
+bytes across runtime replacement. Private USB Xperia checks exercised ordinary
+user and administrator replies, live role withdrawal, complete 25 MiB files and
+actual H264/AAC 720p video produced on the phone. Only synthetic test content was
+used; device data and raw logs are not public artifacts.
+
+This is a draft implementation. Permanent production deployment, the full
+retention editor and the complete control-panel milestone remain separate. LTE,
+natural Doze, unplugged energy and long endurance are not accepted by these tests.
