@@ -58,6 +58,28 @@ jobs:
       - run: go build -o bin/syn443-policy-sign ./cmd/policy-sign && go build -o bin/syn443-policy-serve ./cmd/policy-serve
       - run: python3 tools/smoke_policy.py bin/syn443-policy-serve bin/syn443-policy-sign
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: Build control-plane runtime artifacts
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p dist/control-plane
+          for binary in enrollment-api enrollment-worker enrollment-admin support-chat-web; do
+            go build -trimpath -ldflags='-s -w -buildid=' -o "dist/control-plane/$binary" "./cmd/$binary"
+          done
+          printf '%s\n' "$GITHUB_SHA" > dist/control-plane/SOURCE.txt
+          (cd dist/control-plane && sha256sum enrollment-api enrollment-worker enrollment-admin support-chat-web > SHA256SUMS)
+      - name: Scan control-plane runtime payloads
+        id: runtime-scan
+        run: |
+          python3 tools/check_public_data.py dist/control-plane
+          bash tools/scan_secrets.sh dist/control-plane
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.runtime-scan.outcome == 'success'
+        with:
+          name: control-plane-linux-amd64
+          path: dist/control-plane/
+          if-no-files-found: error
+          retention-days: 14
       - name: Workflow validation
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -color
       - name: Dependency inventory
