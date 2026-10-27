@@ -18,6 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
           fetch-depth: 0
       - run: python3 -m unittest discover -s tools -p 'test_public_data.py'
@@ -30,6 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - run: python3 tools/check_documents.py
       - run: python3 tools/check_contracts.py
@@ -40,6 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
@@ -66,7 +69,7 @@ jobs:
           for binary in enrollment-api enrollment-worker enrollment-admin support-chat-web; do
             go build -trimpath -ldflags='-s -w -buildid=' -o "dist/control-plane/$binary" "./cmd/$binary"
           done
-          printf '%s\n' "$GITHUB_SHA" > dist/control-plane/SOURCE.txt
+          git rev-parse HEAD > dist/control-plane/SOURCE.txt
           (cd dist/control-plane && sha256sum enrollment-api enrollment-worker enrollment-admin support-chat-web > SHA256SUMS)
       - name: Scan control-plane runtime payloads
         id: runtime-scan
@@ -107,6 +110,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
@@ -121,6 +125,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -153,6 +158,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
