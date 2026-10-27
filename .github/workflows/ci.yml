@@ -132,6 +132,7 @@ jobs:
           node-version: '24.21.0'
           cache: npm
           cache-dependency-path: web-tests/package-lock.json
+      - run: python3 tools/check_web_sources.py
       - run: npm ci --ignore-scripts
         working-directory: web-tests
       - run: npx playwright install --with-deps chromium

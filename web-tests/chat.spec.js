@@ -10,10 +10,16 @@ test('25 MiB upload and authenticated verified download',async({page})=>{
  const event=page.waitForEvent('download');await page.locator('#messages button').click();const result=await event;const received=await fs.readFile(await result.path());expect(received.length).toBe(bytes.length);expect(crypto.createHash('sha256').update(received).digest('hex')).toBe(crypto.createHash('sha256').update(bytes).digest('hex'));
 });
 test('lost send acknowledgment retries exactly one message',async({page,request})=>{
- await request.post('/fixture/reset',{data:{failSend:true}});await open(page);await page.locator('#text').fill('immutable retry');await page.locator('#send').click();await expect(page.locator('#status')).toContainText('повторить');await page.locator('#send').click();await expect(page.locator('#messages li')).toHaveCount(1);expect((await (await request.post('/fixture/state')).json()).messages).toBe(1);
+ await request.post('/fixture/reset',{data:{failSend:true}});await open(page);await page.locator('#text').fill('immutable retry');await page.locator('#send').click();await expect(page.locator('#status')).toContainText('повторить');await page.getByRole('button',{name:/Пользователь/}).click();await expect(page.locator('#status')).toContainText('Сначала отправьте');await page.locator('#send').click();await expect(page.locator('#messages li')).toHaveCount(1);expect((await (await request.post('/fixture/state')).json()).messages).toBe(1);
 });
 test('oversize file is rejected locally and session expiry erases contents',async({page,request})=>{
  await page.setViewportSize({width:390,height:844});await open(page);await page.locator('#file').setInputFiles({name:'too-large.bin',mimeType:'application/octet-stream',buffer:Buffer.alloc(25*1024*1024+1)});await page.locator('#send').click();await expect(page.locator('#status')).toContainText('повторить');expect((await (await request.post('/fixture/state')).json()).uploads).toBe(0);
  await page.locator('#file').setInputFiles([]);await page.locator('#text').fill('private fixture text');await page.locator('#send').click();await expect(page.locator('#messages')).toContainText('private fixture text');await request.post('/fixture/expire');await page.locator('#older').click();await expect(page.locator('#messages li')).toHaveCount(0);await expect(page.locator('#text')).toHaveValue('');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+});
+
+test('role withdrawal clears the visible thread without deleting server history',async({page,request})=>{
+ await open(page);await page.locator('#text').fill('synthetic role withdrawal');await page.locator('#send').click();await expect(page.locator('#messages')).toContainText('synthetic role withdrawal');
+ await request.post('/fixture/revoke');await page.locator('#older').click();await expect(page.locator('#messages li')).toHaveCount(0);await expect(page.locator('#send')).toBeDisabled();await expect(page.locator('#status')).toContainText('не разрешён');
+ expect((await (await request.post('/fixture/state')).json()).messages).toBe(1);
 });
