@@ -133,3 +133,80 @@ func (s *Store) LockPublication(ctx context.Context, tx *sql.Tx, p Publication, 
 	}
 	return authorize(ctx, tx, p.approvalActor, "invitations.approve", p.Owner, now.Unix())
 }
+
+type Ticket struct {
+	ID      string
+	Version int64
+}
+
+func (s *Store) Pending(ctx context.Context, now time.Time) ([]Ticket, error) {
+	rows, e := s.DB.QueryContext(ctx, `SELECT id,version FROM managed_invitations WHERE approval_receipt IS NOT NULL AND device IS NULL AND NOT revoked AND expires>$1 AND retry_after<=$1 ORDER BY retry_after,approved_at,id LIMIT 16`, now.Unix())
+	if e != nil {
+		return nil, ErrUnavailable
+	}
+	defer rows.Close()
+	result := []Ticket{}
+	for rows.Next() {
+		var id Ticket
+		if rows.Scan(&id.ID, &id.Version) != nil {
+			return nil, ErrUnavailable
+		}
+		result = append(result, id)
+	}
+	if rows.Err() != nil {
+		return nil, ErrUnavailable
+	}
+	return result, nil
+}
+
+// BindDevice is called only by the independently verified publisher, in the same
+// transaction as creating the ordinary unapproved identity device. No session
+// is minted here. FK/trigger and final receipt/version checks preserve scope.
+func (s *Store) BindDevice(ctx context.Context, tx *sql.Tx, p Publication, device string, now time.Time) error {
+	if !opaque.MatchString(device) || p.Device != "" {
+		return ErrDenied
+	}
+	if e := s.LockPublication(ctx, tx, p, now); e != nil {
+		return e
+	}
+	var owner, jkt string
+	var raw []byte
+	var active bool
+	if e := tx.QueryRowContext(ctx, `SELECT owner,jkt,request_body,active FROM identity_devices WHERE id=$1 FOR UPDATE`, device).Scan(&owner, &jkt, &raw, &active); e != nil {
+		return ErrUnavailable
+	}
+	if !active || owner != p.Owner || jkt != p.Thumbprint || identity.Hash(raw) != p.enrollmentHash {
+		return ErrDenied
+	}
+	if _, e := tx.ExecContext(ctx, `UPDATE managed_invitations SET device=$2,version=version+1 WHERE id=$1`, p.ID, device); e != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+// PublicationFailure is metadata only and is fenced against a new approval or
+// revocation. Backoff lets later eligible invitations progress after failures.
+func (s *Store) PublicationFailure(ctx context.Context, t Ticket, code string, now time.Time) error {
+	if !opaque.MatchString(t.ID) || t.Version < 1 {
+		return ErrDenied
+	}
+	switch code {
+	case "authorization_changed", "unsupported_capabilities", "temporarily_unavailable":
+	default:
+		return ErrDenied
+	}
+	_, e := s.DB.ExecContext(ctx, `UPDATE managed_invitations SET retry_after=$3,publication_error=$4 WHERE id=$1 AND version=$2 AND device IS NULL AND NOT revoked`, t.ID, t.Version, now.Unix()+30, code)
+	if e != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+func (s *Store) Reservations(ctx context.Context, tx *sql.Tx, owner string, now time.Time) (int, error) {
+	var count int
+	e := tx.QueryRowContext(ctx, `SELECT count(*) FROM managed_invitations WHERE owner=$1 AND claim_jkt IS NOT NULL AND device IS NULL AND NOT revoked AND expires>$2`, owner, now.Unix()).Scan(&count)
+	if e != nil {
+		return 0, ErrUnavailable
+	}
+	return count, nil
+}

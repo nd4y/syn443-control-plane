@@ -20,7 +20,12 @@ import (
 type Verifier interface {
 	Verify(context.Context, string, time.Time) (identity.Principal, error)
 }
+type InvitationActions interface {
+	Dispatch(context.Context, string, []byte, string, time.Time) (any, error)
+}
+
 type API struct {
+	Invitations   InvitationActions
 	Store         *Store
 	Verifier      Verifier
 	Origin        string
@@ -106,7 +111,8 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.chatHTTP(w, r)
 		return
 	}
-	allowed := r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
+	isInvite := path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
+	allowed := isInvite && a.Invitations != nil && r.Method == "POST" || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
 	if !allowed {
 		http.NotFound(w, r)
 		return
@@ -136,6 +142,26 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Date", now.Format(http.TimeFormat))
+	if isInvite {
+		if a.Invitations == nil || r.Header.Get("Origin") != "" || len(r.Header.Values("Authorization")) != 0 || len(r.Header.Values("DPoP")) != 1 || len(r.Header.Get("DPoP")) > 16384 || r.Header.Get("Content-Type") != "application/json" {
+			failure(w, identity.ErrInvalid)
+			return
+		}
+		raw, e := io.ReadAll(io.LimitReader(r.Body, 8193))
+		if e != nil || len(raw) > 8192 {
+			failure(w, identity.ErrInvalid)
+			return
+		}
+		value, e := a.Invitations.Dispatch(ctx, path, raw, r.Header.Get("DPoP"), now)
+		if e != nil {
+			failure(w, e)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(value)
+		return
+	}
+
 	if len(r.Header.Values("Authorization")) != 1 || len(r.Header.Values("DPoP")) != 1 {
 		failure(w, identity.ErrInvalid)
 		return
@@ -177,7 +203,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(204)
 			return
 		}
-		value, e := a.Store.Register(ctx, principal, proof, raw, Receipt{token, r.Header.Get("DPoP"), a.Origin + path, now.Unix()}, now)
+		value, e := a.Store.Register(ctx, principal, proof, raw, Receipt{Token: token, Proof: r.Header.Get("DPoP"), URI: a.Origin + path, AcceptedAt: now.Unix()}, now)
 		if e != nil {
 			failure(w, e)
 			return

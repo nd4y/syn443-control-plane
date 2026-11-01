@@ -66,6 +66,10 @@ func ascii(raw string) bool {
 	}
 	return true
 }
+
+// ValidOrigin accepts only canonical HTTPS origins used by authenticated bootstrap.
+func ValidOrigin(raw string) bool { return secureURL(raw, false) }
+
 func secureURL(raw string, allowPath bool) bool {
 	u, e := url.Parse(raw)
 	if e != nil || len(raw) > 2048 || !ascii(raw) || !strings.HasPrefix(raw, "https://") || u.Scheme != "https" || u.Hostname() == "" || u.Host != strings.ToLower(u.Host) || strings.HasSuffix(u.Hostname(), ".") || u.User != nil || u.Opaque != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.RawPath != "" || strings.HasSuffix(u.Host, ":") || u.Port() == "443" || !allowPath && u.Path != "" || allowPath && strings.HasSuffix(u.Path, "/") {

@@ -61,12 +61,24 @@ func Authorize(ctx context.Context, db *sql.DB, grant Grant, now time.Time) erro
 }
 
 type Publisher struct {
-	Store    *Store
-	Verifier Verifier
-	Grants   map[string]Grant
-	KeyID    string
-	Key      *ecdsa.PrivateKey
-	Origin   string
+	Store              *Store
+	Verifier           Verifier
+	Grants             map[string]Grant
+	KeyID              string
+	Key                *ecdsa.PrivateKey
+	Origin             string
+	InvitationApproval ExternalApproval
+}
+
+type ApprovalInput struct {
+	Device, Owner, Thumbprint, GrantHash, InvitationID string
+	Request                                            []byte
+}
+type ApprovalFence interface {
+	Lock(context.Context, *sql.Tx, time.Time) error
+}
+type ExternalApproval interface {
+	Verify(context.Context, ApprovalInput, time.Time) (ApprovalFence, error)
 }
 type snapshot struct {
 	Device, Owner, Jkt, Grant string
@@ -133,21 +145,38 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	if e != nil || thumb != s.Jkt {
 		return identity.ErrInvalid
 	}
+	var approvalFence ApprovalFence
 	if !s.Approved {
 		raw, e := p.Store.Open(s.Receipt, "receipt/v1/"+id)
 		if e != nil {
 			return e
 		}
 		var receipt Receipt
-		if identity.Decode(raw, &receipt, true) != nil || receipt.URI != p.Origin+"/v1/devices/enroll" || receipt.AcceptedAt > now.Unix() || receipt.AcceptedAt < now.Unix()-180 {
+		if identity.Decode(raw, &receipt, true) != nil {
 			return identity.ErrInvalid
 		}
-		principal, e := p.Verifier.Verify(ctx, receipt.Token, now)
-		if e != nil {
-			return identity.ErrInvalid
-		}
-		proof, e := identity.RequestProof(receipt.Proof, identity.ProofContext{Method: "POST", URI: receipt.URI, Token: receipt.Token, BodyHash: identity.Hash(s.Raw), Now: now})
-		if e != nil || proof.Claims.Nonce == "" || proof.Thumbprint != s.Jkt || principal.Thumbprint != s.Jkt || principal.Issuer != g.Issuer || principal.Subject != g.Subject {
+		switch receipt.Kind {
+		case "invite-v1":
+			if p.InvitationApproval == nil || !idPattern.MatchString(receipt.InvitationID) {
+				return identity.ErrInvalid
+			}
+			approvalFence, e = p.InvitationApproval.Verify(ctx, ApprovalInput{Device: id, Owner: s.Owner, Thumbprint: s.Jkt, GrantHash: s.Grant, InvitationID: receipt.InvitationID, Request: append([]byte(nil), s.Raw...)}, now)
+			if e != nil || approvalFence == nil {
+				return identity.ErrInvalid
+			}
+		case "":
+			if receipt.InvitationID != "" || receipt.URI != p.Origin+"/v1/devices/enroll" || receipt.AcceptedAt > now.Unix() || receipt.AcceptedAt < now.Unix()-180 {
+				return identity.ErrInvalid
+			}
+			principal, e := p.Verifier.Verify(ctx, receipt.Token, now)
+			if e != nil {
+				return identity.ErrInvalid
+			}
+			proof, e := identity.RequestProof(receipt.Proof, identity.ProofContext{Method: "POST", URI: receipt.URI, Token: receipt.Token, BodyHash: identity.Hash(s.Raw), Now: now})
+			if e != nil || proof.Claims.Nonce == "" || proof.Thumbprint != s.Jkt || principal.Thumbprint != s.Jkt || principal.Issuer != g.Issuer || principal.Subject != g.Subject {
+				return identity.ErrInvalid
+			}
+		default:
 			return identity.ErrInvalid
 		}
 	}
@@ -195,6 +224,11 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	}
 	if a.Grant != s.Grant {
 		return ErrConflict
+	}
+	if approvalFence != nil {
+		if e = approvalFence.Lock(ctx, tx, now); e != nil {
+			return e
+		}
 	}
 	var current int64
 	var owner, jkt string

@@ -864,6 +864,208 @@
               "requestId",
               "payload"
             ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
+                "const": "invite.issue"
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{24,128}$",
+                "maxLength": 128
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "owner": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "maxLength": 43
+                  },
+                  "grantHash": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "maxLength": 43
+                  },
+                  "expires": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "serviceId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                    "maxLength": 64
+                  },
+                  "bootstrapRevision": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "owner",
+                  "grantHash",
+                  "expires",
+                  "serviceId",
+                  "bootstrapRevision"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
+                "const": "invite.approve"
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{24,128}$",
+                "maxLength": 128
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "maxLength": 43
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "thumbprint": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "maxLength": 43
+                  },
+                  "pairCode": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$",
+                    "maxLength": 6
+                  }
+                },
+                "required": [
+                  "id",
+                  "version",
+                  "thumbprint",
+                  "pairCode"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
+                "const": "invite.get"
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{24,128}$",
+                "maxLength": 128
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "maxLength": 43
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "id",
+                  "version"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
+                "const": "invite.revoke"
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{24,128}$",
+                "maxLength": 128
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "maxLength": 43
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "id",
+                  "version"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
           }
         ]
       }

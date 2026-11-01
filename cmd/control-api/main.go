@@ -17,6 +17,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/invitation"
 )
 
 func run() error {
@@ -56,6 +57,43 @@ func run() error {
 	api, e := catalog.NewAPI(store, providers, c.Origin, c.AssuranceACR, c.FixtureHTTP)
 	if e != nil {
 		return e
+	}
+	if path := os.Getenv("SYN443_INVITATION_CONFIG"); path != "" {
+		ic, err := invitation.ReadConfig(path, time.Now())
+		if err != nil || ic.ControlOrigin != c.Origin || ic.Issuer != c.Issuer || ic.AssuranceACR != c.AssuranceACR || ic.Audience != c.Audience {
+			return identity.ErrInvalid
+		}
+		if len(ic.ClientIDs) != len(c.ClientIDs) {
+			return identity.ErrInvalid
+		}
+		for n, id := range ic.ClientIDs {
+			if id != c.ClientIDs[n] {
+				return identity.ErrInvalid
+			}
+		}
+		is, err := invitation.NewStore(store.DB, ic.Key())
+		if err != nil {
+			return err
+		}
+		check, cancel := context.WithTimeout(ctx, 5*time.Second)
+		err = is.RuntimeRole(check, "syn443_control_api")
+		cancel()
+		if err != nil {
+			return err
+		}
+		service := &invitation.AdminService{Store: is, Verifier: providers, ControlOrigin: c.Origin, AssuranceACR: c.AssuranceACR, Descriptor: ic.Descriptor, Anchor: ic.Anchor}
+		api.Invitations = func(ctx context.Context, token, proof string, raw []byte, now time.Time) (any, error) {
+			value, err := service.Dispatch(ctx, token, proof, raw, now)
+			switch {
+			case errors.Is(err, invitation.ErrDenied), errors.Is(err, invitation.ErrExpired):
+				err = catalog.ErrDenied
+			case errors.Is(err, invitation.ErrConflict):
+				err = catalog.ErrConflict
+			case errors.Is(err, invitation.ErrUnavailable):
+				err = catalog.ErrUnavailable
+			}
+			return value, err
+		}
 	}
 	server := &http.Server{Addr: c.Listen, Handler: api, ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 32768, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go func() {

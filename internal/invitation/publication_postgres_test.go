@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
@@ -84,5 +85,86 @@ func TestSQLForgedApprovalRowCannotReplaceAdminProof(t *testing.T) {
 	}
 	if _, e = f.signer.Ready(ctx, state.ID, f.verification(), f.now); !errors.Is(e, ErrDenied) {
 		t.Fatal("database row bypassed independent administrator proof", e)
+	}
+}
+
+func TestSQLPendingBackoffAndAtomicDeviceBinding(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	state, _ := f.claim(t, f.issue(t))
+	thumb, _ := identity.PublicJWK(&f.phone.PublicKey).Thumbprint()
+	if _, e := f.adminCall(t, "invite.approve", Approval{state.ID, state.Version, thumb, state.PairCode}); e != nil {
+		t.Fatal(e)
+	}
+	tickets, e := f.signer.Pending(ctx, f.now)
+	if e != nil || len(tickets) != 1 {
+		t.Fatal("eligible publication", e)
+	}
+	if e = f.signer.PublicationFailure(ctx, tickets[0], "temporarily_unavailable", f.now); e != nil {
+		t.Fatal(e)
+	}
+	tickets, e = f.signer.Pending(ctx, f.now)
+	if e != nil || len(tickets) != 0 {
+		t.Fatal("backoff ignored", e)
+	}
+	tickets, e = f.signer.Pending(ctx, f.now.Add(30*time.Second))
+	if e != nil || len(tickets) != 1 {
+		t.Fatal("backoff did not recover", e)
+	}
+	if e = f.signer.PublicationFailure(ctx, tickets[0], "unbounded-error-text", f.now); !errors.Is(e, ErrDenied) {
+		t.Fatal("unbounded diagnostic accepted")
+	}
+	p, e := f.signer.Ready(ctx, state.ID, f.verification(), f.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	device, _ := random()
+	bind := func(commit bool) {
+		t.Helper()
+		tx, e := fixtureSigner.BeginTx(ctx, nil)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer tx.Rollback()
+		if _, e = tx.ExecContext(ctx, `INSERT INTO identity_devices(id,owner,jkt,request_body,receipt) VALUES($1,$2,$3,$4,$5)`, device, f.owner, thumb, p.Enrollment, []byte("synthetic-protected-receipt")); e != nil {
+			t.Fatal(e)
+		}
+		if e = f.signer.BindDevice(ctx, tx, p, device, f.now); e != nil {
+			t.Fatal(e)
+		}
+		if commit {
+			if e = tx.Commit(); e != nil {
+				t.Fatal(e)
+			}
+		}
+	}
+	bind(false)
+	var count int
+	if e = fixtureOwner.QueryRow(`SELECT count(*) FROM identity_devices WHERE id=$1`, device).Scan(&count); e != nil || count != 0 {
+		t.Fatal("binding escaped rollback", e)
+	}
+	bind(true)
+	// A late metadata failure from the old version cannot override new authority.
+	if e = f.signer.PublicationFailure(ctx, tickets[0], "authorization_changed", f.now); e != nil {
+		t.Fatal(e)
+	}
+	value, e := f.adminCall(t, "invite.get", Mutation{ID: state.ID})
+	if e != nil || value.(View).State != "provisioning" {
+		t.Fatal("unapproved device reported ready", e)
+	}
+	if _, e = fixtureSigner.Exec(`UPDATE identity_devices SET approved=true,offline_until=$2,publication_error='' WHERE id=$1`, device, f.now.Unix()+60); e != nil {
+		t.Fatal(e)
+	}
+	value, e = f.adminCall(t, "invite.get", Mutation{ID: state.ID})
+	if e != nil || value.(View).State != "ready" {
+		t.Fatal("signed state not visible", e)
+	}
+	tx, e := fixtureSigner.BeginTx(ctx, nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tx.Rollback()
+	if e = f.signer.BindDevice(ctx, tx, p, device, f.now); !errors.Is(e, ErrConflict) {
+		t.Fatal("stale dependency bound device", e)
 	}
 }

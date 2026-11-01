@@ -47,7 +47,10 @@ func loadControlSchema() (*jsonschema.Schema, error) {
 type Verifier interface {
 	Verify(context.Context, string, time.Time) (identity.Principal, error)
 }
+type ExternalAction func(context.Context, string, string, []byte, time.Time) (any, error)
+
 type API struct {
+	Invitations          ExternalAction
 	Store                *Store
 	Verifier             Verifier
 	Origin, AssuranceACR string
@@ -216,7 +219,16 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		apiFailure(w, ErrInvalid)
 		return
 	}
-	value, e := a.dispatch(ctx, actor, action, now)
+	var value any
+	if strings.HasPrefix(action.Action, "invite.") {
+		if a.Invitations == nil {
+			apiFailure(w, ErrDenied)
+			return
+		}
+		value, e = a.Invitations(ctx, token, r.Header.Get("DPoP"), raw, now)
+	} else {
+		value, e = a.dispatch(ctx, actor, action, now)
+	}
 	if e != nil {
 		apiFailure(w, e)
 		return

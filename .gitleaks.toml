@@ -62,4 +62,11 @@ description = "Reviewed public control catalog OpenAPI content digest"
 condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "750da56e04c9ca77c1da2883da187d53783cf28680be4200611d41ca377048be",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed historical control catalog OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
 regexes = ['''^\s*"control-openapi\.json": "5a53bfbe2b1ad5d3ea3cb8de800edb862147f2d835e3475d9427806b81b53357",?\s*$''']

@@ -119,6 +119,7 @@ func authorize(ctx context.Context, tx *sql.Tx, actor, action, owner string, now
 }
 
 type View struct {
+	Error      string `json:"error,omitempty"`
 	ID         string `json:"id"`
 	Owner      string `json:"owner"`
 	Version    int64  `json:"version"`
@@ -151,11 +152,11 @@ type record struct {
 
 func (s *Store) read(ctx context.Context, tx *sql.Tx, id string, lock bool, now time.Time) (record, error) {
 	var r record
-	query := `SELECT id,owner,version,expires,grant_hash,actor,request_id,body_hash,code_hash,service_id,bootstrap_revision,issue_receipt,issue_reply,revoked,COALESCE(claim_jkt,''),COALESCE(claim_request,''),COALESCE(claim_hash,''),COALESCE(claim_nonce,''),COALESCE(pair_code,''),claim_payload,claim_receipt,COALESCE(claimed_at,0),COALESCE(approval_actor,''),COALESCE(approval_request,''),COALESCE(approval_hash,''),approval_receipt,COALESCE(approved_at,0),COALESCE(device,''),COALESCE(final_request,''),COALESCE(final_hash,''),COALESCE(final_session,''),COALESCE(finalized_at,0),created_at FROM managed_invitations WHERE id=$1`
+	query := `SELECT id,owner,version,expires,grant_hash,actor,request_id,body_hash,code_hash,service_id,bootstrap_revision,issue_receipt,issue_reply,revoked,COALESCE(claim_jkt,''),COALESCE(claim_request,''),COALESCE(claim_hash,''),COALESCE(claim_nonce,''),COALESCE(pair_code,''),claim_payload,claim_receipt,COALESCE(claimed_at,0),COALESCE(approval_actor,''),COALESCE(approval_request,''),COALESCE(approval_hash,''),approval_receipt,COALESCE(approved_at,0),COALESCE(device,''),COALESCE(final_request,''),COALESCE(final_hash,''),COALESCE(final_session,''),COALESCE(finalized_at,0),created_at,publication_error FROM managed_invitations WHERE id=$1`
 	if lock {
 		query += " FOR UPDATE"
 	}
-	e := tx.QueryRowContext(ctx, query, id).Scan(&r.ID, &r.Owner, &r.Version, &r.Expires, &r.Grant, &r.Actor, &r.Request, &r.Hash, &r.CodeHash, &r.ServiceID, &r.BootstrapRevision, &r.Issue, &r.Reply, &r.Revoked, &r.Thumbprint, &r.ClaimRequest, &r.ClaimHash, &r.Nonce, &r.PairCode, &r.ClaimPayload, &r.ClaimReceipt, &r.ClaimedAt, &r.ApprovalActor, &r.ApprovalRequest, &r.ApprovalHash, &r.ApprovalReceipt, &r.ApprovedAt, &r.Device, &r.FinalRequest, &r.FinalHash, &r.FinalSession, &r.FinalizedAt, &r.CreatedAt)
+	e := tx.QueryRowContext(ctx, query, id).Scan(&r.ID, &r.Owner, &r.Version, &r.Expires, &r.Grant, &r.Actor, &r.Request, &r.Hash, &r.CodeHash, &r.ServiceID, &r.BootstrapRevision, &r.Issue, &r.Reply, &r.Revoked, &r.Thumbprint, &r.ClaimRequest, &r.ClaimHash, &r.Nonce, &r.PairCode, &r.ClaimPayload, &r.ClaimReceipt, &r.ClaimedAt, &r.ApprovalActor, &r.ApprovalRequest, &r.ApprovalHash, &r.ApprovalReceipt, &r.ApprovedAt, &r.Device, &r.FinalRequest, &r.FinalHash, &r.FinalSession, &r.FinalizedAt, &r.CreatedAt, &r.Error)
 	if e == sql.ErrNoRows {
 		return r, ErrDenied
 	}
@@ -170,9 +171,21 @@ func (s *Store) read(ctx context.Context, tx *sql.Tx, id string, lock bool, now 
 		r.State = "provisioning"
 	}
 	if r.Device != "" {
-		r.State = "ready"
+		var active, approved bool
+		var offline int64
+		var code string
+		if tx.QueryRowContext(ctx, `SELECT active,approved,offline_until,publication_error FROM identity_devices WHERE id=$1`, r.Device).Scan(&active, &approved, &offline, &code) != nil {
+			return r, ErrUnavailable
+		}
+		r.Error = code
+		if approved && offline > now.Unix() {
+			r.State = "ready"
+		}
+		if !active {
+			r.State = "revoked"
+		}
 	}
-	if r.FinalSession != "" {
+	if r.FinalSession != "" && r.State != "revoked" {
 		r.State = "completed"
 	}
 	if r.Expires <= now.Unix() && r.FinalSession == "" {

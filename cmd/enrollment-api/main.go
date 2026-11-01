@@ -13,8 +13,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/bootstrap"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/invitation"
 )
 
 func run() error {
@@ -50,6 +52,28 @@ func run() error {
 	api, e := enrollment.NewAPI(store, provider, c.Origin, roots, c.FixtureHTTP)
 	if e != nil {
 		return e
+	}
+	if path := os.Getenv("SYN443_INVITATION_CONFIG"); path != "" {
+		ic, err := invitation.ReadConfig(path, time.Now())
+		if err != nil || ic.IdentityOrigin != c.Origin || ic.Issuer != c.Issuer {
+			return identity.ErrInvalid
+		}
+		is, err := invitation.NewStore(store.DB, ic.Key())
+		if err != nil {
+			return err
+		}
+		check, cancel := context.WithTimeout(ctx, 5*time.Second)
+		err = is.RuntimeRole(check, "syn443_identity_api")
+		cancel()
+		if err != nil {
+			return err
+		}
+		d, _, err := bootstrap.VerifyDescriptor(ic.Descriptor, ic.Anchor, bootstrap.Floor{}, time.Now())
+		if err != nil {
+			return err
+		}
+		store.Reservations = is.Reservations
+		api.Invitations = &invitation.DeviceService{Store: is, Identity: store, Origin: c.Origin, ServiceID: d.ServiceID}
 	}
 	api.ChatEnabled = c.ChatEnabled
 	api.ChatWebOrigin = c.ChatWebOrigin

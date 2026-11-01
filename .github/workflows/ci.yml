@@ -219,13 +219,16 @@ jobs:
         if: always()
         run: |
           test -s invitation-coverage.out
-          python3 tools/check_public_data.py invitation-coverage.out
-          bash tools/scan_secrets.sh invitation-coverage.out
+          test -s provisioning-coverage.out
+          python3 tools/check_public_data.py invitation-coverage.out provisioning-coverage.out
+          bash tools/scan_secrets.sh invitation-coverage.out provisioning-coverage.out
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always() && steps.invitation-scan.outcome == 'success'
         with:
           name: invitation-test-evidence
-          path: invitation-coverage.out
+          path: |
+            invitation-coverage.out
+            provisioning-coverage.out
           if-no-files-found: error
           retention-days: 14
   enrollment:

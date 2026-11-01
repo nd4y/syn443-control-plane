@@ -25,3 +25,7 @@ done
 test "$ready" = true
 GOMAXPROCS=2 GOMEMLIMIT=384MiB go test -p 2 -tags postgres -race -count=1 -timeout=3m \
   -coverpkg=./internal/invitation -coverprofile=invitation-coverage.out ./internal/invitation
+
+GOMAXPROCS=2 GOMEMLIMIT=384MiB go test -p 1 -tags postgres -race -count=1 -timeout=3m \
+  -coverpkg=./internal/invitation,./internal/deviceprovisioning,./internal/enrollment \
+  -coverprofile=provisioning-coverage.out ./internal/deviceprovisioning

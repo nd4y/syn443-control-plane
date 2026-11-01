@@ -9,8 +9,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/deviceprovisioning"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/invitation"
 )
 
 func run() error {
@@ -58,11 +60,39 @@ func run() error {
 		}
 		p.Grants[owner] = g
 	}
+	var invites *deviceprovisioning.Invitations
+	if path := os.Getenv("SYN443_INVITATION_CONFIG"); path != "" {
+		ic, err := invitation.ReadConfig(path, time.Now())
+		if err != nil || ic.IdentityOrigin != c.Origin || ic.Issuer != c.Issuer {
+			return identity.ErrInvalid
+		}
+		is, err := invitation.NewStore(store.DB, ic.Key())
+		if err != nil {
+			return err
+		}
+		check, cancel := context.WithTimeout(ctx, 5*time.Second)
+		err = is.RuntimeRole(check, "syn443_identity_publisher")
+		cancel()
+		if err != nil {
+			return err
+		}
+		verification, err := ic.Verification(ctx)
+		if err != nil {
+			return err
+		}
+		invites = &deviceprovisioning.Invitations{Identity: store, Invitations: is, Verification: verification, Grants: p.Grants}
+		p.InvitationApproval = invites
+	}
 	for {
 		step, cancel := context.WithTimeout(ctx, 10*time.Second)
 		now, e := store.Now(step, time.Now())
 		if e == nil {
-			e = p.RunOnce(step, now)
+			if invites != nil {
+				e = invites.Prepare(step, now)
+			}
+			if e == nil {
+				e = p.RunOnce(step, now)
+			}
 		}
 		cancel()
 		if ctx.Err() != nil {

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS managed_invitations(
  actor text NOT NULL,request_id text NOT NULL,body_hash text NOT NULL,code_hash text NOT NULL UNIQUE,
  issue_receipt bytea NOT NULL,issue_reply bytea NOT NULL,created_at bigint NOT NULL,expires bigint NOT NULL,
  revoked boolean NOT NULL DEFAULT false,version bigint NOT NULL DEFAULT 1,
+ retry_after bigint NOT NULL DEFAULT 0,publication_error text NOT NULL DEFAULT '',
  claim_jkt text,claim_request text,claim_hash text,claim_payload bytea,claim_receipt bytea,
  claim_nonce text,pair_code text,claimed_at bigint,
  approval_actor text,approval_request text,approval_hash text,approval_receipt bytea,approved_at bigint,
@@ -14,6 +15,8 @@ CREATE TABLE IF NOT EXISTS managed_invitations(
  UNIQUE(actor,request_id),CHECK(expires>created_at AND expires-created_at<=600),
  CHECK(version>0 AND version<=9007199254740991)
 );
+ALTER TABLE managed_invitations ADD COLUMN IF NOT EXISTS retry_after bigint NOT NULL DEFAULT 0;
+ALTER TABLE managed_invitations ADD COLUMN IF NOT EXISTS publication_error text NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS managed_invitation_owner ON managed_invitations(owner,expires);
 CREATE UNIQUE INDEX IF NOT EXISTS managed_invitation_one_pending_key ON managed_invitations(claim_jkt)
  WHERE claim_jkt IS NOT NULL AND NOT revoked AND final_session IS NULL;
