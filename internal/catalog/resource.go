@@ -103,7 +103,7 @@ type ResourceImpact struct {
 }
 
 func (s *Store) resourceImpact(ctx context.Context, tx *sql.Tx, id string) (ResourceImpact, error) {
-	rows, e := tx.QueryContext(ctx, `SELECT id,revision,enabled FROM catalog_sources WHERE resource_id=$1 ORDER BY id`, id)
+	rows, e := tx.QueryContext(ctx, `SELECT s.id,s.revision,s.enabled,COALESCE(h.revision,0) FROM catalog_sources s LEFT JOIN catalog_share_heads h ON h.source_id=s.id WHERE s.resource_id=$1 ORDER BY s.id`, id)
 	if e != nil {
 		return ResourceImpact{}, ErrUnavailable
 	}
@@ -112,14 +112,16 @@ func (s *Store) resourceImpact(ctx context.Context, tx *sql.Tx, id string) (Reso
 		ID       string
 		Revision int64
 		Enabled  bool
+		Shares   int64
 	}
 	for rows.Next() {
 		var record struct {
 			ID       string
 			Revision int64
 			Enabled  bool
+			Shares   int64
 		}
-		if rows.Scan(&record.ID, &record.Revision, &record.Enabled) != nil {
+		if rows.Scan(&record.ID, &record.Revision, &record.Enabled, &record.Shares) != nil {
 			return ResourceImpact{}, ErrUnavailable
 		}
 		records = append(records, record)

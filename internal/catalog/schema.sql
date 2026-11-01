@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS catalog_source_grants(
  source_id text NOT NULL REFERENCES catalog_sources(id),target_kind text NOT NULL CHECK(target_kind IN('user','group','device')),
  target_id text NOT NULL,PRIMARY KEY(source_id,target_kind,target_id)
 );
+CREATE TABLE IF NOT EXISTS catalog_share_heads(source_id text PRIMARY KEY REFERENCES catalog_sources(id),revision bigint NOT NULL CHECK(revision>0));
 CREATE TABLE IF NOT EXISTS catalog_snapshots(
  id text PRIMARY KEY,source_id text NOT NULL REFERENCES catalog_sources(id),source_revision bigint NOT NULL,
  content_hash text NOT NULL,observed_at bigint NOT NULL,valid_until bigint NOT NULL,resource_revision bigint NOT NULL DEFAULT 0,

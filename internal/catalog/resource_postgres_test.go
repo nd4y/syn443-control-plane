@@ -70,7 +70,7 @@ func TestSQLResourcesAuthorityImpactAndRevisionFence(t *testing.T) {
 	if e != nil || impact.Sources != 1 || impact.Hash == "" {
 		t.Fatal("impact missing", e)
 	}
-	if _, e = worker.GetResource(ctx, actor, created.ID, now); !errors.Is(e, ErrUnavailable) {
+	if _, _, e = worker.GetResource(ctx, actor, created.ID, now); !errors.Is(e, ErrUnavailable) {
 		t.Fatal("worker gained admin ACL read")
 	}
 	_, e = api.Queue(ctx, actor, source.ID, source.Revision, "read-resource", nil, now)

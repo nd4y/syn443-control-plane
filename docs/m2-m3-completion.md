@@ -61,8 +61,9 @@ and cannot label planned behavior operational.
 The bounded normalization and pure quarantine components are described in
 [the import matrix](subscription-import.md). The SQL catalog now also contains
 resource definitions, impact-bound sensitive changes, resource-version job fences,
-and the manual/HTTPS/Remnawave worker orchestration. HTTP service integration,
-recipient review, compiler, administration and identity/overlay completion are
+manual/HTTPS/Remnawave worker orchestration, scoped recipient CAS and explicit
+quarantine review. HTTP service integration,
+device fetch, retention, compiler, administration and identity/overlay completion are
 still pending. The catalog Actions gate runs actual role-restricted PostgreSQL,
 TLS provider fixtures, cancellation and atomic rollback checks with an80% floor.
 Remaining paths must each add positive, negative, concurrency
