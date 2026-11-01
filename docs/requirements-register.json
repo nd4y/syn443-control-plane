@@ -247,14 +247,26 @@
     {
       "id": "SUB-03",
       "text": "Для каждой внешней подписки хранятся владелец, тип провайдера, защищённый URL/авторизация, способ загрузки, получатели, срок действия, метаданные квоты, разрешённые режимы, статус последнего обновления и последняя рабочая версия. Поддерживаются персональные источники одного пользователя и явно назначенные общие источники. Область назначения по умолчанию закрыта. API-ресурс панели и URL-источник подписки - разные сущности: источник может ссылаться на resourceId, но не выдаётся за самостоятельный экземпляр панели.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ]
     },
     {
       "id": "SUB-04",
       "text": "Способы загрузки: сервером; самим устройством для подписок с привязкой к устройству/IP; ручной импорт администратором. Выбор фиксируется на источнике. Нельзя обходить лимит устройств подменой HWID или выдавать серверную загрузку за работу пользовательского устройства. Собственные ссылки пользователя, если добавление разрешено, по умолчанию доступны только ему.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ]
     },
     {
       "id": "SUB-05",
@@ -301,8 +313,14 @@
     {
       "id": "SUB-08",
       "text": "Загрузка идемпотентна, использует ETag/Last-Modified, ограничения размера и времени, backoff и изоляцию источников. Начальные лимиты: 10 MiB распакованного ответа, 5000 профилей на источник, 30 секунд загрузки. YAML не исполняет пользовательские теги. Защита от SSRF проверяет DNS, redirects и фактический адрес соединения; внутренние адреса разрешаются только для явно доверенных источников.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ]
     },
     {
       "id": "SUB-09",
@@ -313,7 +331,12 @@
         "internal/subscriptions/import.go",
         "internal/subscriptions/import_test.go",
         "internal/subscriptions/quarantine.go",
-        "internal/subscriptions/quarantine_test.go"
+        "internal/subscriptions/quarantine_test.go",
+        "docs/control-catalog.md",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
       ],
       "implementationScope": "Bounded all-or-nothing URI/base64/sing-box/Xray/Mihomo profile normalization with explicit field matrix, private source-scoped HMAC IDs and pure candidate-removal quarantine assessment; Actions acceptance pending.",
       "remainingScope": "Persistent source/grant/snapshot management, fetch modes, sync/reconciliation, exact candidate review, compiler/publication and administrative/device flows remain required for full M3."
@@ -321,14 +344,26 @@
     {
       "id": "SUB-10",
       "text": "Обновление запускается по политике источника, по допустимому webhook и вручную. Типовое значение - раз в час с jitter, с учётом ограничений провайдера. Отказ одного источника не блокирует остальные.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ]
     },
     {
       "id": "SUB-11",
       "text": "Лимиты и сроки источника показываются с временем обновления. Клиентский расход является оценкой и не заменяет учёт провайдера. Трафик транзитных цепочек не суммируется повторно как пользовательский расход. Стоимость и остаток квоты могут участвовать в выборе выхода, но только при известных и достаточно свежих данных.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ]
     },
     {
       "id": "SUB-12",
@@ -475,8 +510,13 @@
     {
       "id": "CFG-03",
       "text": "Слои: базовый шаблон сервиса, назначения групп, пользовательская политика, политика устройства, разрешённые локальные значения. Для групп задаётся явный приоритет. Коллизия одинакового приоритета или конфликт взаимоисключающих маршрутов блокирует публикацию. Наследование прав может сужать, но не обходить запрет вышестоящей политики. Для каждого итогового поля панель объясняет источник.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/layered-configuration.md",
+        "internal/configuration/layers.go",
+        "internal/configuration/layers_test.go",
+        "internal/configuration/rebase_test.go"
+      ]
     },
     {
       "id": "CFG-04",
@@ -484,7 +524,11 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/layered-configuration.md",
+        "internal/configuration/layers.go",
+        "internal/configuration/layers_test.go",
+        "internal/configuration/rebase_test.go"
       ]
     },
     {
@@ -1466,14 +1510,24 @@
     {
       "id": "EDIT-05",
       "text": "По источнику поля сервер формирует правку соответствующего слоя политики. Нельзя загрузить плоский effective config поверх всех шаблонов: это уничтожило бы наследование. Когда требуется повысить локальную правку до шаблона, администратор явно выбирает переносимые поля; локальные счётчики, identity files и права конкретного устройства не переносятся.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/layered-configuration.md",
+        "internal/configuration/layers.go",
+        "internal/configuration/layers_test.go",
+        "internal/configuration/rebase_test.go"
+      ]
     },
     {
       "id": "EDIT-06",
       "text": "Перед записью сервер повторно проверяет полномочия, expectedRevision, ссылки, capabilities и актуальность исходных snapshot подписок. Изменившаяся серверная версия возвращает конфликт с тройным сравнением base/local/server. Можно перебазировать независимые изменения; конфликт одного поля требует выбора, скрытого last-write-wins нет.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/layered-configuration.md",
+        "internal/configuration/layers.go",
+        "internal/configuration/layers_test.go",
+        "internal/configuration/rebase_test.go"
+      ]
     },
     {
       "id": "EDIT-07",
@@ -1568,8 +1622,12 @@
     {
       "id": "MOB-04",
       "text": "Native admin API имеет отдельные audience/scopes и проверяет роль на сервере. Обычные scoped правки не требуют повторного входа на каждом экране. Изменение доверия/ролей/integration credentials, широкая публикация, ослабление security ограничений и раскрытие секретов требуют свежей admin re-auth с MFA по SEC-10. Device VPN session и QR enrollment административных полномочий не дают.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/identity/crypto_test.go",
+        "internal/catalog/http_postgres_test.go"
+      ]
     },
     {
       "id": "MOB-05",
@@ -1802,20 +1860,41 @@
     {
       "id": "SVC-01",
       "text": "SYN443 control plane поставляется как приложение с независимо развёртываемыми сервисами api, worker, frontend и telemetry-ingest. Общие библиотеки, контракты и monorepo допустимы; отдельные процессы/контейнеры и независимое масштабирование обязательны. Разделение до отдельного микросервиса на каждую таблицу не требуется. Привилегированная signer role изолируется от обычных worker pools по SEC-07; для неё не требуется отдельный продукт/репозиторий или обязательный HSM.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-02",
       "text": "API обслуживает auth/RBAC, устройства, ресурсы, preview/validation, черновики, публикации, выдачу готовых config/policy артефактов и состояния jobs. Длительные provider fetch, тяжёлая компиляция/симуляция и обработка бандла не держат клиентский HTTP запрос: возвращается jobId и status endpoint.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-03",
       "text": "Worker pools выполняют provider fetch/parse, синхронизацию поддержанного API-ресурса, compilation/materialization, simulation/replay, бандлы/retention и rollout aggregates. Подпись изолирована в signer role по SEC-07: недоверенные fetch/parser/diagnostic workers не имеют signing authority. Пулы и очереди исключают взаимную блокировку provider IO, compilation и diagnostics.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-04",
@@ -1832,26 +1911,54 @@
     {
       "id": "SVC-06",
       "text": "Scheduler создаёт периодические jobs через выбранную очередь, работает как отдельная роль worker с lease/leader control. Несколько replicas не создают неконтролируемые дубли. Для нескольких систем Remnawave это пока только контракт; работающая синхронизация множества API-панелей остаётся отложенной.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-07",
       "text": "Очередь долговечная, с idempotency keys, at-least-once delivery, retry/backoff/jitter, deadline/cancel, bounded payload, dead-letter и наблюдаемой backlog. Metadata update и enqueue согласуются transactional outbox либо равнозначным механизмом. Повтор provider write без его idempotency требует reconciliation; timeout не означает безопасный повтор изменения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-08",
       "text": "Service API/events/jobs имеют schema/version, correlation ID, actor/scope и совместимость rolling upgrade. Внутренний вызов не обходит RBAC и field ownership. Worker/ingest используют отдельные минимальные service identities; доступ к signing key и секретам ограничен назначенными задачами. Signer проверяет отдельное разрешённое publication job, scope/revision/audience и не принимает произвольный документ на подпись от parser worker.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-09",
       "text": "Для пилота допустимы общий PostgreSQL с явным владением таблицами/схемами и S3-совместимое хранилище. Микросервисы не требуют отдельной БД на каждый сервис; произвольная запись в чужие таблицы запрещена контрактом. Queue abstraction может начинаться с PostgreSQL-backed jobs/outbox; отдельный broker добавляется при обоснованной нагрузке. Миграции и restore согласуются между версиями сервисов. Provisioning, provider jobs, telemetry и bundles имеют отдельные bounded DB pools/queue quotas/disk budgets. Telemetry overload включает backpressure до насыщения общей БД; durable ack выдаётся только после commit, при отказе клиенту возвращается retryable result.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-10",
@@ -2110,8 +2217,12 @@
     {
       "id": "SEC-10",
       "text": "Обычная scoped admin правка работает в действующей сессии. Роли/корни доверия/integration credentials, широкая публикация, снижение security constraints и раскрытие секретов требуют server-verified fresh admin re-auth с MFA не старше10минут и явного diff/scope. VPN/device token и UI-флаг этого не заменяют. Проверка относится к административному клиенту SYN443 и не является разрешением менять текущий Keycloak master realm вне проекта.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/identity/crypto_test.go",
+        "internal/catalog/http_postgres_test.go"
+      ]
     },
     {
       "id": "SEC-11",

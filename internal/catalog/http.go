@@ -235,7 +235,7 @@ type Action struct {
 
 func (a *API) dispatch(ctx context.Context, actor Actor, action Action, now time.Time) (any, error) {
 	decode := func(dst any) error {
-		if len(action.Payload) > 65536 || identity.Decode(action.Payload, dst, true) != nil {
+		if len(action.Payload) > 65536 || identity.DecodeConfiguration(action.Payload, dst) != nil {
 			return ErrInvalid
 		}
 		return nil

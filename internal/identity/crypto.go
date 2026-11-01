@@ -46,8 +46,12 @@ func DecodeSourceUpload(raw []byte, dst any) error {
 	return decode(raw, dst, true, 14*1024*1024+65536, 14*1024*1024)
 }
 
-// DecodeOperatorDocument is only for an owner-only grant file, never a network request.
-func DecodeOperatorDocument(raw []byte, dst any) error { return decode(raw, dst, true, 524288, 350000) }
+// DecodeConfiguration bounds a closed configuration/storage document. Network
+// callers must authenticate first and enforce their narrower operation budget.
+func DecodeConfiguration(raw []byte, dst any) error { return decode(raw, dst, true, 524288, 350000) }
+
+// DecodeOperatorDocument is the owner-file entry point, not an identity request.
+func DecodeOperatorDocument(raw []byte, dst any) error { return DecodeConfiguration(raw, dst) }
 func decode(raw []byte, dst any, closed bool, limit, maxString int) error {
 	if len(raw) == 0 || len(raw) > limit || !utf8.Valid(raw) || dst == nil || reflect.TypeOf(dst).Kind() != reflect.Pointer || reflect.ValueOf(dst).IsNil() {
 		return ErrInvalid

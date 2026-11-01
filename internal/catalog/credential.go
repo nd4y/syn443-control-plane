@@ -23,7 +23,7 @@ func (FetchCredential) String() string   { return "FetchCredential([redacted])" 
 func (FetchCredential) GoString() string { return "FetchCredential([redacted])" }
 func ReadFetchCredential(raw []byte) (FetchCredential, error) {
 	var c FetchCredential
-	if len(raw) == 0 || len(raw) > 65536 || identity.DecodeOperatorDocument(raw, &c) != nil {
+	if len(raw) == 0 || len(raw) > 65536 || identity.DecodeConfiguration(raw, &c) != nil {
 		return c, ErrInvalid
 	}
 	config, e := c.Config(false)

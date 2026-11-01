@@ -55,7 +55,7 @@ func (ResourceCredential) String() string   { return "ResourceCredential([redact
 func (ResourceCredential) GoString() string { return "ResourceCredential([redacted])" }
 func readResourceCredential(raw []byte) (ResourceCredential, error) {
 	var c ResourceCredential
-	if len(raw) == 0 || len(raw) > 65536 || identity.DecodeOperatorDocument(raw, &c) != nil {
+	if len(raw) == 0 || len(raw) > 65536 || identity.DecodeConfiguration(raw, &c) != nil {
 		return c, ErrInvalid
 	}
 	u, e := url.Parse(c.Endpoint)
