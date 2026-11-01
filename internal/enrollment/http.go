@@ -111,8 +111,8 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.chatHTTP(w, r)
 		return
 	}
-	isInvite := path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
-	allowed := isInvite && a.Invitations != nil && r.Method == "POST" || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
+	isInvite := path == "/v1/invitations/time" || path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
+	allowed := isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
 	if !allowed {
 		http.NotFound(w, r)
 		return
@@ -143,6 +143,25 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Date", now.Format(http.TimeFormat))
 	if isInvite {
+		if path == "/v1/invitations/time" {
+			if r.Header.Get("Origin") != "" || len(r.Header.Values("Authorization")) != 0 || len(r.Header.Values("DPoP")) != 0 {
+				failure(w, identity.ErrInvalid)
+				return
+			}
+			raw, e := io.ReadAll(io.LimitReader(r.Body, 1))
+			if e != nil || len(raw) != 0 {
+				failure(w, identity.ErrInvalid)
+				return
+			}
+			value, e := a.Invitations.Dispatch(ctx, path, nil, "", now)
+			if e != nil {
+				failure(w, e)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(value)
+			return
+		}
 		if a.Invitations == nil || r.Header.Get("Origin") != "" || len(r.Header.Values("Authorization")) != 0 || len(r.Header.Values("DPoP")) != 1 || len(r.Header.Get("DPoP")) > 16384 || r.Header.Get("Content-Type") != "application/json" {
 			failure(w, identity.ErrInvalid)
 			return

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/policy"
 )
 
 //go:embed schema.sql
@@ -119,6 +120,7 @@ func authorize(ctx context.Context, tx *sql.Tx, actor, action, owner string, now
 }
 
 type View struct {
+	OwnerTag   string `json:"-"`
 	Error      string `json:"error,omitempty"`
 	ID         string `json:"id"`
 	Owner      string `json:"owner"`
@@ -163,6 +165,16 @@ func (s *Store) read(ctx context.Context, tx *sql.Tx, id string, lock bool, now 
 	if e != nil {
 		return r, ErrUnavailable
 	}
+	var issuer, subject string
+	if tx.QueryRowContext(ctx, `SELECT issuer,subject FROM identity_accounts WHERE owner=$1`, r.Owner).Scan(&issuer, &subject) != nil {
+		return r, ErrUnavailable
+	}
+	tag, _ := json.Marshal(map[string]string{"service": r.ServiceID, "issuer": issuer, "subject": subject})
+	canonical, e := policy.Canonical(tag)
+	if e != nil {
+		return r, ErrUnavailable
+	}
+	r.OwnerTag = identity.Hash(canonical)
 	r.State = "issued"
 	if r.Thumbprint != "" {
 		r.State = "pending_approval"

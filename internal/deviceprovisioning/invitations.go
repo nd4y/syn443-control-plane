@@ -26,6 +26,9 @@ func (i *Invitations) Prepare(ctx context.Context, now time.Time) error {
 	if i.Identity == nil || i.Invitations == nil {
 		return invitation.ErrUnavailable
 	}
+	if e := i.Invitations.Expire(ctx); e != nil {
+		return e
+	}
 	tickets, e := i.Invitations.Pending(ctx, now)
 	if e != nil {
 		return e

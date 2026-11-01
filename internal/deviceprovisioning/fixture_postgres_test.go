@@ -100,7 +100,7 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
-	if _, e := fixtureOwner.Exec(`TRUNCATE managed_invitation_replays,managed_invitations,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations,identity_challenges,identity_sessions,identity_devices,identity_accounts,catalog_acl RESTART IDENTITY CASCADE`); e != nil {
+	if _, e := fixtureOwner.Exec(`TRUNCATE managed_invitation_replays,managed_invitations,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations,identity_challenges,identity_sessions,identity_devices,identity_accounts,catalog_acl RESTART IDENTITY CASCADE;UPDATE identity_clock SET second=0 WHERE id=true`); e != nil {
 		t.Fatal(e)
 	}
 	now := time.Now().UTC().Truncate(time.Second)

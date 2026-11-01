@@ -168,3 +168,60 @@ func TestSQLPendingBackoffAndAtomicDeviceBinding(t *testing.T) {
 		t.Fatal("stale dependency bound device", e)
 	}
 }
+
+func TestSQLExpiryRetiresOnlyUncompletedInviteDevice(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	state, _ := f.claim(t, f.issue(t))
+	thumb, _ := identity.PublicJWK(&f.phone.PublicKey).Thumbprint()
+	if _, e := f.adminCall(t, "invite.approve", Approval{state.ID, state.Version, thumb, state.PairCode}); e != nil {
+		t.Fatal(e)
+	}
+	p, e := f.signer.Ready(ctx, state.ID, f.verification(), f.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	tx, e := fixtureSigner.BeginTx(ctx, nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tx.Rollback()
+	device, _ := random()
+	if _, e = tx.ExecContext(ctx, `INSERT INTO identity_devices(id,owner,jkt,request_body,receipt) VALUES($1,$2,$3,$4,$5)`, device, f.owner, thumb, p.Enrollment, []byte("synthetic-receipt")); e != nil {
+		t.Fatal(e)
+	}
+	if e = f.signer.BindDevice(ctx, tx, p, device, f.now); e != nil {
+		t.Fatal(e)
+	}
+	if e = tx.Commit(); e != nil {
+		t.Fatal(e)
+	}
+	if e = f.signer.Expire(ctx); e != nil {
+		t.Fatal(e)
+	}
+	var active bool
+	if e = fixtureOwner.QueryRow(`SELECT active FROM identity_devices WHERE id=$1`, device).Scan(&active); e != nil || !active {
+		t.Fatal("live invite expired early", e)
+	}
+	if _, e = fixtureOwner.Exec(`UPDATE identity_clock SET second=$1 WHERE id=true`, f.now.Unix()+601); e != nil {
+		t.Fatal(e)
+	}
+	if e = f.signer.Expire(ctx); e != nil {
+		t.Fatal(e)
+	}
+	if e = fixtureOwner.QueryRow(`SELECT active FROM identity_devices WHERE id=$1`, device).Scan(&active); e != nil || active {
+		t.Fatal("expired uncompleted invitation device remained active", e)
+	}
+	if e = f.device.Expire(ctx); e != nil {
+		t.Fatal("idempotent expiry", e)
+	}
+	if _, e = fixtureSigner.Query(`SELECT * FROM identity_sessions`); e == nil {
+		t.Fatal("maintenance widened publisher session rights")
+	}
+	if _, e = fixtureControl.Query(`SELECT managed_invitation_expire()`); e == nil {
+		t.Fatal("control gained maintenance owner rights")
+	}
+	if _, e = fixtureOwner.Exec(`UPDATE identity_clock SET second=0 WHERE id=true`); e != nil {
+		t.Fatal(e)
+	}
+}

@@ -28,9 +28,16 @@ func (s *DeviceService) Dispatch(ctx context.Context, path string, raw []byte, p
 	if s.Store == nil {
 		return nil, enrollment.ErrUnavailable
 	}
+	if e := s.Store.Expire(ctx); e != nil {
+		return nil, enrollment.ErrUnavailable
+	}
 	var value any
 	var e error
 	switch path {
+	case "/v1/invitations/time":
+		value = struct {
+			ServiceID string `json:"serviceId"`
+		}{s.ServiceID}
 	case "/v1/invitations/claim":
 		value, e = s.Store.Claim(ctx, s.ServiceID, s.Origin, raw, proof, now)
 	case "/v1/invitations/status":

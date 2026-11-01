@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/bootstrap"
+	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
 
@@ -190,5 +191,61 @@ func TestSQLInvitationRuntimeConfigClosedTrustAndOrigins(t *testing.T) {
 	}
 	if _, e = ParseConfig(raw, f.now.Add(4000*time.Second)); e == nil {
 		t.Fatal("expired descriptor at startup")
+	}
+}
+
+func TestSQLCompletionCancellationAndReservationDenyUnrelatedKeys(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	state, _ := f.claim(t, f.issue(t))
+	id, _ := random()
+	raw, _ := json.Marshal(DeviceRequest{state.ID, id})
+	sessions, _ := enrollment.NewStore(fixtureDevice, bytes.Repeat([]byte{62}, 32))
+	if _, e := f.device.Complete(ctx, nil, "https://api.example.invalid", raw, "invalid", f.now); !errors.Is(e, ErrDenied) {
+		t.Fatal("missing session namespace")
+	}
+	if _, e := f.device.Complete(ctx, sessions, "https://api.example.invalid", []byte(`{}`), "invalid", f.now); !errors.Is(e, ErrDenied) {
+		t.Fatal("malformed completion")
+	}
+	wrong, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = f.device.Complete(ctx, sessions, "https://api.example.invalid", raw, signed(t, wrong, "https://api.example.invalid/v1/invitations/complete", "", state.Nonce, raw, f.now), f.now); !errors.Is(e, ErrDenied) {
+		t.Fatal("foreign key completed", e)
+	}
+	if e = f.device.Abandon(ctx, "https://api.example.invalid", raw, signed(t, wrong, "https://api.example.invalid/v1/invitations/abandon", "", state.Nonce, raw, f.now), f.now); !errors.Is(e, ErrDenied) {
+		t.Fatal("foreign key cancelled", e)
+	}
+	if e = f.device.Abandon(ctx, "https://api.example.invalid", []byte(`{}`), "invalid", f.now); !errors.Is(e, ErrDenied) {
+		t.Fatal("malformed cancellation")
+	}
+	tx, e := fixtureDevice.BeginTx(ctx, nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	count, e := f.device.Reservations(ctx, tx, f.owner, f.now)
+	if e != nil || count != 1 {
+		t.Fatal("seat reservation not counted", e)
+	}
+	tx.Rollback()
+	if _, e = f.device.Reservations(ctx, tx, f.owner, f.now); !errors.Is(e, ErrUnavailable) {
+		t.Fatal("closed transaction acknowledged quota")
+	}
+	if _, e = f.signer.Ready(ctx, "invalid", f.verification(), f.now); !errors.Is(e, ErrDenied) {
+		t.Fatal("invalid publication identity")
+	}
+	if _, e = f.device.Complete(ctx, sessions, "https://api.example.invalid", raw, signed(t, f.phone, "https://api.example.invalid/v1/invitations/complete", "", state.Nonce, raw, f.now.Add(601*time.Second)), f.now.Add(601*time.Second)); !errors.Is(e, ErrExpired) {
+		t.Fatal("expired completion accepted", e)
+	}
+	if e = f.admin.Store.Expire(ctx); !errors.Is(e, ErrUnavailable) {
+		t.Fatal("control gained owner maintenance")
+	}
+	if _, e = (&DeviceService{}).Dispatch(ctx, "/v1/invitations/status", raw, "invalid", f.now); !errors.Is(e, enrollment.ErrUnavailable) {
+		t.Fatal("unconfigured service")
+	}
+	service := &DeviceService{Store: f.device, Identity: sessions, Origin: "https://api.example.invalid", ServiceID: "service-a"}
+	if _, e = service.Dispatch(ctx, "/v1/invitations/unknown", raw, "invalid", f.now); !errors.Is(e, enrollment.ErrDenied) {
+		t.Fatal("unknown invitation path")
 	}
 }

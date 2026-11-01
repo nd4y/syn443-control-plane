@@ -25,6 +25,8 @@ type KeyReceipt struct {
 	AcceptedAt int64  `json:"acceptedAt"`
 }
 type ClaimState struct {
+	Expires  int64  `json:"expires"`
+	OwnerTag string `json:"ownerTag"`
 	Error    string `json:"error,omitempty"`
 	ID       string `json:"id"`
 	Version  int64  `json:"version"`
@@ -62,7 +64,7 @@ func (c Claim) validate() error {
 	return nil
 }
 func state(r record) ClaimState {
-	return ClaimState{Error: r.Error, ID: r.ID, Version: r.Version, State: r.State, PairCode: r.PairCode, Nonce: r.Nonce, DeviceID: r.Device}
+	return ClaimState{Expires: r.Expires, OwnerTag: r.OwnerTag, Error: r.Error, ID: r.ID, Version: r.Version, State: r.State, PairCode: r.PairCode, Nonce: r.Nonce, DeviceID: r.Device}
 }
 
 // Claim reserves a single key/device seat. It returns no session, policy,

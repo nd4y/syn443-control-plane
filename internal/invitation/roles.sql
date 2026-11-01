@@ -13,3 +13,5 @@ GRANT UPDATE(device,version,retry_after,publication_error) ON managed_invitation
 GRANT INSERT(id,owner,jkt,request_body,receipt) ON identity_devices TO syn443_identity_publisher;
 GRANT SELECT,INSERT,DELETE ON managed_invitation_replays TO syn443_identity_api;
 REVOKE ALL ON FUNCTION managed_invitation_guard() FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION managed_invitation_expire() TO syn443_identity_api,syn443_identity_publisher;

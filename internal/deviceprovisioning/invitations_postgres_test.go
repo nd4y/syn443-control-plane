@@ -219,3 +219,50 @@ func TestSQLPublisherUnconfiguredAndDeviceHTTPBounds(t *testing.T) {
 	}
 	_ = state
 }
+
+func TestSQLUnsupportedCapabilitiesAndQuotaFailWithoutPartialDevice(t *testing.T) {
+	f := newFixture(t)
+	bridge, g, _ := f.bridge(t)
+	ctx := context.Background()
+	g.Template.RequiredCapabilities = append(g.Template.RequiredCapabilities, "netbird.direct")
+	if e := enrollment.Authorize(ctx, fixtureOwner, g, f.now); e != nil {
+		t.Fatal(e)
+	}
+	f.grant = g.Hash()
+	bridge.Grants[f.owner] = g
+	state := f.approved(t)
+	if e := bridge.Prepare(ctx, f.now); e != nil {
+		t.Fatal(e)
+	}
+	var code string
+	var count int
+	if e := fixtureOwner.QueryRow(`SELECT publication_error FROM managed_invitations WHERE id=$1`, state.ID).Scan(&code); e != nil || code != "unsupported_capabilities" {
+		t.Fatal("unsupported capabilities not isolated", e)
+	}
+	if e := fixtureOwner.QueryRow(`SELECT count(*) FROM identity_devices`).Scan(&count); e != nil || count != 0 {
+		t.Fatal("unsupported device inserted", e)
+	}
+	publication, e := f.signer.Ready(ctx, state.ID, f.verification(), f.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	// Exercise the final quota guard, independently of the earlier reservation.
+	for n := 0; n < 2; n++ {
+		device, _ := random()
+		jkt, _ := random()
+		if _, e = fixtureOwner.Exec(`INSERT INTO identity_devices(id,owner,jkt,request_body,receipt) VALUES($1,$2,$3,$4,$5)`, device, f.owner, jkt, []byte(`{}`), []byte("synthetic-receipt")); e != nil {
+			t.Fatal(e)
+		}
+	}
+	if e = bridge.createDevice(ctx, publication, g, f.now); !errors.Is(e, invitation.ErrDenied) {
+		t.Fatal("final quota ignored", e)
+	}
+	if e = fixtureOwner.QueryRow(`SELECT count(*) FROM identity_devices`).Scan(&count); e != nil || count != 2 {
+		t.Fatal("failed transaction leaked device", e)
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if e = bridge.Prepare(cancelled, f.now); e == nil {
+		t.Fatal("cancelled worker acknowledged work")
+	}
+}

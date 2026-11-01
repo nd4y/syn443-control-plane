@@ -50,3 +50,30 @@ BEGIN
 END$$;
 DROP TRIGGER IF EXISTS managed_invitation_invariants ON managed_invitations;
 CREATE TRIGGER managed_invitation_invariants BEFORE UPDATE ON managed_invitations FOR EACH ROW EXECUTE FUNCTION managed_invitation_guard();
+
+-- Narrow owner-authored maintenance primitive. No caller-supplied deadline or
+-- device is accepted. Runtime roles cannot use this to grant or revive access.
+CREATE OR REPLACE FUNCTION managed_invitation_expire() RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+DECLARE item record; current_invite record; deadline bigint; changed integer:=0;
+BEGIN
+ SELECT GREATEST(second,floor(extract(epoch FROM clock_timestamp()))::bigint)
+ INTO deadline FROM public.identity_clock WHERE id=true;
+ IF deadline IS NULL THEN RAISE EXCEPTION 'identity clock missing';END IF;
+ FOR item IN SELECT id,owner FROM public.managed_invitations
+  WHERE expires<=deadline AND final_session IS NULL AND NOT revoked
+  ORDER BY expires,id LIMIT 16 LOOP
+  PERFORM 1 FROM public.identity_accounts WHERE owner=item.owner FOR UPDATE;
+  SELECT * INTO current_invite FROM public.managed_invitations WHERE id=item.id FOR UPDATE;
+  IF current_invite.expires<=deadline AND current_invite.final_session IS NULL AND NOT current_invite.revoked THEN
+   IF current_invite.device IS NOT NULL THEN
+    UPDATE public.identity_devices SET active=false WHERE id=current_invite.device AND owner=current_invite.owner AND jkt=current_invite.claim_jkt;
+    UPDATE public.identity_sessions SET active=false WHERE device=current_invite.device;
+   END IF;
+   UPDATE public.managed_invitations SET revoked=true,version=version+1 WHERE id=item.id;
+   changed:=changed+1;
+  END IF;
+ END LOOP;
+ RETURN changed;
+END$$;
+REVOKE ALL ON FUNCTION managed_invitation_expire() FROM PUBLIC;

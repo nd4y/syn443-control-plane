@@ -210,3 +210,13 @@ func (s *Store) Reservations(ctx context.Context, tx *sql.Tx, owner string, now 
 	}
 	return count, nil
 }
+
+// Expire performs at most16 server-time-fenced cancellations through the narrow
+// migration-owned primitive. The publisher gains no general session authority.
+func (s *Store) Expire(ctx context.Context) error {
+	var count int
+	if s.DB.QueryRowContext(ctx, `SELECT managed_invitation_expire()`).Scan(&count) != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
