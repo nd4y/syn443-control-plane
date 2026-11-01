@@ -1,7 +1,18 @@
 # Untrusted subscription normalization
 
-This component is part of M3. It does not yet claim persistence, provider fetching,
+This component is part of M3. It does not yet claim persistent provider jobs,
 administration, publication, device download or full M2/M3 acceptance.
+
+The server fetch component validates HTTPS and every resolved address on each new
+connection. It rejects proxy environment settings, metadata/special addresses,
+ungranted private destinations, cross-origin credentials and unapproved redirects.
+Owner-configured literal-loopback fixtures are separate from production grants.
+The complete fetch/redirect/read has a30-second bound and10MiB compressed and
+decompressed limits. ETag/Last-Modified apply to the exact original URL;
+redirected sources use a full fetch rather than rebinding another URL's validators.
+Provider quota/expiry metadata is bounded and distinguishes unknown from zero.
+Explicit gone/expired access differs from retryable errors and empty candidates.
+This component still needs its persistent worker integration.
 
 ## Accepted subset
 
