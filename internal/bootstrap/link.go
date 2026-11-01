@@ -49,7 +49,7 @@ func Link(invitation Invitation) (string, error) {
 }
 func ParseLink(raw string) (Invitation, error) {
 	var result Invitation
-	if len(raw) < 1 || len(raw) > MaxLink || !ascii(raw) {
+	if len(raw) < 1 || len(raw) > MaxLink || !ascii(raw) || !strings.HasPrefix(raw, "syn443://") {
 		return result, ErrUntrusted
 	}
 	u, e := url.Parse(raw)

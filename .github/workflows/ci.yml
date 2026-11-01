@@ -60,6 +60,19 @@ jobs:
       - run: go test ./internal/subscriptions -run '^$' -fuzz '^FuzzSubscriptionJSON$' -fuzztime=15s -parallel=2
       - run: go test ./internal/configuration -run '^$' -fuzz '^FuzzConfigurationLayers$' -fuzztime=15s -parallel=2
       - run: go test ./internal/bootstrap -run '^$' -fuzz '^FuzzInvitationLink$' -fuzztime=15s -parallel=2
+      - name: Generate public Go to Kotlin bootstrap evidence
+        run: |
+          mkdir -p dist/bootstrap-wire
+          go run ./cmd/bootstrap-fixture > dist/bootstrap-wire/bootstrap-wire-vectors.json
+          test -s dist/bootstrap-wire/bootstrap-wire-vectors.json
+          python3 tools/check_public_data.py dist/bootstrap-wire
+          bash tools/scan_secrets.sh dist/bootstrap-wire
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: bootstrap-wire-evidence
+          path: dist/bootstrap-wire/bootstrap-wire-vectors.json
+          if-no-files-found: error
+          retention-days: 14
       - run: go build -o bin/syn443-api ./cmd/api
       - run: python3 tools/smoke_api.py bin/syn443-api
       - run: go build -o bin/syn443-policy-sign ./cmd/policy-sign && go build -o bin/syn443-policy-serve ./cmd/policy-serve

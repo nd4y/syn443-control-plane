@@ -68,7 +68,7 @@ func ascii(raw string) bool {
 }
 func secureURL(raw string, allowPath bool) bool {
 	u, e := url.Parse(raw)
-	if e != nil || len(raw) > 2048 || !ascii(raw) || u.Scheme != "https" || u.Hostname() == "" || u.Host != strings.ToLower(u.Host) || strings.HasSuffix(u.Hostname(), ".") || u.User != nil || u.Opaque != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.RawPath != "" || strings.HasSuffix(u.Host, ":") || u.Port() == "443" || !allowPath && u.Path != "" || allowPath && strings.HasSuffix(u.Path, "/") {
+	if e != nil || len(raw) > 2048 || !ascii(raw) || !strings.HasPrefix(raw, "https://") || u.Scheme != "https" || u.Hostname() == "" || u.Host != strings.ToLower(u.Host) || strings.HasSuffix(u.Hostname(), ".") || u.User != nil || u.Opaque != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.RawPath != "" || strings.HasSuffix(u.Host, ":") || u.Port() == "443" || !allowPath && u.Path != "" || allowPath && strings.HasSuffix(u.Path, "/") {
 		return false
 	}
 	if u.Port() != "" {
@@ -284,6 +284,7 @@ func AdvanceRoot(rotation Rotation, current Anchor, now time.Time) (Anchor, erro
 		return current, ErrUntrusted
 	}
 	raw, _ := json.Marshal(rotation)
+	raw, _ = policy.Canonical(raw)
 	hash := identity.Hash(raw)
 	if hash == current.LastTransition {
 		return current, nil
