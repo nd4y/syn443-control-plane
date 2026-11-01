@@ -189,7 +189,7 @@ func TestProviderStatusAndSchemaErrors(t *testing.T) {
 		status           int
 	}{
 		{"unauthorized", "", "access_denied", 401}, {"forbidden", "", "access_denied", 403}, {"missing", "", "assignment_not_found", 404}, {"limited", "", "rate_limited", 429}, {"server", "", "provider_unavailable", 503}, {"redirect", "", "unexpected_response", 302},
-		{"duplicate", `{"response":{"id":42,"id":42}}`, "invalid_response", 200}, {"trailing", userBody() + `{}`, "invalid_response", 200}, {"string-id", strings.Replace(userBody(), `"id":42`, `"id":"42"`, 1), "identity_mismatch", 200}, {"foreign", strings.Replace(userBody(), `"id":42`, `"id":43`, 1), "identity_mismatch", 200}, {"inactive", strings.Replace(userBody(), "ACTIVE", "DISABLED", 1), "access_denied", 200}, {"unknown-status", strings.Replace(userBody(), "ACTIVE", "OTHER", 1), "invalid_response", 200}, {"bad-expiry", strings.Replace(userBody(), expiry, "invalid", 1), "invalid_response", 200}, {"expired", strings.Replace(userBody(), expiry, "2025-01-01T00:00:00Z", 1), "access_denied", 200}, {"large", strings.Repeat(" ", maxBody+1), "invalid_response", 200},
+		{"duplicate", `{"response":{"id":42,"id":42}}`, "invalid_response", 200}, {"trailing", userBody() + `{}`, "invalid_response", 200}, {"string-id", strings.Replace(userBody(), `"id":42`, `"id":"42"`, 1), "identity_mismatch", 200}, {"foreign", strings.Replace(userBody(), `"id":42`, `"id":43`, 1), "identity_mismatch", 200}, {"inactive", strings.Replace(userBody(), "ACTIVE", "DISABLED", 1), "assignment_revoked", 200}, {"unknown-status", strings.Replace(userBody(), "ACTIVE", "OTHER", 1), "invalid_response", 200}, {"bad-expiry", strings.Replace(userBody(), expiry, "invalid", 1), "invalid_response", 200}, {"expired", strings.Replace(userBody(), expiry, "2025-01-01T00:00:00Z", 1), "assignment_expired", 200}, {"large", strings.Repeat(" ", maxBody+1), "invalid_response", 200},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c, _, calls := fixture(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(tc.status); io.WriteString(w, tc.body) })
@@ -203,7 +203,7 @@ func TestProviderStatusAndSchemaErrors(t *testing.T) {
 }
 func TestSubscriptionCannotCrossIdentityOrSilentlyEmpty(t *testing.T) {
 	for _, tc := range []struct{ old, new, want string }{
-		{`"shortUuid":"synthetic-short"`, `"shortUuid":"foreign"`, "identity_mismatch"}, {`"isFound":true`, `"isFound":false`, "assignment_not_found"}, {`"isFound":true,`, "", "invalid_response"}, {`"isActive":true`, `"isActive":false`, "access_denied"}, {expiry, "2026-01-03T00:00:00Z", "inconsistent_snapshot"}, {`"trafficUsedBytes":"9007199254740993"`, `"trafficUsedBytes":"-1"`, "invalid_response"}, {`["https://proxy.example.invalid/synthetic-profile"]`, `[]`, "empty_snapshot"}, {`https://proxy.example.invalid/synthetic-profile`, `file:///etc/passwd`, "invalid_response"},
+		{`"shortUuid":"synthetic-short"`, `"shortUuid":"foreign"`, "identity_mismatch"}, {`"isFound":true`, `"isFound":false`, "assignment_not_found"}, {`"isFound":true,`, "", "invalid_response"}, {`"isActive":true`, `"isActive":false`, "assignment_revoked"}, {expiry, "2026-01-03T00:00:00Z", "inconsistent_snapshot"}, {`"trafficUsedBytes":"9007199254740993"`, `"trafficUsedBytes":"-1"`, "invalid_response"}, {`["https://proxy.example.invalid/synthetic-profile"]`, `[]`, "empty_snapshot"}, {`https://proxy.example.invalid/synthetic-profile`, `file:///etc/passwd`, "invalid_response"},
 	} {
 		t.Run(tc.want+tc.old, func(t *testing.T) {
 			c, _, _ := fixture(t, func(w http.ResponseWriter, r *http.Request) {

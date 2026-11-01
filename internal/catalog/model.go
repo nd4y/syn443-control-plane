@@ -19,26 +19,28 @@ var ErrQuota = errors.New("catalog_quota")
 var ErrStale = errors.New("catalog_stale_job")
 var identifier = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
 var sourceIdentifier = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,48}$`)
+var externalRemnawaveID = regexp.MustCompile(`^[1-9][0-9]{0,14}$`)
 
 type Source struct {
-	ID                string   `json:"id"`
-	Owner             string   `json:"owner"`
-	Name              string   `json:"name"`
-	Mode              string   `json:"mode"`
-	Format            string   `json:"format"`
-	ResourceID        string   `json:"resourceId,omitempty"`
-	ExternalUserID    string   `json:"externalUserId,omitempty"`
-	Enabled           bool     `json:"enabled"`
-	Revision          int64    `json:"revision"`
-	ValidUntil        int64    `json:"validUntil"`
-	RefreshSeconds    int64    `json:"refreshSeconds"`
-	MaxStaleSeconds   int64    `json:"maxStaleSeconds"`
-	NetworkModes      []string `json:"networkModes"`
-	ActiveSnapshot    string   `json:"activeSnapshot"`
-	CandidateSnapshot string   `json:"candidateSnapshot"`
-	State             string   `json:"state"`
-	LastSync          int64    `json:"lastSync"`
-	NextSync          int64    `json:"nextSync"`
+	ID                   string   `json:"id"`
+	Owner                string   `json:"owner"`
+	Name                 string   `json:"name"`
+	Mode                 string   `json:"mode"`
+	Format               string   `json:"format"`
+	ResourceID           string   `json:"resourceId,omitempty"`
+	ExternalUserID       string   `json:"externalUserId,omitempty"`
+	Enabled              bool     `json:"enabled"`
+	Revision             int64    `json:"revision"`
+	ValidUntil           int64    `json:"validUntil"`
+	RefreshSeconds       int64    `json:"refreshSeconds"`
+	MaxStaleSeconds      int64    `json:"maxStaleSeconds"`
+	NetworkModes         []string `json:"networkModes"`
+	ActiveSnapshot       string   `json:"activeSnapshot"`
+	CandidateSnapshot    string   `json:"candidateSnapshot"`
+	State                string   `json:"state"`
+	LastSync             int64    `json:"lastSync"`
+	NextSync             int64    `json:"nextSync"`
+	LastResourceRevision int64    `json:"lastResourceRevision"`
 }
 
 func (Source) String() string   { return "CatalogSource([redacted])" }
@@ -54,7 +56,7 @@ func (s Source) Validate(now time.Time) error {
 		return ErrInvalid
 	}
 	if s.Mode == "resource" {
-		if !sourceIdentifier.MatchString(s.ResourceID) || !identifier.MatchString(s.ExternalUserID) {
+		if !sourceIdentifier.MatchString(s.ResourceID) || !externalRemnawaveID.MatchString(s.ExternalUserID) {
 			return ErrInvalid
 		}
 	} else if s.ResourceID != "" || s.ExternalUserID != "" {
@@ -163,29 +165,31 @@ func protectedProfiles(in []subscriptions.Profile) ([]byte, error) {
 }
 
 type Snapshot struct {
-	ID             string              `json:"id"`
-	SourceID       string              `json:"sourceId"`
-	SourceRevision int64               `json:"sourceRevision"`
-	Hash           string              `json:"hash"`
-	ObservedAt     int64               `json:"observedAt"`
-	ValidUntil     int64               `json:"validUntil"`
-	Count          int                 `json:"count"`
-	State          string              `json:"state"`
-	Reason         string              `json:"reason"`
-	Quota          subscriptions.Quota `json:"quota"`
+	ID               string              `json:"id"`
+	SourceID         string              `json:"sourceId"`
+	SourceRevision   int64               `json:"sourceRevision"`
+	Hash             string              `json:"hash"`
+	ObservedAt       int64               `json:"observedAt"`
+	ValidUntil       int64               `json:"validUntil"`
+	Count            int                 `json:"count"`
+	State            string              `json:"state"`
+	Reason           string              `json:"reason"`
+	Quota            subscriptions.Quota `json:"quota"`
+	ResourceRevision int64               `json:"resourceRevision"`
 }
 type Job struct {
-	ID             string `json:"id"`
-	SourceID       string `json:"sourceId"`
-	SourceRevision int64  `json:"sourceRevision"`
-	Kind           string `json:"kind"`
-	Phase          string `json:"phase"`
-	Attempts       int    `json:"attempts"`
-	Deadline       int64  `json:"deadline"`
-	Reason         string `json:"reason"`
-	Lease          string `json:"-"`
-	LeaseUntil     int64  `json:"-"`
-	BaseSnapshot   string `json:"-"`
+	ID               string `json:"id"`
+	SourceID         string `json:"sourceId"`
+	SourceRevision   int64  `json:"sourceRevision"`
+	Kind             string `json:"kind"`
+	Phase            string `json:"phase"`
+	Attempts         int    `json:"attempts"`
+	Deadline         int64  `json:"deadline"`
+	Reason           string `json:"reason"`
+	Lease            string `json:"-"`
+	LeaseUntil       int64  `json:"-"`
+	BaseSnapshot     string `json:"-"`
+	ResourceRevision int64  `json:"-"`
 }
 
 func (Job) String() string   { return "CatalogJob([redacted])" }

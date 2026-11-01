@@ -15,12 +15,12 @@ func (s *Store) readSource(ctx context.Context, tx *sql.Tx, id string, lock bool
 	var active, candidate, resource sql.NullString
 	var state, owner, mode string
 	var enabled bool
-	var last, next, valid, refresh, stale int64
-	query := `SELECT spec,revision,active_snapshot,candidate_snapshot,state,last_sync,next_sync,owner,mode,resource_id,enabled,valid_until,refresh_seconds,max_stale_seconds FROM catalog_sources WHERE id=$1`
+	var last, next, valid, refresh, stale, lastResource int64
+	query := `SELECT spec,revision,active_snapshot,candidate_snapshot,state,last_sync,next_sync,owner,mode,resource_id,enabled,valid_until,refresh_seconds,max_stale_seconds,last_resource_revision FROM catalog_sources WHERE id=$1`
 	if lock {
 		query += " FOR UPDATE"
 	}
-	e := tx.QueryRowContext(ctx, query, id).Scan(&raw, &revision, &active, &candidate, &state, &last, &next, &owner, &mode, &resource, &enabled, &valid, &refresh, &stale)
+	e := tx.QueryRowContext(ctx, query, id).Scan(&raw, &revision, &active, &candidate, &state, &last, &next, &owner, &mode, &resource, &enabled, &valid, &refresh, &stale, &lastResource)
 	if e == sql.ErrNoRows {
 		return source, ErrDenied
 	}
@@ -36,6 +36,7 @@ func (s *Store) readSource(ctx context.Context, tx *sql.Tx, id string, lock bool
 	source.State = state
 	source.LastSync = last
 	source.NextSync = next
+	source.LastResourceRevision = lastResource
 	return source, nil
 }
 func (s *Store) GetSource(ctx context.Context, actor Actor, id string, now time.Time) (Source, error) {
@@ -64,13 +65,25 @@ func (s *Store) GetSource(ctx context.Context, actor Actor, id string, now time.
 			source.State = "stale"
 		}
 	}
+	if source.Mode == "resource" && source.Enabled {
+		var enabled bool
+		var revision int64
+		if e = tx.QueryRowContext(ctx, `SELECT enabled,revision FROM catalog_resources WHERE id=$1`, source.ResourceID).Scan(&enabled, &revision); e != nil {
+			return Source{}, ErrUnavailable
+		}
+		if !enabled {
+			source.State = "resource_disabled"
+		} else if revision != source.LastResourceRevision && source.State == "active" {
+			source.State = "refresh_pending"
+		}
+	}
 	return source, tx.Commit()
 }
 
 // PutSource uses expected revision, live authority and one immutable operation
 // identity. Neither an endpoint change nor a failed fetch extends an old lease.
 func (s *Store) PutSource(ctx context.Context, actor Actor, source Source, secret SecretPatch, request string, now time.Time) (Source, error) {
-	if source.Validate(now) != nil || !identifier.MatchString(request) || source.State != "" || source.ActiveSnapshot != "" || source.CandidateSnapshot != "" || source.LastSync != 0 || source.NextSync != 0 {
+	if source.Validate(now) != nil || !identifier.MatchString(request) || source.State != "" || source.ActiveSnapshot != "" || source.CandidateSnapshot != "" || source.LastSync != 0 || source.NextSync != 0 || source.LastResourceRevision != 0 {
 		return Source{}, ErrInvalid
 	}
 	body, _ := json.Marshal(struct {
@@ -176,6 +189,7 @@ func (s *Store) PutSource(ctx context.Context, actor Actor, source Source, secre
 	source.ActiveSnapshot = old.ActiveSnapshot
 	source.NextSync = now.Unix()
 	source.LastSync = old.LastSync
+	source.LastResourceRevision = old.LastResourceRevision
 	if !source.Enabled {
 		source.State = "disabled"
 	}

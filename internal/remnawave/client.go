@@ -243,8 +243,11 @@ func (c *Client) ReadAssignment(ctx context.Context, b resources.Binding) (resou
 	if !knownStatus(user.Response.Status) {
 		return empty, resources.Failure("invalid_response", false)
 	}
-	if user.Response.Status != "ACTIVE" || !expires.After(c.now()) {
-		return empty, resources.Failure("access_denied", false)
+	if !expires.After(c.now()) || user.Response.Status == "EXPIRED" {
+		return empty, resources.Failure("assignment_expired", false)
+	}
+	if user.Response.Status != "ACTIVE" {
+		return empty, resources.Failure("assignment_revoked", false)
 	}
 	var sub struct {
 		Response struct {
@@ -280,8 +283,11 @@ func (c *Client) ReadAssignment(ctx context.Context, b resources.Binding) (resou
 	if s.User.Active == nil || !knownStatus(s.User.Status) {
 		return empty, resources.Failure("invalid_response", false)
 	}
-	if !*s.User.Active || s.User.Status != "ACTIVE" || !exp.After(c.now()) {
-		return empty, resources.Failure("access_denied", false)
+	if !exp.After(c.now()) || s.User.Status == "EXPIRED" {
+		return empty, resources.Failure("assignment_expired", false)
+	}
+	if !*s.User.Active || s.User.Status != "ACTIVE" {
+		return empty, resources.Failure("assignment_revoked", false)
 	}
 	used, e := strconv.ParseUint(s.User.Used, 10, 63)
 	limit, e2 := strconv.ParseUint(s.User.Limit, 10, 63)

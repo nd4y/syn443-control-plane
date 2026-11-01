@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS catalog_sources(
  valid_until bigint NOT NULL,refresh_seconds bigint NOT NULL CHECK(refresh_seconds BETWEEN 60 AND 86400),
  max_stale_seconds bigint NOT NULL CHECK(max_stale_seconds BETWEEN 300 AND 604800),
  active_snapshot text,candidate_snapshot text,state text NOT NULL DEFAULT 'pending',
- last_sync bigint NOT NULL DEFAULT 0,next_sync bigint NOT NULL DEFAULT 0
+ last_sync bigint NOT NULL DEFAULT 0,next_sync bigint NOT NULL DEFAULT 0,last_resource_revision bigint NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS catalog_source_grants(
  source_id text NOT NULL REFERENCES catalog_sources(id),target_kind text NOT NULL CHECK(target_kind IN('user','group','device')),
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS catalog_source_grants(
 );
 CREATE TABLE IF NOT EXISTS catalog_snapshots(
  id text PRIMARY KEY,source_id text NOT NULL REFERENCES catalog_sources(id),source_revision bigint NOT NULL,
- content_hash text NOT NULL,observed_at bigint NOT NULL,valid_until bigint NOT NULL,
+ content_hash text NOT NULL,observed_at bigint NOT NULL,valid_until bigint NOT NULL,resource_revision bigint NOT NULL DEFAULT 0,
  count integer NOT NULL CHECK(count BETWEEN 1 AND 5000),profiles bytea NOT NULL,
  state text NOT NULL CHECK(state IN('candidate','quarantined','active','superseded','rejected')),
  reason text NOT NULL,quota jsonb NOT NULL,UNIQUE(source_id,id)
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS catalog_dependencies(
 );
 CREATE TABLE IF NOT EXISTS catalog_jobs(
  id text PRIMARY KEY,source_id text NOT NULL REFERENCES catalog_sources(id),source_revision bigint NOT NULL,
- base_snapshot text,
+ base_snapshot text,resource_revision bigint NOT NULL DEFAULT 0,
  kind text NOT NULL CHECK(kind IN('fetch','resource','manual','device')),
  request_id text NOT NULL,actor text NOT NULL,body_hash text NOT NULL,
  phase text NOT NULL CHECK(phase IN('queued','running','succeeded','failed','cancelled','dead_letter')),
@@ -79,7 +79,7 @@ CREATE OR REPLACE FUNCTION catalog_snapshot_immutable() RETURNS trigger LANGUAGE
 BEGIN
  IF NEW.id<>OLD.id OR NEW.source_id<>OLD.source_id OR NEW.source_revision<>OLD.source_revision
  OR NEW.content_hash<>OLD.content_hash OR NEW.observed_at<>OLD.observed_at OR NEW.valid_until<>OLD.valid_until
- OR NEW.count<>OLD.count OR NEW.profiles<>OLD.profiles OR NEW.quota<>OLD.quota THEN
+ OR NEW.count<>OLD.count OR NEW.profiles<>OLD.profiles OR NEW.quota<>OLD.quota OR NEW.resource_revision<>OLD.resource_revision THEN
   RAISE EXCEPTION 'immutable catalog snapshot';
  END IF;
  RETURN NEW;

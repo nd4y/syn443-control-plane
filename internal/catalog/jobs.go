@@ -87,11 +87,21 @@ func (s *Store) enqueue(ctx context.Context, tx *sql.Tx, source Source, actor, r
 			return Job{}, e
 		}
 	}
-	_, e = tx.ExecContext(ctx, `INSERT INTO catalog_jobs(id,source_id,source_revision,kind,request_id,actor,body_hash,phase,not_before,deadline,payload,created_at,updated_at,base_snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,'queued',$8,$9,$10,$8,$8,$11)`, id, source.ID, source.Revision, kind, request, actor, hash, now, now+900, payload, source.ActiveSnapshot)
+	var resourceRevision int64
+	if source.Mode == "resource" {
+		var enabled bool
+		if e = tx.QueryRowContext(ctx, `SELECT revision,enabled FROM catalog_resources WHERE id=$1 FOR SHARE`, source.ResourceID).Scan(&resourceRevision, &enabled); e != nil {
+			return Job{}, ErrUnavailable
+		}
+		if !enabled {
+			return Job{}, ErrDenied
+		}
+	}
+	_, e = tx.ExecContext(ctx, `INSERT INTO catalog_jobs(id,source_id,source_revision,kind,request_id,actor,body_hash,phase,not_before,deadline,payload,created_at,updated_at,base_snapshot,resource_revision) VALUES($1,$2,$3,$4,$5,$6,$7,'queued',$8,$9,$10,$8,$8,$11,$12)`, id, source.ID, source.Revision, kind, request, actor, hash, now, now+900, payload, source.ActiveSnapshot, resourceRevision)
 	if e != nil {
 		return Job{}, ErrUnavailable
 	}
-	return Job{ID: id, SourceID: source.ID, SourceRevision: source.Revision, Kind: kind, Phase: "queued", Deadline: now + 900, BaseSnapshot: source.ActiveSnapshot}, nil
+	return Job{ID: id, SourceID: source.ID, SourceRevision: source.Revision, Kind: kind, Phase: "queued", Deadline: now + 900, BaseSnapshot: source.ActiveSnapshot, ResourceRevision: resourceRevision}, nil
 }
 
 // Schedule's source row locks and the unique active-job index prevent replica
@@ -102,7 +112,7 @@ func (s *Store) Schedule(ctx context.Context, now time.Time) (int, error) {
 		return 0, ErrUnavailable
 	}
 	defer tx.Rollback()
-	rows, e := tx.QueryContext(ctx, `SELECT id FROM catalog_sources s WHERE enabled AND valid_until>$1 AND next_sync<=$1 AND mode IN('server','resource') AND NOT EXISTS(SELECT 1 FROM catalog_jobs j WHERE j.source_id=s.id AND j.phase IN('queued','running')) ORDER BY next_sync,id LIMIT 16 FOR UPDATE SKIP LOCKED`, now.Unix())
+	rows, e := tx.QueryContext(ctx, `SELECT id FROM catalog_sources s WHERE enabled AND valid_until>$1 AND mode IN('server','resource') AND (mode='server' AND next_sync<=$1 OR mode='resource' AND EXISTS(SELECT 1 FROM catalog_resources r WHERE r.id=s.resource_id AND r.enabled AND (s.next_sync<=$1 OR s.last_resource_revision<>r.revision))) AND NOT EXISTS(SELECT 1 FROM catalog_jobs j WHERE j.source_id=s.id AND j.phase IN('queued','running')) ORDER BY next_sync,id LIMIT 16 FOR UPDATE OF s SKIP LOCKED`, now.Unix())
 	if e != nil {
 		return 0, ErrUnavailable
 	}
@@ -163,7 +173,7 @@ func (s *Store) Claim(ctx context.Context, now time.Time) (Job, error) {
 	if running >= 8 {
 		return job, tx.Commit()
 	}
-	e = tx.QueryRowContext(ctx, `SELECT id,source_id,source_revision,kind,phase,attempts,deadline,COALESCE(base_snapshot,'') FROM catalog_jobs WHERE (phase='queued' OR phase='running' AND lease_until<=$1) AND not_before<=$1 AND deadline>$1 AND attempts<8 ORDER BY not_before,created_at,id LIMIT 1 FOR UPDATE SKIP LOCKED`, now.Unix()).Scan(&job.ID, &job.SourceID, &job.SourceRevision, &job.Kind, &job.Phase, &job.Attempts, &job.Deadline, &job.BaseSnapshot)
+	e = tx.QueryRowContext(ctx, `SELECT id,source_id,source_revision,kind,phase,attempts,deadline,COALESCE(base_snapshot,''),resource_revision FROM catalog_jobs WHERE (phase='queued' OR phase='running' AND lease_until<=$1) AND not_before<=$1 AND deadline>$1 AND attempts<8 ORDER BY not_before,created_at,id LIMIT 1 FOR UPDATE SKIP LOCKED`, now.Unix()).Scan(&job.ID, &job.SourceID, &job.SourceRevision, &job.Kind, &job.Phase, &job.Attempts, &job.Deadline, &job.BaseSnapshot, &job.ResourceRevision)
 	if e == sql.ErrNoRows {
 		return Job{}, tx.Commit()
 	}
@@ -182,13 +192,13 @@ func (s *Store) Claim(ctx context.Context, now time.Time) (Job, error) {
 }
 func jobCurrent(ctx context.Context, tx *sql.Tx, job Job, now int64) error {
 	var phase, lease, sourceID, kind, base string
-	var until, deadline, revision int64
+	var until, deadline, revision, resourceRevision int64
 	var attempts int
-	e := tx.QueryRowContext(ctx, `SELECT phase,lease,lease_until,deadline,source_revision,source_id,kind,attempts,COALESCE(base_snapshot,'') FROM catalog_jobs WHERE id=$1 FOR UPDATE`, job.ID).Scan(&phase, &lease, &until, &deadline, &revision, &sourceID, &kind, &attempts, &base)
+	e := tx.QueryRowContext(ctx, `SELECT phase,lease,lease_until,deadline,source_revision,source_id,kind,attempts,COALESCE(base_snapshot,''),resource_revision FROM catalog_jobs WHERE id=$1 FOR UPDATE`, job.ID).Scan(&phase, &lease, &until, &deadline, &revision, &sourceID, &kind, &attempts, &base, &resourceRevision)
 	if e != nil {
 		return ErrUnavailable
 	}
-	if phase != "running" || lease != job.Lease || lease == "" || until <= now || deadline <= now || revision != job.SourceRevision || sourceID != job.SourceID || kind != job.Kind || attempts != job.Attempts || job.Attempts < 1 || job.Attempts > 8 || base != job.BaseSnapshot {
+	if phase != "running" || lease != job.Lease || lease == "" || until <= now || deadline <= now || revision != job.SourceRevision || sourceID != job.SourceID || kind != job.Kind || attempts != job.Attempts || job.Attempts < 1 || job.Attempts > 8 || base != job.BaseSnapshot || resourceRevision != job.ResourceRevision {
 		return ErrStale
 	}
 	return nil
@@ -207,6 +217,9 @@ func (s *Store) JobInput(ctx context.Context, job Job, now time.Time) (Source, [
 		return Source{}, nil, nil, nil, ErrStale
 	}
 	if e = jobCurrent(ctx, tx, job, now.Unix()); e != nil {
+		return Source{}, nil, nil, nil, e
+	}
+	if e = resourceCurrent(ctx, tx, job, source); e != nil {
 		return Source{}, nil, nil, nil, e
 	}
 	var salt, secret, payload []byte
@@ -279,6 +292,9 @@ func (s *Store) Fail(ctx context.Context, job Job, reason string, permanent bool
 	if e = jobCurrent(ctx, tx, job, now.Unix()); e != nil {
 		return e
 	}
+	if e = resourceCurrent(ctx, tx, job, source); e != nil {
+		return e
+	}
 	phase := "queued"
 	delay := int64(5) << min(job.Attempts-1, 8)
 	if delay > 3600 {
@@ -301,7 +317,7 @@ func (s *Store) Fail(ctx context.Context, job Job, reason string, permanent bool
 	if e != nil {
 		return ErrUnavailable
 	}
-	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET state=$2,last_sync=$3,next_sync=$4 WHERE id=$1`, source.ID, state, now.Unix(), now.Unix()+source.RefreshSeconds)
+	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET state=$2,last_sync=$3,next_sync=$4,last_resource_revision=$5 WHERE id=$1`, source.ID, state, now.Unix(), now.Unix()+source.RefreshSeconds, job.ResourceRevision)
 	if e != nil {
 		return ErrUnavailable
 	}

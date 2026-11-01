@@ -12,7 +12,7 @@ import (
 func (s *Store) readSnapshot(ctx context.Context, tx *sql.Tx, source, id string) (Snapshot, []subscriptions.Profile, error) {
 	var result Snapshot
 	var protected, quota []byte
-	e := tx.QueryRowContext(ctx, `SELECT id,source_id,source_revision,content_hash,observed_at,valid_until,count,state,reason,profiles,quota FROM catalog_snapshots WHERE source_id=$1 AND id=$2`, source, id).Scan(&result.ID, &result.SourceID, &result.SourceRevision, &result.Hash, &result.ObservedAt, &result.ValidUntil, &result.Count, &result.State, &result.Reason, &protected, &quota)
+	e := tx.QueryRowContext(ctx, `SELECT id,source_id,source_revision,content_hash,observed_at,valid_until,count,state,reason,profiles,quota,resource_revision FROM catalog_snapshots WHERE source_id=$1 AND id=$2`, source, id).Scan(&result.ID, &result.SourceID, &result.SourceRevision, &result.Hash, &result.ObservedAt, &result.ValidUntil, &result.Count, &result.State, &result.Reason, &protected, &quota, &result.ResourceRevision)
 	if e == sql.ErrNoRows {
 		return result, nil, ErrDenied
 	}
@@ -66,6 +66,9 @@ func (s *Store) SyncCache(ctx context.Context, job Job, now time.Time) (subscrip
 	if e = jobCurrent(ctx, tx, job, now.Unix()); e != nil {
 		return cache, Snapshot{}, nil, e
 	}
+	if e = resourceCurrent(ctx, tx, job, source); e != nil {
+		return cache, Snapshot{}, nil, e
+	}
 	var protected []byte
 	if e = tx.QueryRowContext(ctx, `SELECT fetch_cache FROM catalog_sources WHERE id=$1`, source.ID).Scan(&protected); e != nil {
 		return cache, Snapshot{}, nil, ErrUnavailable
@@ -105,7 +108,7 @@ func (s *Store) Complete(ctx context.Context, job Job, profiles []subscriptions.
 	if e != nil {
 		return Snapshot{}, e
 	}
-	result := Snapshot{ID: id, SourceID: source.ID, SourceRevision: source.Revision, Hash: s.hash(raw), ObservedAt: now.Unix(), Count: len(profiles), State: "candidate", Quota: quota}
+	result := Snapshot{ID: id, SourceID: source.ID, SourceRevision: source.Revision, Hash: s.hash(raw), ObservedAt: now.Unix(), Count: len(profiles), State: "candidate", Quota: quota, ResourceRevision: job.ResourceRevision}
 	protected, e := s.seal(raw, aad("snapshot", source.ID+"/"+id, source.Revision))
 	if e != nil {
 		return Snapshot{}, e
@@ -128,6 +131,9 @@ func (s *Store) Complete(ctx context.Context, job Job, profiles []subscriptions.
 		return Snapshot{}, ErrStale
 	}
 	if e = jobCurrent(ctx, tx, job, now.Unix()); e != nil {
+		return Snapshot{}, e
+	}
+	if e = resourceCurrent(ctx, tx, job, current); e != nil {
 		return Snapshot{}, e
 	}
 	var previous []subscriptions.Profile
@@ -180,7 +186,7 @@ func (s *Store) Complete(ctx context.Context, job Job, profiles []subscriptions.
 		result.Reason = "quota_exhausted"
 	}
 	quotaRaw, _ := json.Marshal(result.Quota)
-	_, e = tx.ExecContext(ctx, `INSERT INTO catalog_snapshots(id,source_id,source_revision,content_hash,observed_at,valid_until,count,profiles,state,reason,quota) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, result.ID, result.SourceID, result.SourceRevision, result.Hash, result.ObservedAt, result.ValidUntil, result.Count, protected, result.State, result.Reason, quotaRaw)
+	_, e = tx.ExecContext(ctx, `INSERT INTO catalog_snapshots(id,source_id,source_revision,content_hash,observed_at,valid_until,count,profiles,state,reason,quota,resource_revision) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, result.ID, result.SourceID, result.SourceRevision, result.Hash, result.ObservedAt, result.ValidUntil, result.Count, protected, result.State, result.Reason, quotaRaw, result.ResourceRevision)
 	if e != nil {
 		return Snapshot{}, ErrUnavailable
 	}
@@ -202,7 +208,7 @@ func (s *Store) Complete(ctx context.Context, job Job, profiles []subscriptions.
 	if active != "" {
 		activeValue = active
 	}
-	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET active_snapshot=$2,candidate_snapshot=$3,state=$4,last_sync=$5,next_sync=$6,fetch_cache=$7 WHERE id=$1`, source.ID, activeValue, result.ID, state, now.Unix(), now.Unix()+source.RefreshSeconds, protectedCache)
+	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET active_snapshot=$2,candidate_snapshot=$3,state=$4,last_sync=$5,next_sync=$6,fetch_cache=$7,last_resource_revision=$8 WHERE id=$1`, source.ID, activeValue, result.ID, state, now.Unix(), now.Unix()+source.RefreshSeconds, protectedCache, job.ResourceRevision)
 	if e != nil {
 		return Snapshot{}, ErrUnavailable
 	}
