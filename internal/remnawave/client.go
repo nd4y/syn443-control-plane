@@ -28,6 +28,18 @@ const maxBody = 2 * 1024 * 1024
 var numericID = regexp.MustCompile(`^[1-9][0-9]{0,14}$`)
 var shortID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
+// IANA special-purpose allocations, stored as address bytes rather than text.
+var blockedIPv4 = []netip.Prefix{
+	netip.PrefixFrom(netip.AddrFrom4([4]byte{0, 0, 0, 0}), 8),
+	netip.PrefixFrom(netip.AddrFrom4([4]byte{100, 64, 0, 0}), 10),
+	netip.PrefixFrom(netip.AddrFrom4([4]byte{192, 0, 0, 0}), 24),
+	netip.PrefixFrom(netip.AddrFrom4([4]byte{192, 0, 2, 0}), 24),
+	netip.PrefixFrom(netip.AddrFrom4([4]byte{198, 18, 0, 0}), 15),
+	netip.PrefixFrom(netip.AddrFrom4([4]byte{198, 51, 100, 0}), 24),
+	netip.PrefixFrom(netip.AddrFrom4([4]byte{203, 0, 113, 0}), 24),
+	netip.PrefixFrom(netip.AddrFrom4([4]byte{240, 0, 0, 0}), 4),
+}
+
 type Config struct {
 	Instance resources.Instance
 	Token    string
@@ -64,7 +76,12 @@ func publicIP(ip netip.Addr) bool {
 	if ip.Is6() && !netip.MustParsePrefix("2000::/3").Contains(ip) {
 		return false
 	}
-	for _, raw := range []string{"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24", "198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24", "240.0.0.0/4", "2001::/32", "2001:db8::/32", "2002::/16"} {
+	for _, block := range blockedIPv4 {
+		if block.Contains(ip) {
+			return false
+		}
+	}
+	for _, raw := range []string{"2001::/32", "2001:db8::/32", "2002::/16"} {
 		if netip.MustParsePrefix(raw).Contains(ip) {
 			return false
 		}
