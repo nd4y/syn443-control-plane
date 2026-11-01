@@ -153,7 +153,7 @@ func (c *Client) get(ctx context.Context, path string, out any) error {
 	r.Header.Set("Accept", "application/json")
 	response, e := c.http.Do(r)
 	if e != nil {
-		if ctx.Err() != nil {
+		if ctx.Err() != nil || c.closed.Load() || c.lifetime.Err() != nil {
 			return resources.Failure("cancelled", false)
 		}
 		if errors.Is(e, egress.ErrAddress) {
@@ -170,6 +170,11 @@ func (c *Client) get(ctx context.Context, path string, out any) error {
 		return resources.Failure("provider_unavailable", true)
 	}
 	defer response.Body.Close()
+	// Close can win after Do returned an empty HTTP response. Cancellation
+	// remains authoritative before interpreting headers or partially read JSON.
+	if ctx.Err() != nil || c.closed.Load() || c.lifetime.Err() != nil {
+		return resources.Failure("cancelled", false)
+	}
 	switch response.StatusCode {
 	case 200:
 	case 401, 403:
@@ -190,10 +195,13 @@ func (c *Client) get(ctx context.Context, path string, out any) error {
 	}
 	b, e := io.ReadAll(io.LimitReader(response.Body, maxBody+1))
 	if e != nil {
-		if ctx.Err() != nil {
+		if ctx.Err() != nil || c.closed.Load() || c.lifetime.Err() != nil {
 			return resources.Failure("cancelled", false)
 		}
 		return resources.Failure("provider_unavailable", true)
+	}
+	if ctx.Err() != nil || c.closed.Load() || c.lifetime.Err() != nil {
+		return resources.Failure("cancelled", false)
 	}
 	if len(b) > maxBody || validateJSON(b) != nil || json.Unmarshal(b, out) != nil {
 		return resources.Failure("invalid_response", false)

@@ -3,6 +3,7 @@ REVOKE ALL ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO syn443_control_api,syn443_source_worker;
 GRANT SELECT,UPDATE(second) ON catalog_clock TO syn443_control_api,syn443_source_worker;
 GRANT SELECT,UPDATE(guard) ON catalog_acl TO syn443_control_api;
+GRANT SELECT,INSERT,DELETE ON catalog_proofs TO syn443_control_api;
 GRANT SELECT,INSERT,UPDATE ON catalog_resources TO syn443_control_api;
 GRANT SELECT ON catalog_resources TO syn443_source_worker;
 GRANT UPDATE(state,last_sync) ON catalog_resources TO syn443_source_worker;

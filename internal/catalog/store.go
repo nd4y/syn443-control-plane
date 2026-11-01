@@ -143,10 +143,10 @@ func (s *Store) RuntimeRole(ctx context.Context, worker bool) error {
 	if worker {
 		expected = "syn443_source_worker"
 	}
-	var name string
-	var super, bypass, inherit bool
+	var name, session string
+	var unsafe bool
 	var memberships int
-	if e := s.DB.QueryRowContext(ctx, `SELECT current_user,rolsuper,rolbypassrls,rolinherit,(SELECT count(*) FROM pg_auth_members WHERE member=r.oid) FROM pg_roles r WHERE rolname=current_user`).Scan(&name, &super, &bypass, &inherit, &memberships); e != nil || name != expected || super || bypass || inherit || memberships != 0 {
+	if e := s.DB.QueryRowContext(ctx, `SELECT current_user,session_user,rolsuper OR rolbypassrls OR rolinherit OR rolcreatedb OR rolcreaterole,(SELECT count(*) FROM pg_auth_members WHERE member=r.oid) FROM pg_roles r WHERE rolname=current_user`).Scan(&name, &session, &unsafe, &memberships); e != nil || name != expected || session != expected || unsafe || memberships != 0 {
 		return ErrDenied
 	}
 	return nil

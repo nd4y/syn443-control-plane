@@ -39,6 +39,13 @@ func DecodeAttachmentChunk(raw []byte, dst any) error {
 	return decode(raw, dst, true, 352*1024, 349528)
 }
 
+// SourceUpload is a closed, authenticated binary-source envelope. The ordinary
+// identity/admin decoder keeps its64KiB limit. Decoded bytes are separately
+// capped at10MiB before persistence/import.
+func DecodeSourceUpload(raw []byte, dst any) error {
+	return decode(raw, dst, true, 14*1024*1024+65536, 14*1024*1024)
+}
+
 // DecodeOperatorDocument is only for an owner-only grant file, never a network request.
 func DecodeOperatorDocument(raw []byte, dst any) error { return decode(raw, dst, true, 524288, 350000) }
 func decode(raw []byte, dst any, closed bool, limit, maxString int) error {
@@ -295,7 +302,38 @@ type Principal struct {
 	Issuer     string
 	Subject    string
 	Thumbprint string
+	Expires    int64
+	AuthTime   int64
+	ACR        string
+	Methods    []string
+	Scope      string
 }
+
+func (Principal) String() string   { return "IdentityPrincipal([redacted])" }
+func (Principal) GoString() string { return "IdentityPrincipal([redacted])" }
+func (p Principal) HasScope(scope string) bool {
+	for _, value := range strings.Fields(p.Scope) {
+		if value == scope {
+			return true
+		}
+	}
+	return false
+}
+
+// Assurance is signed IdP evidence, not an administrator/UI supplied flag.
+// A fresh OTP/security-key authentication and the pinned IdP ACR are both required.
+func (p Principal) MFAUntil(acr string, now time.Time) int64 {
+	if acr == "" || p.ACR != acr || p.AuthTime <= 0 || p.AuthTime > now.Unix()+30 || p.AuthTime+600 <= now.Unix() {
+		return 0
+	}
+	for _, method := range p.Methods {
+		if method == "otp" || method == "webauthn" || method == "hwk" {
+			return min(p.AuthTime+600, p.Expires)
+		}
+	}
+	return 0
+}
+
 type OIDC struct {
 	Issuer, Audience, Client string
 	Keys                     map[string]*rsa.PublicKey
@@ -324,14 +362,18 @@ func (o OIDC) Verify(raw string, now time.Time) (Principal, error) {
 		return p, ErrInvalid
 	}
 	var claims struct {
-		Iss string          `json:"iss"`
-		Sub string          `json:"sub"`
-		Aud json.RawMessage `json:"aud"`
-		Azp string          `json:"azp"`
-		Exp int64           `json:"exp"`
-		Iat int64           `json:"iat"`
-		Nbf int64           `json:"nbf"`
-		Cnf struct {
+		Iss      string          `json:"iss"`
+		Sub      string          `json:"sub"`
+		Aud      json.RawMessage `json:"aud"`
+		Azp      string          `json:"azp"`
+		Exp      int64           `json:"exp"`
+		Iat      int64           `json:"iat"`
+		Nbf      int64           `json:"nbf"`
+		AuthTime int64           `json:"auth_time"`
+		ACR      string          `json:"acr"`
+		AMR      []string        `json:"amr"`
+		Scope    string          `json:"scope"`
+		Cnf      struct {
 			Jkt string `json:"jkt"`
 		} `json:"cnf"`
 	}
@@ -354,7 +396,20 @@ func (o OIDC) Verify(raw string, now time.Time) (Principal, error) {
 	if !found {
 		return p, ErrInvalid
 	}
-	return Principal{claims.Iss, claims.Sub, claims.Cnf.Jkt}, nil
+	if claims.AuthTime < 0 || claims.AuthTime > claims.Iat+30 || len(claims.ACR) > 128 || len(claims.AMR) > 16 || len(claims.Scope) > 2048 {
+		return p, ErrInvalid
+	}
+	seen := map[string]bool{}
+	for _, method := range claims.AMR {
+		if len(method) < 1 || len(method) > 32 || strings.IndexFunc(method, func(r rune) bool { return r < 33 || r > 126 }) >= 0 || seen[method] {
+			return p, ErrInvalid
+		}
+		seen[method] = true
+	}
+	if strings.IndexFunc(claims.ACR+claims.Scope, unicode.IsControl) >= 0 {
+		return p, ErrInvalid
+	}
+	return Principal{Issuer: claims.Iss, Subject: claims.Sub, Thumbprint: claims.Cnf.Jkt, Expires: claims.Exp, AuthTime: claims.AuthTime, ACR: claims.ACR, Methods: append([]string(nil), claims.AMR...), Scope: claims.Scope}, nil
 }
 func ParseJWKS(raw []byte) (map[string]*rsa.PublicKey, error) {
 	var doc struct {

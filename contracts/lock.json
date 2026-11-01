@@ -11,6 +11,7 @@
     "policy-openapi.json": "11a4f22cf7ce3a8391499e7fcdbd8ff6ab7e1b5743167377ee236b13d9470c28",
     "enrollment-openapi.json": "2b2c5cd3b2491c8c81985f27cf999e78a1fe71984837778f2e48f4fcff3c9056",
     "policy-device-signature.json": "08d74647c816787c85ddd00a9089e3efdaa278b48848723f51a71e26ce5bf15e",
-    "chat-openapi.json": "505800fd34c456c86c31345ec18b20be5009e233b1e69f4d637c6688b9b5e3ed"
+    "chat-openapi.json": "505800fd34c456c86c31345ec18b20be5009e233b1e69f4d637c6688b9b5e3ed",
+    "control-openapi.json": "5a53bfbe2b1ad5d3ea3cb8de800edb862147f2d835e3475d9427806b81b53357"
   }
 }

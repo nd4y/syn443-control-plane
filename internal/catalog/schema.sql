@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS catalog_acl(
  expires bigint NOT NULL,guard integer NOT NULL DEFAULT 0,
  PRIMARY KEY(actor,action,target_kind,target_id)
 );
+CREATE TABLE IF NOT EXISTS catalog_proofs(actor text NOT NULL,jkt text NOT NULL,jti text NOT NULL,expires bigint NOT NULL,PRIMARY KEY(actor,jkt,jti));
+CREATE INDEX IF NOT EXISTS catalog_proof_expiry ON catalog_proofs(expires);
 CREATE TABLE IF NOT EXISTS catalog_resources(
  id text PRIMARY KEY,revision bigint NOT NULL CHECK(revision>0),
  provider_type text NOT NULL,api_version text NOT NULL,name text NOT NULL,

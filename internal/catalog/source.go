@@ -52,6 +52,14 @@ func (s *Store) GetSource(ctx context.Context, actor Actor, id string, now time.
 	if e = authorize(ctx, tx, actor, "sources.read", "user", source.Owner, now.Unix(), false); e != nil {
 		return Source{}, e
 	}
+	source, e = sourceStatus(ctx, tx, source, now)
+	if e != nil {
+		return Source{}, e
+	}
+	return source, tx.Commit()
+}
+func sourceStatus(ctx context.Context, tx *sql.Tx, source Source, now time.Time) (Source, error) {
+	var e error
 	if !source.Enabled {
 		source.State = "disabled"
 	} else if source.ValidUntil <= now.Unix() {
@@ -77,7 +85,7 @@ func (s *Store) GetSource(ctx context.Context, actor Actor, id string, now time.
 			source.State = "refresh_pending"
 		}
 	}
-	return source, tx.Commit()
+	return source, nil
 }
 
 // PutSource uses expected revision, live authority and one immutable operation
