@@ -1,19 +1,45 @@
 # Implementation roadmap
-## M0 - contracts and executable reference core
-Normative bounded decision inputs/results, reference ranking, context generations, cancellation/Stop precedence, shared Go/Kotlin fixtures.
-A buildable Android diagnostic shell and CI tests are deliverables, not proof of VPN connectivity.
-## M1 - physical Android vertical gate (ARC-02)
-Single VpnService/TUN owner and isolated native host; direct path, two-hop ingress/exit, NetBird/internal probe.
-Real Wi-Fi/cellular handover, fault attribution, native hang/crash, offline config recovery and energy budgets.
-Required before the full panel: REC-01-06 / AC82-AC90. Persist desiredOn/config/intentGeneration across UI, tile, notification and API; reconcile with bounded exponential backoff/jitter and shared budgets. Stop fences every pending/current effect. Prove optional-outbound startup/recovery without private-route leaks, full native hang detection, controller/service death and exclusive TUN/identity ownership. Validate reboot/unlock, Force stop, revoke, competing VPN, Always-on/lockdown and truthful per-route status with minimal redacted events.
-At implementation, every reproducible scenario runs in GitHub Actions with controlled clock/jitter/fault injection; actual Wi-Fi/LTE/restricted LTE, Doze, OS behavior and energy budgets require separate Pixel evidence. These requirements are planned; the existing JVM fence and responsive-control process harness do not implement them.
-Do not build the full panel before this gate proves feasibility.
-## M2 - identity and provisioning
-Keycloak/QR device enrollment, DPoP, signed bundles/trust/lease, transactional activation, revoke/rollback and durable jobs.
-## M3 - engines, sources and administration
-All required proxy protocols, one Remnawave API adapter, subscription adapters, mobile editing/publication and responsive frontend.
-## M4 - autonomous routing and support
-Contextual quarantine, bounded graph exploration, per-route health plans, budgets, redacted diagnostics/incident pipeline, cohort rollout.
-## M5 - version 1.0 acceptance
-All required scenarios, restore/update/migration, security and physical reliability evidence.
-A green M0 CI does not satisfy M1-M5.
+
+Current evidence and remaining scope: [implementation snapshot](implementation-status.md).
+The normative specification remains0.9; all292 requirements and98 scenarios are retained.
+
+## M0 - contracts and executable reference core (foundation implemented)
+Bounded shared Go/Kotlin inputs/results, deterministic reference ranking, context
+generations and Stop/cancellation precedence are implemented. This is a foundation,
+not complete path discovery or a production service. See the historical M0 note.
+
+## M1 - physical Android vertical gate (partial)
+Real isolated native/TUN ownership, direct/two-hop/NetBird forwarding, durable
+intent, bounded recovery, route evidence and reproducible OS scenarios are implemented.
+Accepted snapshot:159 JVM methods,138 Android outcomes per API29/35/37 and57
+physical UI/storage cases plus actual USB Xperia Wi-Fi/route/controller/OS checks.
+Physical LTE/restricted LTE, natural Doze, unplugged battery and endurance remain
+open. Resource snapshots and emulator passes do not close these gates.
+The complete REC-01..06 / AC82..90 scope is retained; no remote policy can disable
+local Stop, hard limits, ownership fences or authorization checks.
+
+## M2 - identity and provisioning (pilot implemented, milestone open)
+OIDC/PKCE/DPoP, Keystore identity, SQL device sessions, separate API/publisher,
+signed assignments, cache/lease/refresh/revoke and transactional rollback have
+pilot code and tests. Remaining work includes release QR/manual invitations,
+managed overlay credential namespaces/retirement, signed route-check activation,
+rotation and full end-user/operational acceptance.
+
+## M3 - engines, sources and administration (partial foundation)
+Embedded engine adapters exist. One Remnawave API resource, subscription adapters,
+complete protocol/chain acceptance, mobile edit/publish and the full responsive
+administrative frontend remain open. The existing support-chat web service is not
+the full panel. Multiple Remnawave/x-ui/3x-ui are extension contracts only.
+
+## M4 - autonomous routing and support (partial)
+Reference ranking and bounded per-target checks exist. Basic SQL user/admin chat,
+Android/web UI and device media compression have scoped acceptance. Full contextual
+quarantine/graph exploration for four network modes, cohort rollout, central
+telemetry/incident analysis and operational retention controls remain open.
+
+## M5 - version1.0 acceptance (open)
+Complete security, update/migration/restore, real network, battery and endurance
+evidence plus production operations are required. Continuing independently testable
+M2/M3 work does not waive the remaining M1 or release gates. Production deployment
+and enrolling real users are separate operations. Every implementation PR updates
+the register with concrete scope and evidence; no percentage is inferred from CI.

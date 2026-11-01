@@ -1,4 +1,10 @@
-# M0 implementation status
+# Historical M0 baseline
+
+This file records the M0-only baseline. Later VPN, identity and chat work is
+recorded in [current implementation status](implementation-status.md); historical
+"not implemented" and device statements below are not current repository status.
+
+## Baseline scope
 Implemented:
 - Contract0.1.0, strict bounded integer/JSON parsing, 30 valid and12 invalid shared vectors.
 - Go and Kotlin deterministic route selection: eligibility, six-field context, freshness, stability/energy/latency/confidence/ID.
