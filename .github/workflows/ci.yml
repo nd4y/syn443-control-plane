@@ -59,6 +59,7 @@ jobs:
       - run: go test ./internal/remnawave -run '^$' -fuzz '^FuzzProviderJSON$' -fuzztime=15s -parallel=2
       - run: go test ./internal/subscriptions -run '^$' -fuzz '^FuzzSubscriptionJSON$' -fuzztime=15s -parallel=2
       - run: go test ./internal/configuration -run '^$' -fuzz '^FuzzConfigurationLayers$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/bootstrap -run '^$' -fuzz '^FuzzInvitationLink$' -fuzztime=15s -parallel=2
       - run: go build -o bin/syn443-api ./cmd/api
       - run: python3 tools/smoke_api.py bin/syn443-api
       - run: go build -o bin/syn443-policy-sign ./cmd/policy-sign && go build -o bin/syn443-policy-serve ./cmd/policy-serve
