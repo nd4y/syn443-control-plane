@@ -105,17 +105,16 @@ func ParseQuota(raw string, now time.Time) (Quota, error) {
 
 // Fetch never includes URL, response text or credentials in an error. A caller
 // owns source-specific backoff, expiry, immutable snapshots and promotion review.
-func Fetch(ctx context.Context, config FetchConfig, cached Cache, now time.Time) (Fetched, error) {
-	var result Fetched
+func prepareFetch(config FetchConfig) (string, map[string]bool, http.Header, error) {
 	initial, e := origin(config.URL)
-	if e != nil || !safeHeader(cached.ETag, 1024) || !safeHeader(cached.LastModified, 128) || len(config.Headers) > 16 || len(config.RedirectOrigins) > 3 {
-		return result, ErrInvalid
+	if e != nil || len(config.Headers) > 16 || len(config.RedirectOrigins) > 3 {
+		return "", nil, nil, ErrInvalid
 	}
 	allowed := map[string]bool{initial: true}
 	for _, raw := range config.RedirectOrigins {
 		o, e := origin(raw)
 		if e != nil || o != raw {
-			return result, ErrInvalid
+			return "", nil, nil, ErrInvalid
 		}
 		allowed[o] = true
 	}
@@ -123,14 +122,41 @@ func Fetch(ctx context.Context, config FetchConfig, cached Cache, now time.Time)
 	for k, v := range config.Headers {
 		name := http.CanonicalHeaderKey(k)
 		if name == "" || headers.Get(name) != "" || len(name) > 128 || !safeHeader(k, 128) || !safeHeader(v, 4096) || v == "" {
-			return result, ErrInvalid
+			return "", nil, nil, ErrInvalid
 		}
 		switch name {
 		case "Authorization", "X-Api-Key", "User-Agent", "Accept":
 		default:
-			return result, ErrUnsupported
+			return "", nil, nil, ErrUnsupported
 		}
 		headers.Set(name, v)
+	}
+	return initial, allowed, headers, nil
+}
+
+// ValidateFetchConfig performs no DNS lookup or network request.
+func ValidateFetchConfig(config FetchConfig) error {
+	_, allowed, _, e := prepareFetch(config)
+	if e != nil {
+		return e
+	}
+	for endpoint := range allowed {
+		tr, e := egress.NewTransport(endpoint, config.Network)
+		if e != nil {
+			return ErrInvalid
+		}
+		tr.CloseIdleConnections()
+	}
+	return nil
+}
+func Fetch(ctx context.Context, config FetchConfig, cached Cache, now time.Time) (Fetched, error) {
+	var result Fetched
+	initial, allowed, headers, e := prepareFetch(config)
+	if e != nil {
+		return result, e
+	}
+	if !safeHeader(cached.ETag, 1024) || !safeHeader(cached.LastModified, 128) {
+		return result, ErrInvalid
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

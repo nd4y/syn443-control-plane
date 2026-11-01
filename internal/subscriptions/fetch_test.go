@@ -210,3 +210,20 @@ func TestFetchInputAndCancellationBounds(t *testing.T) {
 		t.Fatal("ungranted actual address")
 	}
 }
+
+func TestFetchPreflightHasNoNetworkSideEffects(t *testing.T) {
+	calls := atomic.Int32{}
+	config, _ := fetchFixture(t, func(w http.ResponseWriter, r *http.Request) { calls.Add(1); io.WriteString(w, "synthetic") })
+	if e := ValidateFetchConfig(config); e != nil || calls.Load() != 0 {
+		t.Fatal("validation sent provider traffic")
+	}
+	config.Headers = map[string]string{"Host": "not-authorized"}
+	if e := ValidateFetchConfig(config); e == nil {
+		t.Fatal("unsafe header preflight")
+	}
+	config.Headers = nil
+	config.Network.Networks = []netip.Prefix{netip.PrefixFrom(netip.AddrFrom4([4]byte{0, 0, 0, 0}), 0)}
+	if e := ValidateFetchConfig(config); e == nil {
+		t.Fatal("broad network grant preflight")
+	}
+}

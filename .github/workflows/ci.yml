@@ -105,6 +105,35 @@ jobs:
             coverage.out
             dependency-inventory.json
           retention-days: 14
+  catalog:
+    needs: public-data
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.3'
+          cache: true
+      - run: bash -n tools/test_catalog.sh
+      - run: bash tools/test_catalog.sh
+      - run: python3 tools/check_catalog_coverage.py
+      - name: Scan catalog evidence
+        id: catalog-scan
+        if: always()
+        run: |
+          test -s catalog-coverage.out
+          python3 tools/check_public_data.py catalog-coverage.out
+          bash tools/scan_secrets.sh catalog-coverage.out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && steps.catalog-scan.outcome == 'success'
+        with:
+          name: catalog-test-evidence
+          path: catalog-coverage.out
+          retention-days: 14
   keycloak:
     needs: public-data
     runs-on: ubuntu-24.04
