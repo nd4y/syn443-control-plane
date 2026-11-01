@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+python_bin=$(git config --get syn443.python || printf '%s' python3)
+scanner=$(git config --get syn443.gitleaks || printf '%s' gitleaks)
+"$python_bin" tools/check_public_data.py --history
+"$scanner" git . --log-opts=--all --config .gitleaks.toml --redact=100 --no-banner

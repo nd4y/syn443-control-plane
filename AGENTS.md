@@ -8,3 +8,5 @@ Keep policy safety invariants local, bounded and deterministic. No remote execut
 Do not deploy, enroll real users or alter production infrastructure as part of CI.
 Use separate branches and pull requests for changes after the initial bootstrap.
 Pin dependencies/actions. Do not weaken checks to make CI pass.
+
+Public repository: follow docs/PUBLIC_DATA.md. Keep all device/provider/user data outside the repository, issues, Actions and releases. Run privacy/secret checks on history and upload payloads. Never bypass these checks or log finding values.
