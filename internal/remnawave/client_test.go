@@ -99,7 +99,7 @@ func TestReadAssignmentUsesScopedProtectedAPI(t *testing.T) {
 	if e != nil || !strings.Contains(string(b), "9007199254740993") {
 		t.Fatal("integer precision lost")
 	}
-	for _, b := range []resources.Binding{{"panel-b", "42"}, {"panel-a", "042"}, {"panel-a", "../42"}, {"panel-a", "42?x=1"}, {"panel-a", "9007199254740993"}} {
+	for _, b := range []resources.Binding{{ResourceID: "panel-b", ExternalUserID: "42"}, {ResourceID: "panel-a", ExternalUserID: "042"}, {ResourceID: "panel-a", ExternalUserID: "../42"}, {ResourceID: "panel-a", ExternalUserID: "42?x=1"}, {ResourceID: "panel-a", ExternalUserID: "9007199254740993"}} {
 		_, e := c.ReadAssignment(context.Background(), b)
 		code(t, e, "invalid_binding")
 	}
@@ -148,7 +148,7 @@ func TestConstructionAndDestinationPolicy(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer x.Close()
-	_, e = x.ReadAssignment(context.Background(), resources.Binding{"p", "42"})
+	_, e = x.ReadAssignment(context.Background(), resources.Binding{ResourceID: "p", ExternalUserID: "42"})
 	code(t, e, "address_not_allowed")
 	if calls.Load() != 0 {
 		t.Fatal("denied destination received credentials")

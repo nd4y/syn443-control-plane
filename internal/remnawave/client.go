@@ -53,8 +53,8 @@ type Client struct {
 	stop      context.CancelFunc
 }
 
-func (Client) String() string     { return "RemnawaveClient([redacted])" }
-func (c Client) GoString() string { return c.String() }
+func (*Client) String() string     { return "RemnawaveClient([redacted])" }
+func (c *Client) GoString() string { return c.String() }
 
 func publicIP(ip netip.Addr) bool {
 	ip = ip.Unmap()
