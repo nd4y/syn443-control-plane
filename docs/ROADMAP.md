@@ -26,7 +26,7 @@ managed overlay credential namespaces/retirement, signed route-check activation,
 rotation and full end-user/operational acceptance.
 
 ## M3 - engines, sources and administration (partial foundation)
-Embedded engine adapters exist. One Remnawave API resource, subscription adapters,
+Embedded engine adapters exist. A [read-only Remnawave resource pilot](remnawave-resource.md) adds a scoped HTTPS reader/owner CLI; persistent resource sync and publication remain open. Subscription adapters,
 complete protocol/chain acceptance, mobile edit/publish and the full responsive
 administrative frontend remain open. The existing support-chat web service is not
 the full panel. Multiple Remnawave/x-ui/3x-ui are extension contracts only.

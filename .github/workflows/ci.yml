@@ -56,6 +56,7 @@ jobs:
       - run: go test ./internal/decision -run '^$' -fuzz '^FuzzDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/policy -run '^$' -fuzz '^FuzzPolicyDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/identity -run '^$' -fuzz '^FuzzIdentityDecode$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/remnawave -run '^$' -fuzz '^FuzzProviderJSON$' -fuzztime=15s -parallel=2
       - run: go build -o bin/syn443-api ./cmd/api
       - run: python3 tools/smoke_api.py bin/syn443-api
       - run: go build -o bin/syn443-policy-sign ./cmd/policy-sign && go build -o bin/syn443-policy-serve ./cmd/policy-serve
@@ -66,11 +67,11 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           mkdir -p dist/control-plane
-          for binary in enrollment-api enrollment-worker enrollment-admin support-chat-web; do
+          for binary in enrollment-api enrollment-worker enrollment-admin support-chat-web resource-inspect; do
             go build -trimpath -ldflags='-s -w -buildid=' -o "dist/control-plane/$binary" "./cmd/$binary"
           done
           git rev-parse HEAD > dist/control-plane/SOURCE.txt
-          (cd dist/control-plane && sha256sum enrollment-api enrollment-worker enrollment-admin support-chat-web > SHA256SUMS)
+          (cd dist/control-plane && sha256sum enrollment-api enrollment-worker enrollment-admin support-chat-web resource-inspect > SHA256SUMS)
       - name: Scan control-plane runtime payloads
         id: runtime-scan
         run: |

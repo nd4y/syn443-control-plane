@@ -18,6 +18,9 @@ PATTERNS = {
 }
 IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
 TEST_NETS = tuple(ipaddress.ip_network(n) for n in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24"))
+# Publicly defined address allocations used by the connector destination denylist.
+# Exact CIDR tokens only; individual private addresses are still forbidden.
+PUBLIC_ALLOCATION_TOKENS = {"100.64.0.0/10", "192.0.0.0/24", "198.18.0.0/15", "240.0.0.0/4", "10.0.0.0/8"}
 FORBIDDEN = re.compile(r"(?:^|/)(?:\.env(?:\..*)?|local\.properties|[^/]*\.(?:jks|keystore|pem|key)|(?:bugreport|logcat|backup|diagnostic-bundle)[^/]*)$", re.I)
 
 
@@ -30,9 +33,8 @@ def findings(data):
         text = text.replace("\x00time." + "Local\x00", "\x00[go-time-symbol]\x00")
     result = {name for name, pattern in PATTERNS.items() if pattern.search(text)}
     for match in IPV4.finditer(text):
-        # The standard shared-address allocation itself is public documentation.
-        # Individual addresses in that range remain forbidden.
-        if text[match.start():match.end() + 3] == "100.64.0.0/10":
+        suffix = re.match(r"/\d+(?![\w./])", text[match.end():])
+        if suffix and match[0] + suffix[0] in PUBLIC_ALLOCATION_TOKENS:
             continue
         try:
             address = ipaddress.ip_address(match[0])

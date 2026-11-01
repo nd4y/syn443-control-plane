@@ -45,7 +45,7 @@ and physical browser download persistence are not implied by browser CI.
 | M0 | Shared bounded Go/Kotlin reference ranking, coordinator and contracts | Foundation only; not full route exploration |
 | M1 | Real TUN/native host, durable intent, bounded recovery, direct/two-hop/NetBird paths, per-outbound evidence and reproducible Android lifecycle | LTE/restricted LTE, natural Doze, unplugged battery and endurance; full OS/routing predicate matrix |
 | M2 | Keycloak/OIDC/PKCE/DPoP pilot, Keystore identities, SQL device sessions, signed assignments, refresh/cache/lease/revoke, transactional activation and rollback | Release invitations/QR/manual binding; full enrollment acceptance, credential namespaces for managed overlays, signed route-check activation handoff, rotation |
-| M3 | Embedded engine adapters and separate enrollment API/publisher/support-web processes | Single Remnawave API resource, provider subscriptions, full protocol acceptance matrix, mobile edit/publish and full administration frontend |
+| M3 | Embedded engines, separate enrollment API/publisher/support-web processes, and a read-only Remnawave 3.4 adapter with protected owner CLI | Persistent resource/account management, subscription normalization and publication, full protocol acceptance matrix, mobile edit/publish and full administration frontend |
 | M4 | Reference comparator, bounded target checks, partial diagnostics and basic SQL support chat | Autonomous four-mode graph exploration/quarantine, cohort policy rollout, central telemetry/incident pipeline and full retention controls |
 | M5 | Reproducible CI and scoped physical evidence | Complete version1.0 security/reliability/update/migration/restore and production acceptance |
 

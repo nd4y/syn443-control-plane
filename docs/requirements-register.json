@@ -307,26 +307,58 @@
     {
       "id": "EXT-01",
       "text": "Архитектурная сущность ResourceInstance содержит resourceId, providerType, displayName, endpoint, apiVersion, credentialRef, enabled, capabilities, syncPolicy, revision и health/lastSync. providerType является расширяемым версионированным discriminator; в 1.0 работающий адаптер panel.remnawave поддерживает один ресурс.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md",
+        "internal/resources/resource.go",
+        "internal/remnawave/client.go",
+        "internal/remnawave/client_test.go",
+        "cmd/resource-inspect/main_test.go"
+      ],
+      "implementationScope": "Single owner-configured readonly Remnawave3.4 adapter, scoped IDs and protected bounded HTTPS/CLI with synthetic acceptance tests.",
+      "remainingScope": "Persistent resource/account/grant management, discovery/sync/normalization/publication/admin UI and live operator acceptance; multiple enabled panels and other adapters are not implemented."
     },
     {
       "id": "EXT-02",
       "text": "Идентификаторы профилей, пользователей, нод, сетей и назначений внешнего API всегда включают resourceId и externalObjectId; credentialRef и state также изолируются по ресурсу. Для добавления второго экземпляра позднее не должны требоваться переименование существующих объектов или изменение публичного device provisioning API.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md",
+        "internal/resources/resource.go",
+        "internal/remnawave/client.go",
+        "internal/remnawave/client_test.go",
+        "cmd/resource-inspect/main_test.go"
+      ],
+      "implementationScope": "Single owner-configured readonly Remnawave3.4 adapter, scoped IDs and protected bounded HTTPS/CLI with synthetic acceptance tests.",
+      "remainingScope": "Persistent resource/account/grant management, discovery/sync/normalization/publication/admin UI and live operator acceptance; multiple enabled panels and other adapters are not implemented."
     },
     {
       "id": "EXT-03",
       "text": "Контракт ResourceAdapter описывает discovery/capabilities, проверку соединения, чтение каталога и назначений, получение разрешённых конфигов/метаданных, нормализацию ошибок и sync checkpoints. Изменяющие операции вынесены в необязательные capabilities. API конкретного провайдера, включая login/token/session, не раскрывается Android-клиенту.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md",
+        "internal/resources/resource.go",
+        "internal/remnawave/client.go",
+        "internal/remnawave/client_test.go",
+        "cmd/resource-inspect/main_test.go"
+      ],
+      "implementationScope": "Single owner-configured readonly Remnawave3.4 adapter, scoped IDs and protected bounded HTTPS/CLI with synthetic acceptance tests.",
+      "remainingScope": "Persistent resource/account/grant management, discovery/sync/normalization/publication/admin UI and live operator acceptance; multiple enabled panels and other adapters are not implemented."
     },
     {
       "id": "EXT-04",
       "text": "Набор прав SYN443 и права внешнего API пересекаются, а не объединяются. Нет автоматической выдачи полного внешнего каталога пользователям SYN443. Адресат и происхождение каждого выданного объекта объясняются через resourceId/sourceId; общая панель не превращает чужую подписку в общий ресурс без явного назначения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md",
+        "internal/resources/resource.go",
+        "internal/remnawave/client.go",
+        "internal/remnawave/client_test.go",
+        "cmd/resource-inspect/main_test.go"
+      ],
+      "implementationScope": "Single owner-configured readonly Remnawave3.4 adapter, scoped IDs and protected bounded HTTPS/CLI with synthetic acceptance tests.",
+      "remainingScope": "Persistent resource/account/grant management, discovery/sync/normalization/publication/admin UI and live operator acceptance; multiple enabled panels and other adapters are not implemented."
     },
     {
       "id": "EXT-05",
@@ -343,26 +375,58 @@
     {
       "id": "EXT-07",
       "text": "Типы без реализованного адаптера имеют статус planned/not_implemented. Их нельзя активировать как working ресурс, публиковать клиенту как работоспособную интеграцию или показывать успешный health/sync. Полученный неподдержанный тип даёт структурированный отказ; UI может показывать его только как планируемую возможность.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md",
+        "internal/resources/resource.go",
+        "internal/remnawave/client.go",
+        "internal/remnawave/client_test.go",
+        "cmd/resource-inspect/main_test.go"
+      ],
+      "implementationScope": "Single owner-configured readonly Remnawave3.4 adapter, scoped IDs and protected bounded HTTPS/CLI with synthetic acceptance tests.",
+      "remainingScope": "Persistent resource/account/grant management, discovery/sync/normalization/publication/admin UI and live operator acceptance; multiple enabled panels and other adapters are not implemented."
     },
     {
       "id": "EXT-08",
       "text": "Доступ к ресурсам имеет отдельные credentials, RBAC и аудит. Для каждого запланированы timeout, rate limit, backoff, pagination, reconciliation и изоляция ошибок. Удаление/отключение ресурса показывает зависимости и не оставляет висячие ссылки. Неуспешная загрузка не стирает последнюю разрешённую выдачу по SUB-09.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md",
+        "internal/resources/resource.go",
+        "internal/remnawave/client.go",
+        "internal/remnawave/client_test.go",
+        "cmd/resource-inspect/main_test.go"
+      ],
+      "implementationScope": "Single owner-configured readonly Remnawave3.4 adapter, scoped IDs and protected bounded HTTPS/CLI with synthetic acceptance tests.",
+      "remainingScope": "Persistent resource/account/grant management, discovery/sync/normalization/publication/admin UI and live operator acceptance; multiple enabled panels and other adapters are not implemented."
     },
     {
       "id": "EXT-09",
       "text": "Согласование master data явное: SYN443 владеет device policy и публикациями; Remnawave владеет собственными proxy credentials, upstream лимитами и доступом к её нодам. Изменение эффективной политики SYN443 не переопределяет ограничения или БД провайдера. Для будущей двусторонней записи нужен отдельный field ownership и reconcile контракт.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md",
+        "internal/resources/resource.go",
+        "internal/remnawave/client.go",
+        "internal/remnawave/client_test.go",
+        "cmd/resource-inspect/main_test.go"
+      ],
+      "implementationScope": "Single owner-configured readonly Remnawave3.4 adapter, scoped IDs and protected bounded HTTPS/CLI with synthetic acceptance tests.",
+      "remainingScope": "Persistent resource/account/grant management, discovery/sync/normalization/publication/admin UI and live operator acceptance; multiple enabled panels and other adapters are not implemented."
     },
     {
       "id": "EXT-10",
       "text": "Приёмка архитектурного расширения в 1.0 ограничена схемой данных, interface definitions, правилами namespace и синтетическими contract fixtures с совпадающими external IDs разных ресурсов. Это не реализация второго рабочего экземпляра или нового адаптера и не утверждение их end-to-end совместимости.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md",
+        "internal/resources/resource.go",
+        "internal/remnawave/client.go",
+        "internal/remnawave/client_test.go",
+        "cmd/resource-inspect/main_test.go"
+      ],
+      "implementationScope": "Single owner-configured readonly Remnawave3.4 adapter, scoped IDs and protected bounded HTTPS/CLI with synthetic acceptance tests.",
+      "remainingScope": "Persistent resource/account/grant management, discovery/sync/normalization/publication/admin UI and live operator acceptance; multiple enabled panels and other adapters are not implemented."
     },
     {
       "id": "CFG-01",
