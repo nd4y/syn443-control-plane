@@ -194,6 +194,25 @@ func TestSQLPublisherUnconfiguredAndDeviceHTTPBounds(t *testing.T) {
 	}
 	api.Clock = func() time.Time { return f.now }
 	api.Invitations = &invitation.DeviceService{Store: f.device, Identity: store, Origin: "https://api.example.invalid", ServiceID: "service-a"}
+	// Initial time is public, bounded and service-bound; no code/key/token is sent.
+	for _, item := range []struct {
+		method, body, origin string
+		expected             int
+	}{{"GET", "", "", 200}, {"GET", "x", "", 401}, {"GET", "", "https://evil.example.invalid", 401}, {"POST", "", "", 404}} {
+		r := httptest.NewRequest(item.method, "https://api.example.invalid/v1/invitations/time", strings.NewReader(item.body))
+		r.RemoteAddr = "127.0.0.1:12345"
+		if item.origin != "" {
+			r.Header.Set("Origin", item.origin)
+		}
+		w := httptest.NewRecorder()
+		api.ServeHTTP(w, r)
+		if w.Code != item.expected {
+			t.Fatal("time service boundary", w.Code)
+		}
+		if w.Code == 200 && (!bytes.Contains(w.Body.Bytes(), []byte(`"serviceId":"service-a"`)) || w.Header().Get("Date") == "" || bytes.Contains(w.Body.Bytes(), []byte("Token"))) {
+			t.Fatal("public time leaked authority")
+		}
+	}
 	for _, item := range []struct{ method, path, body, origin, auth string }{
 		{"POST", "/v1/invitations/status", `{}`, "https://evil.example.invalid", ""},
 		{"POST", "/v1/invitations/status", strings.Repeat("x", 8193), "", ""},
