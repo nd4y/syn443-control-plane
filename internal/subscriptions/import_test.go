@@ -196,6 +196,106 @@ func TestProfileCountBoundary(t *testing.T) {
 	}
 }
 
+func TestEquivalentProviderFormatsAndInlineSSHTrust(t *testing.T) {
+	// Independent provider formats must yield the same source-scoped connection.
+	uri := authURI("http", "proxy.example.invalid:443", "")
+	m := proxy("http")
+	m["username"] = "synthetic"
+	m["password"] = "password"
+	x := map[string]any{"outbounds": []any{map[string]any{"protocol": "http", "settings": map[string]any{"servers": []any{map[string]any{"address": "proxy.example.invalid", "port": 443, "users": []any{map[string]any{"user": "synthetic", "pass": "password"}}}}}}}}
+	xraw, _ := json.Marshal(x)
+	y := []byte("proxies:\n  - name: Other label\n    type: http\n    server: proxy.example.invalid\n    port: 443\n    username: synthetic\n    password: password\n")
+	want := imported(t, "uri", []byte(uri))[0]
+	for _, c := range []struct {
+		format string
+		raw    []byte
+	}{{"singbox", document(m)}, {"xray", xraw}, {"mihomo", y}} {
+		got := imported(t, c.format, c.raw)[0]
+		if got.ID != want.ID || !bytes.Equal(got.Outbound, want.Outbound) {
+			t.Fatal("provider conversion changed connection")
+		}
+	}
+	for _, kind := range []string{"socks5", "ssh"} {
+		fields := "    username: synthetic\n    password: password\n"
+		if kind == "ssh" {
+			fields += "    host-key: [ssh-ed25519 synthetic-public-key]\n"
+		}
+		imported(t, "mihomo", []byte("proxies:\n  - type: "+kind+"\n    server: proxy.example.invalid\n    port: 443\n"+fields))
+	}
+	key := proxy("ssh")
+	delete(key, "password")
+	key["private_key"] = []string{"synthetic-inline-key"}
+	key["private_key_passphrase"] = "synthetic-passphrase"
+	key["host_key_algorithms"] = []string{"ssh-ed25519"}
+	key["client_version"] = "SSH-2.0-synthetic"
+	imported(t, "singbox", document(key))
+	for _, kind := range []string{"ws", "grpc"} {
+		m := proxy("vless")
+		tr := map[string]any{"type": kind}
+		if kind == "ws" {
+			tr["path"] = "/ws"
+			tr["headers"] = map[string]any{"Host": []string{"cdn.example.invalid"}}
+			tr["max_early_data"] = json.Number("1024")
+			tr["early_data_header_name"] = "Sec-WebSocket-Protocol"
+		} else {
+			tr["service_name"] = "service"
+		}
+		m["transport"] = tr
+		imported(t, "singbox", document(m))
+	}
+}
+
+func TestNestedSecurityAndAdapterRejections(t *testing.T) {
+	for _, mutate := range []func(map[string]any){
+		func(m map[string]any) { m["server"] = "invalid host" }, func(m map[string]any) { m["server_port"] = json.Number("-1") },
+		func(m map[string]any) { m["tls"] = true }, func(m map[string]any) { m["tls"] = map[string]any{"enabled": false} },
+		func(m map[string]any) { m["tls"] = map[string]any{"enabled": true, "alpn": []any{false}} },
+		func(m map[string]any) {
+			m["tls"] = map[string]any{"enabled": true, "utls": map[string]any{"enabled": true, "fingerprint": false}}
+		},
+		func(m map[string]any) {
+			m["tls"] = map[string]any{"enabled": true, "reality": map[string]any{"enabled": true, "public_key": "not-a-key"}}
+		},
+		func(m map[string]any) {
+			m["transport"] = map[string]any{"type": "ws", "headers": map[string]any{"Host": "bad\r\nheader"}}
+		},
+		func(m map[string]any) { m["transport"] = map[string]any{"type": "xhttp", "mode": "unknown-mode"} },
+		func(m map[string]any) { m["transport"] = map[string]any{"type": "grpc", "unrecognized": true} },
+		func(m map[string]any) {
+			m["transport"] = map[string]any{"type": "ws", "max_early_data": json.Number("65537")}
+		},
+		func(m map[string]any) { m["flow"] = "unsupported" }, func(m map[string]any) { m["packet_encoding"] = "unsupported" },
+	} {
+		m := proxy("vless")
+		mutate(m)
+		if p, e := Import("source-a", salt(), "singbox", document(m)); e == nil || p != nil {
+			t.Fatal("unsafe nested field accepted")
+		}
+	}
+	for _, raw := range []string{
+		`{"outbounds":[{"protocol":"vless","settings":{"vnext":[]}}]}`,
+		`{"outbounds":[{"protocol":"http","settings":{"servers":[{"address":"proxy.example.invalid","port":443}]},"streamSettings":{"network":"ws","wsSettings":{}}}]}`,
+		`{"outbounds":[{"protocol":"http","settings":{"servers":[{"address":"proxy.example.invalid","port":443}]},"streamSettings":{"security":"tls","tlsSettings":{"allowInsecure":true}}}]}`,
+		`{"outbounds":[{"protocol":"http","settings":{"servers":[{"address":"proxy.example.invalid","port":443}]},"proxySettings":{"tag":"untrusted"}}]}`,
+	} {
+		if _, e := Import("source-a", salt(), "xray", []byte(raw)); e == nil {
+			t.Fatal("unsupported Xray controls accepted")
+		}
+	}
+	for _, raw := range []string{
+		"proxies: [{type: vmess}]", "proxies: [{type: http, server: proxy.example.invalid, port: 443, unknown: value}]",
+		"proxies: [{type: http, server: proxy.example.invalid, port: 443, tls: true, skip-cert-verify: true}]",
+		"proxies: [{type: http, server: proxy.example.invalid, port: 443, servername: ignored.example.invalid}]",
+	} {
+		if _, e := Import("source-a", salt(), "mihomo", []byte(raw)); e == nil {
+			t.Fatal("unsupported YAML controls accepted")
+		}
+	}
+	if _, e := Assess([]Profile{{ID: strings.Repeat("x", 129)}}, []Profile{{ID: "safe"}}, nil); e == nil {
+		t.Fatal("unbounded profile ID")
+	}
+}
+
 func FuzzSubscriptionJSON(f *testing.F) {
 	f.Add(document(proxy("http")))
 	f.Add([]byte(`{"outbounds":[]}`))
