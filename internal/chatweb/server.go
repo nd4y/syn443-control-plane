@@ -444,7 +444,7 @@ func (s *Server) token(ctx context.Context, v *session, form url.Values) error {
 			return invalid
 		}
 		thumb, _ := identity.PublicJWK(&v.key.PublicKey).Thumbprint()
-		if p.Thumbprint != thumb || (v.principal.Subject != "" && p != v.principal) {
+		if p.Thumbprint != thumb || (v.principal.Subject != "" && (p.Issuer != v.principal.Issuer || p.Subject != v.principal.Subject || p.Thumbprint != v.principal.Thumbprint)) {
 			return invalid
 		}
 		v.access = token.Access

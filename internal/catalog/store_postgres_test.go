@@ -18,6 +18,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
 )
 
@@ -575,6 +576,26 @@ func TestSQLMonotonicClockAndUnavailableDatabaseNeverAcknowledge(t *testing.T) {
 			return e
 		},
 		func() error { _, e := dead.Now(ctx, now); return e },
+		func() error { _, _, e := dead.GetResource(ctx, actor, "panel-a", now); return e },
+		func() error {
+			_, e := dead.PutResource(ctx, actor, resourceExample(), resourceSecret("https://panel.example.invalid"), "", "create-resource", now)
+			return e
+		},
+		func() error { _, _, e := dead.ResourceClient(ctx, job, false, now); return e },
+		func() error { _, e := dead.GetShares(ctx, actor, source.ID, now); return e },
+		func() error { _, e := dead.SetShares(ctx, actor, source.ID, 1, Shares{}, "share", now); return e },
+		func() error {
+			_, e := dead.ReviewSnapshot(ctx, actor, Review{SourceID: source.ID, SourceRevision: 1, Candidate: "candidate-a"}, "review", now)
+			return e
+		},
+		func() error { _, e := dead.ListSources(ctx, actor, source.Owner, "", now); return e },
+		func() error { _, e := dead.GetSnapshot(ctx, actor, source.ID, "", now); return e },
+		func() error { _, e := dead.GetJob(ctx, actor, "job-a", now); return e },
+		func() error {
+			e := dead.ConsumeAdminProof(ctx, actor, identity.Proof{Thumbprint: identity.Hash([]byte("synthetic-thumb")), Claims: identity.ProofClaims{Jti: "synthetic-proof-identifier"}}, now)
+			return e
+		},
+		func() error { _, e := (&Worker{Store: dead}).ProcessOne(ctx); return e },
 	} {
 		if e := call(); !errors.Is(e, ErrUnavailable) {
 			t.Fatal("unavailable durable store acknowledged operation")

@@ -114,7 +114,7 @@ func loginWeb(t *testing.T, s *Server) *http.Cookie {
 	return nil
 }
 func TestOAuthPKCEBoundKeyNonceProxyRefreshAndLogout(t *testing.T) {
-	s, _, _ := webFixture(t)
+	s, _, principal := webFixture(t)
 	cookie := loginWeb(t, s)
 	if w := webCall(s, "/session", "{}", cookie); w.Code != 200 {
 		t.Fatal(w.Code)
@@ -123,6 +123,9 @@ func TestOAuthPKCEBoundKeyNonceProxyRefreshAndLogout(t *testing.T) {
 		t.Fatal(w.Code)
 	}
 	s.sessions[cookie.Value].accessUntil = time.Now().Add(-time.Second)
+	principal.Expires = time.Now().Add(5 * time.Minute).Unix()
+	principal.AuthTime = time.Now().Add(-time.Minute).Unix()
+	principal.Methods = []string{"pwd", "otp"}
 	if w := webCall(s, "/chat/self", "{}", cookie); w.Code != 200 {
 		t.Fatal("refresh", w.Code)
 	}
