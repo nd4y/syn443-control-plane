@@ -12,7 +12,8 @@
       "text": "Первый gate - вертикальный Android прототип до полной панели: физическая Network/TUN binding, прямой путь, двухпереходная RU-ingress/NON_RU-exit цепочка, NetBird/internal probe, смена Wi-Fi/restricted cellular, cache/circuit breaker, получение policy и offline rollback. Он включает искусственные отказы ingress/exit/DNS/check target, native hang/crash и ресурсные замеры. До полной панели также обязательны устойчивый контроллер REC-01-06, частичная доступность и сценарии AC82-AC90: воспроизводимые отказы в CI и физические переходы/ограничения ОС на Pixel. Все обязательные протоколы остаются в scope1.0; порядок работ снижает основной технический риск.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -22,7 +23,8 @@
       "evidence": [
         "internal/decision/decision_test.go",
         "contracts/README.md",
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -30,7 +32,8 @@
       "text": "Activation gate описывается по intent: required/optional checks, baseline старой версии, timeout, допустимость degraded и критерий regression. Невалидная схема/подпись/capability - reject до запуска; невозможность запустить новый engine - rollback; внешний target, который не работал и на baseline, - degraded по policy. Candidate retry требует нового evidence, а не просто следующего poll.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -51,68 +54,105 @@
       "status": "partial",
       "evidence": [
         "internal/decision/decision_test.go",
-        "contracts/README.md"
+        "contracts/README.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
       "id": "MOD-01",
       "text": "Все требуемые выпуском 1.0 движки встроены в APK отдельными исходными и сборочными модулями. Нельзя требовать от пользователя установки отдельного NetBird, Xray, SSH-приложения или скачивания бинарника перед первым подключением.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "MOD-02",
       "text": "Предлагаемые границы: engine-api, engine-orchestrator, engine-singbox для HTTP/SOCKS/VLESS/XHTTP/SSH, engine-netbird и адаптер связи NetBird с транспортами proxy engine. Один движок может реализовать несколько протоколов; отдельный протокол не обязательно является отдельным native-процессом. Новый движок подключается собственным модулем по тому же контракту. Для будущих overlay-движков предусматривается тот же контракт расширения, но модули engine-tailscale/engine-zerotier не реализуются, не собираются и не включаются в APK 1.0.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "MOD-03",
       "text": "Общий контракт включает capabilities, validate/compile, prepare/start/stop с deadline, dial TCP/UDP или packet endpoint по объявленным возможностям, привязку к physical network, health, структурированные события и metrics. Детали конкретного Go/JNI API не выходят в UI или публичную provisioning-схему.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
+      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
     },
     {
       "id": "MOD-04",
       "text": "Каждый модуль имеет engineId, собственную версию, upstream commit, список патчей, сборочный manifest, хеши, SBOM, лицензии и тесты. Зависимости фиксируются lock-манифестом релиза; недокументированный dirty checkout не считается воспроизводимой сборкой.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
+      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
     },
     {
       "id": "MOD-05",
       "text": "Обновление одного движка меняет версию его модуля и адаптер при необходимости, не требует переписывать экраны и бизнес-модель. Пакетная сборка может перелинковать общие native-библиотеки; независимость модулей не означает гарантированного ABI между произвольными upstream версиями.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
+      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
     },
     {
       "id": "MOD-06",
       "text": "CI проверяет совместимость engine-api, ядра оркестрации и адаптеров по матрице версий. Неподдерживаемая комбинация не публикуется. Замена NetBird или proxy engine обязательно проверяет их аварийную VLESS-цепочку, DNS, handover и завершение транспорта.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
+      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
     },
     {
       "id": "MOD-07",
       "text": "В первой версии новые бинарные версии модулей доставляются обновлением подписанного APK; приложение и панель показывают состав и версии движков. Provisioning может выбирать уже встроенный движок/режим, но не исполняет код по URL из конфигурации. Независимая загрузка исполняемых модулей без обновления APK не входит в 1.0.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
+      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
     },
     {
       "id": "MOD-08",
       "text": "Модули используют единый VpnService. Android supervisor владеет основным TUN descriptor, Network binding и поколениями; native host получает контролируемый duplicate descriptor и transport context. В1.0 один согласованный Go runtime для proxy и NetBird модулей в отдельном native-host процессе; UI и supervisor не загружают этот runtime. Повторный start до подтверждённой остановки/смерти предыдущего поколения запрещён. Прототип ARC-02 проверяет эту границу и восстановление контроллера по REC-04 до full implementation; изоляция процесса не заменяет проверку partial startup/recovery внутри runtime по REC-03.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
+      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
     },
     {
       "id": "MOD-09",
       "text": "Native crash/hang/stop timeout диагностируется по engine/version/generation. JVM timeout сам по себе не доказывает остановку Go: supervisor при необходимости завершает только принадлежащий приложению native-host, дожидается его смерти/освобождения identity lock и ограниченно восстанавливает процесс. Пока TUN удерживается supervisor, потоки блокируются по fail policy; смерть самого supervisor не гарантирует сохранность TUN. Миграция/откат локального состояния согласуются с ENG-03; сторонние процессы/VPN не завершаются. Полный hang, оставшиеся FD/locks и смерть контроллера проверяются по REC-04, а не только отзывчивый synthetic worker.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
+      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
     },
     {
       "id": "MOD-10",
       "text": "Поставка включает инструкции воспроизводимого обновления каждого движка, тесты чистой сборки и 16KiB alignment для native-библиотек. Stage0 проверяет реальные ограничения Go runtime, linker/JNI и изоляции до выбора бинарных границ. [Android modularization](https://developer.android.com/topic/modularization/patterns), [динамическая загрузка кода](https://developer.android.com/privacy-and-security/risks/dynamic-code-loading).",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
+      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
     },
     {
       "id": "AUTH-01",
@@ -121,7 +161,8 @@
       "evidence": [
         "docs/keycloak-test-realm.md",
         "docs/enrollment-pilot.md",
-        "docs/identity-lifecycle.md"
+        "docs/identity-lifecycle.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -130,7 +171,8 @@
       "status": "partial",
       "evidence": [
         "docs/enrollment-pilot.md",
-        "docs/identity-lifecycle.md"
+        "docs/identity-lifecycle.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -144,7 +186,8 @@
       "text": "Отзыв устройства блокирует новые конфиги, секреты и сессии. Прокси-учётные данные и NetBird peer отзываются отдельно через адаптеры. Отключение только в нашей панели не гарантирует прекращения работы ранее выданного стороннего конфига.",
       "status": "partial",
       "evidence": [
-        "docs/enrollment-pilot.md"
+        "docs/enrollment-pilot.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -153,14 +196,17 @@
       "status": "partial",
       "evidence": [
         "docs/enrollment-pilot.md",
-        "docs/identity-lifecycle.md"
+        "docs/identity-lifecycle.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
       "id": "ONB-01",
       "text": "При отсутствии действующей регистрации на первом экране есть «Войти» и «Сканировать QR / открыть приглашение». Обычный запуск предлагает Keycloak, а запуск по корректному приглашению сразу ведёт в ручную привязку без страницы IdP.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "ONB-02",
@@ -168,14 +214,17 @@
       "status": "partial",
       "evidence": [
         "docs/enrollment-pilot.md",
-        "docs/identity-lifecycle.md"
+        "docs/identity-lifecycle.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
       "id": "ONB-03",
       "text": "После разрешённой регистрации клиент автоматически получает эффективную конфигурацию и показывает готовность к включению VPN. Повторный запуск использует действующую сессию либо разрешённую offline lease. Необходимость повторного входа, отсутствие назначений и отсутствие сети различаются.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "ONB-04",
@@ -338,7 +387,8 @@
       "text": "Для полей задаётся locked, пользовательский выбор из списка либо свободное изменение в проверяемом диапазоне. Обновление сохраняет разрешённые локальные значения; удалённое переопределение показывается пользователю и аудируется. В режиме управления импорт/ADB не обходят эти права. Для администратора сервер может разрешить отдельную публикацию правок даже для locked полей обычного пользователя; право не выводится из наличия debug APK или ADB.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -346,7 +396,8 @@
       "text": "Конфиг - декларативный документ со schemaVersion, policyRevision, targetDevice, generatedAt, notBefore, refreshAfter, offlineUntil, requiredCapabilities, contentHash и отдельной подписью. Секреты выдаются адресно через ссылки на секреты и защищённые ответы. Телефон всё равно должен получить необходимые для подключения параметры; это не схема скрытия секретов от самого телефона. Документ ссылается на подписанный decision policy bundle с собственной версией, hash и required evaluator capabilities; активная пара configRevision/algorithmRevision фиксируется вместе.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -360,7 +411,8 @@
       "text": "Подпись проверяется доверенным ключом публикации, встроенным в приложение или полученным через заранее доверенную цепочку ротации. TLS и подпись конфига решают разные задачи. Корневой ключ не заменяется произвольным ответом сервера.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -368,7 +420,8 @@
       "text": "Обновление выполняется по этапам: скачать, проверить подпись/адресата/срок/возможности, проверить схему и ссылки, получить необходимые секреты, скомпилировать, выполнить preflight, сохранить кандидата, переключить движок, проверить критические пути, подтвердить активную ревизию. На каждом этапе есть timeout и код ошибки. Каждый apply использует immutable dependency snapshot и activationGeneration по ARC-03; внешняя недоступность отдельного target оценивается по activation gate, а не автоматически считается сломанным конфигом.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -376,7 +429,8 @@
       "text": "Desired, downloaded, validated, active и last-known-good ревизии показываются отдельно. HTTP200 при скачивании не считается успешным применением. Применение не перерегистрирует NetBird и не сбрасывает его идентичность. Локально изменённый тестовый конфиг показывается как local experiment с базовой серверной ревизией; он не выдаётся за подтверждённую серверную публикацию.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -384,7 +438,8 @@
       "text": "Активация имеет durable journal и состояния prepared/applying/committed/degraded/rolled_back/rejected. Snapshot включает config/policy/secrets/engine versions и gates. До переключения сохраняется разрешённый baseline; commit active pointer выполняется один раз. Ошибка нового native запуска или доказанная регрессия обязательного пути вызывает один bounded rollback; выключенный до обновления необязательный домашний сервис сам по себе отката не вызывает. Тот же отказавший candidate не активируется вновь до существенного изменения evidence. Revocation floor и expiry важнее возврата доступности.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -392,7 +447,8 @@
       "text": "Откат содержимого публикуется как новая ревизия с более новым порядковым номером. Воспроизведение старого подписанного документа не должно обходить отзыв. Откат локального кандидата допускается только к ещё разрешённой last-known-good версии. Сроки и security epoch проверяются по SEC-06; локальный возврат не обновляет offline lease и не возвращает отозванные секреты.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -400,7 +456,8 @@
       "text": "Недоступный control plane не останавливает действующий разрешённый путь. Начальные параметры - refreshAfter5минут при активном VPN и offlineUntil7суток; фактический предел определяется ближайшим expiry обязательного config/policy/credential и SEC-06. Access token/API session и offline lease - разные сроки. После истечения клиент блокирует управляемые пользовательские потоки согласно policy, сохраняя строго ограниченный доверенный management/re-auth recovery path, если он технически доступен. Этот путь не является общим direct fallback. При невозможности восстановления UI предлагает доступный Wi-Fi/действие пользователя; общий device kill switch требует Android lockdown.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -442,14 +499,22 @@
     {
       "id": "NB-01",
       "text": "В обычной сети используются прямые management/signal и P2P пути. Relay разрешён только после неудачи прямого соединения или потери пути; начальный direct ICE timeout - 8 секунд, настраиваемый в проверяемом диапазоне. После relay сохраняются ограниченные попытки вернуться к P2P. Такое предпочтение соответствует модели NetBird. [Как работает NetBird](https://docs.netbird.io/about-netbird/how-netbird-works).",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
+      "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
     },
     {
       "id": "NB-02",
       "text": "В ограниченной сети при разрешённой автоматике включается отдельный проверенный вариант NetBird через VLESS. Внешние соединения этого варианта должны идти через выбранный VLESS путь без скрытого direct bootstrap; неподдержанные UDP-пути не обходят прокси. В UI явно различаются direct/through VLESS и P2P/relay. Это разные свойства соединения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
+      "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
     },
     {
       "id": "NB-03",
@@ -466,20 +531,32 @@
     {
       "id": "NB-05",
       "text": "Ключ идентичности создаётся и хранится локально, не попадает в телеметрию, бандлы и обычный экспорт. Смена direct/VLESS сохраняет peer ID. Ключи и peer отзываются отдельно при удалении устройства.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
+      "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
     },
     {
       "id": "NB-06",
       "text": "Отдельно показываются management, signal, relay, peers, выбранный upstream, ICE/P2P состояние, последнее рукопожатие, объём трафика и доступность назначенных ресурсов. Все разрешённые peers можно проверить ограниченным заданием; отсутствие ICMP не равно «peer выключен».",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
+      "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
     },
     {
       "id": "NB-07",
       "text": "Маршруты и DNS выдаются по фактическим назначениям NetBird и нашей политике. Широкий mesh CIDR не угадывается. Внутренние DNS-запросы не уходят публичному резолверу при сбое overlay. Конфликт маршрута NetBird с домашней сетью выявляется до активации.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
+      "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
     },
     {
       "id": "OVL-01",
@@ -617,38 +694,51 @@
       "id": "REC-01",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "Одно нажатие «Подключиться» в приложении или плитке Android транзакционно сохраняет desiredOn=true, ссылку на проверенную желаемую конфигурацию/configRevision, режим и монотонный intentGeneration до запуска побочных эффектов. UI, плитка, уведомление и разрешённый ADB/API используют один сериализованный контракт команд и один источник состояния; создание Activity не является командой подключения. Намерение и конфигурация переживают смерть UI/контроллера/сервиса и допустимый ОС перезапуск, не зависят от памяти процесса и восстанавливаются с проверкой schema/signature/lease/capability и доступности ключей. Ошибка записи намерения явно возвращается, ложное подтверждение отсутствует. Недоступная или невалидная конфигурация не заменяется произвольным профилем и не сбрасывает намерение; серверный desired pointer и пользовательское намерение имеют разные области версионирования."
     },
     {
       "id": "REC-02",
-      "status": "planned",
-      "evidence": [],
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
       "text": "Пока desiredOn=true и нет запрета/необходимого действия пользователя по ENG-01/02, единый reconcile loop повторно приводит фактическое состояние к разрешённому желаемому. DNS timeout/EOF/TLS failure и недоступный узел вызывают классификацию и восстановление, а не окончательный Off; валидация TLS не ослабляется. Reference retry policy v1: base=1секунда, factor=2, cap=60секунд, jitter multiplier в пределах0.8-1.2 с итоговым clamp1-60секунд; floor для досрочной попытки по новому usable network=5секунд между такими попытками, с общим admission limit. Параметры версионируются внутри локальных hard limits. Повторы используют бюджеты AUTO-07/ARC-06; номер попытки, причина, следующий допуск и история тяжёлых запусков переживают рестарт контроллера. При NoNetwork активные сетевые попытки не выполняются: ожидание callback ОС, без polling/wakelock storm. При новой пригодной Network разрешена своевременная попытка с актуальным контекстом и общим rate limit; повторные смены epoch не обнуляют backoff, cooldown и rolling budget. Задержка сбрасывается только после устойчивого успеха (reference policy v1: не менее30секунд и трёх свежих успешных required checks), а не по созданию процесса или одному callback. Исчерпание краткосрочного бюджета откладывает следующую допустимую попытку, не стирая намерение; Doze и ограничения ОС могут отложить её дольше60секунд. Невалидная схема/подпись, истёкшее право или отсутствие разрешения ждут изменения входных условий/действия пользователя без бесполезного частого retry. Повтор транспорта не означает повтор активации отвергнутого bundle вопреки ARC-04."
     },
     {
       "id": "REC-03",
-      "status": "planned",
-      "evidence": [],
-      "text": "Необязательный туннель/peer/outbound может быть недоступен уже при холодном старте: независимые разрешённые маршруты должны запуститься/продолжить работу, а затронутые приватные назначения остаются явно заблокированными без fallback в общий прокси или direct. Восстановление выбирает минимальную неисправную dependency scope; проверяются DNS/bootstrap dependencies, отсутствие потока до установки блокировок и отсутствие утечки при старте, handover, реконфигурации и смерти модуля. Граница отдельного процесса не доказывает независимый startup/recovery outbounds внутри одного native box: engine-api объявляет реальные capabilities, движок/адаптер устраняет fail-fast общего запуска для optional dependency либо использует доказанную архитектуру с теми же гарантиями. Если для восстановления разделяемого runtime всё же нужен общий перезапуск, он bounded, временный разрыв независимых потоков измерен, блокировки установлены до него; это не считается независимым восстановлением и не закрывает соответствующий AC86. Обязательные взаимозависимости не объявляются optional ради прохождения проверки."
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "text": "Необязательный туннель/peer/outbound может быть недоступен уже при холодном старте: независимые разрешённые маршруты должны запуститься/продолжить работу, а затронутые приватные назначения остаются явно заблокированными без fallback в общий прокси или direct. Восстановление выбирает минимальную неисправную dependency scope; проверяются DNS/bootstrap dependencies, отсутствие потока до установки блокировок и отсутствие утечки при старте, handover, реконфигурации и смерти модуля. Граница отдельного процесса не доказывает независимый startup/recovery outbounds внутри одного native box: engine-api объявляет реальные capabilities, движок/адаптер устраняет fail-fast общего запуска для optional dependency либо использует доказанную архитектуру с теми же гарантиями. Если для восстановления разделяемого runtime всё же нужен общий перезапуск, он bounded, временный разрыв независимых потоков измерен, блокировки установлены до него; это не считается независимым восстановлением и не закрывает соответствующий AC86. Обязательные взаимозависимости не объявляются optional ради прохождения проверки.",
+      "implementationScope": "Deferred optional NetBird startup and independent target-route evidence.",
+      "remainingScope": "Full private leak/dependency/minimal-scope and handover matrix."
     },
     {
       "id": "REC-04",
-      "status": "planned",
-      "evidence": [],
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
       "text": "Supervisor и контроль его прогресса находятся вне управляемого native runtime. Watchdog проверяет полезный прогресс/дедлайны операций, а не только живой PID или ответ отдельного control looper; полный native hang имеет fault-injection сценарий. После bounded graceful stop supervisor вправе завершить только аутентифицированный принадлежащий ему host с проверенными identity token/UID/handle, подтвердить его смерть и освобождение TUN duplicates/identity locks перед новым поколением. Timeout или PID не являются подтверждением. После смерти самого контроллера разрешённый ОС новый экземпляр сначала читает намерение/последний Stop, сверяет реальное владение и незавершённые эффекты, безопасно дожидается/завершает только своего старого host; два владельца TUN/identity и повторное enrollment исключены. Если прекращение владения не доказано, новый host не запускается, отображается блокировка/необходимое действие. Смерть владельца TUN может уничтожить интерфейс и оборвать трафик; отсутствие сети или процесса-владельца не сопровождается обещанием непрерывного соединения. Границы MOD-08/09 и системный lockdown остаются обязательными."
     },
     {
       "id": "REC-05",
-      "status": "planned",
-      "evidence": [],
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
       "text": "UI, плитка, уведомление и status API отдельно показывают сохранённое намерение и факты: «Работает», «Частично работает», «Ожидание сети», «Повтор через N», «Требуется действие пользователя» с конкретной причиной. Online/Connected допустим только после required checks актуального поколения; наличие VpnService/TUN или desiredOn=true недостаточно. Следующий допуск указывается с оговоркой ожидания сети/ОС; после срока он пересчитывается без ложного обещания точного пробуждения. Невалидная конфигурация, NeedsPermission/NeedsUnlock/NeedsLogin и запрет запуска отображаются без частого retry. Даже при выключенном подробном логировании сохраняется bounded редактированный поток диагностических событий: intent/config/network/engine generations без приватных идентификаторов, слой/код отказа, попытка/решение/бюджет и следующий допуск/условие возобновления; секреты, raw endpoints и пользовательский трафик не записываются. Публикация/сбор телеметрии сохраняет действующие consent/retention/redaction ограничения."
     },
     {
       "id": "REC-06",
-      "status": "planned",
-      "evidence": [],
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
       "text": "До реализации поставляются версия transition table и нормативный recovery-policy contract: типы transient/permanent/user-action ошибок, параметры bounded backoff/jitter, floor при network flapping, окно устойчивого успеха, общие rolling budgets, retry eligibility и минимальная recovery scope. Монотонные времена действуют внутри boot; после reboot/clock jump/повреждённого checkpoint применяется ограниченная консервативная реконструкция, не мгновенный массовый retry и не бесконечное откладывание. Неограниченный polling, постоянный wakelock и обход Doze не являются реализацией одной кнопки. Все команды/таймеры/эффекты fenced по intentGeneration и контексту ARC-03; перед эффектом актуальность проверяется вновь. Детерминированные simulator/model/trace fixtures с управляемыми clock/jitter/fault injection и воспроизводимые Android-тесты входят в GitHub Actions при реализации; AC82-AC90 обязательны в M1, реальные Wi-Fi/LTE/restricted LTE, Doze и поведение ОС отдельно подтверждаются на Pixel. Новая декларативная policy не может отключить локальные hard limits/Stop или добавить удалённый исполняемый код."
     },
     {
@@ -954,14 +1044,18 @@
     {
       "id": "CHECK-01",
       "text": "Успешный TCP dial, HTTP200 или пустой журнал ошибок по отдельности не доказывают исправность туннеля. HTTP endpoint имеет ожидаемый статус и маркер тела; TLS проверяется обычным способом. Для короткого ответа проверяется полное чтение.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "CHECK-02",
       "text": "Проверки выполняются через заданный кандидат и физическую сеть, с корреляцией requestId/pathId/networkEpoch/configRevision. Прямой host curl не является проверкой VPN маршрута приложения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "CHECK-03",
@@ -996,74 +1090,118 @@
     {
       "id": "CHK-01",
       "text": "Для каждого routing rule/traffic class, конкретного пути, chain template и overlay resource назначается один или несколько HealthCheckProfile. Домашний узел, 2ip.ru и gstatic - только примеры. Проверочные hosts/URL/IP, методы и условия не зашиты в тип RU/NON_RU или в приложение. Поддерживается любая валидная композиция реализованных методов, допустимых целей и правил; новый сетевой primitive требует новой capability evaluator/движка.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
       "id": "CHK-02",
       "text": "Profile задаёт checkId/revision, method, target, DNS strategy, physical network/path binding, timeout, intervals, sample count, retries, payload/body limits, expected result, criticality и влияние на quality. Секреты headers/auth представлены secretRef. Параметры проверяются против hard limits, прав администратора и capabilities.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
       "id": "CHK-03",
       "text": "Методы: ICMP при наличии IP/ICMP-capability полного пути; TCP connect; TLS handshake с обычной проверкой имени/сертификата; DNS с ожидаемым rcode/условием ответа; HTTP(S) с заданными method/status/body/header predicates; прикладной SSH banner; UDP echo/согласованный datagram probe только к назначенному поддержанному responder. Базовые HTTP методы GET/HEAD; POST с ограниченным телом допускается лишь явной политикой для предназначенного сервису endpoint и не считается безопасной универсальной пробой.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
       "id": "CHK-04",
       "text": "Комбинации задаются явным деревом условий all/any/quorum(k,n), последовательными или параллельными этапами, conditional/fallback branches, общим deadline и пределом стоимости. Правила короткого замыкания и критичность описаны, чтобы успешная необязательная проба не скрывала провал обязательной. Несовместимые или всегда недостижимые условия отклоняются компилятором.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
       "id": "CHK-05",
       "text": "Для разных задач можно назначить разные профили одному маршруту: быстрая проверка liveness, подтверждение доступа к домашнему сервису, качество latency, exit verification и глубокая диагностика. Не требуется один универсальный URL для всех путей. На default profile можно ссылаться из нескольких правил без копирования.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
       "id": "CHK-06",
       "text": "Пробы маршрута обязаны использовать его фактическую цепочку и физическую сеть. ICMP напрямую к входной ноде не считается ICMP до назначения через TCP-only proxy chain. Если метод не проходит через этот путь, конфиг отклоняется как unsupported; замена на TCP/HTTP возможна только явно указанным профилем/веткой.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "CHK-07",
       "text": "Примеры настраиваемых профилей: INTERNAL - ICMP домашнему узлу плюс необязательная TCP/HTTP-проверка сервиса; RU - HTTP(S) к заданному российскому ресурсу, например 2ip.ru; NON_RU - малый HTTP(S) connectivity probe, например gstatic generate_204. Эти примеры можно полностью заменить в панели или разрешённом клиентском редакторе.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
       "id": "CHK-08",
       "text": "Для gstatic 204 задаются точный URL, ожидаемый status204 и отсутствие тела; для HTTP200 ресурса задаются собственные признаки корректного ответа. Redirect, captcha, WAF page или changed schema не засчитываются автоматически как успех. Секретные headers/auth не пересылаются на другой origin; для другой цели требуется отдельное явное назначение credentials. У 2ip.ru возможен redirect на другой домен: разрешённая цепочка redirects и актуальный parser должны быть явно проверены администратором, а не приниматься как стабильный API. [2ip](https://2ip.ru/), [пример gstatic probe](https://connectivitycheck.gstatic.com/generate_204).",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
       "id": "CHK-09",
       "text": "Доступность target, корректность tunnel path и соответствие exit - отдельные выводы. Российский сайт может открываться через зарубежный exit, а CDN gstatic - обслуживаться близко к пользователю. Для подтверждения страны/IP выхода нужен отдельный назначенный механизм или доверенное актуальное provider evidence, не география самого check host.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
       "id": "CHK-10",
       "text": "Результаты оцениваются по своему profile/version/path/networkEpoch; для одной цели могут существовать независимые методы. Отказ check endpoint отслеживается отдельно от proxy, с резервными целями/кворумом и сроком. Успех на одном protocol/IP family не переносится на другой.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "CHK-11",
       "text": "Действуют бюджеты планировщика, дедупликация совпадающих проверок и ограничение параллелизма. Размер HTTP тела, regex/JSON predicates, число этапов, redirect count и CPU evaluator ограничены; нет загрузки/исполнения скриптов или произвольного кода из проверки. Приватные targets разрешаются явным назначением, а не фоновым сканом всей LAN.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
       "id": "CHK-12",
       "text": "UI и ADB позволяют создать/назначить профиль, preview его условий, проверить на конкретном пути, увидеть прогресс/частичные результаты и отменить задание. Отображаются итоговый predicate, каждое измерение, freshness, confidence и причина unsupported. Структура на сервере, в клиенте и в API одинакова.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
       "id": "TEL-01",
@@ -1092,8 +1230,10 @@
     {
       "id": "TEL-05",
       "text": "Метрики ядра: память процесса и Go heap, число goroutines и дескрипторов где доступно, очередь событий, объём и ошибки записей, CPU по ограниченной выборке, service uptime, process start, версия native ABI, причина завершения. Измерение батареи не должно само заметно нагружать устройство.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "TEL-06",
@@ -1140,26 +1280,42 @@
     {
       "id": "LOG-01",
       "text": "Каналы: lifecycle, network, selector, DNS, routing, protocol, NetBird, provisioning, telemetry, crash. Уровни error/warn/info/debug/trace, структурированный JSONL с correlation ID. Ограниченные info события доступны даже при выключенных подробных core логах.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Bounded redacted lifecycle/exit/resource evidence and debug shell/own-UID commands.",
+      "remainingScope": "Full channels/retention/bundle/export/CLI/release opt-in/server audit."
     },
     {
       "id": "LOG-02",
       "text": "Локальный кольцевой журнал ограничен, первоначально64MiB/7суток; debug/trace окно - до15минут с автосбросом. Администратор может запросить расширение в пределах policy, но увеличение объёма либо чувствительности сбора требует отдельного локального подтверждения с категориями, сроком и получателем. Разрешение собрать очищенный бандл не является разрешением загрузить его или включить raw capture.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Bounded redacted lifecycle/exit/resource evidence and debug shell/own-UID commands.",
+      "remainingScope": "Full channels/retention/bundle/export/CLI/release opt-in/server audit."
     },
     {
       "id": "LOG-03",
       "text": "Редактируются не только известные значения секретов, но и потенциально секретные поля path, serviceName, headers, query, userinfo, subscription URL и вложенный JSON. Очистка выполняется при записи и перед экспортом. Неизвестный сторонний raw log не считается безопасным автоматически. Для удалённой отправки предпочтителен allowlist структурированных полей; неизвестный free-text/raw third-party вывод автоматически не загружается. Sanitization - проверяемый барьер с тестовыми секретами, а не обещание анонимности любого сырого текста.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Bounded redacted lifecycle/exit/resource evidence and debug shell/own-UID commands.",
+      "remainingScope": "Full channels/retention/bundle/export/CLI/release opt-in/server audit."
     },
     {
       "id": "LOG-04",
       "text": "Crash-сбор включает Java main/background, Go panic, доступные Android exit reasons и следы ANR, версии и символы для расшифровки. Возможность получить сведения зависит от версии Android и прав процесса; отсутствующий источник обозначается явно. Полные дампы памяти автоматически не загружаются.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Bounded redacted lifecycle/exit/resource evidence and debug shell/own-UID commands.",
+      "remainingScope": "Full channels/retention/bundle/export/CLI/release opt-in/server audit."
     },
     {
       "id": "LOG-05",
@@ -1182,8 +1338,10 @@
     {
       "id": "UI-01",
       "text": "Android-приложение использует тёмную тему по умолчанию независимо от системной темы Android. Единая контрастная палитра применяется ко всем экранам, диалогам, системным панелям и экрану старта; светлые вспышки при переходах не допускаются. Контент учитывает системные отступы и вырезы, элементы доступны на небольших экранах и при увеличенном шрифте. Приложение не меняет системную тему устройства.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "EDIT-01",
@@ -1348,7 +1506,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "В Android доступен раздел «Поддержка»: личная переписка пользователя с администраторами SYN443. Администратор видит список диалогов и отвечает из Android и адаптивного веб-интерфейса control plane. В базовый выпуск входят текст, файлы, изображения и видео; групповые чаты пользователей, звонки, боты и интеграции внешних мессенджеров не входят."
     },
@@ -1359,7 +1518,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "Один диалог принадлежит учётной записи пользователя и доступен с её разрешённых устройств. Смена устройства не создаёт дубликат диалога. В сообщении видна роль отправителя; администратор выбирает адресата явно. Обычный пользователь не может перечислять чужие диалоги, угадывать идентификаторы или получать чужие вложения."
     },
@@ -1370,7 +1530,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "Сервер проверяет активную сессию, владельца и административное право при каждой операции чтения/записи/загрузки. Отзыв права или устройства прекращает дальнейший доступ; локальный кэш и роль из UI не являются разрешением. Веб-вход использует Keycloak OAuth 2.0 Authorization Code с PKCE, отдельный client/audience и подтверждение владения ключом DPoP. Отдельный frontend/BFF проверяет подписанный access token по pinned issuer/audience/client/key и хранит токены только в ограниченной по времени серверной сессии; браузеру выдаётся HttpOnly/Secure/SameSite cookie с проверкой Origin/CSRF. Непроверенный ID token не используется для идентификации. Device session не даёт административных прав сама по себе."
     },
@@ -1381,7 +1542,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "Сообщения, участники, состояние прочтения, задания отправки и байты вложений хранятся в SQL. Для файлов используется транзакционное хранение ограниченными bytea/BLOB-частями с порядковым номером и хешем, без обязательного S3 или каталога файлов сервера. Резервное копирование/восстановление SQL охватывает историю и вложения согласованно."
     },
@@ -1392,7 +1554,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "Лимит одного готового вложения равен25MiB (26 214 400 байт); UI называет его «25 МБ». Допускается до4 вложений в сообщении. Текст ограничен4096 Unicode code points и16384 UTF-8 байтами. Сервер повторно проверяет размеры, число частей, порядок, общий SHA-256 и фактический тип; client-side проверка не является границей безопасности."
     },
@@ -1403,7 +1566,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "Отправка использует постоянный clientMessageId и идемпотентную фиксацию. Повтор после потери ответа возвращает то же сообщение; тот же ID с другим содержимым отклоняется. Порядок задаёт серверная последовательность внутри диалога, а не часы телефона. Состояния UI: подготовка, очередь, отправляется, отправлено, прочитано, ошибка; получение сервером не обозначается как прочтение."
     },
@@ -1414,7 +1578,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "Загрузка возобновляема частями до256KiB, с контрольными суммами, ограничением параллелизма и сроком жизни незавершённого upload. Сообщение с вложениями публикуется атомарно только после проверки всех файлов. Отмена, обрыв Wi-Fi и смерть процесса не оставляют видимого неполного сообщения и не смешивают байты разных отправителей. Общая квота на незавершённые uploads ограничивает расход SQL."
     },
@@ -1425,7 +1590,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "При выборе режима «Фото» Android на устройстве учитывает ориентацию, уменьшает изображение до разрешённого размера и кодирует JPEG/WebP с ограниченным качеством/числом попыток. Метаданные геолокации удаляются; декодирование имеет предел пикселей и памяти. Исходник пользователя не изменяется. Режим «Файл» позволяет отправить оригинал в пределах25MiB без преобразования; UI явно отличает режимы."
     },
@@ -1436,7 +1602,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "В режиме «Видео» Android выполняет аппаратно поддерживаемое перекодирование в MP4/H.264/AAC с профилем до720p/30fps и подбором bitrate по длительности/бюджету размера. Фактический результат должен укладываться в25MiB. Неподдерживаемый codec, превышение длительности/размера, недостаток места и сбой encoder дают понятную ошибку и варианты выбрать другой файл или отправить допустимый оригинал; незаметная отправка большого оригинала запрещена."
     },
@@ -1447,7 +1614,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "Сжатие выполняется одним заданием вне UI-потока, имеет прогресс, отмену и bounded cleanup, не запускает VPN и уступает его критическим операциям. Приложение не сканирует медиатеку: обрабатываются только явно выбранные пользователем URI. Сохранённая очередь и подготовленные файлы хранятся в зашифрованных SQL BLOB в sandbox/no-backup. Для работы системного кодека допустимы временные файлы в приватном cache с ограничением размера и удалением после завершения, отмены и следующего запуска; после выхода из аккаунта очередь прежней учётной записи не отправляется из новой сессии."
     },
@@ -1458,7 +1626,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "Открытый экран получает новые сообщения и отметки прочтения с ограниченной задержкой; при отсутствии push допустим bounded polling только при видимом экране. В фоне нет частого опроса/постоянного wakelock. Отправка повторяется с backoff и теми же IDs. Без сети видна локальная очередь; при недоступности control plane нельзя обещать доставку. Сбой чата не меняет намерение/профиль VPN."
     },
@@ -1469,7 +1638,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "Вложения считаются недоверенными: безопасные basename, Content-Disposition attachment, nosniff, ограниченный preview изображений/видео; HTML/SVG/скрипты и исполняемые файлы не выполняются внутри панели. Никакой автоматической распаковки, URL-fetch или обработки команд из сообщения. Доступ к байтам всегда авторизуется, публичных постоянных ссылок нет. Контент переписки/файлов и токены исключены из общих логов, телеметрии и CI artifacts."
     },
@@ -1480,7 +1650,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "SQL имеет конфигурируемые retention и квоты; Исходные пределы: незавершённые и непривязанные загрузки удаляются через 24 часа; целевой срок хранения сообщений и привязанных файлов - 365 суток при доступном лимите. Изменение срока и удаление истории - административная операция с аудитом без содержимого сообщений. В базовой реализации достаточно очистки истёкших uploads; полный интерфейс retention явно отмечается отдельно до его реализации."
     },
@@ -1491,7 +1662,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "В Android администратора и веб-панели есть список диалогов, непрочитанное, история с пагинацией, поле ответа, выбор/отмена файла и download. На телефоне пользователя есть свой диалог, состояние связи и ошибки повторной отправки. Нельзя отправить сообщение нажатием Enter во время ввода составного текста; действие отправки явно подтверждается кнопкой."
     },
@@ -1502,7 +1674,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "CI проверяет SQL persistence/restart, ownership и отзыв прав, DPoP/replay, атомарность/идемпотентность и конкурентные запросы, лимиты файла/частей/квот, malformed MIME и hash, XSS и безопасные заголовки, восстановление очереди, сжатие/отмену media и согласованность Android/web. Физические проверки USB/Wi-Fi используют только синтетическую переписку и выбранные тестовые файлы. Доступность на restricted LTE относится к отдельным сетевым испытаниям."
     },
@@ -1593,26 +1766,42 @@
     {
       "id": "ADB-01",
       "text": "Сохраняется интерфейс для LLM и оператора: capabilities, status, config export/plan/apply/import, render, logs read/follow, diagnostics snapshot/bundle, health check, peers, mode get/set, VPN start/stop/reconnect.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Bounded redacted lifecycle/exit/resource evidence and debug shell/own-UID commands.",
+      "remainingScope": "Full channels/retention/bundle/export/CLI/release opt-in/server audit."
     },
     {
       "id": "ADB-02",
       "text": "Формат ответа machine-readable JSON, везде указаны ревизии и состояние операции. Потенциально длительные действия возвращают job ID; поддерживаются polling/cancel, отсутствие зависания CLI и документированные exit codes.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Bounded redacted lifecycle/exit/resource evidence and debug shell/own-UID commands.",
+      "remainingScope": "Full channels/retention/bundle/export/CLI/release opt-in/server audit."
     },
     {
       "id": "ADB-03",
       "text": "В рабочем приложении доступ только после локального opt-in и проверки разрешённого Android shell UID. Порт управления не публикуется в LAN/интернет. Managed policy не обходится ADB изменением locked полей.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Bounded redacted lifecycle/exit/resource evidence and debug shell/own-UID commands.",
+      "remainingScope": "Full channels/retention/bundle/export/CLI/release opt-in/server audit."
     },
     {
       "id": "ADB-04",
       "text": "Обычные экспорты и бандлы очищены. Полный экспорт с секретами требует явного флага и отдельного права. Он не включает приватные identity files. Записи о выполненных изменениях появляются в локальном и серверном аудите, когда сервер доступен.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Bounded redacted lifecycle/exit/resource evidence and debug shell/own-UID commands.",
+      "remainingScope": "Full channels/retention/bundle/export/CLI/release opt-in/server audit."
     },
     {
       "id": "BOOT-01",
@@ -1731,8 +1920,10 @@
     {
       "id": "NFR-05",
       "text": "Дополнительный idle RSS диагностики относительно того же клиента без неё - цель до 30 MiB; дополнительный CPU в стабильном idle - менее одного процентного пункта в часовом тесте. Батарея: не более трёх дополнительных процентных пунктов за 8 часов контролируемого idle против того же клиента с минимальными проверками. Указываются устройство, состояние экрана, сеть и доступность батарейной оптимизации.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ]
     },
     {
       "id": "NFR-06",
@@ -1776,7 +1967,8 @@
       "status": "partial",
       "evidence": [
         "docs/enrollment-pilot.md",
-        "docs/identity-lifecycle.md"
+        "docs/identity-lifecycle.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -1792,7 +1984,8 @@
       "evidence": [
         "docs/managed-policy.md",
         "docs/enrollment-pilot.md",
-        "docs/identity-lifecycle.md"
+        "docs/identity-lifecycle.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -1802,7 +1995,8 @@
       "evidence": [
         "docs/managed-policy.md",
         "docs/enrollment-pilot.md",
-        "docs/identity-lifecycle.md"
+        "docs/identity-lifecycle.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -1842,7 +2036,8 @@
       "evidence": [
         "internal/decision/decision_test.go",
         "contracts/README.md",
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -1850,7 +2045,8 @@
       "text": "Lifecycle table ниже является обязательным контрактом для boot locked/unlocked, app/native/service/controller process death, permission revoke, competing VPN, airplane/NoNetwork, Doze, APK update, logout и explicit Stop. На каждом разрешённом restart до побочных эффектов читаются REC-01, последний intentGeneration, валидность config/lease и реальные OS permission/always-on/lockdown. До unlock недоступные credential-encrypted секреты не обходятся; состояние NeedsUnlock честное. Повторный NetBird enrollment или сброс retry budgets из-за рестарта запрещён. Результат зависит от разрешённого ОС триггера: гарантированный самозапуск после любого уничтожения не обещается.",
       "status": "partial",
       "evidence": [
-        "docs/managed-policy.md"
+        "docs/managed-policy.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -1868,8 +2064,12 @@
     {
       "id": "ENG-05",
       "text": "Native host ABI/Go toolchain/16KiB, adapter contracts и package inputs фиксируются lock/manifests; чистая сборка и SBOM/license inventory обязательны. Перед переносом исправлений XHTTP/NetBird из форка инвентаризируются патчи, зависимости, лицензии и доказанные regression tests; непроверенные изменения не объявляются готовыми исправлениями. Нельзя заменить движок на upstream latest без conformance matrix, optional-outbound startup, сетевых/native teardown regressions. Наличие поддержки в форке не подтверждает произвольный upstream; новая UI-оболочка не устраняет fail-fast native startup по REC-03. Лицензионная совместимость и способ поставки исходников подтверждаются до релиза.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
+      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
     },
     {
       "id": "ENG-06",
@@ -1877,7 +2077,8 @@
       "status": "partial",
       "evidence": [
         "internal/decision/decision_test.go",
-        "contracts/README.md"
+        "contracts/README.md",
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
     },
     {
@@ -1889,8 +2090,12 @@
     {
       "id": "ENG-08",
       "text": "Приёмка содержит воспроизводимые simulator/trace tests и физические Android испытания, включая force-stop/reboot, simultaneous search/diagnostics и corrupted candidate. Эмулятор не доказывает cellular/Doze и unavailable image не считается passed. Прототип и тесты ТЗ не выдаются за уже выполненные проверки нового продукта.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#evidence-index-and-register-semantics"
+      ],
+      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
+      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
     }
   ],
   "acceptanceCases": [
@@ -2290,7 +2495,8 @@
       "status": "partial",
       "evidence": [
         "internal/decision/decision_test.go",
-        "contracts/README.md"
+        "contracts/README.md",
+        "docs/implementation-status.md"
       ]
     },
     {
@@ -2380,62 +2586,100 @@
     {
       "id": "AC81",
       "specRow": " Первый запуск и перезапуск Android-приложения при светлой и тёмной системной теме, малый экран и вырез | По умолчанию все поверхности приложения тёмные, читаемый текст имеет контраст не ниже4.5:1, нет перекрытия системными панелями, элементы доступны через прокрутку; смены системной темы и светлых вспышек нет |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md"
+      ]
     },
     {
       "id": "AC82",
-      "status": "planned",
-      "evidence": [],
-      "specRow": " «Подключиться» из приложения/плитки/уведомления/API, холодный запуск и смерть UI/контроллера после сохранения команды | Единый desiredOn/config/intentGeneration сохранён атомарно; все точки управления согласованы, ошибка записи не подтверждается как успех; Activity не создаёт новое намерение |"
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md"
+      ],
+      "specRow": " «Подключиться» из приложения/плитки/уведомления/API, холодный запуск и смерть UI/контроллера после сохранения команды | Единый desiredOn/config/intentGeneration сохранён атомарно; все точки управления согласованы, ошибка записи не подтверждается как успех; Activity не создаёт новое намерение |",
+      "implementationScope": "Deterministic/native/Android tests and scoped USB Xperia Wi-Fi/OS evidence in the pinned snapshot.",
+      "remainingScope": "Complete normative scenario including cellular, physical OS matrix, energy/endurance and all specified boundaries; no full acceptance claim."
     },
     {
       "id": "AC83",
-      "status": "planned",
-      "evidence": [],
-      "specRow": " DNS timeout/EOF, TLS failure и недоступный узел многократно, затем устойчивое восстановление | Намерение остаётся true; экспоненциальные bounded backoff/jitter, cooldown и общий бюджет соблюдены, TLS не ослаблен; восстановление продолжается при допуске, задержка сброшена только по устойчивому успеху |"
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md"
+      ],
+      "specRow": " DNS timeout/EOF, TLS failure и недоступный узел многократно, затем устойчивое восстановление | Намерение остаётся true; экспоненциальные bounded backoff/jitter, cooldown и общий бюджет соблюдены, TLS не ослаблен; восстановление продолжается при допуске, задержка сброшена только по устойчивому успеху |",
+      "implementationScope": "Deterministic/native/Android tests and scoped USB Xperia Wi-Fi/OS evidence in the pinned snapshot.",
+      "remainingScope": "Complete normative scenario including cellular, physical OS matrix, energy/endurance and all specified boundaries; no full acceptance claim."
     },
     {
       "id": "AC84",
-      "status": "planned",
-      "evidence": [],
-      "specRow": " Сети нет полностью, затем возвращение Wi-Fi/LTE/restricted LTE и быстрые колебания сети | В NoNetwork нет активных сетевых попыток; актуальная пригодная сеть своевременно проверена в общем rate limit, старое поколение игнорируется; flapping не сбрасывает бюджеты и не вызывает storm |"
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md"
+      ],
+      "specRow": " Сети нет полностью, затем возвращение Wi-Fi/LTE/restricted LTE и быстрые колебания сети | В NoNetwork нет активных сетевых попыток; актуальная пригодная сеть своевременно проверена в общем rate limit, старое поколение игнорируется; flapping не сбрасывает бюджеты и не вызывает storm |",
+      "implementationScope": "Deterministic/native/Android tests and scoped USB Xperia Wi-Fi/OS evidence in the pinned snapshot.",
+      "remainingScope": "Complete normative scenario including cellular, physical OS matrix, energy/endurance and all specified boundaries; no full acceptance claim."
     },
     {
       "id": "AC85",
-      "status": "planned",
-      "evidence": [],
-      "specRow": " Stop во время ожидания backoff, запуска и восстановления; поздний timer/callback, old host и системный restart | false/новый intentGeneration долговечны до подтверждения Stop; текущие и ожидающие attempts отменены, поздние эффекты не включают VPN; нет нового владельца до освобождения старого |"
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md"
+      ],
+      "specRow": " Stop во время ожидания backoff, запуска и восстановления; поздний timer/callback, old host и системный restart | false/новый intentGeneration долговечны до подтверждения Stop; текущие и ожидающие attempts отменены, поздние эффекты не включают VPN; нет нового владельца до освобождения старого |",
+      "implementationScope": "Deterministic/native/Android tests and scoped USB Xperia Wi-Fi/OS evidence in the pinned snapshot.",
+      "remainingScope": "Complete normative scenario including cellular, physical OS matrix, energy/endurance and all specified boundaries; no full acceptance claim."
     },
     {
       "id": "AC86",
-      "status": "planned",
-      "evidence": [],
-      "specRow": " Необязательный приватный туннель/outbound не разрешает DNS при холодном startup, падает при работе или возвращается после handover | Независимые разрешённые маршруты запускаются/работают, затронутые приватные назначения заблокированы на всём интервале без общего proxy/direct; минимальное восстановление доказано packet/fault evidence внутри native runtime, процессная изоляция и общий restart не засчитываются как доказательство независимости |"
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md"
+      ],
+      "specRow": " Необязательный приватный туннель/outbound не разрешает DNS при холодном startup, падает при работе или возвращается после handover | Независимые разрешённые маршруты запускаются/работают, затронутые приватные назначения заблокированы на всём интервале без общего proxy/direct; минимальное восстановление доказано packet/fault evidence внутри native runtime, процессная изоляция и общий restart не засчитываются как доказательство независимости |",
+      "implementationScope": "Deterministic/native/Android tests and scoped USB Xperia Wi-Fi/OS evidence in the pinned snapshot.",
+      "remainingScope": "Complete normative scenario including cellular, physical OS matrix, energy/endurance and all specified boundaries; no full acceptance claim."
     },
     {
       "id": "AC87",
-      "status": "planned",
-      "evidence": [],
-      "specRow": " Смерть UI, native crash, полный native hang с неработающим control loop, смерть VpnService и контроллера в разных фазах | Сохранённое намерение восстановлено при допустимом ОС запуске, полный hang обнаружен без ложного health; доказаны смерть/освобождение FD/locks, нет двух TUN/identity owners/повторного enrollment; потеря TUN/разрыв измерены, отсутствие доказанного освобождения блокирует новый start |"
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md"
+      ],
+      "specRow": " Смерть UI, native crash, полный native hang с неработающим control loop, смерть VpnService и контроллера в разных фазах | Сохранённое намерение восстановлено при допустимом ОС запуске, полный hang обнаружен без ложного health; доказаны смерть/освобождение FD/locks, нет двух TUN/identity owners/повторного enrollment; потеря TUN/разрыв измерены, отсутствие доказанного освобождения блокирует новый start |",
+      "implementationScope": "Deterministic/native/Android tests and scoped USB Xperia Wi-Fi/OS evidence in the pinned snapshot.",
+      "remainingScope": "Complete normative scenario including cellular, physical OS matrix, energy/endurance and all specified boundaries; no full acceptance claim."
     },
     {
       "id": "AC88",
-      "status": "planned",
-      "evidence": [],
-      "specRow": " Cold start/reboot до и после unlock, Force stop, revoke, другой VPN, системные Always-on/lockdown и более новый Stop | Таблица ENG-02 подтверждена на целевых API и Pixel: нет обхода пользовательской остановки/OS restrictions, сохранены разрешённые config/identity, NeedsUnlock/NeedsAction честны; системный callback не переопределяет Stop |"
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md"
+      ],
+      "specRow": " Cold start/reboot до и после unlock, Force stop, revoke, другой VPN, системные Always-on/lockdown и более новый Stop | Таблица ENG-02 подтверждена на целевых API и Pixel: нет обхода пользовательской остановки/OS restrictions, сохранены разрешённые config/identity, NeedsUnlock/NeedsAction честны; системный callback не переопределяет Stop |",
+      "implementationScope": "Deterministic/native/Android tests and scoped USB Xperia Wi-Fi/OS evidence in the pinned snapshot.",
+      "remainingScope": "Complete normative scenario including cellular, physical OS matrix, energy/endurance and all specified boundaries; no full acceptance claim."
     },
     {
       "id": "AC89",
-      "status": "planned",
-      "evidence": [],
-      "specRow": " Длительный outage и Doze, restart контроллера, clock jump/reboot, многократное исчерпание heavy-recovery budget | Намерение не теряется; retry не чаще policy, NoNetwork/Doze не вызывают polling/wakelock storm; bounded консервативная реконструкция времён и последующее восстановление доказаны; CPU/bytes/wakeups/энергия измерены по общим budgets |"
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md"
+      ],
+      "specRow": " Длительный outage и Doze, restart контроллера, clock jump/reboot, многократное исчерпание heavy-recovery budget | Намерение не теряется; retry не чаще policy, NoNetwork/Doze не вызывают polling/wakelock storm; bounded консервативная реконструкция времён и последующее восстановление доказаны; CPU/bytes/wakeups/энергия измерены по общим budgets |",
+      "implementationScope": "Deterministic/native/Android tests and scoped USB Xperia Wi-Fi/OS evidence in the pinned snapshot.",
+      "remainingScope": "Complete normative scenario including cellular, physical OS matrix, energy/endurance and all specified boundaries; no full acceptance claim."
     },
     {
       "id": "AC90",
-      "status": "planned",
-      "evidence": [],
-      "specRow": " Частичная готовность, ожидание сети/повтора, невалидная конфигурация/нет разрешения при выключенном подробном логировании | UI/плитка/уведомление/API согласованно разделяют true и фактическую готовность; нет ложного Connected/частого retry, указаны причина и следующий допуск/условие; bounded redacted события сохранены без секретов/приватных endpoints |"
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md"
+      ],
+      "specRow": " Частичная готовность, ожидание сети/повтора, невалидная конфигурация/нет разрешения при выключенном подробном логировании | UI/плитка/уведомление/API согласованно разделяют true и фактическую готовность; нет ложного Connected/частого retry, указаны причина и следующий допуск/условие; bounded redacted события сохранены без секретов/приватных endpoints |",
+      "implementationScope": "Deterministic/native/Android tests and scoped USB Xperia Wi-Fi/OS evidence in the pinned snapshot.",
+      "remainingScope": "Complete normative scenario including cellular, physical OS matrix, energy/endurance and all specified boundaries; no full acceptance claim."
     },
     {
       "id": "AC91",
@@ -2444,7 +2688,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md"
       ],
       "specRow": " Обычный пользователь и администратор открывают чат с Android, администратор также из web | Один общий диалог пользователя, согласованные сообщения/непрочитанное; чужие диалоги и файлы недоступны |"
     },
@@ -2455,7 +2700,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md"
       ],
       "specRow": " Потеря ответа, дубли и конкурентная отправка с разных устройств | Один clientMessageId даёт одно сообщение, payload conflict отклоняется, серверный порядок стабилен после рестарта SQL/API |"
     },
@@ -2466,7 +2712,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md"
       ],
       "specRow": " Файлы на границах25MiB, неверные части/хеши/MIME, прерванный upload | Серверные лимиты и квоты соблюдены, resume проверяет байты, неполный файл не публикуется, истёкшие части очищаются |"
     },
@@ -2477,7 +2724,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md"
       ],
       "specRow": " Фото с EXIF/GPS/rotation, большое разрешение, PNG/JPEG/WebP | Корректная ориентация, сжатие на телефоне, удаление GPS, bounded память; исходник не изменён, готовый файл в лимите |"
     },
@@ -2488,7 +2736,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md"
       ],
       "specRow": " Видео с rotation/audio, encoder failure, отмена и нехватка места | MP4/H.264/AAC в лимите, прогресс/отмена и cleanup; нет отправки большого оригинала или зависшего UI |"
     },
@@ -2499,7 +2748,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md"
       ],
       "specRow": " Logout/смена аккаунта/отзыв административного права во время загрузки | Поздние callbacks не отправляют старую очередь, права проверяются сервером, чужая учётная запись не получает staged media |"
     },
@@ -2510,7 +2760,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md"
       ],
       "specRow": " HTML/SVG/имена с путями, XSS-текст, обход download по ID | Текст экранирован, файлы не исполняются, attachment/nosniff и ownership сохранены; SQL/логи не раскрывают credentials |"
     },
@@ -2521,9 +2772,23 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
-        "web-tests/chat.spec.js"
+        "web-tests/chat.spec.js",
+        "docs/implementation-status.md"
       ],
       "specRow": " Потеря Wi-Fi, возврат сети, фон/foreground, backup/restore SQL | Очередь и история согласованы; bounded polling/retry, VPN не перезапускается, сообщение и файл восстанавливаются из SQL вместе |"
     }
-  ]
+  ],
+  "statusDefinitions": {
+    "planned": "No recorded accepted implementation contribution.",
+    "partial": "Concrete subset implemented; remaining clauses and acceptance stay open.",
+    "implemented": "All clauses implemented; required acceptance not complete.",
+    "verified": "All clauses and required acceptance proved for the declared scope."
+  },
+  "evidenceSnapshot": {
+    "date": "2026-11-01",
+    "inventory": "docs/implementation-status.md",
+    "androidSource": "e2291a71fa8491497f342fe26fbdf36788e2b59a",
+    "controlPlaneSource": "c1fae966a2a0030a2d6e949b35716d767ea79e4c",
+    "scope": "Product requirements; cross-component contributions are linked by pinned inventory, not implied local code."
+  }
 }
