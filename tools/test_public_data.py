@@ -12,6 +12,17 @@ class PublicDataTest(unittest.TestCase):
         for address in (b"127.0.0.1", b"0.0.0.0", b"192.0.2.4", b"198.51.100.8", b"203.0.113.9"):
             self.assertFalse(findings(address))
 
+    def test_public_denylist_allocations_do_not_allow_private_hosts(self):
+        from check_public_data import PUBLIC_ALLOCATION_TOKENS
+        for token in PUBLIC_ALLOCATION_TOKENS:
+            self.assertFalse(findings(token.encode()))
+        for octets in ((192, 0, 0, 1), (198, 18, 0, 1), (240, 0, 0, 1), (10, 0, 0, 1)):
+            self.assertIn("private-address", findings(".".join(map(str, octets)).encode()))
+        # Neither a longer prefix nor a token prefix is an approved allocation.
+        raw = ".".join(map(str, (100, 64, 0, 0)))
+        for suffix in ("/100", "/10/extra", "/10extra"):
+            self.assertIn("private-address", findings((raw + suffix).encode()))
+
     def test_private_domains_and_paths(self):
         self.assertIn("private-domain", findings(("server." + "local").encode()))
         self.assertIn("personal-path", findings(("C:/" + "Users/person/").encode()))
