@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "now": 1800000000,
+  "anchor": {
+    "id": "offline-fixture-a",
+    "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3IKB72pdiGBOVVmWPO44bEvWpwyCIaUqq+0GbJNHD3REIt3K9lqkKgQOHWW7URG+vkO3XvSW8DWiZEt3FeuVmw==",
+    "epoch": 1,
+    "lastTransition": ""
+  },
+  "manifest": {
+    "header": "eyJhbGciOiJFUzI1NiIsImtpZCI6Im9mZmxpbmUtZml4dHVyZS1hIiwidHlwIjoic3luNDQzLWJvb3RzdHJhcCtqd3MifQ",
+    "payload": "eyJhcGlPcmlnaW4iOiJodHRwczovL2FwaS5leGFtcGxlLmludmFsaWQiLCJhdWRpZW5jZSI6InN5bjQ0My1jbGllbnQtYm9vdHN0cmFwIiwiY2xpZW50SWQiOiJzeW40NDMtYW5kcm9pZCIsImV4cGlyZXMiOjE4MDAwMDM2MDAsImlzc3VlZEF0IjoxODAwMDAwMDAwLCJpc3N1ZXIiOiJodHRwczovL2lkZW50aXR5LmV4YW1wbGUuaW52YWxpZC9yZWFsbXMvdGVzdCIsIm5vdEJlZm9yZSI6MTgwMDAwMDAwMCwicmV2aXNpb24iOjEsInJvb3RFcG9jaCI6MSwicm9vdHMiOnsib25saW5lLWZpeHR1cmUtYSI6Ik1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRW1Jamg0MVB5emhlSlJRbTJGaDVzTDFpN1pka2VJaHpjQ1hGRFYyRVdRZFFpL0JtYVdOZld2MkRwcmhXMHZPNjJXRlJXS0Zvd1VpWlMwMW5rUGdiUzhnPT0ifSwic2NoZW1hVmVyc2lvbiI6MSwic2VydmljZUlkIjoiZml4dHVyZS1zZXJ2aWNlIn0",
+    "signature": "aimdfmB0VpScG37fgHkXYY51zfdC87EJny5pyHbXjx0UEWC8k41oXHKAOTNc7xwxnQVnqLv0gjbMJeEp1d9CjA"
+  },
+  "floor": {
+    "serviceId": "fixture-service",
+    "revision": 1,
+    "hash": "aOADswRN8kjRHysEVztbQn1bWvL3Q2G0IbPuyqx5ijA"
+  },
+  "previous": {
+    "header": "eyJhbGciOiJFUzI1NiIsImtpZCI6Im9mZmxpbmUtZml4dHVyZS1hIiwidHlwIjoic3luNDQzLXJvb3QtdHJhbnNpdGlvbitqd3MifQ",
+    "payload": "eyJhdWRpZW5jZSI6InN5bjQ0My1yb290LXRyYW5zaXRpb24iLCJlcG9jaCI6MiwiZXhwaXJlcyI6MTgwMDAwMzYwMCwiZnJvbSI6Im9mZmxpbmUtZml4dHVyZS1hIiwiaXNzdWVkQXQiOjE4MDAwMDAwMDAsIm5vdEJlZm9yZSI6MTgwMDAwMDAwMCwic2NoZW1hVmVyc2lvbiI6MSwic3BraSI6Ik1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUJVR3Z0d0kxZlYvYUxOcFpnSjRXcVFzdDFndjJ3SWI3NkV6T3R0TmhZU01zcUd3QUZ6TE1Gc1k1dlpzZlRNMVFjVER1M0puRjI2WDl3TlRZZVhjTFdRPT0iLCJ0byI6Im9mZmxpbmUtZml4dHVyZS1iIn0",
+    "signature": "dc9I15C1kzOYHjvFcJariHEpwowPbTZmyQEFE-yFwFebnb6E7RsE4VQ5h6FeUTIzNKNKQZY-sZmSppVUisC14Q"
+  },
+  "next": {
+    "header": "eyJhbGciOiJFUzI1NiIsImtpZCI6Im9mZmxpbmUtZml4dHVyZS1iIiwidHlwIjoic3luNDQzLXJvb3QtdHJhbnNpdGlvbitqd3MifQ",
+    "payload": "eyJhdWRpZW5jZSI6InN5bjQ0My1yb290LXRyYW5zaXRpb24iLCJlcG9jaCI6MiwiZXhwaXJlcyI6MTgwMDAwMzYwMCwiZnJvbSI6Im9mZmxpbmUtZml4dHVyZS1hIiwiaXNzdWVkQXQiOjE4MDAwMDAwMDAsIm5vdEJlZm9yZSI6MTgwMDAwMDAwMCwic2NoZW1hVmVyc2lvbiI6MSwic3BraSI6Ik1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUJVR3Z0d0kxZlYvYUxOcFpnSjRXcVFzdDFndjJ3SWI3NkV6T3R0TmhZU01zcUd3QUZ6TE1Gc1k1dlpzZlRNMVFjVER1M0puRjI2WDl3TlRZZVhjTFdRPT0iLCJ0byI6Im9mZmxpbmUtZml4dHVyZS1iIn0",
+    "signature": "zfrDASO2wapNMvuNWYzRUt5AfLhS69re_HJejVPOPKcH02ieLiwSbmJ-iQ2bKPtTg34-AlUJw4zRrxaRhR235Q"
+  },
+  "advanced": {
+    "id": "offline-fixture-b",
+    "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEBUGvtwI1fV/aLNpZgJ4WqQst1gv2wIb76EzOttNhYSMsqGwAFzLMFsY5vZsfTM1QcTDu3JnF26X9wNTYeXcLWQ==",
+    "epoch": 2,
+    "lastTransition": "rNJgPHBaueLDwlGKtlVHdw6Wd-7SKlzUseFaaN0jDSU"
+  },
+  "fresh": {
+    "header": "eyJhbGciOiJFUzI1NiIsImtpZCI6Im9mZmxpbmUtZml4dHVyZS1iIiwidHlwIjoic3luNDQzLWJvb3RzdHJhcCtqd3MifQ",
+    "payload": "eyJhcGlPcmlnaW4iOiJodHRwczovL2FwaS5leGFtcGxlLmludmFsaWQiLCJhdWRpZW5jZSI6InN5bjQ0My1jbGllbnQtYm9vdHN0cmFwIiwiY2xpZW50SWQiOiJzeW40NDMtYW5kcm9pZCIsImV4cGlyZXMiOjE4MDAwMDM2MDAsImlzc3VlZEF0IjoxODAwMDAwMDAwLCJpc3N1ZXIiOiJodHRwczovL2lkZW50aXR5LmV4YW1wbGUuaW52YWxpZC9yZWFsbXMvdGVzdCIsIm5vdEJlZm9yZSI6MTgwMDAwMDAwMCwicmV2aXNpb24iOjIsInJvb3RFcG9jaCI6Miwicm9vdHMiOnsib25saW5lLWZpeHR1cmUtYSI6Ik1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRW1Jamg0MVB5emhlSlJRbTJGaDVzTDFpN1pka2VJaHpjQ1hGRFYyRVdRZFFpL0JtYVdOZld2MkRwcmhXMHZPNjJXRlJXS0Zvd1VpWlMwMW5rUGdiUzhnPT0ifSwic2NoZW1hVmVyc2lvbiI6MSwic2VydmljZUlkIjoiZml4dHVyZS1zZXJ2aWNlIn0",
+    "signature": "E6vBVW4zCCmS6Zog7EMpqh3fKc7vZCLgpZ5mosV4UQH8b1GL5oU0_PMaBBgN-opSc4ym_tgg5c9SahmcEhmqBw"
+  },
+  "newFloor": {
+    "serviceId": "fixture-service",
+    "revision": 2,
+    "hash": "nnYOhmdC0ei1wRXRCqfms-XpPsklhDZqWY6zGGsMRWM"
+  },
+  "code": "W_Db5WN05PoZDdipmtwGUb2NWt6dPXshphyL4EByJRs"
+}
