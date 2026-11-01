@@ -73,6 +73,9 @@ func databaseFixture(t *testing.T) (*Store, *Store, Actor, time.Time) {
 	if _, e := fixtureOwner.Exec(`TRUNCATE catalog_outbox,catalog_audit,catalog_operations,catalog_jobs,catalog_dependencies,catalog_snapshots,catalog_source_grants,catalog_sources,catalog_resources,catalog_acl RESTART IDENTITY CASCADE`); e != nil {
 		t.Fatal(e)
 	}
+	if _, e := fixtureOwner.Exec(`UPDATE catalog_clock SET second=0 WHERE id=true`); e != nil {
+		t.Fatal(e)
+	}
 	key := make([]byte, 32)
 	if _, e := rand.Read(key); e != nil {
 		t.Fatal("fixture entropy")
@@ -527,5 +530,116 @@ func TestSQLJobQuotasDeadlineAndCancelledTransaction(t *testing.T) {
 	}
 	if e := fixtureOwner.QueryRow(`SELECT count(*) FROM catalog_sources WHERE id='cancelled-source'`).Scan(&count); e != nil || count != 0 {
 		t.Fatal("cancelled write partially committed")
+	}
+}
+
+func TestSQLMonotonicClockAndUnavailableDatabaseNeverAcknowledge(t *testing.T) {
+	api, _, actor, now := databaseFixture(t)
+	ctx := context.Background()
+	first, e := api.Now(ctx, now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	back, e := api.Now(ctx, now.Add(-24*time.Hour))
+	if e != nil || !back.Equal(first) {
+		t.Fatal("wall clock rollback extended authority")
+	}
+	closed, e := sql.Open("pgx", os.Getenv("SYN443_TEST_DATABASE"))
+	if e != nil {
+		t.Fatal("fixture setup")
+	}
+	closed.Close()
+	dead, e := NewStore(closed, bytes.Repeat([]byte{3}, 32))
+	if e != nil {
+		t.Fatal(e)
+	}
+	source := sourceExample(now)
+	job := Job{ID: "job-a", SourceID: source.ID, SourceRevision: 1, Attempts: 1}
+	for _, call := range []func() error{
+		func() error {
+			_, e := dead.PutSource(ctx, actor, source, SecretPatch{Operation: "keep"}, "write", now)
+			return e
+		},
+		func() error { _, e := dead.GetSource(ctx, actor, source.ID, now); return e },
+		func() error {
+			_, e := dead.Queue(ctx, actor, source.ID, 1, "queue", []byte("synthetic"), now)
+			return e
+		},
+		func() error { _, e := dead.Claim(ctx, now); return e }, func() error { _, e := dead.Schedule(ctx, now); return e },
+		func() error { return dead.Fail(ctx, job, "subscription_fetch_unavailable", false, now) },
+		func() error { return dead.Cancel(ctx, actor, job.ID, "cancel", now) },
+		func() error { return dead.Abandon(ctx, job, now) },
+		func() error { _, _, _, e := dead.SyncCache(ctx, job, now); return e },
+		func() error {
+			_, e := dead.Complete(ctx, job, nil, subscriptions.Quota{}, subscriptions.Cache{}, now)
+			return e
+		},
+		func() error { _, e := dead.Now(ctx, now); return e },
+	} {
+		if e := call(); !errors.Is(e, ErrUnavailable) {
+			t.Fatal("unavailable durable store acknowledged operation")
+		}
+	}
+}
+
+func TestSQLCancellationAtOutboxCommitRollsBackSnapshotAndHead(t *testing.T) {
+	api, worker, actor, now := databaseFixture(t)
+	source := mustSource(t, api, actor, sourceExample(now), "create", now)
+	job, profiles := manualWork(t, api, worker, actor, source, "import", "http://proxy.example.invalid:443", now)
+	block, e := fixtureOwner.Begin()
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer block.Rollback()
+	if _, e = block.Exec(`LOCK TABLE catalog_outbox IN ACCESS EXCLUSIVE MODE`); e != nil {
+		t.Fatal(e)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, e := worker.Complete(ctx, job, profiles, subscriptions.Quota{}, subscriptions.Cache{}, now)
+		done <- e
+	}()
+	deadline := time.Now().Add(8 * time.Second)
+	waiting := false
+	for time.Now().Before(deadline) {
+		var count int
+		if e = fixtureOwner.QueryRow(`SELECT count(*) FROM pg_stat_activity WHERE usename='syn443_source_worker' AND wait_event_type='Lock' AND query LIKE '%INSERT INTO catalog_outbox%'`).Scan(&count); e != nil {
+			t.Fatal(e)
+		}
+		if count > 0 {
+			waiting = true
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !waiting {
+		cancel()
+		block.Rollback()
+		<-done
+		t.Fatal("transaction never reached blocked outbox write")
+	}
+	cancel()
+	select {
+	case e = <-done:
+		if !errors.Is(e, ErrUnavailable) {
+			t.Fatal("failed outbox write acknowledged")
+		}
+	case <-time.After(8 * time.Second):
+		block.Rollback()
+		t.Fatal("SQL cancellation did not complete")
+	}
+	block.Rollback()
+	read, e := api.GetSource(context.Background(), actor, source.ID, now)
+	if e != nil || read.ActiveSnapshot != "" {
+		t.Fatal("partially committed active head")
+	}
+	var count int
+	if e = fixtureOwner.QueryRow(`SELECT count(*) FROM catalog_snapshots`).Scan(&count); e != nil || count != 0 {
+		t.Fatal("partial immutable snapshot survived rollback")
+	}
+	if e = fixtureOwner.QueryRow(`SELECT count(*) FROM catalog_outbox`).Scan(&count); e != nil || count != 0 {
+		t.Fatal("partial outbox event survived rollback")
 	}
 }

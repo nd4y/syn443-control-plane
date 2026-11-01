@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -124,5 +127,32 @@ func TestProtectedRecordDomainsAndHashSeparation(t *testing.T) {
 	}
 	if _, e = NewStore(&sql.DB{}, nil); e == nil {
 		t.Fatal("missing storage key")
+	}
+}
+
+func TestCredentialCustomTLSRootsAndSensitiveFormatters(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("credential validation performed network I/O") }))
+	defer server.Close()
+	certificate := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}))
+	raw, _ := json.Marshal(FetchCredential{URL: "https://proxy.example.invalid/subscription", RootCA: certificate + "\n", AllowedNetworks: []string{"192.0.2.0/24"}})
+	c, e := ReadFetchCredential(raw)
+	if e != nil {
+		t.Fatal("owner-installed TLS trust rejected")
+	}
+	config, e := c.Config(false)
+	if e != nil || config.Network.Roots == nil || len(config.Network.Networks) != 1 {
+		t.Fatal("TLS trust or narrow grant lost")
+	}
+	for _, value := range []any{Source{Name: "synthetic-sensitive-marker"}, SecretPatch{Operation: "replace", Value: json.RawMessage(`"synthetic-sensitive-marker"`)}, StoredProfile{Name: "synthetic-sensitive-marker", Outbound: json.RawMessage(`"synthetic-sensitive-marker"`)}, Job{Lease: "synthetic-sensitive-marker"}, &Store{macKey: []byte("synthetic-sensitive-marker")}} {
+		text := fmt.Sprintf("%v %#v", value, value)
+		if strings.Contains(text, "synthetic-sensitive-marker") {
+			t.Fatal("sensitive formatter escaped redaction")
+		}
+	}
+	for _, ca := range []string{"not pem", string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: []byte("synthetic-invalid-key")})), strings.Repeat("x", 32769)} {
+		c.RootCA = ca
+		if _, e = c.Config(false); e == nil {
+			t.Fatal("unsafe trust input")
+		}
 	}
 }
