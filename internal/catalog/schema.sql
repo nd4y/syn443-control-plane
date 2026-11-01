@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS catalog_sources(
  valid_until bigint NOT NULL,refresh_seconds bigint NOT NULL CHECK(refresh_seconds BETWEEN 60 AND 86400),
  max_stale_seconds bigint NOT NULL CHECK(max_stale_seconds BETWEEN 300 AND 604800),
  active_snapshot text,candidate_snapshot text,state text NOT NULL DEFAULT 'pending',
+ access_state text NOT NULL DEFAULT 'unknown' CHECK(access_state IN('unknown','allowed','revoked','expired','quota_exhausted')),
  last_sync bigint NOT NULL DEFAULT 0,next_sync bigint NOT NULL DEFAULT 0,last_resource_revision bigint NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS catalog_source_grants(

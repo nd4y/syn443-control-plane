@@ -191,9 +191,11 @@ func (s *Store) Complete(ctx context.Context, job Job, profiles []subscriptions.
 		return Snapshot{}, ErrUnavailable
 	}
 	state := "quarantined"
+	access := current.AccessState
 	active := current.ActiveSnapshot
 	if result.State == "active" {
 		state = "active"
+		access = "allowed"
 		active = result.ID
 		if current.ActiveSnapshot != "" {
 			if _, e = tx.ExecContext(ctx, `UPDATE catalog_snapshots SET state='superseded' WHERE id=$1`, current.ActiveSnapshot); e != nil {
@@ -203,12 +205,13 @@ func (s *Store) Complete(ctx context.Context, job Job, profiles []subscriptions.
 	}
 	if result.Reason == "quota_exhausted" {
 		state = "quota_exhausted"
+		access = "quota_exhausted"
 	}
 	var activeValue any
 	if active != "" {
 		activeValue = active
 	}
-	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET active_snapshot=$2,candidate_snapshot=$3,state=$4,last_sync=$5,next_sync=$6,fetch_cache=$7,last_resource_revision=$8 WHERE id=$1`, source.ID, activeValue, result.ID, state, now.Unix(), now.Unix()+source.RefreshSeconds, protectedCache, job.ResourceRevision)
+	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET active_snapshot=$2,candidate_snapshot=$3,state=$4,last_sync=$5,next_sync=$6,fetch_cache=$7,last_resource_revision=$8,access_state=$9 WHERE id=$1`, source.ID, activeValue, result.ID, state, now.Unix(), now.Unix()+source.RefreshSeconds, protectedCache, job.ResourceRevision, access)
 	if e != nil {
 		return Snapshot{}, ErrUnavailable
 	}

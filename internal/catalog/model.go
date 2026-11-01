@@ -22,6 +22,7 @@ var sourceIdentifier = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,48}$`)
 var externalRemnawaveID = regexp.MustCompile(`^[1-9][0-9]{0,14}$`)
 
 type Source struct {
+	AccessState          string   `json:"-"`
 	ID                   string   `json:"id"`
 	Owner                string   `json:"owner"`
 	Name                 string   `json:"name"`

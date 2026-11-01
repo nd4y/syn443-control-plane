@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -163,6 +164,7 @@ func TestSQLWorkerActualHTTPSRevalidationAndCredentialFailure(t *testing.T) {
 			return
 		}
 		w.Header().Set("ETag", `"fixture-v1"`)
+		w.Header().Set("Subscription-Userinfo", "upload=0; download=1; total=100; expire="+strconv.FormatInt(now.Add(time.Hour).Unix(), 10))
 		if r.Header.Get("If-None-Match") == `"fixture-v1"` {
 			w.WriteHeader(304)
 			return
@@ -172,6 +174,7 @@ func TestSQLWorkerActualHTTPSRevalidationAndCredentialFailure(t *testing.T) {
 	defer server.Close()
 	source := sourceExample(now)
 	source.Mode = "server"
+	source.MaxStaleSeconds = 300
 	credential := FetchCredential{URL: server.URL, AllowedNetworks: []string{"127.0.0.1/32"}, RootCA: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}))}
 	raw, _ := json.Marshal(credential)
 	source, e := api.PutSource(ctx, actor, source, SecretPatch{Operation: "replace", Value: raw}, "server-create", now)
@@ -212,6 +215,14 @@ func TestSQLWorkerActualHTTPSRevalidationAndCredentialFailure(t *testing.T) {
 	after, _ := api.GetSource(ctx, actor, source.ID, now)
 	if after.ActiveSnapshot != second.ActiveSnapshot || after.State != "refresh_error" {
 		t.Fatal("API credential error revoked valid cached user")
+	}
+	stale, e := api.GetSource(ctx, actor, source.ID, now.Add(301*time.Second))
+	if e != nil || stale.State != "stale" {
+		t.Fatal("failed refresh concealed expired cache", e)
+	}
+	expired, e := api.GetSource(ctx, actor, source.ID, now.Add(3601*time.Second))
+	if e != nil || expired.State != "expired" {
+		t.Fatal("provider expiry concealed by last network error", e)
 	}
 	var protected []byte
 	if e = fixtureOwner.QueryRow(`SELECT profiles FROM catalog_snapshots WHERE id=$1`, after.ActiveSnapshot).Scan(&protected); e != nil || strings.Contains(string(protected), "proxy.example.invalid") {
@@ -292,5 +303,33 @@ func TestSQLWorkerRemnawaveCredentialFailureIsNotUserRevocation(t *testing.T) {
 	third, _ := api.GetSource(ctx, actor, source.ID, now)
 	if third.State != "revoked" || third.ActiveSnapshot != first.ActiveSnapshot {
 		t.Fatal("explicit user revoke lost")
+	}
+	third.Name = "Rename preserves the upstream denial"
+	edited := mustSource(t, api, actor, third, "rename-after-provider-revoke", now)
+	read, e := api.GetSource(ctx, actor, source.ID, now)
+	if e != nil || read.State != "revoked" {
+		t.Fatal("metadata edit resurrected explicitly revoked cache", e)
+	}
+	state.Store(1)
+	if _, e = api.Queue(ctx, actor, source.ID, edited.Revision, "credential-error-after-revoke", nil, now); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = w.ProcessOne(ctx); e != nil {
+		t.Fatal(e)
+	}
+	read, e = api.GetSource(ctx, actor, source.ID, now)
+	if e != nil || read.State != "revoked" {
+		t.Fatal("transient/auth error cleared authoritative revocation", e)
+	}
+	state.Store(0)
+	if _, e = api.Queue(ctx, actor, source.ID, edited.Revision, "verified-restoration", nil, now); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = w.ProcessOne(ctx); e != nil {
+		t.Fatal(e)
+	}
+	read, e = api.GetSource(ctx, actor, source.ID, now)
+	if e != nil || read.State != "active" || read.ActiveSnapshot == first.ActiveSnapshot {
+		t.Fatal("fresh verified snapshot could not restore access", e)
 	}
 }

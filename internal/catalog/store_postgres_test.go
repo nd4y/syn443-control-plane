@@ -103,6 +103,8 @@ func mustSource(t *testing.T, s *Store, a Actor, source Source, request string, 
 	source.CandidateSnapshot = ""
 	source.LastSync = 0
 	source.NextSync = 0
+	source.LastResourceRevision = 0
+	source.AccessState = ""
 	v, e := s.PutSource(context.Background(), a, source, SecretPatch{Operation: "keep"}, request, now)
 	if e != nil {
 		t.Fatal(e)

@@ -304,11 +304,14 @@ func (s *Store) Fail(ctx context.Context, job Job, reason string, permanent bool
 		phase = "failed"
 	}
 	state := "refresh_error"
+	access := source.AccessState
 	if reason == "subscription_access_revoked" || reason == "resource_denied" {
 		state = "revoked"
+		access = "revoked"
 	}
 	if reason == "subscription_expired" {
 		state = "expired"
+		access = "expired"
 	}
 	if reason == "subscription_empty_response" || reason == "subscription_invalid" || reason == "subscription_unsupported" || reason == "subscription_ambiguous" || reason == "subscription_size_limit" {
 		state = "quarantined"
@@ -317,7 +320,7 @@ func (s *Store) Fail(ctx context.Context, job Job, reason string, permanent bool
 	if e != nil {
 		return ErrUnavailable
 	}
-	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET state=$2,last_sync=$3,next_sync=$4,last_resource_revision=$5 WHERE id=$1`, source.ID, state, now.Unix(), now.Unix()+source.RefreshSeconds, job.ResourceRevision)
+	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET state=$2,last_sync=$3,next_sync=$4,last_resource_revision=$5,access_state=$6 WHERE id=$1`, source.ID, state, now.Unix(), now.Unix()+source.RefreshSeconds, job.ResourceRevision, access)
 	if e != nil {
 		return ErrUnavailable
 	}

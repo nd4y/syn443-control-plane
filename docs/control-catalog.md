@@ -28,7 +28,11 @@ The source worker has40 seconds per claimed job inside its60-second lease,
 bounded HTTP time/size/redirect/DNS egress and no provider writes. Resource/source
 revision, active head, lease and cancellation are rechecked at commit. HTTP
 authentication failures preserve only the existing bounded valid snapshot;
-explicit upstream user revocation/expiry removes eligibility. Source recipient
+explicit upstream user revocation/expiry removes eligibility.
+The durable access denial is separate from refresh state: rename, credential
+rotation or a later network/authentication failure cannot revive a revoked cache.
+Only a newly accepted verified snapshot can restore it. Cache TTL/provider expiry
+remain visible even when the most recent refresh failed. Source recipient
 changes require both share and receive authority; device-fetched data is personal.
 Large removals are quarantined until an exact hash/head/revision-bound decision.
 Review cannot approve expired/quota-exhausted access or dangling profile references.

@@ -9,7 +9,7 @@ GRANT SELECT ON catalog_resources TO syn443_source_worker;
 GRANT UPDATE(state,last_sync) ON catalog_resources TO syn443_source_worker;
 GRANT SELECT,INSERT,UPDATE ON catalog_sources TO syn443_control_api;
 GRANT SELECT ON catalog_sources TO syn443_source_worker;
-GRANT UPDATE(active_snapshot,candidate_snapshot,state,last_sync,next_sync,fetch_cache,last_resource_revision) ON catalog_sources TO syn443_source_worker;
+GRANT UPDATE(active_snapshot,candidate_snapshot,state,access_state,last_sync,next_sync,fetch_cache,last_resource_revision) ON catalog_sources TO syn443_source_worker;
 GRANT SELECT,INSERT,UPDATE,DELETE ON catalog_source_grants,catalog_dependencies TO syn443_control_api;
 GRANT SELECT,INSERT,UPDATE ON catalog_share_heads TO syn443_control_api;
 GRANT SELECT ON catalog_share_heads TO syn443_source_worker;
