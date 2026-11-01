@@ -48,7 +48,7 @@ func Rebase(ctx context.Context, base, local, server json.RawMessage, validate f
 	}
 	var documents []map[string]any
 	for _, raw := range []json.RawMessage{base, local, server} {
-		if len(raw) > 262144 {
+		if len(raw) > 262144 || validate(raw) != nil {
 			return result, ErrInvalid
 		}
 		v, e := value(raw)

@@ -11,7 +11,8 @@ values equal to the template and parent-delete/child-write collisions. Input
 permutation cannot change the result. Each field retains its layer/revision origin.
 
 Changes are explicit set/delete operations on bounded named paths; arrays are
-atomic ordered values. Default local access is denied. Parent/child locks survive
+atomic ordered values. Overlapping changes in the same layer and nested null
+values are rejected; deletion has its own operation. Default local access is denied. Parent/child locks survive
 whole-object replacement. Choice/range/free restrictions combine by intersection;
 a lower layer cannot invent a permission absent from its parent or bypass a lock.
 An administrator edits an authorized source layer rather than silently flattening

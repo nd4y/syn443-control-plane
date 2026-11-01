@@ -56,9 +56,9 @@ func TestRebaseDeletionTypeAndOrderedArrayConflicts(t *testing.T) {
 func TestRebaseBudgetsCancellationAndUnsupportedSettings(t *testing.T) {
 	ctx := context.Background()
 	valid := json.RawMessage(`{"mode":"direct"}`)
-	for _, bad := range [][]byte{[]byte(`[]`), []byte(`{"mode":null}`), []byte(`{"mode":"a","mode":"b"}`), bytes.Repeat([]byte{'x'}, 262145)} {
+	for index, bad := range [][]byte{[]byte(`[]`), []byte(`{"mode":null}`), []byte(`{"mode":"a","mode":"b"}`), bytes.Repeat([]byte{'x'}, 262145)} {
 		if _, e := Rebase(ctx, bad, valid, valid, supported); e == nil {
-			t.Fatal("invalid base document accepted")
+			t.Fatal("invalid base document accepted", index)
 		}
 	}
 	if _, e := Rebase(ctx, valid, valid, valid, nil); e == nil {

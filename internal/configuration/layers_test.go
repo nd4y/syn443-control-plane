@@ -96,6 +96,27 @@ func TestEqualPriorityCollisionsIncludeExplicitUnchangedValues(t *testing.T) {
 	}
 }
 
+func TestGroupContainerChangesDoNotCreateFalseSiblingConflicts(t *testing.T) {
+	base := layer("base", "template", setting("/dns", `{}`))
+	a := layer("a", "group", setting("/dns/final", `"physical"`))
+	b := layer("b", "group", setting("/dns/timeout", `1000`))
+	if _, e := Merge(context.Background(), []Layer{base, a, b}, supported); e != nil {
+		t.Fatal("independent children of empty parent conflicted", e)
+	}
+	base.Changes = []Change{setting("/dns", `{"final":"physical","timeout":1000}`)}
+	a.Changes = []Change{setting("/dns", `{}`)}
+	if _, e := Merge(context.Background(), []Layer{base, a}, supported); e != nil {
+		t.Fatal("one group whole-object removal conflicted with itself", e)
+	}
+	if _, e := Merge(context.Background(), []Layer{base, a, b}, supported); !errors.Is(e, ErrConflict) {
+		t.Fatal("whole-object replacement lost cross-group collision", e)
+	}
+	a.Changes = []Change{setting("/dns", `{}`), setting("/dns/final", `"other"`)}
+	if _, e := Merge(context.Background(), []Layer{base, a}, supported); !errors.Is(e, ErrInvalid) {
+		t.Fatal("overlapping same-layer edits are ambiguous")
+	}
+}
+
 func TestLocalChangesCannotBypassParentLocksOrWidenPermissions(t *testing.T) {
 	base := layer("base", "template", setting("/dns", `{"final":"physical","timeout":1000}`), setting("/ui/theme", `"dark"`))
 	base.Permissions = []Permission{{Path: "/dns", Mode: "free"}, {Path: "/dns/final", Mode: "locked"}}

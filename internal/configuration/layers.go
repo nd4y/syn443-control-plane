@@ -59,6 +59,7 @@ type Restriction struct {
 	Permission Permission `json:"permission"`
 	Origin     Origin     `json:"origin"`
 }
+type groupClaim struct{ Signature, LayerID string }
 type Effective struct {
 	Document     json.RawMessage   `json:"document"`
 	Fields       map[string]Origin `json:"fields"`
@@ -106,6 +107,8 @@ func value(raw json.RawMessage) (any, error) {
 }
 func boundedNumbers(v any) bool {
 	switch x := v.(type) {
+	case nil:
+		return false
 	case json.Number:
 		raw := x.String()
 		if len(raw) > 64 {
@@ -344,7 +347,7 @@ func Merge(ctx context.Context, input []Layer, validate func(json.RawMessage) er
 		return a.ID < b.ID
 	})
 	root := map[string]any{}
-	groupWrites := map[int]map[string]string{}
+	groupWrites := map[int]map[string]groupClaim{}
 	for _, l := range layers {
 		origin := Origin{l.ID, l.Kind, l.Revision}
 		layerPaths := map[string]bool{}
@@ -355,6 +358,11 @@ func Merge(ctx context.Context, input []Layer, validate func(json.RawMessage) er
 			_, e := path(change.Path)
 			if e != nil || layerPaths[change.Path] {
 				return result, ErrInvalid
+			}
+			for previous := range layerPaths {
+				if contains(previous, change.Path) || contains(change.Path, previous) {
+					return result, ErrInvalid
+				}
 			}
 			layerPaths[change.Path] = true
 			before, _ := json.Marshal(root)
@@ -421,16 +429,24 @@ func Merge(ctx context.Context, input []Layer, validate func(json.RawMessage) er
 				}
 				touched = true
 				if l.Kind == "group" {
+					parts, _ := path(p)
+					_, stillExists := lookup(root, parts)
+					// Replacing an empty object by a child is a container change,
+					// not a claim that the whole parent was deleted.
+					if !ok && stillExists {
+						delete(result.Fields, p)
+						continue
+					}
 					writes := groupWrites[l.Priority]
 					if writes == nil {
-						writes = map[string]string{}
+						writes = map[string]groupClaim{}
 						groupWrites[l.Priority] = writes
 					}
 					signature := "deleted"
 					if ok {
 						signature = "set/" + canonical(current)
 					}
-					if e = groupWrite(writes, p, signature); e != nil {
+					if e = groupWrite(writes, p, signature, l.ID); e != nil {
 						return result, e
 					}
 				}
@@ -443,15 +459,18 @@ func Merge(ctx context.Context, input []Layer, validate func(json.RawMessage) er
 			if l.Kind == "group" && !touched && change.Operation == "delete" {
 				writes := groupWrites[l.Priority]
 				if writes == nil {
-					writes = map[string]string{}
+					writes = map[string]groupClaim{}
 					groupWrites[l.Priority] = writes
 				}
-				if e = groupWrite(writes, change.Path, "deleted"); e != nil {
+				if e = groupWrite(writes, change.Path, "deleted", l.ID); e != nil {
 					return result, e
 				}
 			}
 		}
 		for _, permission := range l.Permissions {
+			if ctx.Err() != nil {
+				return result, ctx.Err()
+			}
 			if permission.Validate() != nil {
 				return result, ErrInvalid
 			}
@@ -487,15 +506,18 @@ func Merge(ctx context.Context, input []Layer, validate func(json.RawMessage) er
 	result.Document = raw
 	return result, nil
 }
-func groupWrite(writes map[string]string, p, signature string) error {
+func groupWrite(writes map[string]groupClaim, p, signature, layerID string) error {
 	for previous, old := range writes {
-		if previous == p && old != signature {
+		if old.LayerID == layerID {
+			continue
+		}
+		if previous == p && old.Signature != signature {
 			return ErrConflict
 		}
-		if previous != p && (contains(previous, p) || contains(p, previous)) && (old != "deleted" || signature != "deleted") {
+		if previous != p && (contains(previous, p) || contains(p, previous)) && (old.Signature != "deleted" || signature != "deleted") {
 			return ErrConflict
 		}
 	}
-	writes[p] = signature
+	writes[p] = groupClaim{signature, layerID}
 	return nil
 }
