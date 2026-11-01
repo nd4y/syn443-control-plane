@@ -206,8 +206,13 @@ func TestFetchInputAndCancellationBounds(t *testing.T) {
 	}
 	c = config
 	c.Network.Fixture = false
-	if _, e := Fetch(context.Background(), c, Cache{}, fetchNow); !errors.Is(e, ErrFetch) {
+	if _, e := Fetch(context.Background(), c, Cache{}, fetchNow); !errors.Is(e, ErrAccess) {
 		t.Fatal("ungranted actual address")
+	}
+	c = config
+	c.Network.Roots = nil
+	if _, e := Fetch(context.Background(), c, Cache{}, fetchNow); !errors.Is(e, ErrTLS) {
+		t.Fatal("TLS authority failure was not classified")
 	}
 }
 

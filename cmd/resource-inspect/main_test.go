@@ -46,7 +46,7 @@ func TestOwnerCLIPrivateExportAndFailurePreserveSnapshot(t *testing.T) {
 	secret := filepath.Join(dir, "credential")
 	os.WriteFile(secret, []byte(token), 0600)
 	config := filepath.Join(dir, "resource.json")
-	raw, _ := json.Marshal(map[string]any{"resourceId": "panel-a", "providerType": "panel.remnawave", "apiVersion": "3.4", "endpoint": s.URL, "enabled": true, "credentialFile": secret, "certificateAuthorityFile": cert, "allowedNetworks": []string{"127.0.0.1/32"}})
+	raw, _ := json.Marshal(map[string]any{"fixtureLoopback": true, "resourceId": "panel-a", "providerType": "panel.remnawave", "apiVersion": "3.4", "endpoint": s.URL, "enabled": true, "credentialFile": secret, "certificateAuthorityFile": cert, "allowedNetworks": []string{"127.0.0.1/32"}})
 	os.WriteFile(config, raw, 0600)
 	call := func(extra ...string) (int, string) {
 		var out bytes.Buffer

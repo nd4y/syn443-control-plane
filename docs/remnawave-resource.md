@@ -91,3 +91,10 @@ publication, mobile edit/publish and administration UI. A live operator panel an
 device provisioning from this adapter have not been accepted by synthetic tests.
 Multiple Remnawave and x-ui/3x-ui remain extension contracts only. No LTE testing
 or production/provider mutation is part of this slice.
+
+Resource HTTP now uses the same `internal/egress` boundary as subscription fetches.
+Every DNS answer and new connection is checked, including metadata addresses and
+IPv4-mapped addresses. An internal-network grant cannot enable production
+loopback. Literal loopback fixtures require the separately owner-configured
+`fixtureLoopback` context; it is false by default and cannot apply to a public
+hostname. Fixture flags are not device/admin resource-credential fields.

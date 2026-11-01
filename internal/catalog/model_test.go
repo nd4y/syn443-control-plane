@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -87,5 +88,41 @@ func TestFetchCredentialsAreClosedAndDoNotPermitMasksOrKeyFiles(t *testing.T) {
 		if _, e := ReadFetchCredential([]byte(raw)); e == nil {
 			t.Fatal("unsafe credential accepted")
 		}
+	}
+}
+
+func TestProtectedRecordDomainsAndHashSeparation(t *testing.T) {
+	s, e := NewStore(&sql.DB{}, bytes.Repeat([]byte{7}, 32))
+	if e != nil {
+		t.Fatal(e)
+	}
+	raw := []byte("synthetic-sensitive-record")
+	encrypted, e := s.seal(raw, "source-a/1")
+	if e != nil || bytes.Contains(encrypted, raw) {
+		t.Fatal("protected storage")
+	}
+	plain, e := s.open(encrypted, "source-a/1")
+	if e != nil || !bytes.Equal(plain, raw) {
+		t.Fatal("protected readback")
+	}
+	if _, e = s.open(encrypted, "source-b/1"); e == nil {
+		t.Fatal("AAD crossed source domain")
+	}
+	encrypted[len(encrypted)-1] ^= 1
+	if _, e = s.open(encrypted, "source-a/1"); e == nil {
+		t.Fatal("damaged ciphertext")
+	}
+	if _, e = s.open(nil, "source-a/1"); e == nil {
+		t.Fatal("missing ciphertext became empty state")
+	}
+	other, e := NewStore(&sql.DB{}, bytes.Repeat([]byte{8}, 32))
+	if e != nil || s.hash(raw) == other.hash(raw) {
+		t.Fatal("ordinary hashes became credential guessing oracle")
+	}
+	if _, e = NewStore(nil, bytes.Repeat([]byte{7}, 32)); e == nil {
+		t.Fatal("missing database")
+	}
+	if _, e = NewStore(&sql.DB{}, nil); e == nil {
+		t.Fatal("missing storage key")
 	}
 }

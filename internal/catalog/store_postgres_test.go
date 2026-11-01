@@ -86,8 +86,8 @@ func databaseFixture(t *testing.T) (*Store, *Store, Actor, time.Time) {
 		t.Fatal(e)
 	}
 	now := time.Now().UTC().Truncate(time.Second)
-	actor := Actor{ID: "synthetic-admin", SessionUntil: now.Add(time.Hour).Unix(), MFAUntil: now.Add(10 * time.Minute).Unix()}
-	if _, e = fixtureOwner.Exec(`INSERT INTO catalog_acl(actor,action,target_kind,target_id,expires) VALUES($1,'*','*','*',$2)`, actor.ID, now.Add(time.Hour).Unix()); e != nil {
+	actor := Actor{ID: "synthetic-admin", SessionUntil: now.Add(3 * time.Hour).Unix(), MFAUntil: now.Add(10 * time.Minute).Unix()}
+	if _, e = fixtureOwner.Exec(`INSERT INTO catalog_acl(actor,action,target_kind,target_id,expires) VALUES($1,'*','*','*',$2)`, actor.ID, now.Add(24*time.Hour).Unix()); e != nil {
 		t.Fatal(e)
 	}
 	return api, worker, actor, now
@@ -205,7 +205,7 @@ func TestSQLWorkingSnapshotAndQuarantinePreserveLastGood(t *testing.T) {
 	}
 	read, e = api.GetSource(ctx, actor, source.ID, now.Add(3601*time.Second))
 	if e != nil || read.State != "stale" {
-		t.Fatal("expired snapshot reported active")
+		t.Fatalf("expired snapshot state=%q error=%v", read.State, e)
 	}
 }
 func TestSQLReferenceRemovalAndConfirmedExpiry(t *testing.T) {
@@ -368,5 +368,164 @@ func TestSQLConcurrentScheduleAndClaimsDoNotDuplicate(t *testing.T) {
 	}
 	if bytes.Contains(stored, []byte("proxy.example.invalid")) || bytes.Contains(spec, []byte("Synthetic source")) {
 		t.Fatal("unencrypted source state")
+	}
+}
+
+func TestSQLProtectedCacheAndSourceCredentialsRemainScoped(t *testing.T) {
+	api, worker, actor, now := databaseFixture(t)
+	ctx := context.Background()
+	source := mustSource(t, api, actor, sourceExample(now), "create", now)
+	job, profiles := manualWork(t, api, worker, actor, source, "first", "http://proxy.example.invalid:443", now)
+	cache, meta, old, e := worker.SyncCache(ctx, job, now)
+	if e != nil || cache.ETag != "" || meta.ID != "" || len(old) != 0 {
+		t.Fatal("empty cache became known")
+	}
+	first, e := worker.Complete(ctx, job, profiles, subscriptions.Quota{}, subscriptions.Cache{ETag: `"cached-version"`}, now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	job, _ = manualWork(t, api, worker, actor, source, "next", "http://proxy.example.invalid:443", now.Add(time.Second))
+	cache, meta, old, e = worker.SyncCache(ctx, job, now.Add(time.Second))
+	if e != nil || cache.ETag != `"cached-version"` || meta.ID != first.ID || len(old) != 1 {
+		t.Fatal("working cache lost its source snapshot")
+	}
+	if e = api.Cancel(ctx, actor, job.ID, "cancel", now.Add(time.Second)); e != nil {
+		t.Fatal(e)
+	}
+	if _, _, _, e = worker.SyncCache(ctx, job, now.Add(time.Second)); !errors.Is(e, ErrStale) {
+		t.Fatal("cancelled cache reader")
+	}
+	server := sourceExample(now)
+	server.ID = "server-source"
+	server.Mode = "server"
+	credential, _ := json.Marshal(FetchCredential{URL: "https://proxy.example.invalid/subscription", Headers: map[string]string{"Authorization": "Bearer synthetic-only"}})
+	server, e = api.PutSource(ctx, actor, server, SecretPatch{Operation: "replace", Value: credential}, "server", now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = worker.Schedule(ctx, now); e != nil {
+		t.Fatal(e)
+	}
+	job, e = worker.Claim(ctx, now)
+	if e != nil || job.SourceID != server.ID {
+		t.Fatal("server source claim")
+	}
+	_, _, secret, _, e := worker.JobInput(ctx, job, now)
+	if e != nil || !bytes.Contains(secret, []byte("synthetic-only")) {
+		t.Fatal("worker lost addressed credential")
+	}
+	if e = worker.Fail(ctx, job, "subscription_fetch_unavailable", false, now); e != nil {
+		t.Fatal(e)
+	}
+	if j, e := worker.Claim(ctx, now); e != nil || j.ID != "" {
+		t.Fatal("retry ignored backoff")
+	}
+	job, e = worker.Claim(ctx, now.Add(6*time.Second))
+	if e != nil || job.Attempts != 2 {
+		t.Fatal("bounded retry not admitted")
+	}
+	if e = worker.Fail(ctx, job, "untrusted raw error body", true, now.Add(6*time.Second)); e != nil {
+		t.Fatal(e)
+	}
+	var reason string
+	if e = fixtureOwner.QueryRow(`SELECT reason FROM catalog_jobs WHERE id=$1`, job.ID).Scan(&reason); e != nil || reason != "subscription_fetch_unavailable" {
+		t.Fatal("untrusted reason persisted")
+	}
+}
+
+func TestSQLLiveAuthorityMFARevisionAndCiphertextFailures(t *testing.T) {
+	api, _, actor, now := databaseFixture(t)
+	ctx := context.Background()
+	source := sourceExample(now)
+	source.Mode = "server"
+	secret, _ := json.Marshal(FetchCredential{URL: "https://proxy.example.invalid/subscription"})
+	staleMFA := actor
+	staleMFA.MFAUntil = now.Unix()
+	if _, e := api.PutSource(ctx, staleMFA, source, SecretPatch{Operation: "replace", Value: secret}, "no-mfa", now); !errors.Is(e, ErrDenied) {
+		t.Fatal("secret mutation without fresh MFA")
+	}
+	created, e := api.PutSource(ctx, actor, source, SecretPatch{Operation: "replace", Value: secret}, "create", now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	draft := source
+	draft.Revision = created.Revision
+	draft.Name = "Rename without reauth"
+	updated, e := api.PutSource(ctx, staleMFA, draft, SecretPatch{Operation: "keep"}, "rename", now)
+	if e != nil || updated.Revision != 2 {
+		t.Fatal("scoped metadata edit unnecessarily required reauth")
+	}
+	if _, e = api.PutSource(ctx, actor, draft, SecretPatch{Operation: "keep"}, "stale-revision", now); !errors.Is(e, ErrConflict) {
+		t.Fatal("stale editor overwrote revision")
+	}
+	draft.Revision = 2
+	draft.ValidUntil += 60
+	if _, e = api.PutSource(ctx, staleMFA, draft, SecretPatch{Operation: "keep"}, "weaken-expiry", now); !errors.Is(e, ErrDenied) {
+		t.Fatal("expiry extended without fresh assurance")
+	}
+	expired := actor
+	expired.SessionUntil = now.Unix()
+	if _, e = api.GetSource(ctx, expired, source.ID, now); !errors.Is(e, ErrDenied) {
+		t.Fatal("expired session read source")
+	}
+	var protected []byte
+	if e = fixtureOwner.QueryRow(`SELECT spec FROM catalog_sources WHERE id=$1`, source.ID).Scan(&protected); e != nil {
+		t.Fatal(e)
+	}
+	damaged := append([]byte(nil), protected...)
+	damaged[len(damaged)-1] ^= 1
+	if _, e = fixtureAPI.Exec(`UPDATE catalog_sources SET spec=$2 WHERE id=$1`, source.ID, damaged); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = api.GetSource(ctx, actor, source.ID, now); !errors.Is(e, ErrUnavailable) {
+		t.Fatal("corrupt protected state was accepted")
+	}
+	if _, e = fixtureAPI.Exec(`UPDATE catalog_sources SET spec=$2 WHERE id=$1`, source.ID, protected); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = fixtureOwner.Exec(`UPDATE catalog_acl SET expires=$2 WHERE actor=$1`, actor.ID, now.Unix()); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = api.GetSource(ctx, actor, source.ID, now); !errors.Is(e, ErrDenied) {
+		t.Fatal("withdrawn role remained effective")
+	}
+}
+
+func TestSQLJobQuotasDeadlineAndCancelledTransaction(t *testing.T) {
+	api, worker, actor, now := databaseFixture(t)
+	ctx := context.Background()
+	for i := 0; i < 9; i++ {
+		source := sourceExample(now)
+		source.ID = fmt.Sprintf("source-%d", i)
+		source = mustSource(t, api, actor, source, fmt.Sprintf("create-%d", i), now)
+		if _, e := api.Queue(ctx, actor, source.ID, source.Revision, fmt.Sprintf("import-%d", i), []byte("http://proxy.example.invalid:443"), now); e != nil {
+			t.Fatal(e)
+		}
+	}
+	for i := 0; i < 8; i++ {
+		j, e := worker.Claim(ctx, now)
+		if e != nil || j.ID == "" {
+			t.Fatal("bounded admitted work")
+		}
+	}
+	if j, e := worker.Claim(ctx, now); e != nil || j.ID != "" {
+		t.Fatal("global active-work limit exceeded")
+	}
+	if _, e := worker.Claim(ctx, now.Add(901*time.Second)); e != nil {
+		t.Fatal(e)
+	}
+	var count int
+	if e := fixtureOwner.QueryRow(`SELECT count(*) FROM catalog_jobs WHERE phase='dead_letter'`).Scan(&count); e != nil || count != 9 {
+		t.Fatal("job deadlines silently disappeared")
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	source := sourceExample(now)
+	source.ID = "cancelled-source"
+	if _, e := api.PutSource(cancelled, actor, source, SecretPatch{Operation: "keep"}, "cancelled-write", now); e == nil {
+		t.Fatal("cancelled SQL operation acknowledged")
+	}
+	if e := fixtureOwner.QueryRow(`SELECT count(*) FROM catalog_sources WHERE id='cancelled-source'`).Scan(&count); e != nil || count != 0 {
+		t.Fatal("cancelled write partially committed")
 	}
 }

@@ -156,3 +156,18 @@ func TestTransportConfigurationBounds(t *testing.T) {
 		}
 	}
 }
+
+func TestExplicitNetworkGrantCountBoundary(t *testing.T) {
+	networks := make([]netip.Prefix, 16)
+	for i := range networks {
+		networks[i] = netip.PrefixFrom(loopback(), 32)
+	}
+	tr, e := NewTransport("https://127.0.0.1", Options{Fixture: true, Networks: networks})
+	if e != nil {
+		t.Fatal("valid grant-count boundary")
+	}
+	tr.CloseIdleConnections()
+	if _, e = NewTransport("https://127.0.0.1", Options{Fixture: true, Networks: append(networks, networks[0])}); e == nil {
+		t.Fatal("network grant count exceeded")
+	}
+}

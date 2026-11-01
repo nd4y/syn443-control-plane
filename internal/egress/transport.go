@@ -92,7 +92,7 @@ func NewTransport(endpoint string, options Options) (*http.Transport, error) {
 }
 func newTransport(endpoint string, options Options, resolve lookup) (*http.Transport, error) {
 	u, e := url.Parse(endpoint)
-	if e != nil || len(endpoint) > 8192 || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Fragment != "" || u.Opaque != "" || len(options.Networks) > 8 || resolve == nil {
+	if e != nil || len(endpoint) > 8192 || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Fragment != "" || u.Opaque != "" || len(options.Networks) > 16 || resolve == nil {
 		return nil, ErrInvalid
 	}
 	host := u.Hostname()

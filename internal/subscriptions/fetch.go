@@ -3,6 +3,7 @@ package subscriptions
 import (
 	"compress/gzip"
 	"context"
+	"crypto/tls"
 	"errors"
 	"io"
 	"mime"
@@ -16,6 +17,7 @@ import (
 )
 
 var ErrFetch = errors.New("subscription_fetch_unavailable")
+var ErrTLS = errors.New("subscription_tls_failed")
 var ErrAccess = errors.New("subscription_access_denied")
 var ErrRevoked = errors.New("subscription_access_revoked")
 var ErrExpired = errors.New("subscription_expired")
@@ -194,6 +196,13 @@ func Fetch(ctx context.Context, config FetchConfig, cached Cache, now time.Time)
 		}
 		res, e := client.Do(req)
 		if e != nil {
+			if errors.Is(e, egress.ErrAddress) {
+				return result, ErrAccess
+			}
+			var certificate *tls.CertificateVerificationError
+			if errors.As(e, &certificate) {
+				return result, ErrTLS
+			}
 			return result, ErrFetch
 		}
 		if res.StatusCode == 301 || res.StatusCode == 302 || res.StatusCode == 303 || res.StatusCode == 307 || res.StatusCode == 308 {

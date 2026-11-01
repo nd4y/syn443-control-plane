@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/egress"
 	"github.com/nd4y/syn443-control-plane/internal/resources"
 )
 
@@ -33,6 +34,22 @@ func subscriptionBody() string {
 }
 func binding() resources.Binding {
 	return resources.Binding{ResourceID: "panel-a", ExternalUserID: "42"}
+}
+
+func TestProductionLoopbackNeedsMoreThanAnOwnerNetworkGrant(t *testing.T) {
+	_, server, calls := fixture(t, nil)
+	roots := x509.NewCertPool()
+	roots.AddCert(server.Certificate())
+	c, e := New(Config{Instance: resources.Instance{ResourceID: "panel-a", ProviderType: resources.Remnawave, APIVersion: "3.4", Endpoint: server.URL, CredentialRef: "synthetic-owner", Enabled: true}, Token: fixtureToken, Roots: roots, AllowedNetworks: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer c.Close()
+	_, e = c.ReadAssignment(context.Background(), binding())
+	var failure *resources.Error
+	if !errors.As(e, &failure) || failure.Code != "address_not_allowed" || calls.Load() != 0 {
+		t.Fatal("private grant bypassed production control-loopback boundary")
+	}
 }
 
 func fixture(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.Server, *atomic.Int32) {
@@ -64,7 +81,7 @@ func fixture(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.Server,
 	s.StartTLS()
 	pool := x509.NewCertPool()
 	pool.AddCert(s.Certificate())
-	c, e := New(Config{Instance: resources.Instance{ResourceID: "panel-a", ProviderType: resources.Remnawave, APIVersion: "3.4", Endpoint: s.URL, CredentialRef: "owner-config", Enabled: true}, Token: fixtureToken, Roots: pool, AllowedNetworks: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}})
+	c, e := New(Config{Instance: resources.Instance{ResourceID: "panel-a", ProviderType: resources.Remnawave, APIVersion: "3.4", Endpoint: s.URL, CredentialRef: "owner-config", Enabled: true}, Token: fixtureToken, FixtureLoopback: true, Roots: pool, AllowedNetworks: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}})
 	if e != nil {
 		t.Fatal("fixture adapter construction failed")
 	}
@@ -131,11 +148,11 @@ func TestConstructionAndDestinationPolicy(t *testing.T) {
 		addresses = append(addresses, netip.AddrFrom4(o).String())
 	}
 	for _, v := range addresses {
-		if allowedIP(netip.MustParseAddr(v), nil) {
+		if egress.PublicIP(netip.MustParseAddr(v)) {
 			t.Fatal("nonpublic destination allowed without grant")
 		}
 	}
-	if !publicIP(netip.MustParseAddr("8.8.8.8")) || !publicIP(netip.MustParseAddr("2606:4700:4700::1111")) {
+	if !egress.PublicIP(netip.MustParseAddr("8.8.8.8")) || !egress.PublicIP(netip.MustParseAddr("2606:4700:4700::1111")) {
 		t.Fatal("public address rejected")
 	}
 	c, _, calls := fixture(t, nil)

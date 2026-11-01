@@ -260,7 +260,7 @@ func (s *Store) Cancel(ctx context.Context, actor Actor, id, request string, now
 	return tx.Commit()
 }
 func (s *Store) Fail(ctx context.Context, job Job, reason string, permanent bool, now time.Time) error {
-	allowed := map[string]bool{"subscription_fetch_unavailable": true, "subscription_access_denied": true, "subscription_access_revoked": true, "subscription_expired": true, "subscription_empty_response": true, "subscription_size_limit": true, "subscription_invalid": true, "subscription_unsupported": true, "subscription_ambiguous": true, "resource_unavailable": true, "resource_denied": true}
+	allowed := map[string]bool{"subscription_fetch_unavailable": true, "subscription_tls_failed": true, "subscription_access_denied": true, "subscription_access_revoked": true, "subscription_expired": true, "subscription_empty_response": true, "subscription_size_limit": true, "subscription_invalid": true, "subscription_unsupported": true, "subscription_ambiguous": true, "resource_unavailable": true, "resource_denied": true}
 	if !allowed[reason] {
 		reason = "subscription_fetch_unavailable"
 	}
