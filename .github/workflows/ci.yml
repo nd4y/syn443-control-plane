@@ -77,7 +77,7 @@ jobs:
         run: |
           python3 tools/check_public_data.py dist/control-plane
           bash tools/scan_secrets.sh dist/control-plane
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: steps.runtime-scan.outcome == 'success'
         with:
           name: control-plane-linux-amd64
@@ -95,7 +95,7 @@ jobs:
           test -s coverage.out && test -s dependency-inventory.json
           python3 tools/check_public_data.py coverage.out dependency-inventory.json
           bash tools/scan_secrets.sh coverage.out dependency-inventory.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         id: evidence-upload
         if: always() && steps.evidence-scan.outcome == 'success'
         with:
@@ -147,7 +147,7 @@ jobs:
           test -s web-tests/results.xml
           python3 tools/check_public_data.py web-tests/results.xml
           bash tools/scan_secrets.sh web-tests/results.xml
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always() && steps.web-scan.outcome == 'success'
         with:
           name: support-web-test-evidence
@@ -174,7 +174,7 @@ jobs:
           python3 tools/check_enrollment_coverage.py enrollment-coverage.out
           python3 tools/check_public_data.py enrollment-coverage.out
           bash tools/scan_secrets.sh enrollment-coverage.out
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: steps.enrollment-scan.outcome == 'success'
         with:
           name: enrollment-test-evidence
