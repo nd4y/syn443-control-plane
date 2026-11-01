@@ -259,20 +259,44 @@
     {
       "id": "SUB-05",
       "text": "В первой версии импортеры принимают поддерживаемое подмножество URI/base64, sing-box JSON, Xray JSON и Mihomo YAML. Матрица поддерживаемых полей обязательна. Неподдерживаемый протокол или поле показывается явно; неизвестные параметры нельзя молча отбрасывать.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/subscription-import.md",
+        "internal/subscriptions/import.go",
+        "internal/subscriptions/import_test.go",
+        "internal/subscriptions/quarantine.go",
+        "internal/subscriptions/quarantine_test.go"
+      ],
+      "implementationScope": "Bounded all-or-nothing URI/base64/sing-box/Xray/Mihomo profile normalization with explicit field matrix, private source-scoped HMAC IDs and pure candidate-removal quarantine assessment; Actions acceptance pending.",
+      "remainingScope": "Persistent source/grant/snapshot management, fetch modes, sync/reconciliation, exact candidate review, compiler/publication and administrative/device flows remain required for full M3."
     },
     {
       "id": "SUB-06",
       "text": "Чужой полный конфиг разбирается как недоверенный источник профилей. Его маршруты, DNS, локальные listeners, external controllers, ссылки на файлы, скрипты и удалённые rule sets не получают автоматического приоритета над нашей политикой. Импорт маршрутов возможен только отдельным проверенным действием администратора.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/subscription-import.md",
+        "internal/subscriptions/import.go",
+        "internal/subscriptions/import_test.go",
+        "internal/subscriptions/quarantine.go",
+        "internal/subscriptions/quarantine_test.go"
+      ],
+      "implementationScope": "Bounded all-or-nothing URI/base64/sing-box/Xray/Mihomo profile normalization with explicit field matrix, private source-scoped HMAC IDs and pure candidate-removal quarantine assessment; Actions acceptance pending.",
+      "remainingScope": "Persistent source/grant/snapshot management, fetch modes, sync/reconciliation, exact candidate review, compiler/publication and administrative/device flows remain required for full M3."
     },
     {
       "id": "SUB-07",
       "text": "Профиль имеет стабильный ID в пространстве своего источника. Дедупликация не склеивает учётные данные разных пользователей и источников. Переименование и перестановка строк не должны терять ручные назначения. При отсутствии внешнего ID используется документированное сопоставление; неоднозначность показывается оператору.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/subscription-import.md",
+        "internal/subscriptions/import.go",
+        "internal/subscriptions/import_test.go",
+        "internal/subscriptions/quarantine.go",
+        "internal/subscriptions/quarantine_test.go"
+      ],
+      "implementationScope": "Bounded all-or-nothing URI/base64/sing-box/Xray/Mihomo profile normalization with explicit field matrix, private source-scoped HMAC IDs and pure candidate-removal quarantine assessment; Actions acceptance pending.",
+      "remainingScope": "Persistent source/grant/snapshot management, fetch modes, sync/reconciliation, exact candidate review, compiler/publication and administrative/device flows remain required for full M3."
     },
     {
       "id": "SUB-08",
@@ -283,8 +307,16 @@
     {
       "id": "SUB-09",
       "text": "Пустой ответ, HTML вместо подписки, ошибка авторизации или резкое исчезновение профилей не удаляют последнюю рабочую выдачу автоматически. Кандидат помещается в карантин. Начальный порог проверки - исчезновение более 20% профилей или любого профиля, на который ссылается маршрут/цепочка. Явный отзыв доступа или подтверждённое истечение не подменяются бесконечным кэшем.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/subscription-import.md",
+        "internal/subscriptions/import.go",
+        "internal/subscriptions/import_test.go",
+        "internal/subscriptions/quarantine.go",
+        "internal/subscriptions/quarantine_test.go"
+      ],
+      "implementationScope": "Bounded all-or-nothing URI/base64/sing-box/Xray/Mihomo profile normalization with explicit field matrix, private source-scoped HMAC IDs and pure candidate-removal quarantine assessment; Actions acceptance pending.",
+      "remainingScope": "Persistent source/grant/snapshot management, fetch modes, sync/reconciliation, exact candidate review, compiler/publication and administrative/device flows remain required for full M3."
     },
     {
       "id": "SUB-10",

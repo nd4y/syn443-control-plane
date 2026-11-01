@@ -57,6 +57,7 @@ jobs:
       - run: go test ./internal/policy -run '^$' -fuzz '^FuzzPolicyDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/identity -run '^$' -fuzz '^FuzzIdentityDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/remnawave -run '^$' -fuzz '^FuzzProviderJSON$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/subscriptions -run '^$' -fuzz '^FuzzSubscriptionJSON$' -fuzztime=15s -parallel=2
       - run: go build -o bin/syn443-api ./cmd/api
       - run: python3 tools/smoke_api.py bin/syn443-api
       - run: go build -o bin/syn443-policy-sign ./cmd/policy-sign && go build -o bin/syn443-policy-serve ./cmd/policy-serve
