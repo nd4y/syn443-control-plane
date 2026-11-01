@@ -266,3 +266,29 @@ func TestSQLUnsupportedCapabilitiesAndQuotaFailWithoutPartialDevice(t *testing.T
 		t.Fatal("cancelled worker acknowledged work")
 	}
 }
+
+func TestSQLExistingKeyCannotBeReassignedByInvitation(t *testing.T) {
+	f := newFixture(t)
+	bridge, g, _ := f.bridge(t)
+	ctx := context.Background()
+	state := f.approved(t)
+	p, e := f.signer.Ready(ctx, state.ID, f.verification(), f.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	device, _ := random()
+	if _, e = fixtureOwner.Exec(`INSERT INTO identity_devices(id,owner,jkt,request_body,receipt) VALUES($1,$2,$3,$4,$5)`, device, f.owner, p.Thumbprint, []byte(`{}`), []byte("synthetic-existing-identity")); e != nil {
+		t.Fatal(e)
+	}
+	if e = bridge.createDevice(ctx, p, g, f.now); !errors.Is(e, invitation.ErrDenied) {
+		t.Fatal("invitation reassigned an existing key", e)
+	}
+	var stored string
+	if e = fixtureOwner.QueryRow(`SELECT id FROM identity_devices WHERE jkt=$1`, p.Thumbprint).Scan(&stored); e != nil || stored != device {
+		t.Fatal("preexisting key changed", e)
+	}
+	p.Owner = identity.Hash([]byte("foreign-owner"))
+	if e = bridge.createDevice(ctx, p, g, f.now); !errors.Is(e, invitation.ErrDenied) {
+		t.Fatal("foreign owner accepted", e)
+	}
+}

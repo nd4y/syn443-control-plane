@@ -136,6 +136,23 @@ func TestSQLInvitationDatabaseOutageNeverAcknowledgesDurableWork(t *testing.T) {
 			t.Fatal("unavailable database acknowledged invitation operation", e)
 		}
 	}
+	deadSessions, _ := enrollment.NewStore(closed, bytes.Repeat([]byte{62}, 32))
+	for _, call := range []func() error{
+		func() error {
+			_, e := dead.Complete(ctx, deadSessions, "https://api.example.invalid", status, "invalid", f.now)
+			return e
+		},
+		func() error { return dead.Abandon(ctx, "https://api.example.invalid", status, "invalid", f.now) },
+		func() error { _, e := dead.Pending(ctx, f.now); return e },
+		func() error { return dead.Expire(ctx) },
+		func() error {
+			return dead.PublicationFailure(ctx, Ticket{issued.ID, 1}, "temporarily_unavailable", f.now)
+		},
+	} {
+		if e := call(); !errors.Is(e, ErrUnavailable) {
+			t.Fatal("new unavailable operation acknowledged", e)
+		}
+	}
 	f.admin.Store = dead
 	for _, test := range []struct {
 		action  string
