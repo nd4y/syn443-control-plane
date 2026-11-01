@@ -93,8 +93,12 @@ func TestSQLInvitationToPublisherToNormalSessionAndCancellation(t *testing.T) {
 	if code != 200 {
 		t.Fatal("approved completion", code, string(body))
 	}
-	var value enrollment.Session
-	if json.Unmarshal(body, &value) != nil || value.DeviceID == "" || len(value.AccessToken) != 43 {
+	var completed invitation.Completion
+	if json.Unmarshal(body, &completed) != nil {
+		t.Fatal("completion schema")
+	}
+	value := completed.Session
+	if len(completed.OwnerTag) != 43 || value.DeviceID == "" || len(value.AccessToken) != 43 {
 		t.Fatal("normal session not returned")
 	}
 	again, code := f.deviceCall(t, api, "/v1/invitations/complete", state, id)

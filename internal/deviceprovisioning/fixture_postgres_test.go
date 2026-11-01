@@ -152,7 +152,7 @@ func newFixture(t *testing.T) *fixture {
 	if e != nil {
 		t.Fatal(e)
 	}
-	return &fixture{&invitation.AdminService{invitation.Store: control, Verifier: v, ControlOrigin: "https://control.example.invalid", AssuranceACR: "urn:syn443:loa:2", Descriptor: manifest, Anchor: root}, device, signer, key, phone, v, owner, grant, now, root}
+	return &fixture{&invitation.AdminService{Store: control, Verifier: v, ControlOrigin: "https://control.example.invalid", AssuranceACR: "urn:syn443:loa:2", Descriptor: manifest, Anchor: root}, device, signer, key, phone, v, owner, grant, now, root}
 }
 
 const token = "synthetic-administrative-access-token"
@@ -193,14 +193,14 @@ func (f *fixture) issue(t *testing.T) invitation.Issued {
 }
 func (f *fixture) claim(t *testing.T, issued invitation.Issued) (invitation.ClaimState, []byte) {
 	t.Helper()
-	invitation, e := bootstrap.AuthenticateLink(issued.Link, f.root, bootstrap.Floor{}, f.now)
+	link, e := bootstrap.AuthenticateLink(issued.Link, f.root, bootstrap.Floor{}, f.now)
 	if e != nil {
 		t.Fatal(e)
 	}
 	id, _ := random()
-	raw, _ := json.Marshal(invitation.Claim{id, invitation.Code, identity.PublicJWK(&f.phone.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}})
-	proof := signed(t, f.phone, invitation.Descriptor.APIOrigin+"/v1/invitations/claim", "", "", raw, f.now)
-	state, e := f.device.Claim(context.Background(), "service-a", invitation.Descriptor.APIOrigin, raw, proof, f.now)
+	raw, _ := json.Marshal(invitation.Claim{id, link.Code, identity.PublicJWK(&f.phone.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}})
+	proof := signed(t, f.phone, link.Descriptor.APIOrigin+"/v1/invitations/claim", "", "", raw, f.now)
+	state, e := f.device.Claim(context.Background(), "service-a", link.Descriptor.APIOrigin, raw, proof, f.now)
 	if e != nil {
 		t.Fatal(e)
 	}
