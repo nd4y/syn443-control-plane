@@ -20,8 +20,11 @@ but return no session, profile, subscription or chat access. The administrator
 must explicitly confirm the matching key/pair code and current version. Database
 constraints prevent owner/key/approval/device/session substitution and revival.
 
-Implemented component stages are issue, claim, approval, status and link revoke.
-Signer receipt validation/device creation, session finalization/abandonment,
+Implemented component stages are issue, claim, approval, status and link revoke,
+plus independent verification of original admin/device proofs and a final
+account/role/receipt/expiry/version fence for the signer. An approval row forged
+with the envelope key still cannot replace the administrator's IdP-bound proof.
+Integration with publisher device creation, session finalization/abandonment,
 HTTP/schema integration, protected Android journal/camera/Intent/paste and final
 device acceptance remain required before this flow is operational. No endpoint
 or application capability advertises the incomplete flow. All SQL/role tests

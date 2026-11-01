@@ -133,6 +133,7 @@ func (View) String() string   { return "InvitationView([redacted])" }
 func (View) GoString() string { return "InvitationView([redacted])" }
 
 type record struct {
+	CreatedAt int64
 	View
 	Grant, Actor, Request, Hash, CodeHash, ServiceID string
 	BootstrapRevision                                int64
@@ -150,11 +151,11 @@ type record struct {
 
 func (s *Store) read(ctx context.Context, tx *sql.Tx, id string, lock bool, now time.Time) (record, error) {
 	var r record
-	query := `SELECT id,owner,version,expires,grant_hash,actor,request_id,body_hash,code_hash,service_id,bootstrap_revision,issue_receipt,issue_reply,revoked,COALESCE(claim_jkt,''),COALESCE(claim_request,''),COALESCE(claim_hash,''),COALESCE(claim_nonce,''),COALESCE(pair_code,''),claim_payload,claim_receipt,COALESCE(claimed_at,0),COALESCE(approval_actor,''),COALESCE(approval_request,''),COALESCE(approval_hash,''),approval_receipt,COALESCE(approved_at,0),COALESCE(device,''),COALESCE(final_request,''),COALESCE(final_hash,''),COALESCE(final_session,''),COALESCE(finalized_at,0) FROM managed_invitations WHERE id=$1`
+	query := `SELECT id,owner,version,expires,grant_hash,actor,request_id,body_hash,code_hash,service_id,bootstrap_revision,issue_receipt,issue_reply,revoked,COALESCE(claim_jkt,''),COALESCE(claim_request,''),COALESCE(claim_hash,''),COALESCE(claim_nonce,''),COALESCE(pair_code,''),claim_payload,claim_receipt,COALESCE(claimed_at,0),COALESCE(approval_actor,''),COALESCE(approval_request,''),COALESCE(approval_hash,''),approval_receipt,COALESCE(approved_at,0),COALESCE(device,''),COALESCE(final_request,''),COALESCE(final_hash,''),COALESCE(final_session,''),COALESCE(finalized_at,0),created_at FROM managed_invitations WHERE id=$1`
 	if lock {
 		query += " FOR UPDATE"
 	}
-	e := tx.QueryRowContext(ctx, query, id).Scan(&r.ID, &r.Owner, &r.Version, &r.Expires, &r.Grant, &r.Actor, &r.Request, &r.Hash, &r.CodeHash, &r.ServiceID, &r.BootstrapRevision, &r.Issue, &r.Reply, &r.Revoked, &r.Thumbprint, &r.ClaimRequest, &r.ClaimHash, &r.Nonce, &r.PairCode, &r.ClaimPayload, &r.ClaimReceipt, &r.ClaimedAt, &r.ApprovalActor, &r.ApprovalRequest, &r.ApprovalHash, &r.ApprovalReceipt, &r.ApprovedAt, &r.Device, &r.FinalRequest, &r.FinalHash, &r.FinalSession, &r.FinalizedAt)
+	e := tx.QueryRowContext(ctx, query, id).Scan(&r.ID, &r.Owner, &r.Version, &r.Expires, &r.Grant, &r.Actor, &r.Request, &r.Hash, &r.CodeHash, &r.ServiceID, &r.BootstrapRevision, &r.Issue, &r.Reply, &r.Revoked, &r.Thumbprint, &r.ClaimRequest, &r.ClaimHash, &r.Nonce, &r.PairCode, &r.ClaimPayload, &r.ClaimReceipt, &r.ClaimedAt, &r.ApprovalActor, &r.ApprovalRequest, &r.ApprovalHash, &r.ApprovalReceipt, &r.ApprovedAt, &r.Device, &r.FinalRequest, &r.FinalHash, &r.FinalSession, &r.FinalizedAt, &r.CreatedAt)
 	if e == sql.ErrNoRows {
 		return r, ErrDenied
 	}

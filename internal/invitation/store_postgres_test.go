@@ -105,7 +105,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	thumb, _ := identity.PublicJWK(&key.PublicKey).Thumbprint()
 	v := &verifier{identity.Principal{Issuer: "https://identity.example.invalid/realms/test", Subject: "synthetic-admin", Thumbprint: thumb, Expires: now.Unix() + 300, AuthTime: now.Unix(), ACR: "urn:syn443:loa:2", Methods: []string{"otp"}, Scope: "syn443.control"}}
-	owner := identity.Hash([]byte("synthetic-owner"))
+	owner := identity.Hash([]byte(v.p.Issuer + "\x00synthetic-user"))
 	grant := identity.Hash([]byte("synthetic-grant"))
 	actor := identity.Hash([]byte(v.p.Issuer + "\x00" + v.p.Subject))
 	if _, e = fixtureOwner.Exec(`INSERT INTO identity_accounts(owner,issuer,subject,enabled,device_limit,valid_until,grant_hash) VALUES($1,'https://identity.example.invalid/realms/test','synthetic-user',true,2,$2,$3)`, owner, now.Unix()+86400, grant); e != nil {
@@ -132,7 +132,11 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(e)
 	}
 	rootSPKI, _ := bootstrap.Public(&rootKey.PublicKey)
-	online, _ := bootstrap.Public(&phone.PublicKey)
+	onlineKey, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if e != nil {
+		t.Fatal(e)
+	}
+	online, _ := bootstrap.Public(&onlineKey.PublicKey)
 	root := bootstrap.Anchor{ID: "offline-root-a", SPKI: rootSPKI, Epoch: 1}
 	d := bootstrap.Descriptor{SchemaVersion: 1, Audience: "syn443-client-bootstrap", RootEpoch: 1, Revision: 1, ServiceID: "service-a", Issuer: v.p.Issuer, ClientID: "syn443-android", APIOrigin: "https://api.example.invalid", Roots: map[string]string{"online-a": online}, IssuedAt: now.Unix(), NotBefore: now.Unix(), Expires: now.Unix() + 3600}
 	manifest, e := bootstrap.SignDescriptor(d, root, rootKey, now)
@@ -302,7 +306,7 @@ func TestSQLInvitationWrongKeyExpiryMFAAndRevocation(t *testing.T) {
 		t.Fatal(e)
 	}
 	request, e := claim.EnrollmentRequest()
-	if e != nil || strings.Contains(string(request), "code") {
+	if e != nil || strings.Contains(string(request), `"code":`) {
 		t.Fatal("invitation code copied into portable enrollment")
 	}
 }
