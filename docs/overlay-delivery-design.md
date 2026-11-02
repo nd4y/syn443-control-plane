@@ -136,9 +136,12 @@ or advances its security epoch, while authorizing the same namespace and device 
 The current account, session, signed policy/capability and namespace remain
 mandatory; an older policy cannot retire a grant from a future security epoch.
 
-Only the exact existing operation/body can transition to consumed. Unknown
-operations, another identity/device/key, withdrawn capability and revoked account
-or session still fail. A revoked setup grant can be erased; it cannot be fetched.
+An existing delivery requires its exact immutable operation/body. If a controller
+crashed after reserving an operation locally but before dispatch, consumption can
+also abandon its still-issued addressed grant: SQL reserves the operation and
+erases the envelope in the same transaction. Late fetch is then permanently
+denied. An unknown grant, another delivery operation or identity/device/key,
+withdrawn capability and revoked account or session still fail. A revoked setup grant can be erased; it cannot be fetched.
 The acknowledgment deadline uses the current signed authorization/session, never
 the expired setup value. Erasure remains irreversible and idempotent and is
 withheld until SQL commit. The server acknowledgment is not evidence of SDK
@@ -149,3 +152,8 @@ and check expired consumption/retry after reference+epoch refresh, no refetch,
 protected-envelope erasure and current-scope rejection. Exact Actions acceptance
 is pending. Android still needs its full preparation/materialization/proof/ack
 integration before advertising the managed overlay capability.
+
+Pending-grant replacement additionally checks unsent, expired/refreshed and revoked
+grants against real SQL. Abandonment never confirms SDK registration or deletes
+SDK identity. Android must retain its old operation until local key/cipher erasure
+and this durable acknowledgment, then reserve a different signed reference.

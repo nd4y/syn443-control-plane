@@ -375,13 +375,16 @@ func TestOverlayCurrentPermissionScopesAndFixedDenials(t *testing.T) {
 				t.Fatal(e)
 			}
 		}},
-		{"unknown-operation-ack", 409, func(t *testing.T, o *overlayFixture) {}},
+		{"foreign-operation-ack", 409, func(t *testing.T, o *overlayFixture) {
+			expect(t, o.call(t, false), 200)
+			o.request.OperationID = random()
+		}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			o := newOverlayFixture(t)
 			c.change(t, o)
-			r := o.call(t, c.name == "unknown-operation-ack")
+			r := o.call(t, c.name == "foreign-operation-ack")
 			expect(t, r, c.status)
 			if strings.Contains(r.Body.String(), o.envelope) || strings.Contains(r.Body.String(), o.session.AccessToken) {
 				t.Fatal("denial disclosed secret")
@@ -389,6 +392,42 @@ func TestOverlayCurrentPermissionScopesAndFixedDenials(t *testing.T) {
 		})
 	}
 }
+func TestOverlayUnsentGrantAbandonmentIsDurableAndCannotAuthorizeALateFetch(t *testing.T) {
+	for _, state := range []string{"current", "expired-refreshed", "revoked"} {
+		t.Run(state, func(t *testing.T) {
+			o := shortOverlayFixture(t)
+			if state == "expired-refreshed" {
+				overlayReferenceChange(t, o, random(), 3, 1)
+				o.fixture.now = o.now.Add(2 * time.Second)
+				o.api.Clock = func() time.Time { return o.now }
+			} else if state == "revoked" {
+				if _, e := fixturePublisher.Exec(`UPDATE identity_overlay_grants SET revoked=true WHERE device=$1`, o.session.DeviceID); e != nil {
+					t.Fatal(e)
+				}
+			}
+			var deliveries int
+			if e := fixtureOwner.QueryRow(`SELECT count(*) FROM identity_overlay_deliveries WHERE device=$1`, o.session.DeviceID).Scan(&deliveries); e != nil || deliveries != 0 {
+				t.Fatal("unexpected prior delivery", e)
+			}
+			for range 2 {
+				r := o.call(t, true)
+				expect(t, r, 200)
+				var reply OverlayReply
+				if identity.Decode(r.Body.Bytes(), &reply, true) != nil || !reply.Consumed || reply.Envelope != "" {
+					t.Fatal("abandonment exposed credential")
+				}
+			}
+			var erased, consumed bool
+			if e := fixtureOwner.QueryRow(`SELECT g.envelope IS NULL,d.consumed_ms IS NOT NULL FROM identity_overlay_grants g JOIN identity_overlay_deliveries d USING(device,reference,version) WHERE g.device=$1 AND g.reference=$2 AND g.version=$3 AND d.operation_id=$4 AND d.body_hash=$5`, o.session.DeviceID, o.request.Reference, o.request.Version, o.request.OperationID, identity.Hash(o.raw())).Scan(&erased, &consumed); e != nil || !erased || !consumed {
+				t.Fatal("abandonment not atomically durable", e)
+			}
+			expect(t, o.call(t, false), 403)
+			o.request.OperationID = random()
+			expect(t, o.call(t, true), 409)
+		})
+	}
+}
+
 func TestOverlayTransportProofAndIdempotencyBoundaries(t *testing.T) {
 	o := newOverlayFixture(t)
 	path := "/v1/device/overlay/fetch"

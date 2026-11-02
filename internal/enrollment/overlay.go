@@ -211,9 +211,6 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 		var consumed sql.NullInt64
 		e = tx.QueryRowContext(ctx, `SELECT operation_id,body_hash,consumed_ms FROM identity_overlay_deliveries WHERE device=$1 AND reference=$2 AND version=$3 FOR UPDATE`, b.Device, request.Reference, request.Version).Scan(&operation, &bodyHash, &consumed)
 		if errors.Is(e, sql.ErrNoRows) {
-			if consume {
-				return DeviceResult{}, ErrConflict
-			}
 			var other bool
 			if e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM identity_overlay_deliveries WHERE device=$1 AND operation_id=$2)`, b.Device, request.OperationID).Scan(&other); e != nil {
 				return DeviceResult{}, e
@@ -231,8 +228,12 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 			return DeviceResult{}, ErrConflict
 		}
 		until := min(permit.OfflineUntilMs, expires)
-		// Consumption only retires an already-fetched immutable operation. Its
-		// secret is never returned or reused. A current permission for the same
+		// Consumption also abandons a never-fetched grant after a controller
+		// crash before dispatch. The locked addressed grant must still belong to
+		// this current authorized device/key/namespace. Persist its operation and
+		// irreversible erasure together: a late fetch cannot resurrect it. An
+		// existing delivery always requires its exact immutable operation/body.
+		// Its secret is never returned or reused. Current permission for the same
 		// namespace can therefore acknowledge it after key expiry/reference or
 		// security-epoch refresh; fetch retains every exact version/time fence.
 		if consume {
