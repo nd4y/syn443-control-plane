@@ -2,7 +2,8 @@
 
 This is the remaining implementation contract. The namespace and credential
 cryptographic cores exist. The bounded SQL/API implementation is now present
-and awaiting its exact Actions acceptance. Protected Android cache and SDK
+and passed its Actions transaction/role gates at53ec35d405d6e93acea911856cf8655df78ea3ed
+(run41384206025, all8 jobs). Protected Android cache and SDK
 activation below are not implemented or accepted yet. Assigned NetBird stays rejected until all
 three are complete. This document does not authorize production enrollment.
 

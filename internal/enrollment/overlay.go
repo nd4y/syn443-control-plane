@@ -158,6 +158,23 @@ func (s *Store) InstallOverlayGrant(ctx context.Context, tx *sql.Tx, owner strin
 	if owner == "" {
 		return identity.ErrInvalid
 	}
+	if _, e = lockAccount(ctx, tx, owner, now.Unix()); e != nil {
+		return e
+	}
+	var deviceOwner, jkt, issuer, subject string
+	var active bool
+	if e = tx.QueryRowContext(ctx, `SELECT owner,jkt,active FROM identity_devices WHERE id=$1 FOR UPDATE`, b.Address.DeviceID).Scan(&deviceOwner, &jkt, &active); e != nil {
+		return e
+	}
+	if !active || deviceOwner != owner || jkt != b.KeyThumbprint {
+		return ErrDenied
+	}
+	if e = tx.QueryRowContext(ctx, `SELECT issuer,subject FROM identity_accounts WHERE owner=$1`, owner).Scan(&issuer, &subject); e != nil {
+		return e
+	}
+	if b.Address.OwnerTag != overlayOwner(b.Address.ServiceID, issuer, subject) {
+		return ErrDenied
+	}
 	protected := s.Seal([]byte(envelope), overlayAAD(b.Address.DeviceID, b.Reference, b.Version))
 	_, e = tx.ExecContext(ctx, `INSERT INTO identity_overlay_grants(device,reference,version,owner,jkt,namespace,security_epoch,expires_ms,envelope_hash,envelope) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, b.Address.DeviceID, b.Reference, b.Version, owner, b.KeyThumbprint, namespace, b.SecurityEpoch, c.ExpiresMs, identity.Hash([]byte(envelope)), protected)
 	return e

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "SYN443 M2 enrollment pilot",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "Bounded loopback-hosted pilot over HTTPS. No invites, admin session or full panel. Successful OIDC login alone grants nothing; an owner assignment is required. Duplicate/case-variant/unknown request members and any URL query are rejected. No caller-supplied issuer/key URL is followed. Fresh OIDC identity can revoke its own prior keys after logout/lost enrollment response. Cleanup grants no session/config and never mutates another account."
   },
   "paths": {
@@ -433,6 +433,190 @@
           }
         }
       }
+    },
+    "/v1/device/overlay/fetch": {
+      "post": {
+        "operationId": "overlayFetch",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict or fresh authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Addressed credential or idempotent consumption acknowledgment; Cache-Control:no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverlayCredentialReply"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Endpoint disabled, wrong method or URL query."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverlayOperation"
+              }
+            }
+          }
+        },
+        "description": "Disabled unless owner overlayServiceId is configured and matches the signed service. No Origin/query. Fresh session-bound DPoP/nonce binds exact raw body. Current approved key-bound signed policy and account grant authorize namespace/reference/version/epoch. Same stable operation/body retries; another operation/body conflicts. Consume is idempotent and erases encrypted server envelope. No API signing private key. Registration/SDK proof remains a separate native acceptance gate."
+      }
+    },
+    "/v1/device/overlay/consume": {
+      "post": {
+        "operationId": "overlayConsume",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict or fresh authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Addressed credential or idempotent consumption acknowledgment; Cache-Control:no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverlayConsumed"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Endpoint disabled, wrong method or URL query."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverlayOperation"
+              }
+            }
+          }
+        },
+        "description": "Disabled unless owner overlayServiceId is configured and matches the signed service. No Origin/query. Fresh session-bound DPoP/nonce binds exact raw body. Current approved key-bound signed policy and account grant authorize namespace/reference/version/epoch. Same stable operation/body retries; another operation/body conflicts. Consume is idempotent and erases encrypted server envelope. No API signing private key. Registration/SDK proof remains a separate native acceptance gate."
+      }
     }
   },
   "components": {
@@ -643,6 +827,66 @@
               "maxLength": 43,
               "pattern": "^[A-Za-z0-9_-]{43}$"
             }
+          }
+        }
+      },
+      "OverlayOperation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operationId",
+          "namespace",
+          "reference",
+          "version"
+        ],
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{24,128}$"
+          },
+          "namespace": {
+            "type": "string",
+            "pattern": "^managed-netbird/[A-Za-z0-9_-]{43}$"
+          },
+          "reference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "OverlayCredentialReply": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "envelope",
+          "consumed"
+        ],
+        "properties": {
+          "envelope": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16384,
+            "description": "Independently verified addressed JWS. Never log or persist without per-grant protection."
+          },
+          "consumed": {
+            "const": false
+          }
+        }
+      },
+      "OverlayConsumed": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "consumed"
+        ],
+        "properties": {
+          "consumed": {
+            "const": true
           }
         }
       }

@@ -445,6 +445,9 @@ func TestOverlayGrantIssuerRejectsInvalidSignatureScopeAndImmutableReference(t *
 	if e = o.worker.InstallOverlayGrant(ctx, tx, "", o.binding, o.envelope, o.api.Roots, o.now); e == nil {
 		t.Fatal("missing owner issued")
 	}
+	if e = o.worker.InstallOverlayGrant(ctx, tx, "missing-owner", o.binding, o.envelope, o.api.Roots, o.now); !errors.Is(e, ErrDenied) {
+		t.Fatal("misfiled owner accepted")
+	}
 	if e = o.worker.InstallOverlayGrant(ctx, tx, Owner(o.grant.Issuer, o.grant.Subject), o.binding, o.envelope, o.api.Roots, o.now); e == nil {
 		t.Fatal("existing immutable reference replaced")
 	}
