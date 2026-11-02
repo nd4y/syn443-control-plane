@@ -308,7 +308,32 @@ Actions exercise real SQL/roles for recipient/parent CAS, shared-body conflicts,
 user/group/template membership, caller mutation, role contamination, missing
 creation/read/assignment rights, source-independent authority changes and explicit
 owner-only ciphertext corruption. A separate80% gate covers the resolver. Tests
-seed approved artifacts/assignment rows as owner fixtures; this does not implement
-the still-required signed preview producer, activation transaction or HTTP/UI
-workflow. Full application settings and automatic defaults for new users/devices
-also remain open.
+seed approved artifacts/assignment rows as owner fixtures. The independent
+producer below adds a separate composition test; these resolver fixtures remain
+explicitly distinct from end-to-end approval. Full application settings and
+automatic defaults for new users/devices also remain open.
+
+### Independent preview and desired publication producer
+
+`ConfigurationPublisher` consumes the encrypted original administrative receipt,
+reverifies OIDC/DPoP/MFA and resolves actual live recipients/layers. It compiles
+each recipient against current authorized source snapshots. A purpose-bound ES256
+ticket binds the portable draft/effective hash, owner/device/key/grant/capabilities,
+base configuration heads, layer/membership authority and compiled source dependency
+vector. Source credentials and native configuration never enter the ticket.
+Canonical recipient order is bytewise owner/device, independent of SQL locale.
+
+The final publisher transaction repeats live authority/source fences and atomically
+stores immutable global versions, CAS heads, complete device assignments and the
+terminal queue receipt. A shortened preview/source deadline is checked before and
+after SQL effects, including lock waits. A late failure rolls everything back;
+lost acknowledgements reuse the same operation. Deterministic conflict/denial is
+terminal; transient errors retain the bounded lease/retry path. No API role can
+insert an approved artifact, and `published` remains distinct from device activation.
+
+Actions tests cover independently signed preview -> real desired heads -> the
+approved-layer reader/source compiler after the original admin session expires,
+shared updates and unchanged global-row reuse, multi-recipient SQL rollback/retry,
+scope/ACL/recipient/source changes and deadline expiry. This implementation is
+pending its first complete Actions result. HTTP/BFF/worker composition, device
+activation acknowledgements, full settings and editing UI remain required work.

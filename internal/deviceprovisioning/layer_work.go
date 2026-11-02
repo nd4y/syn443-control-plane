@@ -131,6 +131,12 @@ func (s *configurationWorkStore) lock(ctx context.Context, tx *sql.Tx, w configu
 // and the terminal queue receipt commit together, or all roll back. In particular
 // late work cannot advance a head after lease theft, expiry, ACL loss or Stop.
 func (s *configurationWorkStore) commit(ctx context.Context, w configurationWork, now time.Time, effect func(context.Context, *sql.Tx, time.Time, invitation.Envelope) (json.RawMessage, error)) error {
+	return s.commitGuarded(ctx, w, now, w.deadline, effect)
+}
+
+// The producer can shorten admission to a preview/source expiration. Checking
+// before and after the SQL callback includes time spent waiting for row locks.
+func (s *configurationWorkStore) commitGuarded(ctx context.Context, w configurationWork, now time.Time, untilMs int64, effect func(context.Context, *sql.Tx, time.Time, invitation.Envelope) (json.RawMessage, error)) error {
 	if s == nil || s.Store == nil || ctx == nil || effect == nil {
 		return enrollment.ErrDenied
 	}
@@ -161,7 +167,7 @@ func (s *configurationWorkStore) commit(ctx context.Context, w configurationWork
 	if e = layerACL(ctx, tx, w.actor, action, w.kind, w.target, current().Unix()); e != nil {
 		return e
 	}
-	if current().Unix() >= authorityUntil {
+	if current().Unix() >= authorityUntil || current().UnixMilli() >= untilMs {
 		return enrollment.ErrDenied
 	}
 	result, e := effect(ctx, tx, current(), envelope)
@@ -174,7 +180,7 @@ func (s *configurationWorkStore) commit(ctx context.Context, w configurationWork
 	if e = ctx.Err(); e != nil {
 		return e
 	}
-	if current().Unix() >= authorityUntil {
+	if current().Unix() >= authorityUntil || current().UnixMilli() >= untilMs {
 		return enrollment.ErrDenied
 	}
 	if e = s.lock(ctx, tx, w, current()); e != nil {
@@ -184,6 +190,31 @@ func (s *configurationWorkStore) commit(ctx context.Context, w configurationWork
 		return e
 	}
 	if _, e = tx.ExecContext(ctx, `UPDATE managed_configuration_requests SET state=$2,result=$3,lease='',lease_until_ms=0,error_code='' WHERE id=$1`, w.id, terminal, []byte(result)); e != nil {
+		return enrollment.ErrUnavailable
+	}
+	return tx.Commit()
+}
+
+// Denying work requires ownership of the live lease, not continuing authority
+// to approve it. Only fixed public error codes can reach the API result.
+func (s *configurationWorkStore) reject(ctx context.Context, w configurationWork, now time.Time, code string) error {
+	if s == nil || s.Store == nil || ctx == nil || code != "configuration_denied" && code != "configuration_conflict" {
+		return enrollment.ErrDenied
+	}
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	if e := ConfigurationRuntimeRole(ctx, s.Store.DB, true); e != nil {
+		return e
+	}
+	tx, e := s.Store.DB.BeginTx(ctx, nil)
+	if e != nil {
+		return enrollment.ErrUnavailable
+	}
+	defer tx.Rollback()
+	if e = s.lock(ctx, tx, w, now); e != nil {
+		return e
+	}
+	if _, e = tx.ExecContext(ctx, `UPDATE managed_configuration_requests SET state='rejected',error_code=$2,lease='',lease_until_ms=0 WHERE id=$1`, w.id, code); e != nil {
 		return enrollment.ErrUnavailable
 	}
 	return tx.Commit()

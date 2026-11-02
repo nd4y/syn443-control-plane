@@ -89,13 +89,13 @@ func prepareConfigurationLayers(ctx context.Context, store *enrollment.Store, ac
 }
 
 func configurationDevices(ctx context.Context, tx *sql.Tx, p LayerProposal) ([]string, error) {
-	query := `SELECT id FROM identity_devices WHERE id=$1 AND active AND approved ORDER BY id LIMIT 65`
+	query := `SELECT id,owner FROM identity_devices WHERE id=$1 AND active AND approved ORDER BY id LIMIT 65`
 	switch p.TargetKind {
 	case "device":
 	case "user":
-		query = `SELECT id FROM identity_devices WHERE owner=$1 AND active AND approved ORDER BY id LIMIT 65`
+		query = `SELECT id,owner FROM identity_devices WHERE owner=$1 AND active AND approved ORDER BY id LIMIT 65`
 	case "group", "template":
-		query = `SELECT DISTINCT d.id FROM identity_devices d JOIN managed_configuration_assignments a ON a.device=d.id JOIN managed_configuration_heads h ON h.device=a.device AND h.revision=a.configuration_revision WHERE a.id=$1 AND a.kind=$2 AND d.active AND d.approved ORDER BY d.id LIMIT 65`
+		query = `SELECT DISTINCT d.id,d.owner FROM identity_devices d JOIN managed_configuration_assignments a ON a.device=d.id JOIN managed_configuration_heads h ON h.device=a.device AND h.revision=a.configuration_revision WHERE a.id=$1 AND a.kind=$2 AND d.active AND d.approved ORDER BY d.id LIMIT 65`
 	default:
 		return nil, enrollment.ErrDenied
 	}
@@ -111,12 +111,14 @@ func configurationDevices(ctx context.Context, tx *sql.Tx, p LayerProposal) ([]s
 	}
 	defer rows.Close()
 	ids := []string{}
+	owners := map[string]string{}
 	for rows.Next() {
-		var id string
-		if e = rows.Scan(&id); e != nil {
+		var id, owner string
+		if e = rows.Scan(&id, &owner); e != nil {
 			return nil, enrollment.ErrUnavailable
 		}
 		ids = append(ids, id)
+		owners[id] = owner
 	}
 	if rows.Err() != nil {
 		return nil, enrollment.ErrUnavailable
@@ -126,7 +128,7 @@ func configurationDevices(ctx context.Context, tx *sql.Tx, p LayerProposal) ([]s
 	}
 	// PostgreSQL locale ordering may differ from the byte ordering used by the
 	// signed Go/Kotlin manifest, especially for mixed-case opaque identifiers.
-	sort.Strings(ids)
+	sort.Slice(ids, func(i, j int) bool { return owners[ids[i]]+"/"+ids[i] < owners[ids[j]]+"/"+ids[j] })
 	return ids, nil
 }
 
