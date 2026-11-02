@@ -47,3 +47,28 @@ and scanned in GitHub Actions. Actual service deployment and real users are not 
 This is the catalog service stage of M2/M3. Dynamic compilation/signing, the full
 web/native administrative UI, managed invitations/overlay and final physical
 acceptance remain required. See [the completion map](m2-m3-completion.md).
+
+## Signer selection boundary
+
+`PrepareSelection` selects only requested normalized profiles for an independently
+verified user/device target and one permitted network mode. Personal device-fetch
+sources never become shared data. Only explicit user/device grants are consumed
+at this stage; a supplied group name is not membership evidence. The returned
+server-private data omits provider API credentials and subscription URLs. Stable
+profile IDs are independently recomputed from each source salt and selected
+outbound, in addition to schema, ciphertext and snapshot-integrity checks.
+
+The dependency ticket binds source/head/hash/share/resource revisions and clamps
+the publication lease to current source freshness, validity and quota expiry.
+A signer must call `Lock` in its final SQL transaction. Revocation, new heads,
+sharing changes, provider disable/rotation and deadline expiration then prevent
+publication, while an authorized last-known-good snapshot survives a transient
+refresh failure. This component is not yet wired into configuration publication.
+No device/API caller may supply its own owner or inferred group membership.
+
+The optional identity publisher role can read only compiler-required columns;
+fetch URLs, provider tokens, source jobs and ACLs remain denied. A dedicated
+non-authoritative integer column permits PostgreSQL SHARE row locks without
+UPDATE rights on any real source/resource setting. The source worker and control
+roles retain their existing boundaries. Actions tests exercise the restricted
+role, actual SQL races/cancellation, expiry/quota, corruption and memory bounds.

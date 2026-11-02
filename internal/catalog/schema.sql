@@ -110,3 +110,8 @@ BEGIN
 END$$;
 DROP TRIGGER IF EXISTS catalog_source_guard ON catalog_sources;
 CREATE TRIGGER catalog_source_guard BEFORE UPDATE ON catalog_sources FOR EACH ROW EXECUTE FUNCTION catalog_source_immutable();
+
+-- A non-authoritative lock guard permits the independent signer to take SHARE
+-- row locks without UPDATE privilege on any actual source/resource field.
+ALTER TABLE catalog_sources ADD COLUMN IF NOT EXISTS selection_guard integer NOT NULL DEFAULT 0;
+ALTER TABLE catalog_resources ADD COLUMN IF NOT EXISTS selection_guard integer NOT NULL DEFAULT 0;

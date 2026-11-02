@@ -22,7 +22,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
 )
 
-var fixtureOwner, fixtureAPI, fixtureWorker *sql.DB
+var fixtureOwner, fixtureAPI, fixtureWorker, fixturePublisher *sql.DB
 
 func TestMain(m *testing.M) {
 	dsn := os.Getenv("SYN443_TEST_DATABASE")
@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 	for _, role := range []struct {
 		name   string
 		target **sql.DB
-	}{{"syn443_control_api", &fixtureAPI}, {"syn443_source_worker", &fixtureWorker}} {
+	}{{"syn443_control_api", &fixtureAPI}, {"syn443_source_worker", &fixtureWorker}, {"syn443_identity_publisher", &fixturePublisher}} {
 		password, e := random()
 		if e != nil {
 			panic("fixture entropy")
@@ -65,6 +65,7 @@ func TestMain(m *testing.M) {
 	}
 	code := m.Run()
 	fixtureWorker.Close()
+	fixturePublisher.Close()
 	fixtureAPI.Close()
 	fixtureOwner.Close()
 	os.Exit(code)
