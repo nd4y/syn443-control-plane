@@ -2,8 +2,8 @@
 from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent / 'internal/chatweb/assets'
-for name in ('app.js', 'index.html', 'style.css'):
+for name in ('app.js', 'index.html', 'style.css', 'control/app.js', 'control/index.html', 'control/style.css'):
     data = (root / name).read_bytes()
     assert 0 < len(data) < 1024 * 1024, name
     data.decode('utf-8', errors='strict')
-print('Support frontend sources are valid UTF-8')
+print('Support and control frontend sources are valid UTF-8')

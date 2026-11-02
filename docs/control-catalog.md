@@ -89,3 +89,7 @@ Draft save does not require fresh MFA because it has no publication authority.
 Independent preview/approval/publication still requires its own current strong
 assurance and immutable target/base/dependency/impact fences. Discard/retention,
 inventory, complete supported settings and web/mobile editors remain open.
+
+The initial [control console](control-console.md) now consumes source/profile metadata
+and actor-private draft get/put through a separately scoped OAuth/DPoP BFF.
+Its exact Actions acceptance is pending; publication and the full panel remain open.

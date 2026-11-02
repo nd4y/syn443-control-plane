@@ -86,7 +86,11 @@ func loginWeb(t *testing.T, s *Server) *http.Cookie {
 	var link map[string]string
 	json.Unmarshal(w.Body.Bytes(), &link)
 	u, _ := url.Parse(link["url"])
-	if u.Query().Get("code_challenge_method") != "S256" || u.Query().Get("dpop_jkt") == "" || u.Query().Get("scope") != "" {
+	expectedScope := ""
+	if s.config.ControlConsole {
+		expectedScope = "openid syn443.control"
+	}
+	if u.Query().Get("code_challenge_method") != "S256" || u.Query().Get("dpop_jkt") == "" || u.Query().Get("scope") != expectedScope {
 		t.Fatal("OAuth binding")
 	}
 	callback := "/callback?" + url.Values{"code": {"test-code"}, "state": {u.Query().Get("state")}, "iss": {s.config.Issuer}}.Encode()

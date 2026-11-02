@@ -37,6 +37,7 @@ type Config struct {
 	Certificate    string `json:"certificate"`
 	CertificateKey string `json:"certificateKey"`
 	FixtureHTTP    bool   `json:"fixtureHttp"`
+	ControlConsole bool   `json:"controlConsole,omitempty"`
 }
 type verifier interface {
 	Verify(context.Context, string, time.Time) (identity.Principal, error)
@@ -96,6 +97,9 @@ func random() string {
 }
 func (s *Server) cookieName(login bool) string {
 	name := "syn443-admin"
+	if s.config.ControlConsole {
+		name = "syn443-control"
+	}
 	if login {
 		name += "-login"
 	}
@@ -149,7 +153,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if name == "" {
 			name = "index.html"
 		}
-		b, e := assets.ReadFile("assets/" + name)
+		prefix := "assets/"
+		if s.config.ControlConsole {
+			prefix += "control/"
+		}
+		b, e := assets.ReadFile(prefix + name)
 		if e != nil {
 			fail(w, 404)
 			return
@@ -207,7 +215,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	action := strings.TrimPrefix(r.URL.Path, "/chat/")
 	allowed := map[string]bool{"self": true, "inbox": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
-	if !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action] {
+	control := s.config.ControlConsole && r.URL.Path == "/control/action"
+	if !control && (s.config.ControlConsole || !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action]) {
 		fail(w, 404)
 		return
 	}
@@ -215,9 +224,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if action == "uploads/part" {
 		limit = 352 * 1024
 	}
+	if control {
+		limit = 278528
+	}
 	raw, e := io.ReadAll(io.LimitReader(r.Body, limit+1))
 	if e != nil || int64(len(raw)) > limit {
 		fail(w, 413)
+		return
+	}
+	if control && !validConsoleAction(raw) {
+		fail(w, 400)
 		return
 	}
 	select {
@@ -242,6 +258,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	uri := s.config.APIOrigin + "/v1/admin/chat/" + action
+	if control {
+		if !v.principal.HasScope("syn443.control") {
+			fail(w, 403)
+			return
+		}
+		uri = s.config.APIOrigin + "/v1/control/action"
+	}
 	for attempt := 0; attempt < 2; attempt++ {
 		proof, e := sign(v.key, "POST", uri, v.access, v.nonce, raw, s.clock())
 		if e != nil {
@@ -336,6 +359,9 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	// Access-token identity is verified by the pinned API audience, issuer, client
 	// and DPoP key. We request OAuth authorization, never use an unverified ID token.
 	q := url.Values{"client_id": {s.config.ClientID}, "response_type": {"code"}, "redirect_uri": {s.config.Origin + "/callback"}, "state": {state}, "code_challenge": {identity.Hash([]byte(p.verifier))}, "code_challenge_method": {"S256"}, "dpop_jkt": {thumb}}
+	if s.config.ControlConsole {
+		q.Set("scope", "openid syn443.control")
+	}
 	s.cookie(w, true, p.cookie, 300)
 	reply(w, map[string]string{"url": s.config.Issuer + "/protocol/openid-connect/auth?" + q.Encode()})
 }
@@ -444,7 +470,7 @@ func (s *Server) token(ctx context.Context, v *session, form url.Values) error {
 			return invalid
 		}
 		thumb, _ := identity.PublicJWK(&v.key.PublicKey).Thumbprint()
-		if p.Thumbprint != thumb || (v.principal.Subject != "" && (p.Issuer != v.principal.Issuer || p.Subject != v.principal.Subject || p.Thumbprint != v.principal.Thumbprint)) {
+		if p.Thumbprint != thumb || s.config.ControlConsole && !p.HasScope("syn443.control") || (v.principal.Subject != "" && (p.Issuer != v.principal.Issuer || p.Subject != v.principal.Subject || p.Thumbprint != v.principal.Thumbprint)) {
 			return invalid
 		}
 		v.access = token.Access

@@ -160,3 +160,20 @@ HTTP/SQL cases cover private readback, stale revisions, server-owned metadata,
 withdrawn rights, fresh-proof lost-reply retry and replay rejection. Exact Actions
 acceptance is pending; these endpoints do not publish a configuration or provide
 an administrative UI/approval workflow.
+
+## Source-to-publisher composition accepted
+
+At4867e3687c730630650142c5c1b570f2fe25b932 all eight mandatory jobs passed in
+[Actions41442820334](https://github.com/nd4y/syn443-control-plane/actions/runs/41442820334).
+The independent NetworkAuthority now joins approved portable layers and currently
+authorized immutable source snapshots to the per-device publisher. Tests verify
+actual ES256 output, recipient/key/grant/base binding, deterministic duplicate
+profile aliases, source freshness lease caps, both transaction fences, late layer
+denial/source disable/share-head changes/expiry, cancellation and SQL-role isolation.
+The previously described plan and private draft/API paths passed their own full
+Actions runs. This does not provide persistent approved heads, assignments,
+preview/MFA publication, full application settings or the administration UI.
+
+Locally derived managed-overlay waiting flags are forbidden in prepared publisher
+input, alongside inline keys, SDK paths and namespace overrides. The Android
+identity worker alone may render this fail-closed placeholder for a valid lease.

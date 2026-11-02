@@ -1521,20 +1521,44 @@
     {
       "id": "EDIT-01",
       "text": "У администратора на телефоне есть полноценный редактор управляемой конфигурации: профили, источники и назначения, DNS, маршруты, цепочки, балансеры, четыре режима, автоматика, проверки, логи/телеметрия, параметры встроенных движков и разрешённые UI-настройки. Он покрывает ту же модель и валидацию, что и веб-панель.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-console.md",
+        "internal/chatweb/control.go",
+        "internal/chatweb/control_test.go",
+        "internal/chatweb/assets/control/app.js",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Current console Actions acceptance pending.",
+      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
     },
     {
       "id": "EDIT-02",
       "text": "Редактор начинает с текущей серверной ревизии, сохраняет baseRevision и локальный черновик отдельно от active config. Для каждого поля видны значение, источник наследования, область изменения и право редактирования. Статус «есть неопубликованные правки» сохраняется после закрытия приложения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-console.md",
+        "internal/chatweb/control.go",
+        "internal/chatweb/control_test.go",
+        "internal/chatweb/assets/control/app.js",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Current console Actions acceptance pending.",
+      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
     },
     {
       "id": "EDIT-03",
       "text": "Есть три разные команды: «Сохранить черновик», «Проверить и применить на этом телефоне», «Опубликовать на сервер». Локальный тест не меняет сервер и чужие устройства. Предварительный локальный тест рекомендуется, но не обязателен для загрузки серверного черновика.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-console.md",
+        "internal/chatweb/control.go",
+        "internal/chatweb/control_test.go",
+        "internal/chatweb/assets/control/app.js",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Current console Actions acceptance pending.",
+      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
     },
     {
       "id": "EDIT-04",

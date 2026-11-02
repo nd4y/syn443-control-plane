@@ -189,6 +189,7 @@ jobs:
         working-directory: web-tests
       - run: npm test
         working-directory: web-tests
+      - run: python3 tools/check_web_evidence.py
       - name: Scan synthetic browser evidence
         id: web-scan
         if: always()

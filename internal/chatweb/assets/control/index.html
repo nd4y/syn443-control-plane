@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>SYN443 - Управление</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
+<body><header><div><strong>SYN443</strong><h1>Управление</h1></div><nav><button id="login">Войти через Keycloak</button><button id="logout" disabled>Выйти</button></nav></header>
+<p id="status" role="status">Войдите с административной учётной записью.</p>
+<main><section aria-labelledby="sources-title"><h2 id="sources-title">Источники</h2>
+<label for="owner">ID пользователя</label><input id="owner" autocomplete="off" maxlength="128"><button id="load-sources" disabled>Загрузить источники</button>
+<ul id="sources"></ul><button id="more-sources" disabled>Следующая страница</button><h3>Профили источника</h3><ul id="profiles"></ul><pre id="source-details"></pre>
+</section><section aria-labelledby="draft-title"><h2 id="draft-title">Личный черновик конфигурации</h2>
+<p>Сохранение черновика не меняет VPN на устройствах. Для публикации нужны отдельные проверка и подтверждение.</p>
+<label for="draft-id">ID черновика</label><input id="draft-id" autocomplete="off" maxlength="128"><button id="open-draft" disabled>Открыть черновик</button><button id="new-draft" disabled>Новый черновик</button>
+<form id="draft-form"><label for="target-kind">Область правки</label><select id="target-kind"><option value="device">Устройство</option><option value="user">Пользователь</option><option value="group">Группа</option><option value="template">Шаблон</option></select>
+<label for="target-id">ID адресата</label><input id="target-id" autocomplete="off" maxlength="128" required>
+<p id="draft-version">Новый черновик</p><label for="base-revision">Исходная версия конфигурации</label><input id="base-revision" type="number" min="0" max="9007199254740991" value="0" required>
+<label for="base-hash">SHA-256 исходной версии (для версии 0 оставьте пустым)</label><input id="base-hash" autocomplete="off" maxlength="64">
+<label for="plan">План сети, JSON</label><textarea id="plan" rows="22" maxlength="262144" spellcheck="false" autocomplete="off" required></textarea>
+<p>Профили задаются ссылками sourceId/profileId. Ключи, пароли и состояние NetBird сюда не переносятся.</p><button id="save-draft" disabled>Сохранить черновик</button></form>
+<div id="pending" hidden><p>Сохранение не подтверждено. Повтор использует ту же операцию.</p><button id="retry-save">Повторить сохранение</button><button id="discard-save">Отменить повтор и проверить версию на сервере</button></div>
+</section></main></body></html>
