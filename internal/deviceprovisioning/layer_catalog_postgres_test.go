@@ -196,6 +196,30 @@ func TestConfigurationCatalogUserAndGroupImpactComesOnlyFromCommittedRows(t *tes
 		t.Fatal("revoked device retained group authority")
 	}
 }
+
+func TestConfigurationCatalogCanonicalRecipientOrderDoesNotDependOnDatabaseLocale(t *testing.T) {
+	f, p := configurationCatalogFixture(t)
+	for _, id := range []string{"Z-device", "a-device"} {
+		seedConfigurationDevice(t, f, id, true)
+		p.Bundles = append(p.Bundles, LayerBundle{Device: id, Layers: p.Bundles[0].Layers})
+	}
+	p.TargetKind = "user"
+	p.TargetID = f.n.target.Owner
+	sort.Slice(p.Bundles, func(i, j int) bool { return p.Bundles[i].Device < p.Bundles[j].Device })
+	s := prepareCatalog(t, f, p)
+	ids := []string{}
+	for _, v := range s.Recipients {
+		ids = append(ids, v.Device)
+	}
+	if len(ids) != 3 || !sort.StringsAreSorted(ids) {
+		t.Fatal("manifest used database locale order")
+	}
+	for i, id := range ids {
+		if p.Bundles[i].Device != id {
+			t.Fatal("recipient order diverged from signed proposal")
+		}
+	}
+}
 func TestConfigurationCatalogFinalFenceRejectsChangedGrantHeadMembershipAndCorruption(t *testing.T) {
 	for _, kind := range []string{"account", "expired-account", "grant", "key-row", "base", "new-device", "cipher", "layer-head", "ACL", "expired-proposal"} {
 		t.Run(kind, func(t *testing.T) {

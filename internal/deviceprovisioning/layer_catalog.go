@@ -124,6 +124,9 @@ func configurationDevices(ctx context.Context, tx *sql.Tx, p LayerProposal) ([]s
 	if len(ids) < 1 || len(ids) > 64 {
 		return nil, enrollment.ErrDenied
 	}
+	// PostgreSQL locale ordering may differ from the byte ordering used by the
+	// signed Go/Kotlin manifest, especially for mixed-case opaque identifiers.
+	sort.Strings(ids)
 	return ids, nil
 }
 
