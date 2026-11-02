@@ -668,20 +668,26 @@
       "text": "В обычной сети используются прямые management/signal и P2P пути. Relay разрешён только после неудачи прямого соединения или потери пути; начальный direct ICE timeout - 8 секунд, настраиваемый в проверяемом диапазоне. После relay сохраняются ограниченные попытки вернуться к P2P. Такое предпочтение соответствует модели NetBird. [Как работает NetBird](https://docs.netbird.io/about-netbird/how-netbird-works).",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/netbird-resource.md",
+        "internal/netbirdapi/client.go",
+        "internal/netbirdapi/client_test.go"
       ],
-      "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
-      "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
+      "implementationScope": "Addressed overlay credentials/namespace delivery plus bounded NetBird single-account management API adapter; current new adapter Actions acceptance pending.",
+      "remainingScope": "Durable setup-key broker/revocation jobs, managed resource/UI wiring, interrupted-registration keyless recovery, provider reconciliation and real Cloud/device acceptance."
     },
     {
       "id": "NB-02",
       "text": "В ограниченной сети при разрешённой автоматике включается отдельный проверенный вариант NetBird через VLESS. Внешние соединения этого варианта должны идти через выбранный VLESS путь без скрытого direct bootstrap; неподдержанные UDP-пути не обходят прокси. В UI явно различаются direct/through VLESS и P2P/relay. Это разные свойства соединения.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/netbird-resource.md",
+        "internal/netbirdapi/client.go",
+        "internal/netbirdapi/client_test.go"
       ],
-      "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
-      "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
+      "implementationScope": "Addressed overlay credentials/namespace delivery plus bounded NetBird single-account management API adapter; current new adapter Actions acceptance pending.",
+      "remainingScope": "Durable setup-key broker/revocation jobs, managed resource/UI wiring, interrupted-registration keyless recovery, provider reconciliation and real Cloud/device acceptance."
     },
     {
       "id": "NB-03",
