@@ -108,7 +108,7 @@ func TestGraphDirectSharedReferencesAndFeatureDetails(t *testing.T) {
 	if e != nil || calls != 1 {
 		t.Fatal("shared immutable profile fetched repeatedly", e)
 	}
-	if !reflect.DeepEqual(out.RequiredEngineFeatures, []string{"vless", "vless.reality", "vless.tls", "vless.xhttp"}) {
+	if !reflect.DeepEqual(out.RequiredEngineFeatures, []string{"selector", "vless", "vless.reality", "vless.tls", "vless.xhttp"}) {
 		t.Fatal("TLS/Reality/transport feature requirements missing")
 	}
 	if graphOutbounds(t, out)["alias"]["type"] != "selector" {
@@ -251,7 +251,7 @@ func TestGraphSchemaAndResourceBudgets(t *testing.T) {
 	if _, e = CompileGraph(g, nil); e != nil {
 		t.Fatal(e)
 	}
-	for _, raw := range []string{`{"final":"direct","unknown":true}`, `{"final":"direct","final":"direct"}`, `{"profiles":null,"final":"direct"}`, strings.Repeat(" ", 262145)} {
+	for _, raw := range []string{`{"final":"direct","unknown":true}`, `{"final":"direct","final":"direct"}`, `{"profiles":null,"final":"direct"}`, `{"final":null}`, strings.Repeat(" ", 262145)} {
 		if _, e = DecodeGraph([]byte(raw)); !errors.Is(e, ErrInvalid) {
 			t.Fatal("nonportable graph admitted", e)
 		}

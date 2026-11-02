@@ -58,6 +58,10 @@ func DecodeGraph(raw []byte) (Graph, error) {
 	if len(raw) > 262144 || identity.DecodeConfiguration(raw, &graph) != nil {
 		return graph, ErrInvalid
 	}
+	value, e := subscriptions.DecodeJSON(raw)
+	if e != nil || !boundedNumbers(value) {
+		return Graph{}, ErrInvalid
+	}
 	return graph, nil
 }
 
@@ -161,6 +165,9 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 			}
 			cache[ref] = profile
 		}
+		if len(profile.Outbound) < 1 || len(profile.Outbound) > 262144 {
+			return CompiledGraph{}, ErrInvalid
+		}
 		value, e := subscriptions.DecodeJSON(profile.Outbound)
 		node, ok := value.(map[string]any)
 		if e != nil || !ok || profile.ID != ref.ProfileID || node["tag"] != profile.ID || node["type"] != profile.Kind || subscriptions.ValidateOutbound(node) != nil {
@@ -230,6 +237,7 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 				previous = next
 			}
 			if len(chain.DialOrder) == 1 {
+				features["selector"] = true
 				if e := emit(map[string]any{"type": "selector", "tag": tag, "outbounds": []string{previous}, "default": previous}); e != nil {
 					return capability, e
 				}
