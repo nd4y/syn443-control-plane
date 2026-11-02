@@ -58,6 +58,7 @@ jobs:
       - run: go test ./internal/identity -run '^$' -fuzz '^FuzzIdentityDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/remnawave -run '^$' -fuzz '^FuzzProviderJSON$' -fuzztime=15s -parallel=2
       - run: go test ./internal/subscriptions -run '^$' -fuzz '^FuzzSubscriptionJSON$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/configuration -run '^$' -fuzz '^FuzzConfigurationGraph$' -fuzztime=15s -parallel=2
       - run: go test ./internal/configuration -run '^$' -fuzz '^FuzzConfigurationLayers$' -fuzztime=15s -parallel=2
       - run: go test ./internal/bootstrap -run '^$' -fuzz '^FuzzInvitationLink$' -fuzztime=15s -parallel=2
       - name: Generate public Go to Kotlin bootstrap evidence

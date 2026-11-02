@@ -34,3 +34,23 @@ Actions run permutation, permission, collision, rebase, cancellation, bounds,
 race and fuzz checks with a new85% package gate. Persistent layer assignment,
 source dependency compilation, independent final signing and web/native editors
 remain separate required M2/M3 work; this component alone closes none of them.
+
+## Outbound graph compiler
+
+The bounded portable graph references source profiles by source/profile ID,
+then compiles independently selected connection parameters into deterministic
+native outbounds. There is no provider-routing import or arbitrary native option
+injection. Explicit selector and URL-test groups, reusable entry groups/prefixes
+and up to four physical proxy hops are validated with cycle, missing-reference,
+count, byte and protocol-capability limits. TCP/UDP capability is conservative
+across every balancer branch. VLESS datagrams can cross a TCP proxy hop; SOCKS
+UDP association cannot silently acquire a direct UDP path through CONNECT.
+
+A selector can be a chain entry. A selector later in dial order currently fails
+validation rather than discarding its incoming detour; expanding all such
+branches remains required before that combination can be advertised. These
+capability results describe compiler constraints, not the native interoperability
+acceptance matrix. Routing/DNS emission, full settings persistence and independently
+authorized configuration publication remain unfinished. Profile credentials stay
+server-private; diagnostics redact compiled data. Actions positive/negative/boundary
+and fuzz checks retain the existing85% package gate.
