@@ -31,6 +31,9 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 	}
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	values := map[string]any{"Enroll": Request{random(), identity.PublicJWK(&key.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}}, "Cleanup": Cleanup{random(), []string{random()}}, "Mutation": map[string]string{"requestId": random()}, "Session": Session{random(), random(), random(), 1800000600000, 1800086400000, 0, random()}}
+	values["OverlayOperation"] = OverlayRequest{random(), "managed-netbird/" + random(), random(), 1}
+	values["OverlayCredentialReply"] = OverlayReply{Envelope: "synthetic-addressed-envelope", Consumed: false}
+	values["OverlayConsumed"] = OverlayReply{Consumed: true}
 	for name, value := range values {
 		schema, e := compiler.Compile(base + "#/components/schemas/" + name)
 		if e != nil {
@@ -60,14 +63,21 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 		}
 	}
 	paths := doc["paths"].(map[string]any)
-	if len(paths) != 5 {
+	expected := map[string]bool{"/v1/devices/enroll": true, "/v1/identity/devices/revoke": true, "/v1/device/session/refresh": true, "/v1/device/revoke": true, "/v1/device/policy": true, "/v1/device/overlay/fetch": true, "/v1/device/overlay/consume": true}
+	if len(paths) != len(expected) {
 		t.Fatal("unexpected API scope")
 	}
 	for path, value := range paths {
+		if !expected[path] {
+			t.Fatal("unexpected API endpoint")
+		}
 		methods := value.(map[string]any)
 		method := "post"
 		if path == "/v1/device/policy" {
 			method = "get"
+		}
+		if len(methods) != 1 {
+			t.Fatal("unexpected API method")
 		}
 		operation := methods[method].(map[string]any)
 		if operation["security"] == nil || operation["parameters"] == nil {
