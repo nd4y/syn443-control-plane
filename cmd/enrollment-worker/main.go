@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"os"
 	"os/signal"
@@ -60,6 +61,21 @@ func run() error {
 		}
 		p.Grants[owner] = g
 	}
+	var brokerRoots map[string]*ecdsa.PublicKey
+	if c.OverlayBrokerEnabled {
+		resources, err := enrollment.ReadBrokerPolicyResources(os.Getenv("SYN443_OVERLAY_POLICY_RESOURCES"))
+		if err != nil {
+			return err
+		}
+		p.Brokers, err = enrollment.NewBrokerPolicies(store, c.OverlayServiceID, resources)
+		if err != nil {
+			return err
+		}
+		brokerRoots, err = enrollment.PublicRoots(c)
+		if err != nil {
+			return err
+		}
+	}
 	var invites *deviceprovisioning.Invitations
 	if path := os.Getenv("SYN443_INVITATION_CONFIG"); path != "" {
 		ic, err := invitation.ReadConfig(path, time.Now())
@@ -86,12 +102,18 @@ func run() error {
 	for {
 		step, cancel := context.WithTimeout(ctx, 10*time.Second)
 		now, e := store.Now(step, time.Now())
+		if e == nil && p.Brokers != nil {
+			e = p.Brokers.Schedule(step, now)
+		}
 		if e == nil {
 			if invites != nil {
 				e = invites.Prepare(step, now)
 			}
 			if e == nil {
 				e = p.RunOnce(step, now)
+			}
+			if e == nil && p.Brokers != nil {
+				e = p.Brokers.DeliverReady(step, &p, brokerRoots, now)
 			}
 		}
 		cancel()

@@ -1,4 +1,6 @@
 GRANT SELECT,INSERT,UPDATE(retire) ON identity_overlay_broker TO syn443_identity_publisher;
+GRANT SELECT,INSERT,UPDATE(reference,version) ON identity_overlay_reference_heads TO syn443_identity_publisher;
+REVOKE ALL ON FUNCTION identity_overlay_head_invariants() FROM PUBLIC;
 GRANT SELECT(device,reference,version,owner,jkt,namespace,security_epoch,grant_hash,deadline_ms,state,retire)
  ON identity_overlay_broker TO syn443_identity_api;
 REVOKE ALL ON FUNCTION identity_overlay_broker_invariants() FROM PUBLIC;

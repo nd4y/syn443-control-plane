@@ -14,15 +14,31 @@ import (
 
 // Grant is operator-owned immutable input. API has only its hash, never the signing key.
 type Grant struct {
-	Issuer      string         `json:"issuer"`
-	Subject     string         `json:"subject"`
-	DeviceLimit int            `json:"deviceLimit"`
-	Until       int64          `json:"until"`
-	Template    policy.Payload `json:"template"`
+	OverlayGroups map[string][]string `json:"overlayGroups,omitempty"`
+	Issuer        string              `json:"issuer"`
+	Subject       string              `json:"subject"`
+	DeviceLimit   int                 `json:"deviceLimit"`
+	Until         int64               `json:"until"`
+	Template      policy.Payload      `json:"template"`
 }
 
 func (g Grant) Hash() string { raw, _ := json.Marshal(g); return identity.Hash(raw) }
 func (g Grant) Validate(now time.Time) error {
+	if len(g.OverlayGroups) > 16 {
+		return identity.ErrInvalid
+	}
+	for resource, groups := range g.OverlayGroups {
+		if !brokerIdentifier.MatchString(resource) || len(groups) < 1 || len(groups) > 16 {
+			return identity.ErrInvalid
+		}
+		seen := map[string]bool{}
+		for _, group := range groups {
+			if !brokerIdentifier.MatchString(group) || seen[group] {
+				return identity.ErrInvalid
+			}
+			seen[group] = true
+		}
+	}
 	if g.Template.KeyThumbprint != "" || g.Template.Operation != "configure" || (g.Template.SchemaVersion != 1 && g.Template.SchemaVersion != 2) {
 		return identity.ErrInvalid
 	}
@@ -61,6 +77,7 @@ func Authorize(ctx context.Context, db *sql.DB, grant Grant, now time.Time) erro
 }
 
 type Publisher struct {
+	Brokers            *BrokerPolicies
 	Store              *Store
 	Verifier           Verifier
 	Grants             map[string]Grant
@@ -218,6 +235,13 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 		}
 		configurationFence = prepared.Fence
 	}
+	var brokerFence ApprovalFence
+	if p.Brokers != nil {
+		brokerFence, e = p.Brokers.Prepare(ctx, ConfigurationTarget{Device: id, Owner: s.Owner, Thumbprint: s.Jkt, GrantHash: s.Grant, CurrentRevision: s.Revision, Capabilities: request.Capabilities}, g, &payload, now)
+		if e != nil {
+			return e
+		}
+	}
 	raw, e := json.Marshal(payload)
 	if e != nil {
 		return e
@@ -258,6 +282,11 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	if !active || current != s.Revision || owner != s.Owner || jkt != s.Jkt || identity.Hash(body) != identity.Hash(s.Raw) {
 		return ErrConflict
 	}
+	if brokerFence != nil {
+		if e = brokerFence.Lock(ctx, tx, now); e != nil {
+			return e
+		}
+	}
 	var count int
 	if e = tx.QueryRowContext(ctx, `SELECT count(*) FROM identity_devices WHERE owner=$1 AND active`, s.Owner).Scan(&count); e != nil {
 		return e
@@ -281,6 +310,11 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 			return ErrDenied
 		}
 		if e = configurationFence.Lock(ctx, tx, commitNow); e != nil {
+			return e
+		}
+	}
+	if brokerFence != nil {
+		if e = brokerFence.Lock(ctx, tx, commitNow); e != nil {
 			return e
 		}
 	}

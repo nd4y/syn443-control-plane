@@ -35,6 +35,7 @@ func run() error {
 		return e
 	}
 	defer store.DB.Close()
+	store.OverlayBrokerPending = c.OverlayBrokerEnabled
 	check, cancel := context.WithTimeout(ctx, 5*time.Second)
 	e = store.RuntimeRole(check, false)
 	cancel()

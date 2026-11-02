@@ -20,22 +20,23 @@ import (
 )
 
 type Config struct {
-	OverlayServiceID string            `json:"overlayServiceId"`
-	Listen           string            `json:"listen"`
-	Origin           string            `json:"origin"`
-	Issuer           string            `json:"issuer"`
-	Audience         string            `json:"audience"`
-	ClientID         string            `json:"clientId"`
-	Database         string            `json:"database"`
-	EncryptionKey    string            `json:"encryptionKey"`
-	Roots            map[string]string `json:"roots"`
-	Certificate      string            `json:"certificate"`
-	CertificateKey   string            `json:"certificateKey"`
-	FixtureHTTP      bool              `json:"fixtureHttp"`
-	ChatEnabled      bool              `json:"chatEnabled"`
-	ChatWebOrigin    string            `json:"chatWebOrigin"`
-	ChatWebClientID  string            `json:"chatWebClientId"`
-	ChatWebAudience  string            `json:"chatWebAudience"`
+	OverlayBrokerEnabled bool              `json:"overlayBrokerEnabled"`
+	OverlayServiceID     string            `json:"overlayServiceId"`
+	Listen               string            `json:"listen"`
+	Origin               string            `json:"origin"`
+	Issuer               string            `json:"issuer"`
+	Audience             string            `json:"audience"`
+	ClientID             string            `json:"clientId"`
+	Database             string            `json:"database"`
+	EncryptionKey        string            `json:"encryptionKey"`
+	Roots                map[string]string `json:"roots"`
+	Certificate          string            `json:"certificate"`
+	CertificateKey       string            `json:"certificateKey"`
+	FixtureHTTP          bool              `json:"fixtureHttp"`
+	ChatEnabled          bool              `json:"chatEnabled"`
+	ChatWebOrigin        string            `json:"chatWebOrigin"`
+	ChatWebClientID      string            `json:"chatWebClientId"`
+	ChatWebAudience      string            `json:"chatWebAudience"`
 }
 
 func PrivateFile(path string, max int64) ([]byte, error) {
@@ -67,7 +68,7 @@ func ReadConfig(path string) (Config, error) {
 	if identity.Decode(raw, &c, true) != nil {
 		return c, identity.ErrInvalid
 	}
-	if c.ValidateChat() != nil || c.OverlayServiceID != "" && !regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`).MatchString(c.OverlayServiceID) {
+	if c.ValidateChat() != nil || c.OverlayBrokerEnabled && c.OverlayServiceID == "" || c.OverlayServiceID != "" && !regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`).MatchString(c.OverlayServiceID) {
 		return c, identity.ErrInvalid
 	}
 	return c, nil

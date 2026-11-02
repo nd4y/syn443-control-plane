@@ -91,3 +91,37 @@ SIGTERM cancels current work without forgetting durable dispatch. Actions builds
 and scans the executable with the other runtime artifacts and a checksum manifest.
 TLS resolver, malformed bootstrap, wrong scope and SQL-clock tests plus a separate
 80% bootstrap coverage gate are required before accepting this new process.
+
+The isolated worker passed all eight mandatory jobs at
+`80a982dd628adabea519b4d050c8b2a9aebebbe7`,
+[Actions41476009154](https://github.com/nd4y/syn443-control-plane/actions/runs/41476009154).
+
+## Automatic reference materialization (acceptance pending)
+
+The independent publisher can opt in using `overlayBrokerEnabled`, a service ID
+and the0600 metadata file `SYN443_OVERLAY_POLICY_RESOURCES`. This file contains
+resource/revision/account/management origin/network/group metadata, with no PAT;
+unknown token fields are rejected. Each owner-authorized grant also explicitly
+lists `overlayGroups` per resource. An app configuration referencing a resource
+does not itself grant that resource or broaden the allowed auto-groups.
+
+`BrokerPolicies` replaces caller setup-reference/version fields with a persisted
+per-namespace head. Head identity is immutable; the reference can advance only
+one version at a time. Policy signature, head CAS and broker reservation commit
+in the same account/device-fenced transaction. Failed publication must not leave
+a head or provider request. Ordinary refresh keeps the same reference and cannot
+extend the original setup deadline. Only a confirmed unused/cleared key after its
+deadline permits a new reference; registered and uncertain results preserve the
+head. Per-identity auto-group changes are rejected rather than silently reenrolling.
+
+The publisher's2-second loop independently schedules safe renewal, propagates
+withdrawal and wraps ready addressed values. It does not wait for the long policy
+refresh interval and has no management PAT. The API recognizes reserved pending
+metadata only when explicitly enabled; default behavior remains unchanged.
+Plain authorized devices do not require overlay capability or allocate a head.
+
+The new source/SQL tests and an independent80% materializer coverage gate are
+pending Actions acceptance. This bootstrap integration does not implement the
+SQL resource editor, independent preview/MFA approval, portable overlay/layer UI,
+obsolete namespace retirement after rollback leases, actual Cloud or final Xperia
+acceptance. Those remain required by the full M2/M3 contract.
