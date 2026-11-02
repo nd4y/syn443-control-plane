@@ -541,7 +541,11 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/layered-configuration.md",
+        "internal/enrollment/configuration_authority.go",
+        "internal/enrollment/configuration_authority_test.go",
+        "internal/enrollment/configuration_authority_postgres_test.go"
       ]
     },
     {
@@ -551,7 +555,10 @@
       "evidence": [
         "docs/layered-configuration.md",
         "internal/configuration/network.go",
-        "internal/configuration/network_test.go"
+        "internal/configuration/network_test.go",
+        "internal/enrollment/configuration_authority.go",
+        "internal/enrollment/configuration_authority_test.go",
+        "internal/enrollment/configuration_authority_postgres_test.go"
       ]
     },
     {

@@ -76,8 +76,34 @@ references and unsupported UDP over TCP-only hops fail before emission. DNS rule
 retain ordered match/query-type semantics; deterministic output is bounded256KiB.
 System DNS remains an explicit policy choice, not a claim of encrypted DNS.
 
-Positive/negative/boundary tests are authored for the existing85% configuration
-package gate. Exact Actions and native parsing/traffic acceptance remain pending.
+The positive/negative/boundary tests passed all eight Actions jobs at
+689dc43e2850fb691c32468f88eb1b3f378fc7da (run41397718493), retaining the85%
+configuration package gate. Native parsing/traffic acceptance remains pending.
 This network component does not yet provide the entire portable application-settings
 schema, four-mode runtime selection, persistent layer assignment, independent
 publication or administrative editors. Those M2/M3 requirements remain open.
+
+## Independent compiled-publication handoff (acceptance pending)
+
+The publisher now has an optional independent configuration-authority interface.
+Its target is built from the actual device/account/key/grant row, including the
+unchanged enrollment request capabilities and current publication revision. The
+prepared network document cannot change the recipient, key, audience, revision,
+algorithm or account lease. It must have a nonempty supported outbound graph and
+existing final target; native inbounds, embedded setup values and SDK paths are
+rejected. Required capabilities must be available on that device. The publisher
+recomputes the signed content hash and copies activation input.
+
+The prepared result must carry a final SQL fence. The publisher repeats it before
+and after device/revision/ownership locks, with elapsed-time lease checks immediately
+before commit. A missing result, changed/revoked dependency, authority outage,
+cancellation or late expiry never falls back to a static template and cannot
+replace the encrypted last-known-good publication. An unconfigured authority keeps
+the existing operator-grant path for compatibility.
+
+Actual PostgreSQL publisher tests cover device-bound compiled signing, two fences,
+lease clamping, unavailable authority, first/final conflicts, cancellation and late
+expiry. Pure negative tests reject unsupported capability and native authority
+injection. A separate80% configuration-authority gate is required. The persistent
+layer/approval provider is not wired to this interface yet; this is not acceptance
+of the complete editable/publishable configuration flow or full administrative UI.

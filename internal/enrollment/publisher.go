@@ -68,6 +68,7 @@ type Publisher struct {
 	Key                *ecdsa.PrivateKey
 	Origin             string
 	InvitationApproval ExternalApproval
+	Configurations     ConfigurationAuthority
 }
 
 type ApprovalInput struct {
@@ -206,6 +207,17 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	payload.NotBeforeMs = payload.IssuedAtMs
 	payload.OfflineUntilMs = min(payload.IssuedAtMs+3600000, g.Until*1000)
 	payload.RefreshAfterMs = min(payload.IssuedAtMs+300000, payload.OfflineUntilMs-1000)
+	var configurationFence ApprovalFence
+	if p.Configurations != nil {
+		prepared, prepareErr := p.Configurations.Prepare(ctx, ConfigurationTarget{Device: id, Owner: s.Owner, Thumbprint: s.Jkt, GrantHash: s.Grant, CurrentRevision: s.Revision, Capabilities: append([]string(nil), request.Capabilities...)}, now)
+		if prepareErr != nil {
+			return prepareErr
+		}
+		if err := applyPreparedConfiguration(&payload, prepared, request.Capabilities, now); err != nil {
+			return err
+		}
+		configurationFence = prepared.Fence
+	}
 	raw, e := json.Marshal(payload)
 	if e != nil {
 		return e
@@ -228,6 +240,11 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	}
 	if approvalFence != nil {
 		if e = approvalFence.Lock(ctx, tx, now); e != nil {
+			return e
+		}
+	}
+	if configurationFence != nil {
+		if e = configurationFence.Lock(ctx, tx, now); e != nil {
 			return e
 		}
 	}
@@ -256,6 +273,14 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	}
 	if approvalFence != nil {
 		if e = approvalFence.Lock(ctx, tx, commitNow); e != nil {
+			return e
+		}
+	}
+	if configurationFence != nil {
+		if payload.OfflineUntilMs <= commitNow.UnixMilli() {
+			return ErrDenied
+		}
+		if e = configurationFence.Lock(ctx, tx, commitNow); e != nil {
 			return e
 		}
 	}
