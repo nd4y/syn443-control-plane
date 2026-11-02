@@ -72,3 +72,20 @@ non-authoritative integer column permits PostgreSQL SHARE row locks without
 UPDATE rights on any real source/resource setting. The source worker and control
 roles retain their existing boundaries. Actions tests exercise the restricted
 role, actual SQL races/cancellation, expiry/quota, corruption and memory bounds.
+
+## Private network drafts (acceptance pending)
+
+configuration.draft.get and configuration.draft.put handle only the current
+verified administrator's own proposal namespace. Each explicit target also needs
+live configuration.drafts.read/write ACL. The response body is private authorized
+editing data, not inventory/telemetry; profile credentials remain source references.
+Saved proposals use encrypted SQL, CAS, actor/ID/revision AAD and stable-operation
+receipts. SavedAt is server-owned (zero in a put request). The portable plan is
+bounded to256KiB and its put envelope to270336 bytes. Unknown/native fields and
+numeric/null substitutions cannot become active settings. There is no side effect
+on active configuration, source assignments, signing or provisioning.
+
+Draft save does not require fresh MFA because it has no publication authority.
+Independent preview/approval/publication still requires its own current strong
+assurance and immutable target/base/dependency/impact fences. Discard/retention,
+inventory, complete supported settings and web/mobile editors remain open.

@@ -253,6 +253,22 @@ func (a *API) dispatch(ctx context.Context, actor Actor, action Action, now time
 		return nil
 	}
 	switch action.Action {
+	case "configuration.draft.get":
+		var r struct {
+			ID string `json:"id"`
+		}
+		if decode(&r) != nil {
+			return nil, ErrInvalid
+		}
+		return a.Store.GetNetworkDraft(ctx, actor, r.ID, now)
+	case "configuration.draft.put":
+		var r struct {
+			Draft NetworkDraft `json:"draft"`
+		}
+		if len(action.Payload) > 270336 || identity.DecodeConfiguration(action.Payload, &r) != nil {
+			return nil, ErrInvalid
+		}
+		return a.Store.PutNetworkDraft(ctx, actor, r.Draft, action.RequestID, now)
 	case "source.list":
 		var r struct {
 			Owner string `json:"owner"`

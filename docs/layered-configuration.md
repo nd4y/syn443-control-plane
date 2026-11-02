@@ -143,9 +143,20 @@ compilation/publication still require independent live resolution and approval.
 A save changes only the proposal, encrypted operation receipt and hash-only audit.
 No active layer, source assignment or device publication is touched. There are
 hard per-actor bounds of64 drafts and256 saved-operation receipts. Draft discard,
-retention, inventory, control API wiring, immutable approved heads/assignments,
+retention, inventory, remaining API/UI lifecycle, immutable approved heads/assignments,
 conflict preview, publication and web/native editors remain required work; this
 internal persistence component is not the complete administrative workflow.
 Actions add actual restricted-role PostgreSQL CAS/replay/scope/ciphertext/quota,
 corruption/cancellation and late session/ACL expiry/rollback cases. No live data or
 provider is changed and no compilation runs locally.
+
+Basic control API wiring now exposes configuration.draft.get/put with the same
+separate admin audience, DPoP body/key/token binding, durable replay protection and
+live SQL ACL. A closed versioned NetworkPlan DTO rejects native escapes, unknown
+members, null network containers, invalid scope and caller timestamps. Put has an
+explicit270336-byte payload bound; all other ordinary action limits are unchanged.
+The shared Android/control contract bytes and SHA lock are identical. New actual
+HTTP/SQL cases cover private readback, stale revisions, server-owned metadata,
+withdrawn rights, fresh-proof lost-reply retry and replay rejection. Exact Actions
+acceptance is pending; these endpoints do not publish a configuration or provide
+an administrative UI/approval workflow.

@@ -3,7 +3,7 @@
   "info": {
     "title": "SYN443 control catalog API",
     "version": "0.1.0",
-    "description": "Distinct syn443-control-api audience, pinned mobile/web clients, DPoP body/key/token binding with durable replay rejection, live object-scoped ACL and signed fresh MFA. No browser bearer tokens, URL query, source-supplied signing authority or implicit broad publication. Mutations use stable requestId and expected revision; retry with a new DPoP proof and the same operation body. Source/profile secrets are omitted from inventory. M2/M3 remain incomplete until full acceptance."
+    "description": "Distinct syn443-control-api audience, pinned mobile/web clients, DPoP body/key/token binding with durable replay rejection, live object-scoped ACL and signed fresh MFA. No browser bearer tokens, URL query, source-supplied signing authority or implicit broad publication. Mutations use stable requestId and expected revision; retry with a new DPoP proof and the same operation body. Source/profile secrets are omitted from inventory. M2/M3 remain incomplete until full acceptance. Actor-private network drafts are encrypted proposals, never independently approved assignments or publication authority."
   },
   "paths": {
     "/v1/control/action": {
@@ -1066,6 +1066,753 @@
               "requestId",
               "payload"
             ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
+                "const": "configuration.draft.get"
+              },
+              "requestId": {
+                "type": "string",
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]{16,128}$"
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
+                "const": "configuration.draft.put"
+              },
+              "requestId": {
+                "type": "string",
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]{16,128}$"
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "draft": {
+                    "$ref": "#/components/schemas/NetworkDraft"
+                  }
+                },
+                "required": [
+                  "draft"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
+          }
+        ]
+      },
+      "PlanHostMatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "minItems": 0,
+            "maxItems": 64
+          },
+          "domainSuffixes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "minItems": 0,
+            "maxItems": 64
+          },
+          "domainKeywords": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "minItems": 0,
+            "maxItems": 32
+          },
+          "domainRegex": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "minItems": 0,
+            "maxItems": 16
+          }
+        },
+        "required": []
+      },
+      "PlanProfileReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "maxLength": 48,
+            "pattern": "^[A-Za-z0-9_-]{1,48}$"
+          },
+          "profileId": {
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "sourceId",
+          "profileId"
+        ]
+      },
+      "PlanChain": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "dialOrder": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "minItems": 1,
+            "maxItems": 16
+          }
+        },
+        "required": [
+          "dialOrder"
+        ]
+      },
+      "PlanBalancer": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "enum": [
+              "selector",
+              "urltest"
+            ]
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "minItems": 1,
+            "maxItems": 64,
+            "uniqueItems": true
+          },
+          "default": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^(?:[A-Za-z0-9_-]{1,64})?$"
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "intervalSeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400
+          },
+          "toleranceMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 60000
+          },
+          "interruptExisting": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "type",
+          "members",
+          "interruptExisting"
+        ]
+      },
+      "PlanGraph": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "profiles": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PlanProfileReference"
+            },
+            "maxProperties": 32
+          },
+          "chains": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PlanChain"
+            },
+            "maxProperties": 16
+          },
+          "balancers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PlanBalancer"
+            },
+            "maxProperties": 16
+          },
+          "final": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          }
+        },
+        "required": [
+          "profiles",
+          "chains",
+          "balancers",
+          "final"
+        ]
+      },
+      "PlanRouteRule": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "match": {
+            "$ref": "#/components/schemas/PlanHostMatch"
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "ipPrefixes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "minItems": 0,
+            "maxItems": 128
+          },
+          "packages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "minItems": 0,
+            "maxItems": 128
+          },
+          "networks": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "tcp",
+                "udp"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "first": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                "last": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              },
+              "required": [
+                "first",
+                "last"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 128
+          },
+          "matchAll": {
+            "type": "boolean"
+          },
+          "action": {
+            "enum": [
+              "route",
+              "reject"
+            ]
+          },
+          "outbound": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^(?:[A-Za-z0-9_-]{1,64})?$"
+          }
+        },
+        "required": [
+          "match",
+          "id",
+          "matchAll",
+          "action",
+          "outbound"
+        ]
+      },
+      "PlanDNSServer": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "transport": {
+            "enum": [
+              "local",
+              "udp",
+              "tcp",
+              "tls",
+              "https",
+              "quic",
+              "h3"
+            ]
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 253
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65535
+          },
+          "serverName": {
+            "type": "string",
+            "maxLength": 253
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "outbound": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^(?:[A-Za-z0-9_-]{1,64})?$"
+          }
+        },
+        "required": [
+          "transport",
+          "address",
+          "port",
+          "serverName",
+          "path",
+          "outbound"
+        ]
+      },
+      "PlanDNSRule": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "match": {
+            "$ref": "#/components/schemas/PlanHostMatch"
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "queryTypes": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "A",
+                "AAAA",
+                "CNAME",
+                "MX",
+                "TXT",
+                "PTR",
+                "SRV",
+                "HTTPS",
+                "SVCB",
+                "NS",
+                "SOA"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 16,
+            "uniqueItems": true
+          },
+          "server": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          }
+        },
+        "required": [
+          "match",
+          "id",
+          "server"
+        ]
+      },
+      "PlanNetwork": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "requiredNetworks": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "tcp",
+                "udp"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanRouteRule"
+            },
+            "minItems": 0,
+            "maxItems": 128
+          },
+          "dnsServers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PlanDNSServer"
+            },
+            "maxProperties": 16
+          },
+          "dnsRules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanDNSRule"
+            },
+            "minItems": 0,
+            "maxItems": 64
+          },
+          "dnsFinal": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "dnsStrategy": {
+            "enum": [
+              "prefer_ipv4",
+              "prefer_ipv6",
+              "ipv4_only",
+              "ipv6_only"
+            ]
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "requiredNetworks",
+          "dnsFinal",
+          "dnsStrategy"
+        ]
+      },
+      "PlanActivationCheck": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 48,
+            "pattern": "^[A-Za-z0-9_-]{1,48}$"
+          },
+          "type": {
+            "enum": [
+              "https_204",
+              "tcp_banner"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65535
+          },
+          "expected": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "target",
+          "port",
+          "expected",
+          "required"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "https_204"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "target": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "pattern": "^https://[^\\s]+$"
+                },
+                "port": {
+                  "const": 0
+                },
+                "expected": {
+                  "const": ""
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "target": {
+                  "type": "string",
+                  "maxLength": 253,
+                  "pattern": "^[A-Za-z0-9.:-]{1,253}$"
+                },
+                "port": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                "expected": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PlanActivation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "timeoutSeconds": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 120
+          },
+          "allowDegraded": {
+            "type": "boolean"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanActivationCheck"
+            },
+            "minItems": 1,
+            "maxItems": 8,
+            "contains": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "https_204"
+                },
+                "required": {
+                  "const": true
+                }
+              },
+              "required": [
+                "type",
+                "required"
+              ]
+            },
+            "minContains": 1
+          }
+        },
+        "required": [
+          "timeoutSeconds",
+          "allowDegraded",
+          "checks"
+        ]
+      },
+      "NetworkPlan": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "graph": {
+            "$ref": "#/components/schemas/PlanGraph"
+          },
+          "network": {
+            "$ref": "#/components/schemas/PlanNetwork"
+          },
+          "activation": {
+            "$ref": "#/components/schemas/PlanActivation"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "graph",
+          "network",
+          "activation"
+        ]
+      },
+      "NetworkDraft": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740990
+          },
+          "targetKind": {
+            "enum": [
+              "template",
+              "group",
+              "user",
+              "device"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "baseRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "baseHash": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "plan": {
+            "$ref": "#/components/schemas/NetworkPlan"
+          },
+          "savedAt": {
+            "const": 0
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "targetKind",
+          "targetId",
+          "baseRevision",
+          "baseHash",
+          "plan",
+          "savedAt"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "baseRevision": {
+                  "const": 0
+                }
+              },
+              "required": [
+                "baseRevision"
+              ]
+            },
+            "then": {
+              "properties": {
+                "baseHash": {
+                  "const": ""
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "baseHash": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
           }
         ]
       }

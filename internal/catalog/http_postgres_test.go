@@ -150,6 +150,61 @@ func TestSQLAdminHTTPProofScopeMFAReplayAndClosedDTO(t *testing.T) {
 	f.call(t, "source.get", map[string]any{"id": source.ID}, 403)
 }
 
+func TestControlHTTPNetworkDraftIsPrivateScopedAndNeverAnActivePublication(t *testing.T) {
+	f := adminHTTPFixture(t)
+	draft := draftExample()
+	f.call(t, "configuration.draft.get", map[string]any{"id": draft.ID}, 403)
+	response := f.call(t, "configuration.draft.put", map[string]any{"draft": draft}, 200)
+	var saved NetworkDraft
+	if json.Unmarshal(response, &saved) != nil || saved.Revision != 1 || saved.SavedAt != f.Now.Unix() {
+		t.Fatal("draft HTTP receipt")
+	}
+	read := f.call(t, "configuration.draft.get", map[string]any{"id": draft.ID}, 200)
+	if string(read) != string(response) {
+		t.Fatal("private readback changed draft")
+	}
+	f.call(t, "configuration.draft.put", map[string]any{"draft": draft}, 409)
+	f.call(t, "configuration.draft.put", map[string]any{"draft": saved}, 400) // Server-owned timestamp must not be asserted by a caller.
+	if _, e := fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, f.Actor.ID); e != nil {
+		t.Fatal(e)
+	}
+	f.call(t, "configuration.draft.get", map[string]any{"id": draft.ID}, 403)
+	var count int
+	if e := fixtureOwner.QueryRow(`SELECT (SELECT count(*) FROM catalog_sources)+(SELECT count(*) FROM catalog_resources)+(SELECT count(*) FROM catalog_outbox)`).Scan(&count); e != nil || count != 0 {
+		t.Fatal("draft mutated source or publication work", e)
+	}
+}
+
+func TestControlHTTPNetworkDraftRetriesUseFreshProofAndExactOperation(t *testing.T) {
+	f := adminHTTPFixture(t)
+	body, _ := json.Marshal(map[string]any{"draft": draftExample()})
+	raw, _ := json.Marshal(Action{Version: 1, Action: "configuration.draft.put", RequestID: "stable-draft-operation", Payload: body})
+	var original []byte
+	for range 2 {
+		response := httptest.NewRecorder()
+		f.API.ServeHTTP(response, f.request(raw, f.proof(t, raw)))
+		if response.Code != 200 {
+			t.Fatal("fresh proof retry", response.Code)
+		}
+		if original != nil && string(original) != response.Body.String() {
+			t.Fatal("lost reply changed durable receipt")
+		}
+		original = append([]byte(nil), response.Body.Bytes()...)
+	}
+	proof := f.proof(t, raw)
+	first := httptest.NewRecorder()
+	f.API.ServeHTTP(first, f.request(raw, proof))
+	second := httptest.NewRecorder()
+	f.API.ServeHTTP(second, f.request(raw, proof))
+	if first.Code != 200 || second.Code != 403 {
+		t.Fatal("proof replay accepted")
+	}
+	var revision int64
+	if e := fixtureOwner.QueryRow(`SELECT revision FROM catalog_network_drafts WHERE actor=$1`, f.Actor.ID).Scan(&revision); e != nil || revision != 1 {
+		t.Fatal("retry mutated draft", e)
+	}
+}
+
 func TestSQLAdminHTTPCatalogActionsAndManualWorker(t *testing.T) {
 	f := adminHTTPFixture(t)
 	source := sourceExample(f.Now)

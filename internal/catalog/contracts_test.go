@@ -50,3 +50,35 @@ func TestControlWireRequiresExplicitMutableFields(t *testing.T) {
 		t.Fatal("unknown envelope member")
 	}
 }
+
+func TestControlNetworkDraftSchemaRejectsNativeEscapesUnknownScopeAndServerTimestamp(t *testing.T) {
+	schema, e := loadControlSchema()
+	if e != nil {
+		t.Fatal(e)
+	}
+	body, _ := json.Marshal(map[string]any{"draft": draftExample()})
+	raw, _ := json.Marshal(Action{Version: 1, Action: "configuration.draft.put", RequestID: "synthetic-request-identifier", Payload: body})
+	decode := func() map[string]any { var v map[string]any; json.Unmarshal(raw, &v); return v }
+	if e = schema.Validate(decode()); e != nil {
+		t.Fatal("closed draft runtime shape", e)
+	}
+	for _, change := range []func(map[string]any){
+		func(d map[string]any) { d["targetKind"] = "*" }, func(d map[string]any) { d["savedAt"] = 1 },
+		func(d map[string]any) { delete(d, "targetId") }, func(d map[string]any) { d["baseHash"] = "caller-asserted-hash" },
+		func(d map[string]any) { d["native"] = map[string]any{} },
+		func(d map[string]any) { d["plan"].(map[string]any)["setup_key"] = "synthetic-invalid" },
+		func(d map[string]any) { d["plan"].(map[string]any)["graph"] = nil },
+		func(d map[string]any) {
+			d["plan"].(map[string]any)["network"].(map[string]any)["requiredNetworks"] = nil
+		},
+		func(d map[string]any) {
+			d["plan"].(map[string]any)["activation"].(map[string]any)["timeoutSeconds"] = 121
+		},
+	} {
+		wire := decode()
+		change(wire["payload"].(map[string]any)["draft"].(map[string]any))
+		if schema.Validate(wire) == nil {
+			t.Fatal("invalid draft shape accepted")
+		}
+	}
+}
