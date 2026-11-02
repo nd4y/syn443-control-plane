@@ -115,6 +115,9 @@ func TestPreparedConfigurationRejectsUnfencedUnsupportedAndNativeAuthorityInputs
 		func(p *PreparedConfiguration) {
 			p.EngineConfig = json.RawMessage(`{"outbounds":[{"type":"netbird","tag":"x","credential_pending":true}],"route":{"final":"x"}}`)
 		},
+		func(p *PreparedConfiguration) {
+			p.EngineConfig = json.RawMessage(`{"outbounds":[{"type":"netbird","tag":"x","recover_existing":true}],"route":{"final":"x"}}`)
+		},
 		func(p *PreparedConfiguration) { p.RequiredCapabilities = []string{"unsupported"} }, func(p *PreparedConfiguration) {
 			p.RequiredCapabilities = []string{"engine-config.v1", "engine-config.v1"}
 		}, func(p *PreparedConfiguration) { p.RequiredCapabilities = make([]string, 17) },

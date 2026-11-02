@@ -99,7 +99,7 @@ func validatePreparedNetwork(raw []byte) error {
 		switch kind {
 		case "direct", "http", "socks", "vless", "ssh", "selector", "urltest":
 		case "netbird":
-			for _, field := range []string{"setup_key", "state_directory", "managed_namespace", "credential_pending"} {
+			for _, field := range []string{"setup_key", "state_directory", "managed_namespace", "credential_pending", "recover_existing"} {
 				if _, ok := node[field]; ok {
 					return identity.ErrInvalid
 				}

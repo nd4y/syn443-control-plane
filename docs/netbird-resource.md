@@ -48,4 +48,4 @@ disabling of an already revoked key is metadata-only. Tests include registration
 winning between the initial read and revocation, idempotent readback and uncertain
 responses. The broker must preserve known use and registration evidence before
 eventual record deletion; absence after deletion does not prove non-registration.
-These new disable/readback cases have pending exact Actions acceptance.
+The usage-preserving extension passed all eight mandatory jobs atb7ec1467973ee00d8e1203b3be18a603ab60ccc3, [Actions41452793402](https://github.com/nd4y/syn443-control-plane/actions/runs/41452793402). It remains separate from the unimplemented durable issuer and provider-peer mapping.
