@@ -31,7 +31,7 @@ ownership guards, exact no-retry behavior after a lost response, mutation outcom
 classification, wrong account/root/address, invalid/duplicate/null/oversized data,
 group/use-count/expiry/key mismatches, redirects/rate/errors, Close/cancellation
 and bounded concurrency. The new package has a required80% coverage floor.
-The initial adapter passed all eight mandatory jobs at48b95760464587c08304c0a9b11c4577827dbf02, [Actions41449596701](https://github.com/nd4y/syn443-control-plane/actions/runs/41449596701), including its80% coverage gate. The newer usage-preserving disable/readback extension has separate pending acceptance.
+The initial adapter passed all eight mandatory jobs at48b95760464587c08304c0a9b11c4577827dbf02, [Actions41449596701](https://github.com/nd4y/syn443-control-plane/actions/runs/41449596701), including its80% coverage gate.
 
 Durable SQL grant/dispatch/revocation jobs, setup-key issuer, resource/API/UI wiring,
 provider peer reconciliation and client keyless recovery after interrupted
@@ -48,4 +48,24 @@ disabling of an already revoked key is metadata-only. Tests include registration
 winning between the initial read and revocation, idempotent readback and uncertain
 responses. The broker must preserve known use and registration evidence before
 eventual record deletion; absence after deletion does not prove non-registration.
-The usage-preserving extension passed all eight mandatory jobs atb7ec1467973ee00d8e1203b3be18a603ab60ccc3, [Actions41452793402](https://github.com/nd4y/syn443-control-plane/actions/runs/41452793402). It remains separate from the unimplemented durable issuer and provider-peer mapping.
+The usage-preserving extension passed all eight mandatory jobs atb7ec1467973ee00d8e1203b3be18a603ab60ccc3, [Actions41452793402](https://github.com/nd4y/syn443-control-plane/actions/runs/41452793402). It remains separate from the unimplemented durable issuer.
+
+## Provider evidence for peer ownership (acceptance pending)
+
+The pinned NetBird management implementation records `peer.setupkey.add` with the
+setup-key ID in `initiator_id`, peer ID in `target_id` and opaque operation name
+in `meta.setup_key_name`. `FindOwnedPeer` checks those exact fields, the registration
+window and the current peer creation time. Hostname and IP are never authority.
+`RevokeOwnedPeer` rediscovers this evidence before deleting only that peer;
+missing, ambiguous, malformed or stale identity evidence causes no mutation.
+An already absent, previously proven peer is idempotent. A lost DELETE reply
+remains unknown until an explicit ownership-checked readback confirms absence.
+
+The [audit endpoint](https://docs.netbird.io/api/resources/events) has no documented
+pagination. The adapter streams at most2MiB and10000 events, keeping each event
+under64KiB with the ordinary duplicate/depth/string guards. Oversized or unavailable
+audit cannot authorize deletion. Tests cover more than256 unrelated events,
+conflicting peers, forged operation/time/creation identity, cancellation and a
+lost deletion reply. A durable broker must retain the verified mapping before
+provider audit retention expires; these methods alone do not implement that store,
+an enabled resource, automatic cleanup or actual Cloud acceptance.
