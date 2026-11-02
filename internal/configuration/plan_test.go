@@ -24,6 +24,7 @@ func planBase() NetworkPlan {
 
 func TestPortableNetworkPlanComposesGraphDNSRoutingAndIndependentActivation(t *testing.T) {
 	plan := planBase()
+	plan.Graph.Final = "tunnel" // VLESS carries its UDP inside TCP through HTTP CONNECT.
 	plan.Network.DNSServers = map[string]DNSServer{"secure": {Transport: "https", Address: "resolver.example.invalid", Port: 443, ServerName: "resolver.example.invalid", Path: "/dns-query", Outbound: "tunnel"}}
 	plan.Network.DNSFinal = "secure"
 	plan.Network.Rules = []RouteRule{{HostMatch: HostMatch{Domains: []string{"service.example.invalid"}}, ID: "service", Networks: []string{"tcp"}, Ports: []PortRange{{443, 443}}, Action: "route", Outbound: "tunnel"}}
@@ -65,11 +66,11 @@ func TestPortableNetworkPlanComposesGraphDNSRoutingAndIndependentActivation(t *t
 }
 
 func TestNetworkPlanRejectsInvalidGraphsNetworkRequirementsGatesAndCancellation(t *testing.T) {
-	for _, change := range []func(*NetworkPlan){
+	for index, change := range []func(*NetworkPlan){
 		func(p *NetworkPlan) { p.SchemaVersion = 2 },
 		func(p *NetworkPlan) { p.Graph.Final = "missing" },
 		func(p *NetworkPlan) { p.Network.DNSFinal = "missing" },
-		func(p *NetworkPlan) { p.Graph.Final = "tunnel" }, // HTTP first hop cannot carry required UDP.
+		func(p *NetworkPlan) { p.Graph.Final = "entry" }, // A plain HTTP outbound cannot carry required UDP.
 		func(p *NetworkPlan) { p.Activation.TimeoutSeconds = 29 },
 		func(p *NetworkPlan) { p.Activation.TimeoutSeconds = 121 },
 		func(p *NetworkPlan) { p.Activation.Checks[0].Required = false },
@@ -78,7 +79,7 @@ func TestNetworkPlanRejectsInvalidGraphsNetworkRequirementsGatesAndCancellation(
 		plan := planBase()
 		change(&plan)
 		if _, e := CompileNetworkPlan(context.Background(), plan, defaultGraphResolver()); e == nil {
-			t.Fatal("invalid portable plan compiled")
+			t.Fatal("invalid portable plan compiled", index)
 		}
 	}
 	if _, e := CompileNetworkPlan(nil, planBase(), defaultGraphResolver()); !errors.Is(e, ErrInvalid) {
@@ -109,13 +110,13 @@ func TestNetworkPlanRejectsInvalidGraphsNetworkRequirementsGatesAndCancellation(
 func TestNetworkPlanClosedShapeAndLayerMergeDoNotGrantPublicationAuthority(t *testing.T) {
 	plan := planBase()
 	raw, _ := json.Marshal(plan)
-	for _, bad := range [][]byte{nil, []byte("null"), []byte("{}"), bytes.Repeat([]byte("x"), 262145),
+	for index, bad := range [][]byte{nil, []byte("null"), []byte("{}"), bytes.Repeat([]byte("x"), 262145),
 		bytes.Replace(raw, []byte(`"schemaVersion":1`), []byte(`"schemaVersion":1,"schemaVersion":1`), 1),
 		bytes.Replace(raw, []byte(`"schemaVersion":1`), []byte(`"schemaVersion":1.0`), 1),
 		append(append([]byte{}, raw[:len(raw)-1]...), []byte(`,"native":{"outbounds":[]}}`)...),
 		bytes.Replace(raw, []byte(`"requiredNetworks":["tcp","udp"]`), []byte(`"requiredNetworks":null`), 1)} {
 		if _, e := DecodeNetworkPlan(bad); e == nil {
-			t.Fatal("unbounded or ambiguous plan accepted")
+			t.Fatal("unbounded or ambiguous plan accepted", index)
 		}
 	}
 	fields := map[string]json.RawMessage{}

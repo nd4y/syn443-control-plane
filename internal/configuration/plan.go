@@ -38,6 +38,10 @@ func DecodeNetworkPlan(raw []byte) (NetworkPlan, error) {
 	if len(raw) < 1 || len(raw) > 262144 || identity.DecodeConfiguration(raw, &plan) != nil || plan.SchemaVersion != 1 || plan.Activation.Validate() != nil {
 		return NetworkPlan{}, ErrInvalid
 	}
+	value, e := subscriptions.DecodeJSON(raw)
+	if e != nil || !boundedNumbers(value) {
+		return NetworkPlan{}, ErrInvalid
+	}
 	return plan, nil
 }
 
