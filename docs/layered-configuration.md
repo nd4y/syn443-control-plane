@@ -1,6 +1,26 @@
 # Declarative configuration layers
 
-## Persistent approved-artifact reader (acceptance pending)
+## Original approval request queue (acceptance pending)
+
+The API-side ConfigurationControl component preserves each original administrative
+JWT, DPoP proof, exact operation body and server acceptance time in an encrypted,
+immutable SQL request. It checks the separate administrative scope, fresh MFA,
+body/key/token/origin binding and live object ACL. Lost replies reuse the same
+operation and receipt. A changed body conflicts; bounded pending/receipt quotas
+limit admission. Token/MFA expiry and ACL are checked again after SQL lock waits.
+The larger256KiB configuration receipt decoder does not widen invitation inputs.
+
+API SQL grants permit only initial request columns. The publisher owns state and
+result fields and cannot rewrite original input. Neither role can use a queue
+reply to mutate active configuration heads. Fetch workers cannot read receipts.
+The new actual PostgreSQL scenarios cover encrypted original-proof recovery,
+replay/conflict/ACL revoke, scope/MFA/key/body failures, size/quota bounds, an
+observed admission lock expiring token authority and unchanged active heads.
+A separate80% request-authority gate is required. This component is not yet wired
+to the HTTP/BFF/native UI; publisher claim/preview/approval/atomic activation and
+global layer assignments remain required before that workflow is usable.
+
+## Persistent approved-artifact reader
 
 The independent publisher now has an SQLNetworkLayers reader over immutable
 publisher-only preview/version rows and a monotonically increasing per-device
@@ -30,8 +50,10 @@ immutability, role contamination and cancellation are covered by Actions and a
 separate80% reader gate. Owner migrations and runtime CLI/API wiring, immutable
 approved layer assignments, full supported application settings and web/native
 publication remain required M3 work. No production migration occurs in tests.
+All eight Actions jobs passed for the reader at
+bdedcfc2d5e06386733b575092b780bac4a16886 (run41499280020).
 
-## Signed preview manifest (acceptance pending)
+## Signed preview manifest
 
 The configuration package now defines a purpose-separated ES256 preview ticket.
 It binds the actor/control origin, exact draft revision/hash, target scope, network
@@ -51,6 +73,9 @@ this component does not close the complete configuration flow. Actions exercise
 independent cryptographic verification, purpose/actor/origin/impact binding,
 expiry, signature malleability, duplicate/unknown JSON fields, key trust,
 cancellation and recipient/capability bounds under the existing package gates.
+All eight Actions jobs passed at4302019c2ffc6509cab9ba8dde877311e2208415
+(run41495913038). This evidence covers the codec and existing paths, not the
+complete independently approved publication workflow.
 
 `internal/configuration` is the bounded merge/rebase component, not a compiler
 or signing authority. Its output is usable only after a required supported-settings

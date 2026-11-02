@@ -110,6 +110,10 @@ func ConfigurationRuntimeRole(ctx context.Context, db *sql.DB, publisher bool) e
 			return enrollment.ErrDenied
 		}
 	}
+	var insertRequest, updateRequest, mutableReceipt, insertState bool
+	if e := db.QueryRowContext(ctx, `SELECT has_any_column_privilege(current_user,'managed_configuration_requests','INSERT'),has_any_column_privilege(current_user,'managed_configuration_requests','UPDATE'),has_column_privilege(current_user,'managed_configuration_requests','receipt','UPDATE'),has_column_privilege(current_user,'managed_configuration_requests','state','INSERT')`).Scan(&insertRequest, &updateRequest, &mutableReceipt, &insertState); e != nil || insertRequest == publisher || updateRequest != publisher || mutableReceipt || insertState {
+		return enrollment.ErrDenied
+	}
 	return nil
 }
 
