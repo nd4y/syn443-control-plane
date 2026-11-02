@@ -105,6 +105,22 @@ func TestNetworkCompilerChecksEveryDNSTransportAndProtocolCapability(t *testing.
 			if _, err := CompileNetwork(graph, settings); err != nil {
 				t.Fatal("supported DNS rejected", err)
 			}
+			if transport != "local" {
+				raw, err := CompileNetwork(graph, settings)
+				if err != nil {
+					t.Fatal(err)
+				}
+				node := networkValue(t, raw)["dns"].(map[string]any)["servers"].([]any)[1].(map[string]any)
+				if _, ok := node["detour"]; ok {
+					t.Fatal("physical DNS emitted invalid empty-direct detour")
+				}
+				server.Outbound = "direct"
+				settings.DNSServers["resolver"] = server
+				again, err := CompileNetwork(graph, settings)
+				if err != nil || string(again) != string(raw) {
+					t.Fatal("explicit physical DNS changed dialer semantics", err)
+				}
+			}
 			if transport == "udp" || transport == "quic" || transport == "h3" {
 				server.Outbound = "entry"
 				settings.DNSServers["resolver"] = server

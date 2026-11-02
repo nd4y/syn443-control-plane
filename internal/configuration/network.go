@@ -254,7 +254,11 @@ func emitDNSServer(tag string, server DNSServer, graph CompiledGraph) (map[strin
 	if !ok || requireNetwork(capability, []string{network}) != nil {
 		return nil, ErrInvalid
 	}
-	result["detour"] = via
+	// Native DNS rejects a detour to an empty direct outbound. Omitting it uses
+	// the protected physical dialer; only actual proxy paths carry a detour tag.
+	if via != "direct" {
+		result["detour"] = via
+	}
 	return result, nil
 }
 
