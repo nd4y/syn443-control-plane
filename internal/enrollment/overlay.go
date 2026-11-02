@@ -193,6 +193,18 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 		if e != nil {
 			return DeviceResult{}, e
 		}
+		// Consumption remains available after credential withdrawal: it only erases
+		// a locally used value and cannot re-enroll a peer. Fetch must also check
+		// a broker flag when an addressed grant was already durably wrapped.
+		if !consume && s.OverlayBrokerPending {
+			var withdrawn bool
+			if e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM identity_overlay_broker WHERE device=$1 AND reference=$2 AND version=$3 AND (withdraw_key OR retire))`, b.Device, request.Reference, request.Version).Scan(&withdrawn); e != nil {
+				return DeviceResult{}, ErrUnavailable
+			}
+			if withdrawn {
+				return DeviceResult{}, ErrConflict
+			}
+		}
 		var owner, jkt, namespace, hash string
 		var epoch, expires int64
 		var protected []byte

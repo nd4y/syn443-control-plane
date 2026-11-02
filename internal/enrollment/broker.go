@@ -139,7 +139,7 @@ func (s *Store) RetireWithdrawnOverlayBrokers(ctx context.Context, now time.Time
 	if e := s.RuntimeRole(ctx, true); e != nil {
 		return e
 	}
-	_, e := s.DB.ExecContext(ctx, `UPDATE identity_overlay_broker b SET retire=true FROM identity_devices d,identity_accounts a WHERE b.device=d.id AND b.owner=d.owner AND b.owner=a.owner AND NOT b.retire AND (NOT d.active OR NOT a.enabled OR a.valid_until<=$1)`, now.Unix())
+	_, e := s.DB.ExecContext(ctx, `UPDATE identity_overlay_broker b SET retire=b.retire OR NOT d.active OR NOT a.enabled OR a.valid_until<=$1,withdraw_key=true FROM identity_devices d,identity_accounts a WHERE b.device=d.id AND b.owner=d.owner AND b.owner=a.owner AND ((NOT b.retire AND (NOT d.active OR NOT a.enabled OR a.valid_until<=$1)) OR (NOT b.withdraw_key AND b.grant_hash<>a.grant_hash))`, now.Unix())
 	return e
 }
 
@@ -162,7 +162,7 @@ type BrokerResolver interface {
 type brokerJob struct {
 	device, ref, operation, state, lease, providerID, namespace   string
 	version, deadline, dispatched, providerExpires, used, created int64
-	retire                                                        bool
+	retire, withdraw                                              bool
 	scope                                                         BrokerScope
 	secret, peer                                                  []byte
 }
@@ -201,7 +201,7 @@ func unmarshalBrokerPeer(raw []byte) (netbirdapi.PeerOwnership, error) {
 func (s *Store) BrokerRuntimeRole(ctx context.Context) error {
 	var current, session string
 	var unsafe bool
-	e := s.DB.QueryRowContext(ctx, `SELECT current_user,session_user,rolsuper OR rolcreaterole OR rolcreatedb OR rolinherit OR rolbypassrls OR EXISTS(SELECT 1 FROM pg_auth_members WHERE member=pg_roles.oid) OR has_schema_privilege(current_user,'public','CREATE') OR has_table_privilege(current_user,'identity_devices','SELECT') OR has_table_privilege(current_user,'identity_sessions','SELECT') OR has_table_privilege(current_user,'identity_overlay_grants','INSERT') OR has_table_privilege(current_user,'identity_overlay_broker','INSERT') OR has_column_privilege(current_user,'identity_overlay_broker','scope','UPDATE') OR has_column_privilege(current_user,'identity_overlay_broker','retire','UPDATE') FROM pg_roles WHERE rolname=current_user`).Scan(&current, &session, &unsafe)
+	e := s.DB.QueryRowContext(ctx, `SELECT current_user,session_user,rolsuper OR rolcreaterole OR rolcreatedb OR rolinherit OR rolbypassrls OR EXISTS(SELECT 1 FROM pg_auth_members WHERE member=pg_roles.oid) OR has_schema_privilege(current_user,'public','CREATE') OR has_table_privilege(current_user,'identity_devices','SELECT') OR has_table_privilege(current_user,'identity_sessions','SELECT') OR has_table_privilege(current_user,'identity_overlay_grants','INSERT') OR has_table_privilege(current_user,'identity_overlay_broker','INSERT') OR has_column_privilege(current_user,'identity_overlay_broker','scope','UPDATE') OR has_column_privilege(current_user,'identity_overlay_broker','retire','UPDATE') OR has_column_privilege(current_user,'identity_overlay_broker','withdraw_key','UPDATE') FROM pg_roles WHERE rolname=current_user`).Scan(&current, &session, &unsafe)
 	if e != nil || unsafe || current != "syn443_overlay_worker" || session != current {
 		return ErrDenied
 	}
@@ -222,7 +222,7 @@ func (s *Store) claimBroker(ctx context.Context, now time.Time) (*brokerJob, err
 	j := &brokerJob{}
 	var protected []byte
 	var hash string
-	e = tx.QueryRowContext(ctx, `SELECT device,reference,version,operation,state,provider_id,deadline_ms,dispatched_ms,provider_expires_ms,provider_used,retire,scope,scope_hash,secret,peer_evidence,namespace,created_ms FROM identity_overlay_broker WHERE lease_until_ms<=$1 AND next_ms<=$1 AND attempts<10000 AND state NOT IN ('retired','blocked') AND (state NOT IN ('established','cleared') OR retire) ORDER BY next_ms,created_ms,device LIMIT 1 FOR UPDATE SKIP LOCKED`, now.UnixMilli()).Scan(&j.device, &j.ref, &j.version, &j.operation, &j.state, &j.providerID, &j.deadline, &j.dispatched, &j.providerExpires, &j.used, &j.retire, &protected, &hash, &j.secret, &j.peer, &j.namespace, &j.created)
+	e = tx.QueryRowContext(ctx, `SELECT device,reference,version,operation,state,provider_id,deadline_ms,dispatched_ms,provider_expires_ms,provider_used,retire,scope,scope_hash,secret,peer_evidence,namespace,created_ms,withdraw_key FROM identity_overlay_broker WHERE lease_until_ms<=$1 AND next_ms<=$1 AND attempts<10000 AND state NOT IN ('retired','blocked') AND (state NOT IN ('established','cleared') OR retire) ORDER BY next_ms,created_ms,device LIMIT 1 FOR UPDATE SKIP LOCKED`, now.UnixMilli()).Scan(&j.device, &j.ref, &j.version, &j.operation, &j.state, &j.providerID, &j.deadline, &j.dispatched, &j.providerExpires, &j.used, &j.retire, &protected, &hash, &j.secret, &j.peer, &j.namespace, &j.created, &j.withdraw)
 	if errors.Is(e, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -240,8 +240,11 @@ func (s *Store) claimBroker(ctx context.Context, now time.Time) (*brokerJob, err
 	j.lease = random()
 	state := j.state
 	dispatch := j.dispatched
-	if state == "queued" && (j.retire || j.deadline <= now.UnixMilli()) {
-		state = "retired"
+	if state == "queued" && (j.retire || j.withdraw || j.deadline <= now.UnixMilli()) {
+		state = "cleared"
+		if j.retire {
+			state = "retired"
+		}
 	}
 	_, e = tx.ExecContext(ctx, `UPDATE identity_overlay_broker SET lease=$4,lease_until_ms=$5,state=$6,dispatched_ms=$7,attempts=attempts+1 WHERE device=$1 AND reference=$2 AND version=$3`, j.device, j.ref, j.version, j.lease, now.Add(45*time.Second).UnixMilli(), state, dispatch)
 	if e != nil {
@@ -250,7 +253,7 @@ func (s *Store) claimBroker(ctx context.Context, now time.Time) (*brokerJob, err
 	if e = tx.Commit(); e != nil {
 		return nil, e
 	}
-	if state == "retired" {
+	if state == "retired" || state == "cleared" {
 		return nil, nil
 	}
 	j.dispatched = dispatch
@@ -280,7 +283,7 @@ func (s *Store) finishBroker(ctx context.Context, j *brokerJob, state string, ke
 	if peer == nil {
 		peer = j.peer
 	}
-	result, e := s.DB.ExecContext(ctx, `UPDATE identity_overlay_broker SET state=$5,provider_id=$6,provider_expires_ms=$7,provider_used=$8,secret=$9,peer_evidence=$10,error_code=$11,lease='',lease_until_ms=0,next_ms=$12 WHERE device=$1 AND reference=$2 AND version=$3 AND lease=$4 AND lease_until_ms>$13`, j.device, j.ref, j.version, j.lease, state, id, expires, used, secret, peer, code, now.Add(5*time.Second).UnixMilli(), now.UnixMilli())
+	result, e := s.DB.ExecContext(ctx, `UPDATE identity_overlay_broker SET state=$5,provider_id=$6,provider_expires_ms=$7,provider_used=$8,secret=CASE WHEN withdraw_key THEN NULL ELSE $9 END,peer_evidence=$10,error_code=$11,lease='',lease_until_ms=0,next_ms=$12 WHERE device=$1 AND reference=$2 AND version=$3 AND lease=$4 AND lease_until_ms>$13`, j.device, j.ref, j.version, j.lease, state, id, expires, used, secret, peer, code, now.Add(5*time.Second).UnixMilli(), now.UnixMilli())
 	if e != nil {
 		return e
 	}
@@ -387,7 +390,7 @@ func (s *Store) RunOverlayBrokerOnce(ctx context.Context, resolver BrokerResolve
 		// Commit dispatch only after resolving the pinned resource. Authority
 		// withdrawal or expiry while resolving prevents the HTTP mutation.
 		at := current()
-		result, err := s.DB.ExecContext(ctx, `UPDATE identity_overlay_broker SET state='dispatched',dispatched_ms=$5 WHERE device=$1 AND reference=$2 AND version=$3 AND lease=$4 AND lease_until_ms>$5 AND state='queued' AND NOT retire AND deadline_ms>$5`, j.device, j.ref, j.version, j.lease, at.UnixMilli())
+		result, err := s.DB.ExecContext(ctx, `UPDATE identity_overlay_broker SET state='dispatched',dispatched_ms=$5 WHERE device=$1 AND reference=$2 AND version=$3 AND lease=$4 AND lease_until_ms>$5 AND state='queued' AND NOT retire AND NOT withdraw_key AND deadline_ms>$5`, j.device, j.ref, j.version, j.lease, at.UnixMilli())
 		if err != nil {
 			return err
 		}
@@ -421,7 +424,7 @@ func (s *Store) RunOverlayBrokerOnce(ctx context.Context, resolver BrokerResolve
 		j.used = max(j.used, key.UsedTimes)
 		return s.finishBroker(ctx, j, "disabled", key, nil, "recovered_without_value", current())
 	}
-	if j.state == "issued" && j.deadline > current().UnixMilli() && !j.retire {
+	if j.state == "issued" && j.deadline > current().UnixMilli() && !j.retire && !j.withdraw {
 		key, err := provider.InspectOwned(ctx, j.operation, j.providerID)
 		if err != nil {
 			return s.finishBroker(ctx, j, "issued", netbirdapi.SetupKey{}, nil, providerCode(err), current())
@@ -471,8 +474,8 @@ func (s *Store) overlayBrokerPending(ctx context.Context, tx *sql.Tx, a DeviceAu
 	}
 	var owner, jkt, namespace, grant, state string
 	var epoch, deadline int64
-	var retire bool
-	e := tx.QueryRowContext(ctx, `SELECT owner,jkt,namespace,security_epoch,grant_hash,deadline_ms,state,retire FROM identity_overlay_broker WHERE device=$1 AND reference=$2 AND version=$3`, a.Binding.Device, r.Reference, r.Version).Scan(&owner, &jkt, &namespace, &epoch, &grant, &deadline, &state, &retire)
+	var retire, withdrawn bool
+	e := tx.QueryRowContext(ctx, `SELECT owner,jkt,namespace,security_epoch,grant_hash,deadline_ms,state,retire,withdraw_key FROM identity_overlay_broker WHERE device=$1 AND reference=$2 AND version=$3`, a.Binding.Device, r.Reference, r.Version).Scan(&owner, &jkt, &namespace, &epoch, &grant, &deadline, &state, &retire, &withdrawn)
 	if errors.Is(e, sql.ErrNoRows) {
 		return ErrDenied
 	}
@@ -482,7 +485,7 @@ func (s *Store) overlayBrokerPending(ctx context.Context, tx *sql.Tx, a DeviceAu
 	if owner != a.Binding.Owner || jkt != a.Binding.Jkt || namespace != r.Namespace || epoch != permit.SecurityEpoch || grant != a.GrantHash {
 		return ErrDenied
 	}
-	if retire || deadline <= now.UnixMilli() || state != "queued" && state != "dispatched" && state != "uncertain" && state != "issued" {
+	if retire || withdrawn || deadline <= now.UnixMilli() || state != "queued" && state != "dispatched" && state != "uncertain" && state != "issued" {
 		return ErrConflict
 	}
 	return ErrPending
@@ -526,12 +529,12 @@ func (s *Store) InstallReadyOverlayBroker(ctx context.Context, device, ref strin
 	var state, namespace, storedHash string
 	var protected, cipher []byte
 	var deadline int64
-	var retire bool
-	if e = tx.QueryRowContext(ctx, `SELECT state,namespace,scope_hash,scope,secret,deadline_ms,retire FROM identity_overlay_broker WHERE device=$1 AND reference=$2 AND version=$3 FOR UPDATE`, device, ref, version).Scan(&state, &namespace, &storedHash, &protected, &cipher, &deadline, &retire); e != nil {
+	var retire, withdrawn bool
+	if e = tx.QueryRowContext(ctx, `SELECT state,namespace,scope_hash,scope,secret,deadline_ms,retire,withdraw_key FROM identity_overlay_broker WHERE device=$1 AND reference=$2 AND version=$3 FOR UPDATE`, device, ref, version).Scan(&state, &namespace, &storedHash, &protected, &cipher, &deadline, &retire, &withdrawn); e != nil {
 		return e
 	}
 	current := func() time.Time { return now.Add(time.Since(started)) }
-	if state != "issued" || retire || deadline <= current().UnixMilli() || len(cipher) == 0 {
+	if state != "issued" || retire || withdrawn || deadline <= current().UnixMilli() || len(cipher) == 0 {
 		return ErrPending
 	}
 	raw, e := s.Open(protected, brokerAAD(device, ref, version, "scope"))

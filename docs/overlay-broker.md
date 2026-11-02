@@ -169,3 +169,22 @@ This accepts isolated source/SQL/process behavior, not live Cloud or full M2/M3.
 The new startup guards additionally reject an API role with setup-secret read
 rights or a provider-worker role with reference-head mutation rights. Their new
 real-SQL privilege-contamination test awaits the next Actions run.
+
+## Credential-only withdrawal (acceptance pending)
+
+A changed live owner grant now monotonically withdraws pending setup authority
+without retiring an established peer. The publisher records a separate SQL flag;
+the API cannot change it and the provider worker cannot reset it. A queued job
+never dispatches after withdrawal. A late creation callback cannot retain or
+deliver its setup value, including an already wrapped addressed copy. Cleanup
+disables the key before checking its monotonic use count. If registration raced
+withdrawal, ownership evidence is retained and the peer survives. Missing audit
+evidence blocks destructive cleanup. Erasure acknowledgements remain possible.
+
+Only a durable confirmed-unused cleared result permits a new reference, including
+when withdrawal happened before the original short deadline. Permission refresh
+and credential cleanup do not authorize peer deletion or silent re-enrollment of
+a known registered identity. Actual account/device withdrawal and expired obsolete
+namespace retirement remain separate. Actions add queued, late callback, wrapped
+fetch/erasure, live-grant change, registration race, missing ownership and SQL-role
+checks. Live Cloud and final physical acceptance remain open.

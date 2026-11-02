@@ -216,7 +216,7 @@ func (m *BrokerPolicies) Prepare(ctx context.Context, target ConfigurationTarget
 			}
 			change.after = *before
 			change.reserve = false
-			if state == "cleared" && used == 0 && existing.DeadlineMs <= now.UnixMilli() {
+			if state == "cleared" && used == 0 {
 				if before.version >= 9007199254740991 {
 					return nil, ErrUnavailable
 				}
@@ -364,14 +364,14 @@ func (m *BrokerPolicies) Schedule(ctx context.Context, now time.Time) error {
 	if e = tx.Commit(); e != nil {
 		return e
 	}
-	_, e = m.store.DB.ExecContext(ctx, `UPDATE identity_devices d SET refresh_after=LEAST(d.refresh_after,$1) FROM identity_overlay_reference_heads h,identity_overlay_broker b WHERE d.id=h.device AND d.active AND NOT h.obsolete AND NOT h.retired AND b.device=h.device AND b.reference=h.reference AND b.version=h.version AND b.state='cleared' AND b.provider_used=0 AND NOT b.retire AND b.deadline_ms<=$2`, now.Unix(), now.UnixMilli())
+	_, e = m.store.DB.ExecContext(ctx, `UPDATE identity_devices d SET refresh_after=LEAST(d.refresh_after,$1) FROM identity_overlay_reference_heads h,identity_overlay_broker b WHERE d.id=h.device AND d.active AND NOT h.obsolete AND NOT h.retired AND b.device=h.device AND b.reference=h.reference AND b.version=h.version AND b.state='cleared' AND b.provider_used=0 AND NOT b.retire`, now.Unix())
 	return e
 }
 func (m *BrokerPolicies) DeliverReady(ctx context.Context, p *Publisher, roots map[string]*ecdsa.PublicKey, now time.Time) error {
 	if p == nil || p.Store != m.store || p.Key == nil {
 		return ErrDenied
 	}
-	rows, e := m.store.DB.QueryContext(ctx, `SELECT h.namespace,h.device,h.owner,h.jkt,h.reference,h.version FROM identity_overlay_reference_heads h JOIN identity_overlay_broker b ON b.device=h.device AND b.reference=h.reference AND b.version=h.version WHERE NOT h.obsolete AND NOT h.retired AND b.state='issued' AND NOT b.retire AND b.deadline_ms>$1 AND NOT EXISTS(SELECT 1 FROM identity_overlay_grants g WHERE g.device=b.device AND g.reference=b.reference AND g.version=b.version) ORDER BY b.created_ms,h.device LIMIT 16`, now.UnixMilli())
+	rows, e := m.store.DB.QueryContext(ctx, `SELECT h.namespace,h.device,h.owner,h.jkt,h.reference,h.version FROM identity_overlay_reference_heads h JOIN identity_overlay_broker b ON b.device=h.device AND b.reference=h.reference AND b.version=h.version WHERE NOT h.obsolete AND NOT h.retired AND b.state='issued' AND NOT b.retire AND NOT b.withdraw_key AND b.deadline_ms>$1 AND NOT EXISTS(SELECT 1 FROM identity_overlay_grants g WHERE g.device=b.device AND g.reference=b.reference AND g.version=b.version) ORDER BY b.created_ms,h.device LIMIT 16`, now.UnixMilli())
 	if e != nil {
 		return e
 	}

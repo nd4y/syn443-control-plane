@@ -31,7 +31,7 @@ type brokerProviderFixture struct {
 	key                                                netbirdapi.SetupKey
 	create, find, inspect, disable, remove, removePeer int
 	createError, removeError, errorAll                 error
-	beforeCreate                                       func()
+	beforeCreate, beforeDisable                        func()
 	peerUnavailable                                    bool
 }
 
@@ -72,6 +72,9 @@ func (p *brokerProviderFixture) InspectOwned(context.Context, string, string) (n
 }
 func (p *brokerProviderFixture) DisableOwned(context.Context, string, string) (netbirdapi.SetupKey, error) {
 	p.disable++
+	if p.beforeDisable != nil {
+		p.beforeDisable()
+	}
 	p.key.Valid = false
 	p.key.Revoked = true
 	k := p.key
@@ -559,6 +562,94 @@ func TestSQLBrokerAccountWithdrawalQueuesRetirementWithoutConfigRefreshChurn(t *
 	}
 }
 
+func (f *brokerFixture) withdrawKey(t *testing.T) {
+	t.Helper()
+	if _, e := fixturePublisher.Exec(`UPDATE identity_overlay_broker SET withdraw_key=true WHERE device=$1`, f.session.DeviceID); e != nil {
+		t.Fatal(e)
+	}
+}
+
+func TestSQLBrokerChangedGrantWithdrawsOnlyEnrollmentAuthority(t *testing.T) {
+	for _, used := range []int64{0, 1} {
+		t.Run(formatInt(used), func(t *testing.T) {
+			f := newBrokerFixture(t)
+			f.reserve(t)
+			f.run(t)
+			f.provider.key.UsedTimes = used
+			if _, e := fixtureOwner.Exec(`UPDATE identity_accounts SET grant_hash=$1`, random()); e != nil {
+				t.Fatal(e)
+			}
+			if e := f.overlayFixture.worker.RetireWithdrawnOverlayBrokers(context.Background(), f.clock); e != nil {
+				t.Fatal(e)
+			}
+			var retire, withdrawn bool
+			if e := fixtureOwner.QueryRow(`SELECT retire,withdraw_key FROM identity_overlay_broker`).Scan(&retire, &withdrawn); e != nil || retire || !withdrawn {
+				t.Fatal("changed grant confused credential withdrawal with peer retirement", e)
+			}
+			f.run(t)
+			f.run(t)
+			expected := "cleared"
+			if used == 1 {
+				expected = "established"
+			}
+			if f.state(t) != expected || f.provider.create != 1 || f.provider.disable != 1 || f.provider.remove != 1 || f.provider.removePeer != 0 {
+				t.Fatal("withdrawal lost registered identity or repeated enrollment")
+			}
+			if _, e := fixturePublisher.Exec(`UPDATE identity_overlay_broker SET withdraw_key=false`); e == nil {
+				t.Fatal("withdrawal was reversible")
+			}
+			if _, e := fixtureBroker.Exec(`UPDATE identity_overlay_broker SET withdraw_key=true`); e == nil {
+				t.Fatal("provider worker acquired withdrawal authority")
+			}
+		})
+	}
+}
+
+func TestSQLBrokerQueuedWithdrawalAndInFlightCreationNeverExposeASetupValue(t *testing.T) {
+	for _, dispatched := range []bool{false, true} {
+		t.Run(map[bool]string{false: "queued", true: "in-flight"}[dispatched], func(t *testing.T) {
+			f := newBrokerFixture(t)
+			f.reserve(t)
+			if dispatched {
+				f.provider.beforeCreate = func() { f.withdrawKey(t) }
+			} else {
+				f.withdrawKey(t)
+			}
+			f.run(t)
+			var secret []byte
+			if e := fixtureOwner.QueryRow(`SELECT secret FROM identity_overlay_broker`).Scan(&secret); e != nil || len(secret) != 0 {
+				t.Fatal("late creation exposed withdrawn setup value", e)
+			}
+			if !dispatched && (f.state(t) != "cleared" || f.provider.create != 0) {
+				t.Fatal("queued withdrawn request dispatched")
+			}
+			if dispatched {
+				f.run(t)
+				f.run(t)
+				if f.state(t) != "cleared" || f.provider.create != 1 || f.provider.disable != 1 || f.provider.removePeer != 0 {
+					t.Fatal("in-flight withdrawal not reconciled")
+				}
+			}
+		})
+	}
+}
+
+func TestSQLBrokerWithdrawalBlocksPreviouslyWrappedCredentialButStillAllowsErasureACK(t *testing.T) {
+	f := newBrokerFixture(t)
+	f.store.OverlayBrokerPending = true
+	f.reserve(t)
+	f.run(t)
+	if e := f.overlayFixture.worker.InstallReadyOverlayBroker(context.Background(), f.session.DeviceID, f.request.Reference, 1, f.api.OverlayServiceID, "fixture-root", f.key, f.api.Roots, &fixtureConfigurationFence{}, f.clock); e != nil {
+		t.Fatal(e)
+	}
+	// Fetch creates the original operation. Withdrawal must fence the durable
+	// addressed copy too, while allowing that same operation's erasure ACK.
+	expect(t, f.call(t, false), 200)
+	f.withdrawKey(t)
+	expect(t, f.call(t, false), 409)
+	expect(t, f.call(t, true), 200)
+}
+
 func TestSQLBrokerOwnClockCannotRollBackOrModifyIdentityClock(t *testing.T) {
 	f := newBrokerFixture(t)
 	first, e := f.worker.BrokerNow(context.Background(), f.now)
@@ -606,5 +697,30 @@ func TestSQLBrokerStartupRejectsAccidentallyBroadenedApiAndWorkerPrivileges(t *t
 	}()
 	if !errors.Is(f.worker.BrokerRuntimeRole(context.Background()), ErrDenied) {
 		t.Fatal("provider worker started with policy reference authority")
+	}
+}
+
+func TestSQLBrokerRegistrationRacingWithdrawalPreservesPeerAndMissingOwnershipNeverDeletes(t *testing.T) {
+	for _, missing := range []bool{false, true} {
+		t.Run(map[bool]string{false: "verified", true: "missing-audit"}[missing], func(t *testing.T) {
+			f := newBrokerFixture(t)
+			f.reserve(t)
+			f.run(t)
+			f.withdrawKey(t)
+			f.provider.beforeDisable = func() { f.provider.key.UsedTimes = 1 }
+			f.provider.peerUnavailable = missing
+			f.run(t)
+			if missing {
+				if f.state(t) != "disabled" || f.provider.remove != 0 || f.provider.removePeer != 0 {
+					t.Fatal("missing ownership caused destructive cleanup")
+				}
+				f.provider.peerUnavailable = false
+				f.run(t)
+			}
+			f.run(t)
+			if f.state(t) != "established" || f.provider.create != 1 || f.provider.removePeer != 0 {
+				t.Fatal("registration race deleted or re-enrolled peer")
+			}
+		})
 	}
 }

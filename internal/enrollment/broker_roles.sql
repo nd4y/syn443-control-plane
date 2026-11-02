@@ -1,7 +1,7 @@
-GRANT SELECT,INSERT,UPDATE(retire) ON identity_overlay_broker TO syn443_identity_publisher;
+GRANT SELECT,INSERT,UPDATE(retire,withdraw_key) ON identity_overlay_broker TO syn443_identity_publisher;
 GRANT SELECT,INSERT,UPDATE(reference,version,permit_until_ms,obsolete,retired) ON identity_overlay_reference_heads TO syn443_identity_publisher;
 REVOKE ALL ON FUNCTION identity_overlay_head_invariants() FROM PUBLIC;
-GRANT SELECT(device,reference,version,owner,jkt,namespace,security_epoch,grant_hash,deadline_ms,state,retire)
+GRANT SELECT(device,reference,version,owner,jkt,namespace,security_epoch,grant_hash,deadline_ms,state,retire,withdraw_key)
  ON identity_overlay_broker TO syn443_identity_api;
 REVOKE ALL ON FUNCTION identity_overlay_broker_invariants() FROM PUBLIC;
 -- Optional worker role is installed separately. Existing API/publisher deployments
