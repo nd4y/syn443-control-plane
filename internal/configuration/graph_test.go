@@ -177,10 +177,7 @@ func TestGraphRejectsMalformedGraphsResolverFailuresAndUntrustedProfiles(t *test
 			g.Chains["other"] = Chain{[]string{"tunnel"}}
 			g.Chains["tunnel"] = Chain{[]string{"other"}}
 		},
-		"later-selector": func(g *Graph) {
-			g.Balancers["pick"] = Balancer{Type: "selector", Members: []string{"exit"}}
-			g.Chains["tunnel"] = Chain{[]string{"entry", "pick"}}
-		}, "empty-selector": func(g *Graph) { g.Balancers["pick"] = Balancer{Type: "selector"} }, "duplicate-member": func(g *Graph) { g.Balancers["pick"] = Balancer{Type: "selector", Members: []string{"exit", "exit"}} }, "unknown-selector": func(g *Graph) { g.Balancers["pick"] = Balancer{Type: "unknown", Members: []string{"exit"}} }, "selector-cycle": func(g *Graph) {
+		"empty-selector": func(g *Graph) { g.Balancers["pick"] = Balancer{Type: "selector"} }, "duplicate-member": func(g *Graph) { g.Balancers["pick"] = Balancer{Type: "selector", Members: []string{"exit", "exit"}} }, "unknown-selector": func(g *Graph) { g.Balancers["pick"] = Balancer{Type: "unknown", Members: []string{"exit"}} }, "selector-cycle": func(g *Graph) {
 			g.Balancers["pick"] = Balancer{Type: "selector", Members: []string{"other"}}
 			g.Balancers["other"] = Balancer{Type: "selector", Members: []string{"pick"}}
 		}, "selector-default": func(g *Graph) {

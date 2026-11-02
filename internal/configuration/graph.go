@@ -180,6 +180,91 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 			return CompiledGraph{}, e
 		}
 	}
+	groups := map[string]map[string]any{}
+	expanded := 0
+	temporary := func() string { expanded++; return "syn443_expanded_" + strconv.Itoa(expanded) }
+	// A later logical selector/chain must be expanded in the context of its
+	// incoming route. Reusing its standalone node would silently lose detour.
+	// Emission's64-node budget bounds even a branching/nested definition.
+	var attach func(string, string, GraphCapability, string, int) (GraphCapability, error)
+	attach = func(member, previous string, prefix GraphCapability, target string, depth int) (GraphCapability, error) {
+		if depth > 16 {
+			return GraphCapability{}, ErrInvalid
+		}
+		if member == "direct" {
+			features["selector"] = true
+			if e := emit(map[string]any{"type": "selector", "tag": target, "outbounds": []string{previous}, "default": previous}); e != nil {
+				return GraphCapability{}, e
+			}
+			return prefix, nil
+		}
+		if !prefix.TCP {
+			return GraphCapability{}, ErrInvalid
+		}
+		if leaf, ok := leaves[member]; ok {
+			child := result.Capabilities[member]
+			capability := GraphCapability{TCP: child.TCP, UDP: child.UDP && (leaf["type"] == "vless" || prefix.UDP), Hops: prefix.Hops + 1}
+			if capability.Hops > 4 {
+				return GraphCapability{}, ErrInvalid
+			}
+			clone := map[string]any{}
+			for k, v := range leaf {
+				clone[k] = v
+			}
+			clone["tag"] = target
+			clone["detour"] = previous
+			return capability, emit(clone)
+		}
+		if group, ok := g.Balancers[member]; ok {
+			validated, ok := groups[member]
+			if !ok {
+				return GraphCapability{}, ErrInvalid
+			}
+			capability := GraphCapability{TCP: true, UDP: true}
+			members := make([]string, 0, len(group.Members))
+			mapping := map[string]string{}
+			for _, branch := range group.Members {
+				tag := temporary()
+				child, e := attach(branch, previous, prefix, tag, depth+1)
+				if e != nil {
+					return GraphCapability{}, e
+				}
+				members = append(members, tag)
+				mapping[branch] = tag
+				capability.TCP = capability.TCP && child.TCP
+				capability.UDP = capability.UDP && child.UDP
+				capability.Hops = max(capability.Hops, child.Hops)
+			}
+			clone := map[string]any{}
+			for k, v := range validated {
+				clone[k] = v
+			}
+			clone["tag"] = target
+			clone["outbounds"] = members
+			if group.Default != "" {
+				clone["default"] = mapping[group.Default]
+			}
+			return capability, emit(clone)
+		}
+		if chain, ok := g.Chains[member]; ok {
+			capability := prefix
+			for i, step := range chain.DialOrder {
+				tag := target
+				if i < len(chain.DialOrder)-1 {
+					tag = temporary()
+				}
+				child, e := attach(step, previous, capability, tag, depth+1)
+				if e != nil {
+					return GraphCapability{}, e
+				}
+				previous = tag
+				capability = child
+			}
+			return capability, nil
+		}
+		return GraphCapability{}, ErrInvalid
+	}
+	levels := map[string]int{}
 	colors := map[string]int{}
 	var visit func(string, int) (GraphCapability, error)
 	visit = func(tag string, depth int) (GraphCapability, error) {
@@ -187,10 +272,14 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 			return GraphCapability{}, ErrInvalid
 		}
 		if c, ok := result.Capabilities[tag]; ok {
+			if depth+levels[tag] > 16 {
+				return GraphCapability{}, ErrInvalid
+			}
 			return c, nil
 		}
 		colors[tag] = 1
 		var capability GraphCapability
+		level := 0
 		if chain, ok := g.Chains[tag]; ok {
 			if len(chain.DialOrder) < 1 || len(chain.DialOrder) > 4 {
 				return capability, ErrInvalid
@@ -203,6 +292,7 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 				}
 				seen[member] = true
 				child, e := visit(member, depth+1)
+				level = max(level, levels[member]+1)
 				if e != nil {
 					return capability, e
 				}
@@ -211,27 +301,12 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 					previous = member
 					continue
 				}
-				// A selector may be an entry. A later selector needs branch expansion and
-				// is rejected instead of silently dropping its incoming detour.
-				leaf, ok := leaves[member]
-				if !ok || !capability.TCP {
-					return capability, ErrInvalid
-				}
-				capability = GraphCapability{TCP: child.TCP, UDP: child.UDP && (leaf["type"] == "vless" || capability.UDP), Hops: capability.Hops + 1}
-				if capability.Hops > 4 {
-					return capability, ErrInvalid
-				}
-				clone := map[string]any{}
-				for k, v := range leaf {
-					clone[k] = v
-				}
 				next := "syn443_hop_" + tag + "_" + strconv.Itoa(i)
 				if i == len(chain.DialOrder)-1 {
 					next = tag
 				}
-				clone["tag"] = next
-				clone["detour"] = previous
-				if e = emit(clone); e != nil {
+				capability, e = attach(member, previous, capability, next, depth+1)
+				if e != nil {
 					return capability, e
 				}
 				previous = next
@@ -257,6 +332,7 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 				}
 				seen[member] = true
 				child, e := visit(member, depth+1)
+				level = max(level, levels[member]+1)
 				if e != nil {
 					return capability, e
 				}
@@ -285,10 +361,15 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 				node["tolerance"] = balancer.ToleranceMs
 			}
 			features[balancer.Type] = true
+			groups[tag] = node
 			if e := emit(node); e != nil {
 				return capability, e
 			}
 		} else {
+			return capability, ErrInvalid
+		}
+		levels[tag] = level
+		if depth+level > 16 {
 			return capability, ErrInvalid
 		}
 		colors[tag] = 2

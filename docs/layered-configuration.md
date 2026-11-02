@@ -46,10 +46,14 @@ count, byte and protocol-capability limits. TCP/UDP capability is conservative
 across every balancer branch. VLESS datagrams can cross a TCP proxy hop; SOCKS
 UDP association cannot silently acquire a direct UDP path through CONNECT.
 
-A selector can be a chain entry. A selector later in dial order currently fails
-validation rather than discarding its incoming detour; expanding all such
-branches remains required before that combination can be advertised. These
-capability results describe compiler constraints, not the native interoperability
+A selector can be a chain entry. The new contextual expansion also clones every
+branch of later selectors, URL-test groups and nested chains through the required
+incoming prefix. Selected defaults and ordered members are remapped to the cloned
+branches; URL-test measures each complete path. A later direct node aliases the
+existing prefix and never discards it for a physical escape. Expanded output
+retains the64-node/four-hop limits, and cached subtrees cannot hide a logical
+dependency depth beyond16. Exact Actions acceptance of the new expansion is pending.
+These capability results describe compiler constraints, not the native interoperability
 acceptance matrix. Routing/DNS emission, full settings persistence and independently
 authorized configuration publication remain unfinished. Profile credentials stay
 server-private; diagnostics redact compiled data. Actions positive/negative/boundary
