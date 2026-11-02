@@ -19,6 +19,7 @@ type Verification struct {
 // parser, HTTP caller or database row alone can construct signing authority.
 type Publication struct {
 	ID, Owner, GrantHash, Thumbprint, Device                                      string
+	authorityUntil                                                                int64
 	Version, Expires                                                              int64
 	Enrollment                                                                    []byte
 	issueActor, approvalActor, issueHash, approvalHash, claimHash, enrollmentHash string
@@ -67,7 +68,7 @@ func (s *Store) Ready(ctx context.Context, id string, config Verification, now t
 	if e != nil {
 		return result, e
 	}
-	approvalActor, approvalEnvelope, e := VerifyAdmin(ctx, config.AdminVerifier, approvalReceipt, config.ControlOrigin, config.AssuranceACR, now)
+	approvalActor, approvalEnvelope, authorityUntil, e := verifyAdmin(ctx, config.AdminVerifier, approvalReceipt, config.ControlOrigin, config.AssuranceACR, now)
 	if e != nil {
 		return result, e
 	}
@@ -96,7 +97,7 @@ func (s *Store) Ready(ctx context.Context, id string, config Verification, now t
 	if e != nil {
 		return result, e
 	}
-	result = Publication{ID: r.ID, Owner: r.Owner, GrantHash: r.Grant, Thumbprint: r.Thumbprint, Device: r.Device, Version: r.Version, Expires: r.Expires, Enrollment: enrollment, issueActor: r.Actor, approvalActor: r.ApprovalActor, issueHash: identity.Hash(r.Issue), approvalHash: identity.Hash(r.ApprovalReceipt), claimHash: identity.Hash(r.ClaimPayload), enrollmentHash: identity.Hash(enrollment)}
+	result = Publication{authorityUntil: authorityUntil, ID: r.ID, Owner: r.Owner, GrantHash: r.Grant, Thumbprint: r.Thumbprint, Device: r.Device, Version: r.Version, Expires: r.Expires, Enrollment: enrollment, issueActor: r.Actor, approvalActor: r.ApprovalActor, issueHash: identity.Hash(r.Issue), approvalHash: identity.Hash(r.ApprovalReceipt), claimHash: identity.Hash(r.ClaimPayload), enrollmentHash: identity.Hash(enrollment)}
 	tx, e = s.DB.BeginTx(ctx, nil)
 	if e != nil {
 		return Publication{}, ErrUnavailable
@@ -114,7 +115,7 @@ func (s *Store) Ready(ctx context.Context, id string, config Verification, now t
 // LockPublication repeats authority, account, expiry and exact receipt fences in
 // the signer's final transaction. Lock order is account, invitation, device.
 func (s *Store) LockPublication(ctx context.Context, tx *sql.Tx, p Publication, now time.Time) error {
-	if !opaque.MatchString(p.ID) || !opaque.MatchString(p.Owner) || !opaque.MatchString(p.issueActor) || !opaque.MatchString(p.approvalActor) || len(p.Enrollment) == 0 || identity.Hash(p.Enrollment) != p.enrollmentHash {
+	if p.authorityUntil <= now.Unix() || !opaque.MatchString(p.ID) || !opaque.MatchString(p.Owner) || !opaque.MatchString(p.issueActor) || !opaque.MatchString(p.approvalActor) || len(p.Enrollment) == 0 || identity.Hash(p.Enrollment) != p.enrollmentHash {
 		return ErrDenied
 	}
 	a, e := lockAccount(ctx, tx, p.Owner)

@@ -125,6 +125,7 @@ func (p *Publisher) RunOnce(ctx context.Context, now time.Time) error {
 	return nil
 }
 func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error {
+	started := time.Now()
 	var s snapshot
 	s.Device = id
 	var active, enabled bool
@@ -204,7 +205,7 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	payload.IssuedAtMs = now.UnixMilli()
 	payload.NotBeforeMs = payload.IssuedAtMs
 	payload.OfflineUntilMs = min(payload.IssuedAtMs+3600000, g.Until*1000)
-	payload.RefreshAfterMs = min(payload.IssuedAtMs+1800000, payload.OfflineUntilMs-1000)
+	payload.RefreshAfterMs = min(payload.IssuedAtMs+300000, payload.OfflineUntilMs-1000)
 	raw, e := json.Marshal(payload)
 	if e != nil {
 		return e
@@ -246,6 +247,17 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	}
 	if count > g.DeviceLimit {
 		return ErrDenied
+	}
+	// Network/key work and row-lock waits cannot extend the original permit or
+	// the fresh administrator approval. Repeat the final fence at commit time.
+	commitNow := now.Add(time.Since(started))
+	if a.Until <= commitNow.Unix() || payload.OfflineUntilMs <= commitNow.UnixMilli() {
+		return ErrDenied
+	}
+	if approvalFence != nil {
+		if e = approvalFence.Lock(ctx, tx, commitNow); e != nil {
+			return e
+		}
 	}
 	encrypted := p.Store.Seal([]byte(bundle), "publication/v1/"+id+"/"+formatInt(payload.Revision))
 	_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET approved=true,publication=$2,revision=$3,refresh_after=$4,offline_until=$5,publication_error='',retry_after=0 WHERE id=$1`, id, encrypted, payload.Revision, payload.RefreshAfterMs/1000, payload.OfflineUntilMs/1000)

@@ -53,7 +53,7 @@ func (c Claim) validate() error {
 	}
 	caps := map[string]bool{}
 	for _, value := range c.Capabilities {
-		if len(value) < 1 || len(value) > 64 || caps[value] {
+		if !capabilityID.MatchString(value) || caps[value] {
 			return ErrDenied
 		}
 		caps[value] = true

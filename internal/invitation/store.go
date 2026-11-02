@@ -31,6 +31,7 @@ var ErrExpired = errors.New("invitation_expired")
 var ErrUnavailable = errors.New("invitation_unavailable")
 var ErrPending = errors.New("invitation_pending")
 var opaque = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
+var capabilityID = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
 var requestID = regexp.MustCompile(`^[A-Za-z0-9_-]{24,128}$`)
 
 type Store struct {

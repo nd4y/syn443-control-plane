@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PATTERNS = {
     "private-domain": re.compile(r"\b(?:[\w-]+\.)+(?:local|lan|internal)(?![\w.-])", re.I),
     "personal-path": re.compile(r"(?:[A-Z]:[\\/](?:Users|SynologyDrive)[\\/]|/home/(?!runner(?:/|\b))[a-z][\w-]+/)", re.I),
-    "credential-url": re.compile(r"[a-z][a-z0-9+.-]*://[^\s/\"<>]+:[^\s/\"<>]+@", re.I),
+    "credential-url": re.compile(r"[a-z][a-z0-9+.-]*://[^\s/\"<>\x00-\x1f\x7f]+:[^\s/\"<>\x00-\x1f\x7f]+@", re.I),
 }
 IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
 TEST_NETS = tuple(ipaddress.ip_network(n) for n in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24"))

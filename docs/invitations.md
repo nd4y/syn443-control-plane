@@ -52,3 +52,16 @@ publisher bridge. No real users/accounts are enrolled by CI. Native protected
 trust/pending journal, camera/Intent/paste flow, root transition delivery and
 physical acceptance are still pending; backend integration alone does not close
 M2 or M3.
+
+Revoking a link after device preparation also retires the still-uncompleted
+identity through the narrow maintenance primitive; it cannot strand device seats.
+A separate immutable retired marker prevents repeatedly consuming maintenance
+slots. Completed sessions require the explicit device-revocation flow, rather
+than confusing link invalidation with device revocation.
+
+The closed invitation wire contract is contracts/v1/invitation-openapi.json.
+Runtime request/response types are checked against it in Actions; unknown fields,
+missing fields, wrong methods and over-budget bodies are rejected. The signer's
+private approval receipt also bounds the final commit by the administrator's
+access-token/MFA/proof lifetime, including time spent waiting for row locks.
+Online device policy refresh is requested within5minutes, rather than30minutes.

@@ -34,6 +34,17 @@ class PublicDataTest(unittest.TestCase):
         self.assertIn("credential-url", findings(("https://" + "synthetic:placeholder@" + "example.invalid").encode()))
         self.assertFalse(findings(b"https://example.invalid:443/path"))
 
+    def test_url_userinfo_cannot_cross_a_binary_control_separator(self):
+        # C0/DEL are not URL userinfo. Go constants separated by these bytes do
+        # not become a credential URI just because another constant has an @.
+        for delimiter in (bytes([0]),bytes([1]),bytes([31]),bytes([127])):
+            broken=b"https://"+b"synthetic"+delimiter+b"unrelated:constant@"+b"example.invalid"
+            self.assertNotIn("credential-url",findings(bytes([127])+b"ELF"+broken))
+            real=b"https://"+b"synthetic:placeholder@"+b"example.invalid"
+            self.assertIn("credential-url",findings(bytes([127])+b"ELF"+delimiter+real+delimiter))
+        encoded=b"https://"+b"synthetic%00:placeholder@"+b"example.invalid"
+        self.assertIn("credential-url",findings(encoded))
+
     def test_only_exact_go_elf_symbols_are_not_mistaken_for_domains(self):
         fields = b"crypto/x509." + b"local string; crypto/x509.domain string"
         symbol = b"\x00time." + b"Local\x00"

@@ -91,6 +91,7 @@ jobs:
       - name: Scan control-plane runtime payloads
         id: runtime-scan
         run: |
+          python3 tools/check_compiled_url_shapes.py dist/control-plane
           python3 tools/check_public_data.py dist/control-plane
           bash tools/scan_secrets.sh dist/control-plane
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

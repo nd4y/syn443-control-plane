@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS managed_invitations(
  service_id text NOT NULL,bootstrap_revision bigint NOT NULL,grant_hash text NOT NULL,
  actor text NOT NULL,request_id text NOT NULL,body_hash text NOT NULL,code_hash text NOT NULL UNIQUE,
  issue_receipt bytea NOT NULL,issue_reply bytea NOT NULL,created_at bigint NOT NULL,expires bigint NOT NULL,
- revoked boolean NOT NULL DEFAULT false,version bigint NOT NULL DEFAULT 1,
+ revoked boolean NOT NULL DEFAULT false,retired boolean NOT NULL DEFAULT false,version bigint NOT NULL DEFAULT 1,
  retry_after bigint NOT NULL DEFAULT 0,publication_error text NOT NULL DEFAULT '',
  claim_jkt text,claim_request text,claim_hash text,claim_payload bytea,claim_receipt bytea,
  claim_nonce text,pair_code text,claimed_at bigint,
@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS managed_invitations(
  UNIQUE(actor,request_id),CHECK(expires>created_at AND expires-created_at<=600),
  CHECK(version>0 AND version<=9007199254740991)
 );
+ALTER TABLE managed_invitations ADD COLUMN IF NOT EXISTS retired boolean NOT NULL DEFAULT false;
 ALTER TABLE managed_invitations ADD COLUMN IF NOT EXISTS retry_after bigint NOT NULL DEFAULT 0;
 ALTER TABLE managed_invitations ADD COLUMN IF NOT EXISTS publication_error text NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS managed_invitation_owner ON managed_invitations(owner,expires);
@@ -28,7 +29,7 @@ BEGIN
  NEW.body_hash,NEW.code_hash,NEW.issue_receipt,NEW.issue_reply,NEW.created_at,NEW.expires)
  IS DISTINCT FROM ROW(OLD.id,OLD.owner,OLD.service_id,OLD.bootstrap_revision,OLD.grant_hash,OLD.actor,OLD.request_id,
  OLD.body_hash,OLD.code_hash,OLD.issue_receipt,OLD.issue_reply,OLD.created_at,OLD.expires)
- OR OLD.revoked AND NOT NEW.revoked OR NEW.version<OLD.version THEN RAISE EXCEPTION 'immutable invitation authority'; END IF;
+ OR OLD.revoked AND NOT NEW.revoked OR OLD.retired AND NOT NEW.retired OR NEW.version<OLD.version THEN RAISE EXCEPTION 'immutable invitation authority'; END IF;
  IF OLD.claim_jkt IS NOT NULL AND ROW(NEW.claim_jkt,NEW.claim_request,NEW.claim_hash,NEW.claim_payload,
  NEW.claim_receipt,NEW.claim_nonce,NEW.pair_code,NEW.claimed_at) IS DISTINCT FROM ROW(OLD.claim_jkt,
  OLD.claim_request,OLD.claim_hash,OLD.claim_payload,OLD.claim_receipt,OLD.claim_nonce,OLD.pair_code,OLD.claimed_at)
@@ -61,16 +62,16 @@ BEGIN
  INTO deadline FROM public.identity_clock WHERE id=true;
  IF deadline IS NULL THEN RAISE EXCEPTION 'identity clock missing';END IF;
  FOR item IN SELECT id,owner FROM public.managed_invitations
-  WHERE expires<=deadline AND final_session IS NULL AND NOT revoked
+  WHERE (revoked OR expires<=deadline) AND final_session IS NULL AND NOT retired
   ORDER BY expires,id LIMIT 16 LOOP
   PERFORM 1 FROM public.identity_accounts WHERE owner=item.owner FOR UPDATE;
   SELECT * INTO current_invite FROM public.managed_invitations WHERE id=item.id FOR UPDATE;
-  IF current_invite.expires<=deadline AND current_invite.final_session IS NULL AND NOT current_invite.revoked THEN
+  IF (current_invite.revoked OR current_invite.expires<=deadline) AND current_invite.final_session IS NULL AND NOT current_invite.retired THEN
    IF current_invite.device IS NOT NULL THEN
     UPDATE public.identity_devices SET active=false WHERE id=current_invite.device AND owner=current_invite.owner AND jkt=current_invite.claim_jkt;
     UPDATE public.identity_sessions SET active=false WHERE device=current_invite.device;
    END IF;
-   UPDATE public.managed_invitations SET revoked=true,version=version+1 WHERE id=item.id;
+   UPDATE public.managed_invitations SET revoked=true,retired=true,version=version+1 WHERE id=item.id;
    changed:=changed+1;
   END IF;
  END LOOP;

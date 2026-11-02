@@ -225,3 +225,76 @@ func TestSQLExpiryRetiresOnlyUncompletedInviteDevice(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestSQLRevokedUncompletedDeviceReleasesItsSeatBeforeExpiry(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	state, _ := f.claim(t, f.issue(t))
+	thumb, _ := identity.PublicJWK(&f.phone.PublicKey).Thumbprint()
+	if _, e := f.adminCall(t, "invite.approve", Approval{state.ID, state.Version, thumb, state.PairCode}); e != nil {
+		t.Fatal(e)
+	}
+	p, e := f.signer.Ready(ctx, state.ID, f.verification(), f.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	device, _ := random()
+	tx, e := fixtureSigner.BeginTx(ctx, nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tx.Rollback()
+	if _, e = tx.ExecContext(ctx, `INSERT INTO identity_devices(id,owner,jkt,request_body,receipt) VALUES($1,$2,$3,$4,$5)`, device, f.owner, thumb, p.Enrollment, []byte("synthetic-receipt")); e != nil {
+		t.Fatal(e)
+	}
+	if e = f.signer.BindDevice(ctx, tx, p, device, f.now); e != nil {
+		t.Fatal(e)
+	}
+	if e = tx.Commit(); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = f.adminCall(t, "invite.revoke", Mutation{state.ID, p.Version + 1}); e != nil {
+		t.Fatal(e)
+	}
+	if e = f.signer.Expire(ctx); e != nil {
+		t.Fatal(e)
+	}
+	var active, retired bool
+	if e = fixtureOwner.QueryRow(`SELECT d.active,i.retired FROM identity_devices d JOIN managed_invitations i ON i.device=d.id WHERE i.id=$1`, state.ID).Scan(&active, &retired); e != nil || active || !retired {
+		t.Fatal("revoked invitation retained device quota", e)
+	}
+	var version int64
+	if e = fixtureOwner.QueryRow(`SELECT version FROM managed_invitations WHERE id=$1`, state.ID).Scan(&version); e != nil {
+		t.Fatal(e)
+	}
+	if e = f.signer.Expire(ctx); e != nil {
+		t.Fatal(e)
+	}
+	var again int64
+	if e = fixtureOwner.QueryRow(`SELECT version FROM managed_invitations WHERE id=$1`, state.ID).Scan(&again); e != nil || again != version {
+		t.Fatal("retired invitation kept consuming maintenance slots", e)
+	}
+}
+
+func TestSQLFinalPublisherFenceCannotOutliveApprovalAuthentication(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	state, _ := f.claim(t, f.issue(t))
+	thumb, _ := identity.PublicJWK(&f.phone.PublicKey).Thumbprint()
+	f.v.p.Expires = f.now.Unix() + 1
+	if _, e := f.adminCall(t, "invite.approve", Approval{state.ID, state.Version, thumb, state.PairCode}); e != nil {
+		t.Fatal(e)
+	}
+	p, e := f.signer.Ready(ctx, state.ID, f.verification(), f.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	tx, e := fixtureSigner.BeginTx(ctx, nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tx.Rollback()
+	if e = f.signer.LockPublication(ctx, tx, p, f.now.Add(time.Second)); !errors.Is(e, ErrDenied) {
+		t.Fatal("expired approval token authorized final commit", e)
+	}
+}

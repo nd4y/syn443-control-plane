@@ -68,20 +68,24 @@ type Mutation struct {
 // Independently verifiable receipts are retained for the signer. The control
 // API's UI role flag or successful parsing alone never authorizes enrollment.
 func VerifyAdmin(ctx context.Context, verifier Verifier, receipt Receipt, origin, acr string, now time.Time) (string, Envelope, error) {
+	actor, request, _, e := verifyAdmin(ctx, verifier, receipt, origin, acr, now)
+	return actor, request, e
+}
+func verifyAdmin(ctx context.Context, verifier Verifier, receipt Receipt, origin, acr string, now time.Time) (string, Envelope, int64, error) {
 	var request Envelope
 	if verifier == nil || receipt.URI != origin+"/v1/control/action" || receipt.AcceptedAt > now.Unix() || receipt.AcceptedAt < now.Unix()-180 || len(receipt.Token) < 24 || len(receipt.Token) > 16384 || len(receipt.Body) > 65536 || identity.Decode(receipt.Body, &request, true) != nil || request.Version != 1 || !requestID.MatchString(request.RequestID) {
-		return "", request, ErrDenied
+		return "", request, 0, ErrDenied
 	}
 	p, e := verifier.Verify(ctx, receipt.Token, now)
 	sensitive := request.Action != "invite.get"
 	if e != nil || !p.HasScope("syn443.control") || p.Expires <= now.Unix() || sensitive && p.MFAUntil(acr, now) <= now.Unix() {
-		return "", request, ErrDenied
+		return "", request, 0, ErrDenied
 	}
 	proof, e := identity.VerifyProof(receipt.Proof, identity.ProofContext{Method: "POST", URI: receipt.URI, Token: receipt.Token, BodyHash: identity.Hash(receipt.Body), Now: time.Unix(receipt.AcceptedAt, 0)})
 	if e != nil || p.Thumbprint != proof.Thumbprint {
-		return "", request, ErrDenied
+		return "", request, 0, ErrDenied
 	}
-	return identity.Hash([]byte(p.Issuer + "\x00" + p.Subject)), request, nil
+	return identity.Hash([]byte(p.Issuer + "\x00" + p.Subject)), request, min(p.Expires, p.MFAUntil(acr, now), receipt.AcceptedAt+180), nil
 }
 func (s *AdminService) Dispatch(ctx context.Context, token, proof string, raw []byte, now time.Time) (any, error) {
 	if s.Store == nil {
