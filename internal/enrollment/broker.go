@@ -205,6 +205,9 @@ func (s *Store) BrokerRuntimeRole(ctx context.Context) error {
 	if e != nil || unsafe || current != "syn443_overlay_worker" || session != current {
 		return ErrDenied
 	}
+	if e = s.DB.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,'identity_overlay_reference_heads','INSERT') OR has_column_privilege(current_user,'identity_overlay_reference_heads','reference','UPDATE') OR has_column_privilege(current_user,'identity_overlay_reference_heads','retired','UPDATE')`).Scan(&unsafe); e != nil || unsafe {
+		return ErrDenied
+	}
 	return nil
 }
 

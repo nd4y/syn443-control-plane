@@ -1,5 +1,29 @@
 # Control console - source metadata and private drafts
 
+## Source management extension (acceptance pending)
+
+The new source form creates/edits server/manual/Remnawave source definitions with
+expected revision, immutable owner/ID for existing records, expiry, refresh/stale
+limits and supported network modes. Secret handling is explicit keep/replace/
+delete. Replace accepts only a newly entered bounded JSON document; get/list do
+not return the previous secret, and a successful save clears new secret text.
+Literal replacement JSON retains duplicate members for server-side rejection.
+The existing SQL ACL, freshness/MFA and secret validation remain authoritative.
+
+The fixed-path control BFF also admits scoped `source.put`, `source.sync` and
+`job.get`; arbitrary paths/deletion/publication stay rejected, and support-chat
+sessions still cannot reach control actions. Refresh queues a SQL job and the
+screen reads its state. Unacknowledged mutations retry the identical body/request
+identity; fields stay locked until the result or a fresh server read is chosen.
+Permission/session withdrawal and logout erase both draft and new source-secret
+memory. No browser storage is used. Manual data import, device fetch, source-share
+editing and full resource/user/group/publication administration remain unfinished.
+
+Three new required browser cases cover save/read-without-secrets/sync job,
+lost-acknowledgment idempotency and denial erasure. The browser gate now requires
+all twelve named outcomes with no skips; compiled/browser acceptance is pending
+the next Actions run. This does not close the full administrative milestone.
+
 This is the initial administrative web interface. It lists authorized source and
 profile metadata and opens/saves an administrator's actor-private network drafts.
 The default target kind is device. Template/group/user targets are explicit;

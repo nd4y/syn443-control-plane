@@ -13,6 +13,21 @@ import (
 	"testing"
 )
 
+func TestConsoleSourceMutationsRemainInTheClosedActionAllowlist(t *testing.T) {
+	for _, action := range []string{"source.put", "source.sync", "job.get"} {
+		raw := []byte(`{"version":1,"action":"` + action + `","requestId":"synthetic-request-123","payload":{}}`)
+		if !validConsoleAction(raw) {
+			t.Fatal("implemented scoped source action rejected")
+		}
+	}
+	for _, action := range []string{"source.delete", "configuration.publish", "resource.delete", "users.grant", "/v1/admin"} {
+		raw := []byte(`{"version":1,"action":"` + action + `","requestId":"synthetic-request-123","payload":{}}`)
+		if validConsoleAction(raw) {
+			t.Fatal("unimplemented or arbitrary upstream action admitted")
+		}
+	}
+}
+
 type consoleTransportFunc func(*http.Request) (*http.Response, error)
 
 func (f consoleTransportFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
@@ -56,7 +71,7 @@ func TestConsoleUsesSeparateCookieAudienceAndOnlyClosedControlActions(t *testing
 		t.Fatal("control token reached chat", w.Code)
 	}
 	for _, bad := range []string{
-		strings.Replace(body, "source.list", "source.put", 1),
+		strings.Replace(body, "source.list", "source.delete", 1),
 		strings.Replace(body, "source.list", "configuration.publish", 1),
 		strings.Replace(body, `"version":1`, `"version":2`, 1),
 		strings.Replace(body, `"version":1`, `"version":1,"version":1`, 1),

@@ -155,6 +155,9 @@ func (s *Store) RuntimeRole(ctx context.Context, publisher bool) error {
 		return ErrDenied
 	}
 	if !publisher {
+		if e = s.DB.QueryRowContext(ctx, `SELECT has_column_privilege(current_user,'identity_overlay_broker','scope','SELECT') OR has_column_privilege(current_user,'identity_overlay_broker','secret','SELECT') OR has_column_privilege(current_user,'identity_overlay_broker','peer_evidence','SELECT') OR has_table_privilege(current_user,'identity_overlay_broker','INSERT') OR has_column_privilege(current_user,'identity_overlay_broker','scope','UPDATE') OR has_column_privilege(current_user,'identity_overlay_broker','retire','UPDATE') OR has_table_privilege(current_user,'identity_overlay_reference_heads','INSERT') OR has_column_privilege(current_user,'identity_overlay_reference_heads','reference','UPDATE')`).Scan(&unsafe); e != nil || unsafe {
+			return ErrDenied
+		}
 		if e = s.DB.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,'identity_overlay_grants','INSERT') OR has_column_privilege(current_user,'identity_overlay_grants','owner','UPDATE') OR has_column_privilege(current_user,'identity_overlay_grants','revoked','UPDATE') OR has_table_privilege(current_user,'identity_overlay_grants','DELETE') OR has_table_privilege(current_user,'identity_overlay_deliveries','DELETE')`).Scan(&unsafe); e != nil || unsafe {
 			return ErrDenied
 		}

@@ -576,3 +576,35 @@ func TestSQLBrokerOwnClockCannotRollBackOrModifyIdentityClock(t *testing.T) {
 		t.Fatal("API acquired broker scheduling clock")
 	}
 }
+
+func TestSQLBrokerStartupRejectsAccidentallyBroadenedApiAndWorkerPrivileges(t *testing.T) {
+	f := newBrokerFixture(t)
+	if e := f.store.RuntimeRole(context.Background(), false); e != nil {
+		t.Fatal(e)
+	}
+	if e := f.worker.BrokerRuntimeRole(context.Background()); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := fixtureOwner.Exec(`GRANT SELECT(secret) ON identity_overlay_broker TO syn443_identity_api`); e != nil {
+		t.Fatal(e)
+	}
+	defer func() {
+		if _, e := fixtureOwner.Exec(`REVOKE SELECT(secret) ON identity_overlay_broker FROM syn443_identity_api`); e != nil {
+			t.Error(e)
+		}
+	}()
+	if !errors.Is(f.store.RuntimeRole(context.Background(), false), ErrDenied) {
+		t.Fatal("API started with provider setup-secret read authority")
+	}
+	if _, e := fixtureOwner.Exec(`GRANT UPDATE(reference) ON identity_overlay_reference_heads TO syn443_overlay_worker`); e != nil {
+		t.Fatal(e)
+	}
+	defer func() {
+		if _, e := fixtureOwner.Exec(`REVOKE UPDATE(reference) ON identity_overlay_reference_heads FROM syn443_overlay_worker`); e != nil {
+			t.Error(e)
+		}
+	}()
+	if !errors.Is(f.worker.BrokerRuntimeRole(context.Background()), ErrDenied) {
+		t.Fatal("provider worker started with policy reference authority")
+	}
+}

@@ -160,3 +160,12 @@ known revoked peer. SQL guards prevent decreasing the last permit or clearing
 retired state. Tests exercise a refreshed rollback lease, removal, the final
 permitted millisecond, retirement and denial of implicit reactivation. The new
 lease columns/fence/scheduler behavior awaits mandatory Actions acceptance.
+
+The automatic materializer, actual three-process delivery and rollback-lease
+retirement passed all eight mandatory jobs at
+`d556a41cc7eb6f39b9272b2ef39d6f7e859c16ee`,
+[Actions41487142571](https://github.com/nd4y/syn443-control-plane/actions/runs/41487142571).
+This accepts isolated source/SQL/process behavior, not live Cloud or full M2/M3.
+The new startup guards additionally reject an API role with setup-secret read
+rights or a provider-worker role with reference-head mutation rights. Their new
+real-SQL privilege-contamination test awaits the next Actions run.
