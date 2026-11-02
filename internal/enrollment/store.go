@@ -24,8 +24,15 @@ var identitySchema string
 
 //go:embed roles.sql
 var identityRoles string
-var Schema = identitySchema + "\n" + supportchat.Schema
-var Roles = identityRoles + "\n" + supportchat.Roles
+
+//go:embed overlay_schema.sql
+var overlaySchema string
+
+//go:embed overlay_roles.sql
+var overlayRoles string
+
+var Schema = identitySchema + "\n" + supportchat.Schema + "\n" + overlaySchema
+var Roles = identityRoles + "\n" + supportchat.Roles + "\n" + overlayRoles
 var ErrDenied = errors.New("access_denied")
 var ErrConflict = errors.New("idempotency_conflict")
 var ErrReplay = errors.New("proof_replayed")
@@ -377,11 +384,11 @@ func (s *Store) lockSession(ctx context.Context, tx *sql.Tx, b Binding, proof id
 	if !active || owner != b.Owner || jkt != proof.Thumbprint {
 		return a, b, ErrDenied
 	}
-	e = tx.QueryRowContext(ctx, `SELECT nonce,access_until,refresh_until,generation,active FROM identity_sessions WHERE id=$1 FOR UPDATE`, b.Session).Scan(&b.Nonce, &b.AccessUntil, &b.RefreshUntil, &b.Generation, &b.Active)
+	e = tx.QueryRowContext(ctx, `SELECT nonce,access_until,refresh_until,generation,active,device FROM identity_sessions WHERE id=$1 FOR UPDATE`, b.Session).Scan(&b.Nonce, &b.AccessUntil, &b.RefreshUntil, &b.Generation, &b.Active, &owner)
 	if e != nil {
 		return a, b, e
 	}
-	if !b.Active || b.RefreshUntil <= now || !refresh && b.AccessUntil <= now {
+	if owner != b.Device || b.Jkt != jkt || !b.Active || b.RefreshUntil <= now || !refresh && b.AccessUntil <= now {
 		return a, b, ErrDenied
 	}
 	if proof.Claims.Nonce != b.Nonce {

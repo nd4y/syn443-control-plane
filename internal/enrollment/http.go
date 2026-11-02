@@ -25,19 +25,21 @@ type InvitationActions interface {
 }
 
 type API struct {
-	Invitations   InvitationActions
-	Store         *Store
-	Verifier      Verifier
-	Origin        string
-	Roots         map[string]*ecdsa.PublicKey
-	Clock         func() time.Time
-	mu            sync.Mutex
-	buckets       map[string]bucket
-	slots         chan struct{}
-	chatSlots     chan struct{}
-	ChatEnabled   bool
-	ChatVerifier  Verifier
-	ChatWebOrigin string
+	Invitations InvitationActions
+	// Empty disables addressed credential delivery. Set only from owner configuration.
+	OverlayServiceID string
+	Store            *Store
+	Verifier         Verifier
+	Origin           string
+	Roots            map[string]*ecdsa.PublicKey
+	Clock            func() time.Time
+	mu               sync.Mutex
+	buckets          map[string]bucket
+	slots            chan struct{}
+	chatSlots        chan struct{}
+	ChatEnabled      bool
+	ChatVerifier     Verifier
+	ChatWebOrigin    string
 }
 type bucket struct {
 	minute int64
@@ -111,8 +113,9 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.chatHTTP(w, r)
 		return
 	}
+	isOverlay := a.OverlayServiceID != "" && (path == "/v1/device/overlay/fetch" || path == "/v1/device/overlay/consume")
 	isInvite := path == "/v1/invitations/time" || path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
-	allowed := isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
+	allowed := isOverlay && r.Method == "POST" || isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
 	if !allowed {
 		http.NotFound(w, r)
 		return
@@ -238,6 +241,20 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if (!binding.Active && path != "/v1/device/revoke") || binding.Jkt != proof.Thumbprint {
 		failure(w, ErrDenied)
+		return
+	}
+	if isOverlay {
+		if r.Header.Get("Origin") != "" {
+			failure(w, identity.ErrInvalid)
+			return
+		}
+		value, e := a.Store.OverlayCredential(ctx, binding, token, proof, raw, path == "/v1/device/overlay/consume", a.OverlayServiceID, a.Roots, now)
+		if e != nil {
+			failure(w, e)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(value)
 		return
 	}
 	if path == "/v1/device/session/refresh" {

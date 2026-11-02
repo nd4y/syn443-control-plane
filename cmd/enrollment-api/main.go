@@ -72,9 +72,13 @@ func run() error {
 		if err != nil {
 			return err
 		}
+		if c.OverlayServiceID != "" && c.OverlayServiceID != d.ServiceID {
+			return identity.ErrInvalid
+		}
 		store.Reservations = is.Reservations
 		api.Invitations = &invitation.DeviceService{Store: is, Identity: store, Origin: c.Origin, ServiceID: d.ServiceID}
 	}
+	api.OverlayServiceID = c.OverlayServiceID
 	api.ChatEnabled = c.ChatEnabled
 	api.ChatWebOrigin = c.ChatWebOrigin
 	if c.ChatWebOrigin != "" {

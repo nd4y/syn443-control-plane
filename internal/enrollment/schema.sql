@@ -67,3 +67,6 @@ CREATE INDEX IF NOT EXISTS identity_request_expiry ON identity_requests(expires)
 CREATE INDEX IF NOT EXISTS identity_revocation_expiry ON identity_revocations(expires);
 CREATE INDEX IF NOT EXISTS identity_challenge_expiry ON identity_challenges(expires);
 CREATE INDEX IF NOT EXISTS identity_owner_revocation_expiry ON identity_owner_revocations(expires);
+
+-- Capture the exact owner grant that independently authorized this publication.
+ALTER TABLE identity_devices ADD COLUMN IF NOT EXISTS publication_grant_hash text NOT NULL DEFAULT '';

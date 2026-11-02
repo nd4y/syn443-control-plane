@@ -736,7 +736,10 @@
         "docs/managed-overlay.md",
         "contracts/v1/overlay-namespace-vectors.json",
         "internal/overlay/identity.go",
-        "internal/overlay/identity_test.go"
+        "internal/overlay/identity_test.go",
+        "docs/overlay-delivery-design.md",
+        "internal/enrollment/overlay.go",
+        "internal/enrollment/overlay_postgres_test.go"
       ]
     },
     {

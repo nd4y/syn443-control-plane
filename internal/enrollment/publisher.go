@@ -260,7 +260,7 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 		}
 	}
 	encrypted := p.Store.Seal([]byte(bundle), "publication/v1/"+id+"/"+formatInt(payload.Revision))
-	_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET approved=true,publication=$2,revision=$3,refresh_after=$4,offline_until=$5,publication_error='',retry_after=0 WHERE id=$1`, id, encrypted, payload.Revision, payload.RefreshAfterMs/1000, payload.OfflineUntilMs/1000)
+	_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET approved=true,publication=$2,revision=$3,refresh_after=$4,offline_until=$5,publication_error='',retry_after=0,publication_grant_hash=$6 WHERE id=$1`, id, encrypted, payload.Revision, payload.RefreshAfterMs/1000, payload.OfflineUntilMs/1000, s.Grant)
 	if e != nil {
 		return e
 	}

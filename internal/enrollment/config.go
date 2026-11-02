@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/jackc/pgx/v5/stdlib"
@@ -19,21 +20,22 @@ import (
 )
 
 type Config struct {
-	Listen          string            `json:"listen"`
-	Origin          string            `json:"origin"`
-	Issuer          string            `json:"issuer"`
-	Audience        string            `json:"audience"`
-	ClientID        string            `json:"clientId"`
-	Database        string            `json:"database"`
-	EncryptionKey   string            `json:"encryptionKey"`
-	Roots           map[string]string `json:"roots"`
-	Certificate     string            `json:"certificate"`
-	CertificateKey  string            `json:"certificateKey"`
-	FixtureHTTP     bool              `json:"fixtureHttp"`
-	ChatEnabled     bool              `json:"chatEnabled"`
-	ChatWebOrigin   string            `json:"chatWebOrigin"`
-	ChatWebClientID string            `json:"chatWebClientId"`
-	ChatWebAudience string            `json:"chatWebAudience"`
+	OverlayServiceID string            `json:"overlayServiceId"`
+	Listen           string            `json:"listen"`
+	Origin           string            `json:"origin"`
+	Issuer           string            `json:"issuer"`
+	Audience         string            `json:"audience"`
+	ClientID         string            `json:"clientId"`
+	Database         string            `json:"database"`
+	EncryptionKey    string            `json:"encryptionKey"`
+	Roots            map[string]string `json:"roots"`
+	Certificate      string            `json:"certificate"`
+	CertificateKey   string            `json:"certificateKey"`
+	FixtureHTTP      bool              `json:"fixtureHttp"`
+	ChatEnabled      bool              `json:"chatEnabled"`
+	ChatWebOrigin    string            `json:"chatWebOrigin"`
+	ChatWebClientID  string            `json:"chatWebClientId"`
+	ChatWebAudience  string            `json:"chatWebAudience"`
 }
 
 func PrivateFile(path string, max int64) ([]byte, error) {
@@ -65,7 +67,7 @@ func ReadConfig(path string) (Config, error) {
 	if identity.Decode(raw, &c, true) != nil {
 		return c, identity.ErrInvalid
 	}
-	if c.ValidateChat() != nil {
+	if c.ValidateChat() != nil || c.OverlayServiceID != "" && !regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`).MatchString(c.OverlayServiceID) {
 		return c, identity.ErrInvalid
 	}
 	return c, nil
@@ -152,6 +154,9 @@ func (s *Store) RuntimeRole(ctx context.Context, publisher bool) error {
 		return ErrDenied
 	}
 	if !publisher {
+		if e = s.DB.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,'identity_overlay_grants','INSERT') OR has_column_privilege(current_user,'identity_overlay_grants','owner','UPDATE') OR has_column_privilege(current_user,'identity_overlay_grants','revoked','UPDATE') OR has_table_privilege(current_user,'identity_overlay_grants','DELETE') OR has_table_privilege(current_user,'identity_overlay_deliveries','DELETE')`).Scan(&unsafe); e != nil || unsafe {
+			return ErrDenied
+		}
 		if e = s.DB.QueryRowContext(ctx, `SELECT has_column_privilege(current_user,'identity_devices','publication','UPDATE') OR has_column_privilege(current_user,'identity_devices','approved','UPDATE')`).Scan(&unsafe); e != nil || unsafe {
 			return ErrDenied
 		}

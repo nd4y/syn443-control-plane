@@ -83,7 +83,7 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	caps := map[string]bool{}
-	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true}
+	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true}
 	if len(p.RequiredCapabilities) < 1 || len(p.RequiredCapabilities) > 16 || p.AlgorithmRevision != "m1-local-v1" {
 		return bad
 	}

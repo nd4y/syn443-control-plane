@@ -35,7 +35,9 @@ flag or SQL ready field cannot substitute for this signature. The value is only
 the addressed setup key; provider management tokens and SDK private keys are not
 permitted. Unknown/noncanonical JSON/header/encoding, wrong recipient/reference,
 unsupported keys and exact expiry fail closed. Diagnostics redact all contents.
-This cryptographic component does not yet provide an HTTP delivery service.
+The cryptographic core is accepted separately. The new SQL/HTTP delivery surface
+is described in [the delivery contract](overlay-delivery-design.md); its exact
+Actions acceptance is pending. Managed SDK activation remains disabled.
 
 Remaining delivery/storage contract: the publication authority signs a grant
 only for a currently authorized assignment; the API returns it only under a
