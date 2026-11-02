@@ -45,6 +45,18 @@ class PublicDataTest(unittest.TestCase):
         encoded=b"https://"+b"synthetic%00:placeholder@"+b"example.invalid"
         self.assertIn("credential-url",findings(encoded))
 
+    def test_only_exact_public_pgx_elf_regexp_is_not_a_credential_uri(self):
+        symbol=b"github.com/jackc/pgx/v5/pgconn.redactURLPassword"
+        regexp=b":"+b"[^@]+"+b"@"
+        joined=b"formatconstant://a=,b=%s%s,c=%v"+regexp
+        elf=bytes([127])+b"ELF"+bytes([0])+symbol+bytes([0])
+        self.assertNotIn("credential-url",findings(elf+joined))
+        self.assertIn("credential-url",findings(joined))
+        self.assertIn("credential-url",findings(bytes([127])+b"ELF"+joined))
+        self.assertIn("credential-url",findings(elf+joined.replace(regexp,b":"+b"[^@]*"+b"@")))
+        real=b"https://"+b"synthetic:placeholder@"+b"example.invalid"
+        self.assertIn("credential-url",findings(elf+joined+bytes([0])+real))
+
     def test_only_exact_go_elf_symbols_are_not_mistaken_for_domains(self):
         fields = b"crypto/x509." + b"local string; crypto/x509.domain string"
         symbol = b"\x00time." + b"Local\x00"

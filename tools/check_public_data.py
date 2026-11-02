@@ -31,6 +31,13 @@ def findings(data):
         # Keep textual source/configuration and all other .local names scanned.
         text = text.replace("crypto/x509." + "local string; crypto/x509.domain string", "[go-x509-mailbox-fields]")
         text = text.replace("\x00time." + "Local\x00", "\x00[go-time-symbol]\x00")
+        # Exact public pgx v5.11.0 redaction-regexp literal (pgconn/errors.go:309).
+        # Adjacent Go rodata can join a URL delimiter, printf text and this
+        # regexp into a fake userinfo. Do not exempt source, other regexps or
+        # any credential URI; the function symbol and exact literal are needed.
+        if b"github.com/jackc/pgx/v5/pgconn.redactURLPassword" in data:
+            text = text.replace(":" + "[^@]+" + "@", "[pgx-userinfo-redaction-regexp]")
+
     result = {name for name, pattern in PATTERNS.items() if pattern.search(text)}
     for match in IPV4.finditer(text):
         suffix = re.match(r"/\d+(?![\w./])", text[match.end():])
