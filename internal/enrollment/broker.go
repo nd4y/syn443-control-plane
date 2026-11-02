@@ -283,7 +283,7 @@ func (s *Store) finishBroker(ctx context.Context, j *brokerJob, state string, ke
 	if peer == nil {
 		peer = j.peer
 	}
-	result, e := s.DB.ExecContext(ctx, `UPDATE identity_overlay_broker SET state=$5,provider_id=$6,provider_expires_ms=$7,provider_used=$8,secret=CASE WHEN withdraw_key THEN NULL ELSE $9 END,peer_evidence=$10,error_code=$11,lease='',lease_until_ms=0,next_ms=$12 WHERE device=$1 AND reference=$2 AND version=$3 AND lease=$4 AND lease_until_ms>$13`, j.device, j.ref, j.version, j.lease, state, id, expires, used, secret, peer, code, now.Add(5*time.Second).UnixMilli(), now.UnixMilli())
+	result, e := s.DB.ExecContext(ctx, `UPDATE identity_overlay_broker SET state=$5,provider_id=$6,provider_expires_ms=$7,provider_used=$8,secret=CASE WHEN withdraw_key THEN NULL ELSE $9::bytea END,peer_evidence=$10,error_code=$11,lease='',lease_until_ms=0,next_ms=$12 WHERE device=$1 AND reference=$2 AND version=$3 AND lease=$4 AND lease_until_ms>$13`, j.device, j.ref, j.version, j.lease, state, id, expires, used, secret, peer, code, now.Add(5*time.Second).UnixMilli(), now.UnixMilli())
 	if e != nil {
 		return e
 	}
