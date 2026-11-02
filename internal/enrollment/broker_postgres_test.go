@@ -644,6 +644,10 @@ func TestSQLBrokerWithdrawalBlocksPreviouslyWrappedCredentialButStillAllowsErasu
 	}
 	// Fetch creates the original operation. Withdrawal must fence the durable
 	// addressed copy too, while allowing that same operation's erasure ACK.
+	// The broker clock advanced during its HTTP/publisher steps. The API must
+	// observe a later trusted instant, not the fixture's original fixed instant.
+	f.now = f.clock.Add(time.Second)
+	f.api.Clock = func() time.Time { return f.now }
 	expect(t, f.call(t, false), 200)
 	f.withdrawKey(t)
 	expect(t, f.call(t, false), 409)

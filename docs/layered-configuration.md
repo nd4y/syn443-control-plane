@@ -1,5 +1,26 @@
 # Declarative configuration layers
 
+## Signed preview manifest (acceptance pending)
+
+The configuration package now defines a purpose-separated ES256 preview ticket.
+It binds the actor/control origin, exact draft revision/hash, target scope, network
+mode, immutable dependency/effective hashes and the complete ordered recipient
+manifest. Each recipient binds its actual owner/device/key/grant, configuration
+head revision/hash and advertised capability-set hash. A device preview cannot
+name additional recipients; a user preview cannot cross owners. Counts, JSON
+shape, origin, time, key and signature representation are bounded and closed.
+The ticket lasts at most three minutes and contains no engine body or credentials.
+
+The independent publisher must resolve/compile this manifest before signing and
+repeat live ACL/MFA/dependency/recipient/head-CAS checks before publication. The
+codec alone does not provide those authorities. API-supplied ready flags are not
+inputs. Persistent preview requests, approved layer heads, assignments, approval
+receipts, final fences and the web/native publication workflow remain required;
+this component does not close the complete configuration flow. Actions exercise
+independent cryptographic verification, purpose/actor/origin/impact binding,
+expiry, signature malleability, duplicate/unknown JSON fields, key trust,
+cancellation and recipient/capability bounds under the existing package gates.
+
 `internal/configuration` is the bounded merge/rebase component, not a compiler
 or signing authority. Its output is usable only after a required supported-settings
 schema validator accepts it. The catalog/compiler must independently resolve
