@@ -77,3 +77,10 @@ condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"invitation-openapi\.json": "0aaf6cf59826265613ce522c7789ea14ec4a00d0392b42a34728911394cf9d2f",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public overlay credential schema content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"overlay-credential\.schema\.json": "4228df5c2b78542393f9b22b4576b9243c221708226510442a7315507c14e44d",?\s*$''']

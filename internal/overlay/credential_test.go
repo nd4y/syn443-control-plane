@@ -9,6 +9,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/nd4y/syn443-control-plane/contracts"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 	"math/big"
 	"strings"
 	"testing"
@@ -187,4 +189,44 @@ func FuzzAddressedCredential(f *testing.F) {
 		}
 		_, _ = VerifyCredential(raw, roots, b, now)
 	})
+}
+
+func TestCredentialPayloadMatchesClosedSharedSchema(t *testing.T) {
+	c, _, _, _ := credentialFixture(t)
+	raw, e := contracts.Files.ReadFile("v1/overlay-credential.schema.json")
+	if e != nil {
+		t.Fatal(e)
+	}
+	var document any
+	if json.Unmarshal(raw, &document) != nil {
+		t.Fatal("schema JSON")
+	}
+	compiler := jsonschema.NewCompiler()
+	const location = "https://contracts.example.invalid/overlay-credential.schema.json"
+	if e = compiler.AddResource(location, document); e != nil {
+		t.Fatal(e)
+	}
+	schema, e := compiler.Compile(location)
+	if e != nil {
+		t.Fatal(e)
+	}
+	wire, _ := json.Marshal(c)
+	var value map[string]any
+	if json.Unmarshal(wire, &value) != nil || schema.Validate(value) != nil {
+		t.Fatal("Go credential model differs from shared schema")
+	}
+	for _, field := range []string{"reference", "address", "keyThumbprint", "value"} {
+		copy := map[string]any{}
+		for k, v := range value {
+			copy[k] = v
+		}
+		delete(copy, field)
+		if schema.Validate(copy) == nil {
+			t.Fatal("missing credential authority field accepted")
+		}
+	}
+	value["extra"] = true
+	if schema.Validate(value) == nil {
+		t.Fatal("open credential schema")
+	}
 }
