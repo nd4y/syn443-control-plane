@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
@@ -17,6 +18,7 @@ const maxAuditBody = 2 * 1024 * 1024
 // Its source is the account-bound peer.setupkey.add event: initiator_id is the
 // setup-key ID and target_id the peer ID. A friendly hostname/IP is insufficient.
 type PeerOwnership struct {
+	ResourceID, AccountID                      string
 	PeerID, SetupKeyID, OperationName, EventID string
 	RegisteredAt, CreatedAt                    time.Time
 }
@@ -136,7 +138,7 @@ func (c *Client) findOwnedPeer(ctx context.Context, name, key string, start, end
 		// Repeated delivery of the same provider event is harmless; a distinct
 		// peer under a supposedly one-off key is never silently selected.
 		if result.PeerID == "" {
-			result = PeerOwnership{PeerID: event.Target, SetupKeyID: key, OperationName: name, EventID: string(event.ID), RegisteredAt: event.At}
+			result = PeerOwnership{ResourceID: c.config.ResourceID, AccountID: c.config.AccountID, PeerID: event.Target, SetupKeyID: key, OperationName: name, EventID: string(event.ID), RegisteredAt: event.At}
 		}
 		return nil
 	})
@@ -201,4 +203,39 @@ func (c *Client) RevokeOwnedPeer(ctx context.Context, tag, key string, start, en
 	}
 	var response map[string]any
 	return c.request(ctx, "DELETE", "/api/peers/"+peer.PeerID, nil, &response)
+}
+
+// RevokeVerifiedPeer accepts only a receipt previously returned by FindOwnedPeer
+// and persisted in the broker's immutable, authenticated private journal. It is
+// not a device/control API operation. Rechecking account and current creation
+// identity permits cleanup after provider audit retention without guessing IDs.
+func (c *Client) RevokeVerifiedPeer(ctx context.Context, proof PeerOwnership) error {
+	tag := strings.TrimPrefix(proof.OperationName, "syn443-")
+	name, e := operationName(tag)
+	if e != nil || name != proof.OperationName || proof.ResourceID != c.config.ResourceID || proof.AccountID != c.config.AccountID || !identifier.MatchString(proof.PeerID) || !identifier.MatchString(proof.SetupKeyID) || !identifier.MatchString(proof.EventID) || proof.RegisteredAt.IsZero() || proof.CreatedAt.IsZero() || proof.CreatedAt.After(proof.RegisteredAt.Add(30*time.Second)) || proof.CreatedAt.Before(proof.RegisteredAt.Add(-5*time.Minute)) {
+		return failure("invalid_ownership", false)
+	}
+	ctx, done, e := c.begin(ctx)
+	if e != nil {
+		return e
+	}
+	defer done()
+	if e = c.account(ctx); e != nil {
+		return e
+	}
+	var peer struct {
+		ID        string    `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+	}
+	if e = c.request(ctx, "GET", "/api/peers/"+proof.PeerID, nil, &peer); e != nil {
+		if v, ok := e.(*Error); ok && v.Code == "not_found" {
+			return nil
+		}
+		return e
+	}
+	if peer.ID != proof.PeerID || !peer.CreatedAt.Equal(proof.CreatedAt) {
+		return failure("peer_identity_mismatch", false)
+	}
+	var response map[string]any
+	return c.request(ctx, "DELETE", "/api/peers/"+proof.PeerID, nil, &response)
 }

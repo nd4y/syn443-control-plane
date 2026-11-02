@@ -31,8 +31,14 @@ var overlaySchema string
 //go:embed overlay_roles.sql
 var overlayRoles string
 
-var Schema = identitySchema + "\n" + supportchat.Schema + "\n" + overlaySchema
-var Roles = identityRoles + "\n" + supportchat.Roles + "\n" + overlayRoles
+//go:embed broker_schema.sql
+var brokerSchema string
+
+//go:embed broker_roles.sql
+var brokerRoles string
+
+var Schema = identitySchema + "\n" + supportchat.Schema + "\n" + overlaySchema + "\n" + brokerSchema
+var Roles = identityRoles + "\n" + supportchat.Roles + "\n" + overlayRoles + "\n" + brokerRoles
 var ErrDenied = errors.New("access_denied")
 var ErrConflict = errors.New("idempotency_conflict")
 var ErrReplay = errors.New("proof_replayed")

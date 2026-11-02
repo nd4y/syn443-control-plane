@@ -135,6 +135,9 @@ type Client struct {
 func (*Client) String() string   { return "NetBirdAPIClient([redacted])" }
 func (*Client) GoString() string { return "NetBirdAPIClient([redacted])" }
 
+// Authority identifies the immutable management boundary, never its credential.
+func (c *Client) Authority() (string, string) { return c.config.ResourceID, c.config.AccountID }
+
 func New(c Config) (*Client, error) {
 	u, e := url.Parse(c.APIOrigin)
 	if !identifier.MatchString(c.ResourceID) || !identifier.MatchString(c.AccountID) || e != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.RawPath != "" || u.Opaque != "" || u.Path != "" && u.Path != "/" || len(c.APIOrigin) > 2048 || len(c.Token) < 16 || len(c.Token) > 4096 || strings.IndexFunc(c.Token, func(r rune) bool { return r < 33 || r > 126 }) >= 0 {

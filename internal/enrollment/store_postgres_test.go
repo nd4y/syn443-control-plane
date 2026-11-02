@@ -28,6 +28,7 @@ import (
 
 var fixtureOwner *sql.DB
 var fixtureAPI, fixturePublisher *sql.DB
+var fixtureBroker *sql.DB
 var fixtureAPIDSN, fixturePublisherDSN string
 var b64 = base64.RawURLEncoding
 
@@ -50,7 +51,7 @@ func TestMain(m *testing.M) {
 	for _, item := range []struct {
 		name   string
 		target **sql.DB
-	}{{"syn443_identity_api", &fixtureAPI}, {"syn443_identity_publisher", &fixturePublisher}} {
+	}{{"syn443_identity_api", &fixtureAPI}, {"syn443_identity_publisher", &fixturePublisher}, {"syn443_overlay_worker", &fixtureBroker}} {
 		password := random()
 		var statement string
 		if e = fixtureOwner.QueryRow(`SELECT format('CREATE ROLE %I LOGIN NOINHERIT NOBYPASSRLS PASSWORD %L',$1::text,$2::text)`, item.name, password).Scan(&statement); e != nil {
@@ -63,7 +64,7 @@ func TestMain(m *testing.M) {
 		copy.User = url.UserPassword(item.name, password)
 		if item.name == "syn443_identity_api" {
 			fixtureAPIDSN = copy.String()
-		} else {
+		} else if item.name == "syn443_identity_publisher" {
 			fixturePublisherDSN = copy.String()
 		}
 		*item.target, e = sql.Open("pgx", copy.String())
@@ -78,6 +79,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	fixtureAPI.Close()
 	fixturePublisher.Close()
+	fixtureBroker.Close()
 	fixtureOwner.Close()
 	os.Exit(code)
 }

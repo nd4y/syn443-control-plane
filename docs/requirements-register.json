@@ -671,7 +671,8 @@
         "docs/implementation-status.md#evidence-index-and-register-semantics",
         "docs/netbird-resource.md",
         "internal/netbirdapi/client.go",
-        "internal/netbirdapi/client_test.go"
+        "internal/netbirdapi/client_test.go",
+        "docs/overlay-broker.md"
       ],
       "implementationScope": "Addressed overlay credentials/namespace delivery plus bounded NetBird single-account management API adapter; initial adapter Actions41449596701 all8 PASS; newer disable/readback extension pending.",
       "remainingScope": "Durable setup-key broker/revocation jobs, managed resource/UI wiring, interrupted-registration keyless recovery, provider reconciliation and real Cloud/device acceptance."
@@ -684,10 +685,11 @@
         "docs/implementation-status.md#evidence-index-and-register-semantics",
         "docs/netbird-resource.md",
         "internal/netbirdapi/client.go",
-        "internal/netbirdapi/client_test.go"
+        "internal/netbirdapi/client_test.go",
+        "docs/overlay-broker.md"
       ],
-      "implementationScope": "Addressed overlay credentials/namespace delivery plus bounded NetBird single-account management API adapter; initial adapter Actions41449596701 all8 PASS; newer disable/readback extension pending.",
-      "remainingScope": "Durable setup-key broker/revocation jobs, managed resource/UI wiring, interrupted-registration keyless recovery, provider reconciliation and real Cloud/device acceptance."
+      "implementationScope": "Addressed credential/namespace delivery and account-bound management adapter accepted; durable broker/SQL-role/independent wrapping implementation pending Actions and runtime integration.",
+      "remainingScope": "Configured resource/policy/scheduler/API/UI integration, controlled renewal/retention and actual Cloud/final restored-device acceptance; full M2/M3 remain incomplete."
     },
     {
       "id": "NB-03",
@@ -706,7 +708,8 @@
       "text": "Ключ идентичности создаётся и хранится локально, не попадает в телеметрию, бандлы и обычный экспорт. Смена direct/VLESS сохраняет peer ID. Ключи и peer отзываются отдельно при удалении устройства.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/overlay-broker.md"
       ],
       "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
       "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
@@ -735,7 +738,9 @@
       "id": "OVL-01",
       "text": "NetBird реализуется первым провайдером общей модели OverlayConnection: overlayId, providerType, resourceId, networkId, identityRef, engineRef, providerConfig, route/DNS policy, transportPolicy и capability requirements. Параметры NetBird хранятся в типизированном providerConfig, а не в обязательных полях всех будущих провайдеров.",
       "status": "planned",
-      "evidence": []
+      "evidence": [
+        "docs/overlay-broker.md"
+      ]
     },
     {
       "id": "OVL-02",
@@ -1945,7 +1950,8 @@
         "internal/catalog/roles.sql",
         "internal/catalog/http_postgres_test.go",
         "cmd/source-worker/main.go",
-        "cmd/control-api/main.go"
+        "cmd/control-api/main.go",
+        "docs/overlay-broker.md"
       ]
     },
     {
@@ -1983,7 +1989,8 @@
         "internal/catalog/roles.sql",
         "internal/catalog/http_postgres_test.go",
         "cmd/source-worker/main.go",
-        "cmd/control-api/main.go"
+        "cmd/control-api/main.go",
+        "docs/overlay-broker.md"
       ]
     },
     {

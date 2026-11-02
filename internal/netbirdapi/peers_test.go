@@ -238,3 +238,70 @@ func TestPeerLookupInputAndCancellationAreClosedBeforeAnyDelete(t *testing.T) {
 		t.Fatal("audit ignored Close")
 	}
 }
+
+func TestPersistedPeerReceiptRemainsAccountAndCreationBoundAfterAuditRetention(t *testing.T) {
+	for _, scenario := range []string{"valid", "absent", "resource", "account", "operation", "event", "time", "peer-id", "peer-reused", "provider-account"} {
+		t.Run(scenario, func(t *testing.T) {
+			var deletes atomic.Int32
+			c, _, _ := fixture(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/api/accounts" {
+					account := "account-a"
+					if scenario == "provider-account" {
+						account = "another"
+					}
+					writeJSON(w, []map[string]string{{"id": account}})
+					return
+				}
+				if strings.HasPrefix(r.URL.Path, "/api/events/") {
+					t.Fatal("persisted receipt unexpectedly depended on retained audit")
+				}
+				if r.Method == "DELETE" {
+					deletes.Add(1)
+					w.WriteHeader(204)
+					return
+				}
+				if scenario == "absent" {
+					w.WriteHeader(404)
+					return
+				}
+				id := "peer-owned"
+				at := now
+				if scenario == "peer-id" {
+					id = "another"
+				}
+				if scenario == "peer-reused" {
+					at = now.Add(time.Second)
+				}
+				writeJSON(w, map[string]any{"id": id, "created_at": at})
+			})
+			proof := PeerOwnership{ResourceID: c.config.ResourceID, AccountID: c.config.AccountID, PeerID: "peer-owned", SetupKeyID: "key-a", OperationName: "syn443-" + tag(), EventID: "event-a", RegisteredAt: now.Add(time.Second), CreatedAt: now}
+			switch scenario {
+			case "resource":
+				proof.ResourceID = "foreign"
+			case "account":
+				proof.AccountID = "foreign"
+			case "operation":
+				proof.OperationName = "foreign"
+			case "event":
+				proof.EventID = ""
+			case "time":
+				proof.CreatedAt = now.Add(-time.Hour)
+			}
+			e := c.RevokeVerifiedPeer(context.Background(), proof)
+			if scenario == "valid" {
+				if e != nil || deletes.Load() != 1 {
+					t.Fatal("persisted owned revoke", e)
+				}
+			} else if scenario == "absent" {
+				if e != nil || deletes.Load() != 0 {
+					t.Fatal("idempotent owned absence", e)
+				}
+			} else {
+				wantError(t, e, false)
+				if deletes.Load() != 0 {
+					t.Fatal("unowned receipt deleted peer")
+				}
+			}
+		})
+	}
+}
