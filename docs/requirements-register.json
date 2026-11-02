@@ -502,8 +502,12 @@
       "evidence": [
         "docs/layered-configuration.md",
         "internal/configuration/network.go",
-        "internal/configuration/network_test.go"
-      ]
+        "internal/configuration/network_test.go",
+        "internal/configuration/plan.go",
+        "internal/configuration/plan_test.go"
+      ],
+      "implementationScope": "Bounded layers/rebase plus closed graph/DNS/routing/activation network-plan composition; current exact Actions acceptance pending.",
+      "remainingScope": "Full supported application settings, persistent layer assignments, independently approved publication and web/mobile editors."
     },
     {
       "id": "CFG-02",

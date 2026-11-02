@@ -107,3 +107,23 @@ expiry. Pure negative tests reject unsupported capability and native authority
 injection. A separate80% configuration-authority gate is required. The persistent
 layer/approval provider is not wired to this interface yet; this is not acceptance
 of the complete editable/publishable configuration flow or full administrative UI.
+
+## Portable network-plan composition (acceptance pending)
+
+NetworkPlan version1 closes the supported graph, DNS/routing and activation input
+shape into one portable document. It accepts profile references, not embedded
+source credentials or arbitrary native JSON. Compilation composes the existing
+bounded graph and typed network compilers with the same required-HTTPS activation
+validator used by signed policies. It returns owned native bytes, their SHA256,
+activation and protocol-feature inventory. Schema/version/size, capabilities,
+source errors, cancellation and caller mutation remain bounded and fail closed.
+
+Layers can merge/rebase this document with field provenance and locks before
+compilation. This component has no source-fetch, SQL, signature or publication
+authority: the independent publisher must use an authenticated source selection
+and final source/layer/recipient/approval fences. Required engine features are
+inventory, not a replacement for device policy capabilities or authorization.
+NetworkPlan does not yet cover application settings, managed overlay issuance,
+route-check metadata, persistent assignments or administrative publication. Those
+remain explicit full M2/M3 work. Actions require ordinary/race/85-percent package
+gates and a new bounded parser fuzz smoke, with no local compilation.

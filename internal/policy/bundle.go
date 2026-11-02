@@ -104,12 +104,19 @@ func (p Payload) Validate(now time.Time) error {
 	if err != nil || len(engine) < 1 || len(engine) > 262144 || !utf8.Valid(engine) || !json.Valid(engine) || hex.EncodeToString(sum[:]) != p.ContentHash {
 		return bad
 	}
-	if p.Activation.TimeoutSeconds < 30 || p.Activation.TimeoutSeconds > 120 || len(p.Activation.Checks) < 1 || len(p.Activation.Checks) > 8 {
+	return p.Activation.Validate()
+}
+
+// Validate checks the same bounded activation contract used by signed policies.
+// A portable configuration cannot relax the required HTTPS or local deadlines.
+func (g Gate) Validate() error {
+	bad := errors.New("invalid policy")
+	if g.TimeoutSeconds < 30 || g.TimeoutSeconds > 120 || len(g.Checks) < 1 || len(g.Checks) > 8 {
 		return bad
 	}
 	ids := map[string]bool{}
 	requiredHTTPS := false
-	for _, c := range p.Activation.Checks {
+	for _, c := range g.Checks {
 		if !identifier.MatchString(c.ID) || len(c.ID) > 48 || ids[c.ID] {
 			return bad
 		}
