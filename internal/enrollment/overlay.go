@@ -199,12 +199,25 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 		var revoked bool
 		e = tx.QueryRowContext(ctx, `SELECT owner,jkt,namespace,security_epoch,expires_ms,envelope_hash,envelope,revoked FROM identity_overlay_grants WHERE device=$1 AND reference=$2 AND version=$3 FOR UPDATE`, b.Device, request.Reference, request.Version).Scan(&owner, &jkt, &namespace, &epoch, &expires, &hash, &protected, &revoked)
 		if errors.Is(e, sql.ErrNoRows) {
+			if !consume {
+				return DeviceResult{}, s.overlayBrokerPending(ctx, tx, a, permit, request, current)
+			}
 			return DeviceResult{}, ErrDenied
 		}
 		if e != nil {
 			return DeviceResult{}, e
 		}
-		if owner != a.Binding.Owner || jkt != a.Binding.Jkt || namespace != request.Namespace || epoch > permit.SecurityEpoch || !consume && (epoch != permit.SecurityEpoch || revoked || expires <= current.UnixMilli()) {
+		if owner != a.Binding.Owner || jkt != a.Binding.Jkt || namespace != request.Namespace || epoch > permit.SecurityEpoch {
+			return DeviceResult{}, ErrDenied
+		}
+		if !consume && (epoch != permit.SecurityEpoch || revoked || expires <= current.UnixMilli()) {
+			if s.OverlayBrokerPending {
+				e := s.overlayBrokerPending(ctx, tx, a, permit, request, current)
+				if errors.Is(e, ErrPending) {
+					e = ErrConflict
+				}
+				return DeviceResult{}, e
+			}
 			return DeviceResult{}, ErrDenied
 		}
 		var operation, bodyHash string

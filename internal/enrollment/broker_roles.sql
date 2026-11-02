@@ -1,4 +1,6 @@
 GRANT SELECT,INSERT,UPDATE(retire) ON identity_overlay_broker TO syn443_identity_publisher;
+GRANT SELECT(device,reference,version,owner,jkt,namespace,security_epoch,grant_hash,deadline_ms,state,retire)
+ ON identity_overlay_broker TO syn443_identity_api;
 REVOKE ALL ON FUNCTION identity_overlay_broker_invariants() FROM PUBLIC;
 -- Optional worker role is installed separately. Existing API/publisher deployments
 -- need not enable the broker; migration never creates privileged runtime roles.

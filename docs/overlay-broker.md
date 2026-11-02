@@ -48,7 +48,18 @@ and retirement after audit retention. The broker has a separate required80%
 coverage gate. Compiled tests run only in GitHub Actions.
 
 Still required: configured resource resolver/worker binary, approved portable
-overlay materialization, API pending-grant handling, independently scheduled
+overlay materialization, independently scheduled
 wrapping/retirement, bounded inventory/retention and controlled safe renewal.
 Actual Cloud, root/capability upgrades, complete web/native administration and
 final restored USB Xperia Wi-Fi acceptance remain open. LTE is not tested.
+
+The new opt-in API path recognizes pending metadata only after current signed
+policy and session validation. Absent/foreign/unconfigured grants remain denied;
+owned live pending grants return202 with a2-second retry hint. An owned expired,
+retired or otherwise unavailable enrollment value returns a credential conflict,
+preserving the separately valid base policy. No pending response creates delivery
+or consumption evidence. API column privileges omit encrypted scopes, provider
+IDs/values and peer receipts. Actual account/device withdrawal is propagated by
+the publisher to immutable retirement intent; changing an ordinary config hash
+alone does not retire an established peer. Runtime scheduling/configuration and
+acceptance of these new paths remain pending.

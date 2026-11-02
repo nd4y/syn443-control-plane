@@ -3,7 +3,8 @@ CREATE TABLE IF NOT EXISTS identity_overlay_broker (
  device text NOT NULL REFERENCES identity_devices(id), reference text NOT NULL,
  version bigint NOT NULL CHECK(version BETWEEN 1 AND 9007199254740991),
  owner text NOT NULL REFERENCES identity_accounts(owner), jkt text NOT NULL,
- namespace text NOT NULL, resource text NOT NULL, resource_revision bigint NOT NULL CHECK(resource_revision>0),
+ namespace text NOT NULL, security_epoch bigint NOT NULL CHECK(security_epoch>=0), grant_hash text NOT NULL,
+ resource text NOT NULL, resource_revision bigint NOT NULL CHECK(resource_revision>0),
  scope_hash text NOT NULL, scope bytea NOT NULL, operation text NOT NULL UNIQUE,
  deadline_ms bigint NOT NULL, created_ms bigint NOT NULL,
  state text NOT NULL DEFAULT 'queued' CHECK(state IN ('queued','dispatched','uncertain','issued','disabled','registered','established','unused','cleared','retired','blocked')),
@@ -19,8 +20,8 @@ CREATE TABLE IF NOT EXISTS identity_overlay_broker (
 CREATE INDEX IF NOT EXISTS identity_overlay_broker_work ON identity_overlay_broker(next_ms,lease_until_ms,state);
 CREATE OR REPLACE FUNCTION identity_overlay_broker_invariants() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
- IF (NEW.device,NEW.reference,NEW.version,NEW.owner,NEW.jkt,NEW.namespace,NEW.resource,NEW.resource_revision,NEW.scope_hash,NEW.scope,NEW.operation,NEW.deadline_ms,NEW.created_ms)
- IS DISTINCT FROM (OLD.device,OLD.reference,OLD.version,OLD.owner,OLD.jkt,OLD.namespace,OLD.resource,OLD.resource_revision,OLD.scope_hash,OLD.scope,OLD.operation,OLD.deadline_ms,OLD.created_ms)
+ IF (NEW.device,NEW.reference,NEW.version,NEW.owner,NEW.jkt,NEW.namespace,NEW.security_epoch,NEW.grant_hash,NEW.resource,NEW.resource_revision,NEW.scope_hash,NEW.scope,NEW.operation,NEW.deadline_ms,NEW.created_ms)
+ IS DISTINCT FROM (OLD.device,OLD.reference,OLD.version,OLD.owner,OLD.jkt,OLD.namespace,OLD.security_epoch,OLD.grant_hash,OLD.resource,OLD.resource_revision,OLD.scope_hash,OLD.scope,OLD.operation,OLD.deadline_ms,OLD.created_ms)
  OR (OLD.retire AND NOT NEW.retire) OR NEW.attempts<OLD.attempts OR NEW.provider_used<OLD.provider_used
  OR (OLD.provider_id<>'' AND NEW.provider_id<>OLD.provider_id)
  OR (OLD.provider_expires_ms<>0 AND NEW.provider_expires_ms<>OLD.provider_expires_ms)

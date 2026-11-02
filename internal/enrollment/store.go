@@ -78,9 +78,12 @@ type Session struct {
 type ReservationCounter func(context.Context, *sql.Tx, string, time.Time) (int, error)
 
 type Store struct {
-	Reservations ReservationCounter
-	DB           *sql.DB
-	box          cipher.AEAD
+	// Opt in only with the independently configured durable broker. Absent or
+	// foreign grants retain the ordinary denial; this never authorizes delivery.
+	OverlayBrokerPending bool
+	Reservations         ReservationCounter
+	DB                   *sql.DB
+	box                  cipher.AEAD
 }
 
 func NewStore(db *sql.DB, key []byte) (*Store, error) {

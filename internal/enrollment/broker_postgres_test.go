@@ -209,9 +209,12 @@ func TestSQLBrokerDispatchesOnceAfterCommitAndPublishesOnlyCurrentSignedTarget(t
 	if e != nil {
 		t.Fatal(e)
 	}
-	credential, e := overlay.VerifyCredential(string(raw), f.api.Roots, f.binding, f.clock)
+	credential, e := overlay.VerifyCredential(string(raw), f.api.Roots, f.binding, time.UnixMilli(f.scope.DeadlineMs-1))
 	if e != nil || credential.Value != f.provider.key.Secret || credential.ExpiresMs != f.scope.DeadlineMs {
 		t.Fatal("signed addressed credential or immutable deadline", e)
+	}
+	if _, e = overlay.VerifyCredential(string(raw), f.api.Roots, f.binding, time.UnixMilli(f.scope.DeadlineMs)); e == nil {
+		t.Fatal("broker wrapping extended the original deadline")
 	}
 	f.run(t)
 	if f.provider.create != 1 || f.provider.inspect != 1 {
@@ -494,4 +497,64 @@ func TestSQLBrokerUnknownCreationNeverUsesMissingOrMultipleRecordsAsFreshAuthori
 // Keep SQL transaction interfaces concrete: fixture callbacks cannot substitute
 // their own device/account grant or return a public ready boolean.
 var _ ApprovalFence = (*fixtureConfigurationFence)(nil)
-var _ *sql.Tx
+
+func TestSQLBrokerPendingIsOptInCurrentPolicyOwnedAndDoesNotAcknowledgeConsumption(t *testing.T) {
+	f := newBrokerFixture(t)
+	expect(t, f.call(t, false), 403)
+	f.reserve(t)
+	expect(t, f.call(t, false), 403)
+	f.store.OverlayBrokerPending = true
+	reply := f.call(t, false)
+	expect(t, reply, 202)
+	if reply.Header().Get("Retry-After") != "2" {
+		t.Fatal("pending poll was not bounded")
+	}
+	expect(t, f.call(t, true), 403)
+	original := f.request
+	f.request.Reference = random()
+	expect(t, f.call(t, false), 403)
+	f.request = original
+	f.retire(t)
+	expect(t, f.call(t, false), 409)
+	var delivered int
+	if e := fixtureOwner.QueryRow(`SELECT count(*) FROM identity_overlay_deliveries`).Scan(&delivered); e != nil || delivered != 0 {
+		t.Fatal("pending/denied request created delivery/consumption evidence", e)
+	}
+}
+func TestSQLBrokerExpiredPendingKeyIsNotADeviceSessionRevocation(t *testing.T) {
+	f := newBrokerFixture(t)
+	f.reserve(t)
+	f.store.OverlayBrokerPending = true
+	f.now = f.now.Add(6 * time.Minute)
+	f.api.Clock = func() time.Time { return f.now }
+	expect(t, f.call(t, false), 409)
+	// Ordinary current policy remains independently authorized after the
+	// optional overlay credential expires; no secret or registration is invented.
+	reply := f.fixture.call(t, f.client, "GET", "/v1/device/policy", f.session.AccessToken, f.session.Nonce, nil)
+	expect(t, reply, 200)
+}
+func TestSQLBrokerAccountWithdrawalQueuesRetirementWithoutConfigRefreshChurn(t *testing.T) {
+	f := newBrokerFixture(t)
+	f.reserve(t)
+	f.run(t)
+	f.provider.key.UsedTimes = 1
+	f.run(t)
+	f.run(t)
+	if e := f.overlayFixture.worker.RetireWithdrawnOverlayBrokers(context.Background(), f.clock); e != nil {
+		t.Fatal(e)
+	}
+	var retired bool
+	if e := fixtureOwner.QueryRow(`SELECT retire FROM identity_overlay_broker`).Scan(&retired); e != nil || retired {
+		t.Fatal("live owner was retired", e)
+	}
+	if _, e := fixtureOwner.Exec(`UPDATE identity_devices SET active=false`); e != nil {
+		t.Fatal(e)
+	}
+	if e := f.overlayFixture.worker.RetireWithdrawnOverlayBrokers(context.Background(), f.clock); e != nil {
+		t.Fatal(e)
+	}
+	f.run(t)
+	if f.state(t) != "retired" || f.provider.removePeer != 1 {
+		t.Fatal("withdrawal did not reach owned provider cleanup")
+	}
+}

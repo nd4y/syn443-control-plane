@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"slices"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
@@ -113,7 +114,7 @@ func (s *Store) ReserveOverlayBroker(ctx context.Context, tx *sql.Tx, b BrokerSc
 		return ErrUnavailable
 	}
 	protected := s.Seal(raw, brokerAAD(b.Binding.Address.DeviceID, b.Binding.Reference, b.Binding.Version, "scope"))
-	_, e = tx.ExecContext(ctx, `INSERT INTO identity_overlay_broker(device,reference,version,owner,jkt,namespace,resource,resource_revision,scope_hash,scope,operation,deadline_ms,created_ms,next_ms) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$13)`, b.Binding.Address.DeviceID, b.Binding.Reference, b.Binding.Version, owner, jkt, namespace, b.Binding.Address.ResourceID, b.ResourceRevision, hash, protected, random(), b.DeadlineMs, now.UnixMilli())
+	_, e = tx.ExecContext(ctx, `INSERT INTO identity_overlay_broker(device,reference,version,owner,jkt,namespace,resource,resource_revision,scope_hash,scope,operation,deadline_ms,created_ms,next_ms,security_epoch,grant_hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$13,$14,$15)`, b.Binding.Address.DeviceID, b.Binding.Reference, b.Binding.Version, owner, jkt, namespace, b.Binding.Address.ResourceID, b.ResourceRevision, hash, protected, random(), b.DeadlineMs, now.UnixMilli(), b.Binding.SecurityEpoch, b.GrantHash)
 	return e
 }
 
@@ -128,6 +129,17 @@ func (s *Store) RetireOverlayBroker(ctx context.Context, tx *sql.Tx, device, nam
 		return ErrDenied
 	}
 	_, e := tx.ExecContext(ctx, `UPDATE identity_overlay_broker SET retire=true WHERE device=$1 AND namespace=$2`, device, namespace)
+	return e
+}
+
+// The publisher propagates actual account/device withdrawal to durable cleanup;
+// provider workers have no access to those identity tables. A changed ordinary
+// config/grant hash alone does not retire an established overlay identity.
+func (s *Store) RetireWithdrawnOverlayBrokers(ctx context.Context, now time.Time) error {
+	if e := s.RuntimeRole(ctx, true); e != nil {
+		return e
+	}
+	_, e := s.DB.ExecContext(ctx, `UPDATE identity_overlay_broker b SET retire=true FROM identity_devices d,identity_accounts a WHERE b.device=d.id AND b.owner=d.owner AND b.owner=a.owner AND NOT b.retire AND (NOT d.active OR NOT a.enabled OR a.valid_until<=$1)`, now.Unix())
 	return e
 }
 
@@ -157,6 +169,34 @@ type brokerJob struct {
 
 func (*brokerJob) String() string   { return "OverlayBrokerJob([redacted])" }
 func (*brokerJob) GoString() string { return "OverlayBrokerJob([redacted])" }
+
+// The strict protocol decoder treats structs as JSON objects, so time.Time's
+// custom string representation is deliberately not used as a storage DTO. Keep
+// RFC3339Nano text explicitly and parse after the ordinary exact-shape guards;
+// nanoseconds matter when checking a provider's current creation identity.
+type brokerPeerReceipt struct {
+	ResourceID, AccountID, PeerID, SetupKeyID, OperationName, EventID string
+	RegisteredAt, CreatedAt                                           string
+}
+
+func marshalBrokerPeer(p netbirdapi.PeerOwnership) ([]byte, error) {
+	return json.Marshal(brokerPeerReceipt{p.ResourceID, p.AccountID, p.PeerID, p.SetupKeyID, p.OperationName, p.EventID, p.RegisteredAt.UTC().Format(time.RFC3339Nano), p.CreatedAt.UTC().Format(time.RFC3339Nano)})
+}
+func unmarshalBrokerPeer(raw []byte) (netbirdapi.PeerOwnership, error) {
+	var r brokerPeerReceipt
+	if len(raw) > 4096 || identity.Decode(raw, &r, true) != nil {
+		return netbirdapi.PeerOwnership{}, ErrUnavailable
+	}
+	registered, e := time.Parse(time.RFC3339Nano, r.RegisteredAt)
+	if e != nil {
+		return netbirdapi.PeerOwnership{}, ErrUnavailable
+	}
+	created, e := time.Parse(time.RFC3339Nano, r.CreatedAt)
+	if e != nil {
+		return netbirdapi.PeerOwnership{}, ErrUnavailable
+	}
+	return netbirdapi.PeerOwnership{ResourceID: r.ResourceID, AccountID: r.AccountID, PeerID: r.PeerID, SetupKeyID: r.SetupKeyID, OperationName: r.OperationName, EventID: r.EventID, RegisteredAt: registered, CreatedAt: created}, nil
+}
 
 func (s *Store) BrokerRuntimeRole(ctx context.Context) error {
 	var current, session string
@@ -221,6 +261,9 @@ func (s *Store) finishBroker(ctx context.Context, j *brokerJob, state string, ke
 	expires := j.providerExpires
 	used := j.used
 	if key.ID != "" {
+		if !validBrokerKey(j, key) {
+			return ErrUnavailable
+		}
 		id = key.ID
 		expires = key.Expires.UnixMilli()
 		used = max(used, key.UsedTimes)
@@ -246,6 +289,17 @@ func (s *Store) finishBroker(ctx context.Context, j *brokerJob, state string, ke
 		return ErrConflict
 	}
 	return nil
+}
+
+func validBrokerKey(j *brokerJob, k netbirdapi.SetupKey) bool {
+	if !brokerIdentifier.MatchString(k.ID) || k.Name != "syn443-"+j.operation || k.Type != "one-off" || k.UsageLimit != 1 || k.UsedTimes < j.used || k.UsedTimes > 1 || k.Expires.IsZero() || j.providerID != "" && k.ID != j.providerID || j.providerExpires != 0 && k.Expires.UnixMilli() != j.providerExpires {
+		return false
+	}
+	expected := append([]string(nil), j.scope.Groups...)
+	actual := append([]string(nil), k.Groups...)
+	slices.Sort(expected)
+	slices.Sort(actual)
+	return slices.Equal(expected, actual)
 }
 
 func providerCode(e error) string {
@@ -298,8 +352,11 @@ func (s *Store) RunOverlayBrokerOnce(ctx context.Context, resolver BrokerResolve
 	}
 	if (j.state == "registered" || j.state == "established") && j.retire {
 		raw, err := s.Open(j.peer, brokerAAD(j.device, j.ref, j.version, "peer"))
-		var proof netbirdapi.PeerOwnership
-		if err != nil || identity.Decode(raw, &proof, true) != nil || proof.ResourceID != resource || proof.AccountID != account || proof.SetupKeyID != j.providerID || proof.OperationName != "syn443-"+j.operation {
+		if err != nil {
+			return ErrUnavailable
+		}
+		proof, err := unmarshalBrokerPeer(raw)
+		if err != nil || proof.ResourceID != resource || proof.AccountID != account || proof.SetupKeyID != j.providerID || proof.OperationName != "syn443-"+j.operation {
 			return ErrUnavailable
 		}
 		if err = provider.RevokeVerifiedPeer(ctx, proof); err != nil {
@@ -382,7 +439,10 @@ func (s *Store) RunOverlayBrokerOnce(ctx context.Context, resolver BrokerResolve
 	if err != nil {
 		return s.finishBroker(ctx, j, "disabled", key, nil, providerCode(err), current())
 	}
-	raw, err := json.Marshal(proof)
+	if proof.ResourceID != resource || proof.AccountID != account || proof.SetupKeyID != j.providerID || proof.OperationName != "syn443-"+j.operation {
+		return ErrUnavailable
+	}
+	raw, err := marshalBrokerPeer(proof)
 	if err != nil {
 		return ErrUnavailable
 	}
@@ -396,6 +456,33 @@ func brokerRetryState(j *brokerJob) string {
 		return "uncertain"
 	}
 	return j.state
+}
+
+// Called only after current signed policy/session verification. The API has
+// column-level metadata access, never scope/secret/provider mutation authority.
+// A currently addressed but no-longer-deliverable key is a credential conflict,
+// not proof that the ordinary device session/base policy has been revoked.
+func (s *Store) overlayBrokerPending(ctx context.Context, tx *sql.Tx, a DeviceAuthority, permit overlay.CredentialBinding, r OverlayRequest, now time.Time) error {
+	if !s.OverlayBrokerPending {
+		return ErrDenied
+	}
+	var owner, jkt, namespace, grant, state string
+	var epoch, deadline int64
+	var retire bool
+	e := tx.QueryRowContext(ctx, `SELECT owner,jkt,namespace,security_epoch,grant_hash,deadline_ms,state,retire FROM identity_overlay_broker WHERE device=$1 AND reference=$2 AND version=$3`, a.Binding.Device, r.Reference, r.Version).Scan(&owner, &jkt, &namespace, &epoch, &grant, &deadline, &state, &retire)
+	if errors.Is(e, sql.ErrNoRows) {
+		return ErrDenied
+	}
+	if e != nil {
+		return ErrUnavailable
+	}
+	if owner != a.Binding.Owner || jkt != a.Binding.Jkt || namespace != r.Namespace || epoch != permit.SecurityEpoch || grant != a.GrantHash {
+		return ErrDenied
+	}
+	if retire || deadline <= now.UnixMilli() || state != "queued" && state != "dispatched" && state != "uncertain" && state != "issued" {
+		return ErrConflict
+	}
+	return ErrPending
 }
 
 // InstallReadyOverlayBroker wraps a worker-produced value only in the
