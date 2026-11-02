@@ -106,13 +106,19 @@ func ConfigurationRuntimeRole(ctx context.Context, db *sql.DB, publisher bool) e
 	}
 	for _, table := range []string{"managed_configuration_previews", "managed_configuration_versions", "managed_configuration_heads"} {
 		var read, insert, update, remove bool
-		if e := db.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,$1::text,'SELECT'),has_table_privilege(current_user,$1::text,'INSERT'),has_any_column_privilege(current_user,$1::text,'UPDATE'),has_table_privilege(current_user,$1::text,'DELETE')`, table).Scan(&read, &insert, &update, &remove); e != nil || !read || remove || insert != publisher || update != (publisher && table == "managed_configuration_heads") {
+		if e := db.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,$1::text,'SELECT'),has_any_column_privilege(current_user,$1::text,'INSERT'),has_any_column_privilege(current_user,$1::text,'UPDATE'),has_table_privilege(current_user,$1::text,'DELETE')`, table).Scan(&read, &insert, &update, &remove); e != nil || !read || remove || insert != publisher || update != (publisher && table == "managed_configuration_heads") {
 			return enrollment.ErrDenied
 		}
 	}
 	var insertRequest, updateRequest, mutableReceipt, insertState bool
 	if e := db.QueryRowContext(ctx, `SELECT has_any_column_privilege(current_user,'managed_configuration_requests','INSERT'),has_any_column_privilege(current_user,'managed_configuration_requests','UPDATE'),has_column_privilege(current_user,'managed_configuration_requests','receipt','UPDATE'),has_column_privilege(current_user,'managed_configuration_requests','state','INSERT')`).Scan(&insertRequest, &updateRequest, &mutableReceipt, &insertState); e != nil || insertRequest == publisher || updateRequest != publisher || mutableReceipt || insertState {
 		return enrollment.ErrDenied
+	}
+	for _, table := range []string{"managed_configuration_layer_versions", "managed_configuration_layer_heads", "managed_configuration_assignments"} {
+		var read, insert, update, remove bool
+		if e := db.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,$1::text,'SELECT'),has_any_column_privilege(current_user,$1::text,'INSERT'),has_any_column_privilege(current_user,$1::text,'UPDATE'),has_table_privilege(current_user,$1::text,'DELETE')`, table).Scan(&read, &insert, &update, &remove); e != nil || !read || insert != publisher || update != (publisher && table != "managed_configuration_layer_versions") || remove != (publisher && table == "managed_configuration_assignments") {
+			return enrollment.ErrDenied
+		}
 	}
 	return nil
 }

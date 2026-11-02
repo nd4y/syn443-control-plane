@@ -65,3 +65,36 @@ BEGIN
 END; $$;
 DROP TRIGGER IF EXISTS managed_configuration_head_guard ON managed_configuration_heads;
 CREATE TRIGGER managed_configuration_head_guard BEFORE UPDATE ON managed_configuration_heads FOR EACH ROW EXECUTE FUNCTION managed_configuration_head_invariants();
+
+-- Shared layers keep one immutable history across all device configuration
+-- snapshots. Membership is committed with an approved configuration version;
+-- neither caller-supplied group names nor mutable API drafts create membership.
+CREATE TABLE IF NOT EXISTS managed_configuration_layer_versions(
+ kind text NOT NULL CHECK(kind IN('template','group','user','device','local')),
+ id text NOT NULL,revision bigint NOT NULL CHECK(revision BETWEEN 1 AND 9007199254740991),
+ body_hash text NOT NULL,body bytea NOT NULL,actor text NOT NULL,
+ preview text NOT NULL REFERENCES managed_configuration_previews(id),approved_at_ms bigint NOT NULL,
+ PRIMARY KEY(kind,id,revision),UNIQUE(kind,id,revision,body_hash),CHECK(octet_length(body) BETWEEN 29 AND 262172)
+);
+CREATE TABLE IF NOT EXISTS managed_configuration_layer_heads(
+ kind text NOT NULL,id text NOT NULL,revision bigint NOT NULL,body_hash text NOT NULL,
+ PRIMARY KEY(kind,id),FOREIGN KEY(kind,id,revision,body_hash) REFERENCES managed_configuration_layer_versions(kind,id,revision,body_hash)
+);
+CREATE TABLE IF NOT EXISTS managed_configuration_assignments(
+ device text NOT NULL,position integer NOT NULL CHECK(position BETWEEN 0 AND 19),
+ kind text NOT NULL,id text NOT NULL,revision bigint NOT NULL,body_hash text NOT NULL,
+ configuration_revision bigint NOT NULL,
+ PRIMARY KEY(device,position),UNIQUE(device,kind,id),
+ FOREIGN KEY(device,configuration_revision) REFERENCES managed_configuration_versions(device,revision),
+ FOREIGN KEY(kind,id,revision,body_hash) REFERENCES managed_configuration_layer_versions(kind,id,revision,body_hash)
+);
+DROP TRIGGER IF EXISTS managed_configuration_layer_version_guard ON managed_configuration_layer_versions;
+CREATE TRIGGER managed_configuration_layer_version_guard BEFORE UPDATE OR DELETE ON managed_configuration_layer_versions FOR EACH ROW EXECUTE FUNCTION managed_configuration_immutable();
+CREATE OR REPLACE FUNCTION managed_configuration_layer_head_invariants() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF (NEW.kind,NEW.id) IS DISTINCT FROM (OLD.kind,OLD.id) OR NEW.revision<>OLD.revision+1 THEN
+  RAISE EXCEPTION 'shared configuration layer CAS'; END IF;
+ RETURN NEW;
+END; $$;
+DROP TRIGGER IF EXISTS managed_configuration_layer_head_guard ON managed_configuration_layer_heads;
+CREATE TRIGGER managed_configuration_layer_head_guard BEFORE UPDATE ON managed_configuration_layer_heads FOR EACH ROW EXECUTE FUNCTION managed_configuration_layer_head_invariants();

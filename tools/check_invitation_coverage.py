@@ -31,3 +31,9 @@ assert selected,'Configuration work lease and commit fences'
 value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
 print(f'Configuration work lease and commit fences coverage: {value:.1f}% (minimum80%)')
 assert value>=80
+
+selected=[(count,hits) for location,(count,hits) in blocks.items() if '/internal/deviceprovisioning/layer_catalog.go:' in location]
+assert selected,'Actual configuration recipients and shared layer authority'
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f'Actual configuration recipients and shared layer authority coverage: {value:.1f}% (minimum80%)')
+assert value>=80

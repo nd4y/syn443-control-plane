@@ -278,3 +278,37 @@ lock expiry before effect admission. A separate80% gate covers this new plumbing
 The test SQL marker is explicitly not a signed preview producer: independent
 recipient/layer/source resolution, preview signing, activation, HTTP/BFF/worker
 loop wiring and the full administration/settings scope still require completion.
+
+## Shared layer and recipient authority
+
+The next SQL component keeps immutable encrypted global layer versions, monotonic
+layer heads and publisher-only assignments tied to an approved configuration
+version. Composite foreign keys bind both revision and body hash. An API draft or
+an asserted group name cannot create membership. The runtime role guard rejects
+even unexpected column-level INSERT rights on approval/global tables.
+
+The independent resolver obtains actual live approved devices, their frozen
+enrollment keys/capabilities and current account grants. User impact includes all
+current approved devices; group/template impact comes only from committed current
+assignment rows. Requests cannot omit/add/reorder recipients. Account locks fence
+concurrent user enrollment inserts, and membership changes share a short publisher
+transaction lock. Configuration heads and global layer versions use separate CAS;
+periodic VPN policy renewal alone does not invalidate a configuration preview.
+
+Every referenced layer requires read permission; initial shared-layer creation
+and per-device assignment require their explicit rights. Existing non-target
+parents must match the current immutable body/revision. A higher global revision
+requires the corresponding target, complete recipient impact and exactly the next
+revision. User/device/local layer identities must belong to the actual recipient.
+Complete layer merging still enforces inherited field restrictions. Prepared
+snapshots own their input bytes and repeat identity/grant/head/membership/ACL/time
+and global-version checks in the final transaction; they have no approval method.
+
+Actions exercise real SQL/roles for recipient/parent CAS, shared-body conflicts,
+user/group/template membership, caller mutation, role contamination, missing
+creation/read/assignment rights, source-independent authority changes and explicit
+owner-only ciphertext corruption. A separate80% gate covers the resolver. Tests
+seed approved artifacts/assignment rows as owner fixtures; this does not implement
+the still-required signed preview producer, activation transaction or HTTP/UI
+workflow. Full application settings and automatic defaults for new users/devices
+also remain open.

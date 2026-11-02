@@ -510,7 +510,9 @@
         "internal/catalog/network_draft_test.go",
         "internal/catalog/network_draft_postgres_test.go",
         "internal/deviceprovisioning/network.go",
-        "internal/deviceprovisioning/network_postgres_test.go"
+        "internal/deviceprovisioning/network_postgres_test.go",
+        "docs/layered-configuration.md#shared-layer-and-recipient-authority",
+        "internal/deviceprovisioning/layer_catalog_postgres_test.go"
       ],
       "implementationScope": "Bounded portable layers/graph/DNS/routing/activation, private SQL drafts and independent source-to-publisher composition. Current composition Actions acceptance pending; persistent approvals/assignments, full settings and UI remain open.",
       "remainingScope": "Full supported application settings, persistent layer assignments, independently approved publication and web/mobile editors."
@@ -519,7 +521,10 @@
       "id": "CFG-02",
       "text": "Системные разрешения, приватный ключ идентичности NetBird, ключ устройства, счётчики, кэши и живые результаты проверок являются локальным состоянием, а не переносимым конфигом. Панель задаёт политику их использования и показывает соответствие, но не выдаёт разрешение Android от имени пользователя.",
       "status": "planned",
-      "evidence": []
+      "evidence": [
+        "docs/layered-configuration.md#shared-layer-and-recipient-authority",
+        "internal/deviceprovisioning/layer_catalog_postgres_test.go"
+      ]
     },
     {
       "id": "CFG-03",
@@ -604,7 +609,9 @@
         "docs/enrollment-pilot.md",
         "internal/enrollment/approved_request_postgres_test.go",
         "docs/layered-configuration.md#internal-configuration-work-admission",
-        "internal/deviceprovisioning/layer_work_postgres_test.go"
+        "internal/deviceprovisioning/layer_work_postgres_test.go",
+        "docs/layered-configuration.md#shared-layer-and-recipient-authority",
+        "internal/deviceprovisioning/layer_catalog_postgres_test.go"
       ]
     },
     {
@@ -2253,7 +2260,9 @@
         "docs/implementation-status.md#evidence-index-and-register-semantics",
         "internal/enrollment/approved_request_postgres_test.go",
         "docs/layered-configuration.md#internal-configuration-work-admission",
-        "internal/deviceprovisioning/layer_work_postgres_test.go"
+        "internal/deviceprovisioning/layer_work_postgres_test.go",
+        "docs/layered-configuration.md#shared-layer-and-recipient-authority",
+        "internal/deviceprovisioning/layer_catalog_postgres_test.go"
       ]
     },
     {
