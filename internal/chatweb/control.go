@@ -5,7 +5,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
 
-// This BFF exposes only implemented inventory/private-draft actions. It cannot
+// This BFF exposes only explicitly allowed control actions. It cannot
 // turn a browser draft into publication authority, accept arbitrary upstream
 // paths, or use a support-chat session to access the control audience.
 func validConsoleAction(raw []byte) bool {
@@ -19,7 +19,7 @@ func validConsoleAction(raw []byte) bool {
 		return false
 	}
 	switch request.Action {
-	case "source.list", "source.get", "source.snapshot", "source.shares.get", "source.put", "source.sync", "job.get", "resource.get", "configuration.draft.get", "configuration.draft.put":
+	case "source.list", "source.get", "source.snapshot", "source.shares.get", "source.put", "source.sync", "job.get", "resource.get", "configuration.draft.get", "configuration.draft.put", "configuration.preview.request", "configuration.publish", "configuration.request.get":
 		return true
 	}
 	return false

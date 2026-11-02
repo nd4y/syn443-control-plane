@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nd4y/syn443-control-plane/internal/deviceprovisioning"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"os"
@@ -26,6 +27,12 @@ func run() error {
 		return identity.ErrInvalid
 	}
 	switch os.Args[1] {
+	case "configuration-migrate":
+		_, e = store.DB.ExecContext(ctx, deviceprovisioning.ConfigurationSchema)
+		return e
+	case "configuration-roles":
+		_, e = store.DB.ExecContext(ctx, deviceprovisioning.ConfigurationRoles)
+		return e
 	case "chat-admin":
 		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_CHAT_ADMIN_GRANT"), 8192)
 		if e != nil {

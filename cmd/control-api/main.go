@@ -10,11 +10,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/catalog"
+	"github.com/nd4y/syn443-control-plane/internal/deviceprovisioning"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
@@ -57,6 +59,20 @@ func run() error {
 	api, e := catalog.NewAPI(store, providers, c.Origin, c.AssuranceACR, c.FixtureHTTP)
 	if e != nil {
 		return e
+	}
+	if path := os.Getenv("SYN443_CONFIGURATION_CONFIG"); path != "" {
+		cc, err := deviceprovisioning.ReadConfigurationRuntime(path)
+		if err != nil || cc.ControlOrigin != c.Origin || cc.Issuer != c.Issuer || cc.Audience != c.Audience || cc.AssuranceACR != c.AssuranceACR || !slices.Equal(cc.ClientIDs, c.ClientIDs) || cc.SourceEncryptionKey != c.EncryptionKey {
+			return identity.ErrInvalid
+		}
+		check, cancel := context.WithTimeout(ctx, 5*time.Second)
+		layers, err := cc.LayerStore(check, store.DB, false)
+		cancel()
+		if err != nil {
+			return err
+		}
+		service := &deviceprovisioning.ConfigurationControl{Store: layers, Verifier: providers, Origin: c.Origin, AssuranceACR: c.AssuranceACR}
+		api.Configurations = service.ControlAction
 	}
 	if path := os.Getenv("SYN443_INVITATION_CONFIG"); path != "" {
 		ic, err := invitation.ReadConfig(path, time.Now())

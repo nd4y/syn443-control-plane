@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"regexp"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
@@ -73,6 +75,22 @@ type ConfigurationControl struct {
 
 func (*ConfigurationControl) String() string   { return "ConfigurationControl([redacted])" }
 func (*ConfigurationControl) GoString() string { return "ConfigurationControl([redacted])" }
+
+// Adapter for the catalog HTTP boundary. Internal receipt/SQL details never
+// become response text, and no unknown action gains a generic callback route.
+func (c *ConfigurationControl) ControlAction(ctx context.Context, token, proof string, raw []byte, now time.Time) (any, error) {
+	v, e := c.Dispatch(ctx, token, proof, raw, now)
+	switch {
+	case e == nil:
+		return v, nil
+	case errors.Is(e, enrollment.ErrDenied):
+		return nil, catalog.ErrDenied
+	case errors.Is(e, enrollment.ErrConflict):
+		return nil, catalog.ErrConflict
+	default:
+		return nil, catalog.ErrUnavailable
+	}
+}
 
 type configurationPublishInput struct {
 	PreviewID string `json:"previewId"`

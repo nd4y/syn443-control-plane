@@ -43,3 +43,9 @@ assert selected,'Independent configuration preview and publication producer'
 value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
 print(f'Independent configuration preview and publication producer coverage: {value:.1f}% (minimum80%)')
 assert value>=80
+
+selected=[(count,hits) for location,(count,hits) in blocks.items() if '/internal/deviceprovisioning/layer_runtime.go:' in location]
+assert selected,'Protected configuration runtime composition'
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f'Protected configuration runtime composition coverage: {value:.1f}% (minimum80%)')
+assert value>=80

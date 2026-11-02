@@ -335,5 +335,30 @@ Actions tests cover independently signed preview -> real desired heads -> the
 approved-layer reader/source compiler after the original admin session expires,
 shared updates and unchanged global-row reuse, multi-recipient SQL rollback/retry,
 scope/ACL/recipient/source changes and deadline expiry. This implementation is
-pending its first complete Actions result. HTTP/BFF/worker composition, device
-activation acknowledgements, full settings and editing UI remain required work.
+pending its first complete Actions result. Device activation acknowledgements,
+full settings and editing UI remain required work.
+
+The optional `SYN443_CONFIGURATION_CONFIG` owner-only file enables the closed
+`configuration.preview.request`, `configuration.publish` and
+`configuration.request.get` actions in control-api and the control-audience BFF.
+It contains the matching control origin, issuer, audience, allowed client IDs and
+assurance ACR; distinct layer/source encryption keys; and public preview roots.
+Unknown fields (including provider credentials) are refused. The control API
+never receives the private preview key or an approved-result insertion method.
+
+After installing identity/catalog owner schemas and roles, the owner explicitly
+runs `enrollment-admin configuration-migrate` and `configuration-roles`. Runtime
+processes do not migrate or grant themselves access. Enable the same protected
+configuration in enrollment-worker, which independently verifies the control
+audience, compiles queued work and renews device policies using `SQLNetworkLayers`.
+Only that worker receives `SYN443_CONFIGURATION_SIGNING_KEY_FILE` and
+`SYN443_CONFIGURATION_KEY_ID`; startup checks the matching public root. Ordinary
+device publication runs before a separately bounded administrative step.
+
+This is opt-in for a controlled assignment migration: every participating device
+needs an approved configuration head. Missing/invalid authority fails closed,
+without fallback to the old flat template. Preserve public signing-key history
+and encrypted immutable versions across restarts. `published` means desired
+server heads are committed; the device's activation receipt remains separate.
+HTTP/SQL/role composition and protected runtime parsing have new Actions tests;
+live deployment, activation delivery mapping and editing UI are not implied.

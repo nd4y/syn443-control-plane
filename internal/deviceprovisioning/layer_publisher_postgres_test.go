@@ -149,6 +149,8 @@ func TestConfigurationPublisherRejectsChangedDependenciesACLAndImpact(t *testing
 			case "source":
 				changed := n.source
 				changed.Name = "Changed source metadata"
+				changed.State, changed.AccessState, changed.ActiveSnapshot, changed.CandidateSnapshot = "", "", "", ""
+				changed.LastSync, changed.NextSync, changed.LastResourceRevision = 0, 0, 0
 				if _, e := n.api.PutSource(context.Background(), n.actor, changed, catalog.SecretPatch{Operation: "keep"}, "change-source", n.f.now); e != nil {
 					t.Fatal(e)
 				}

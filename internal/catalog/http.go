@@ -51,6 +51,7 @@ type ExternalAction func(context.Context, string, string, []byte, time.Time) (an
 
 type API struct {
 	Invitations          ExternalAction
+	Configurations       ExternalAction
 	Store                *Store
 	Verifier             Verifier
 	Origin, AssuranceACR string
@@ -226,6 +227,12 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		value, e = a.Invitations(ctx, token, r.Header.Get("DPoP"), raw, now)
+	} else if action.Action == "configuration.preview.request" || action.Action == "configuration.publish" || action.Action == "configuration.request.get" {
+		if a.Configurations == nil {
+			apiFailure(w, ErrDenied)
+			return
+		}
+		value, e = a.Configurations(ctx, token, r.Header.Get("DPoP"), raw, now)
 	} else {
 		value, e = a.dispatch(ctx, actor, action, now)
 	}

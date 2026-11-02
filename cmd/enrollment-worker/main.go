@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/deviceprovisioning"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
@@ -99,6 +100,46 @@ func run() error {
 		invites = &deviceprovisioning.Invitations{Identity: store, Invitations: is, Verification: verification, Grants: p.Grants}
 		p.InvitationApproval = invites
 	}
+	var configurationPublisher *deviceprovisioning.ConfigurationPublisher
+	if path := os.Getenv("SYN443_CONFIGURATION_CONFIG"); path != "" {
+		cc, err := deviceprovisioning.ReadConfigurationRuntime(path)
+		if err != nil || cc.Issuer != c.Issuer {
+			return identity.ErrInvalid
+		}
+		check, cancel := context.WithTimeout(ctx, 10*time.Second)
+		layers, err := cc.LayerStore(check, store.DB, true)
+		if err != nil {
+			cancel()
+			return err
+		}
+		sources, err := cc.SourceStore(check, store.DB)
+		cancel()
+		if err != nil {
+			return err
+		}
+		roots, err := cc.PublicRoots()
+		if err != nil {
+			return err
+		}
+		var admins catalog.VerifierGroup
+		for _, client := range cc.ClientIDs {
+			v, err := identity.NewProvider(ctx, cc.Issuer, cc.Audience, client, nil, c.FixtureHTTP)
+			if err != nil {
+				return err
+			}
+			admins = append(admins, v)
+		}
+		key, err := enrollment.PrivateKey(os.Getenv("SYN443_CONFIGURATION_SIGNING_KEY_FILE"))
+		if err != nil {
+			return err
+		}
+		keyID := os.Getenv("SYN443_CONFIGURATION_KEY_ID")
+		if root := roots[keyID]; root == nil || !root.Equal(&key.PublicKey) {
+			return identity.ErrInvalid
+		}
+		configurationPublisher = &deviceprovisioning.ConfigurationPublisher{Store: layers, Sources: sources, Verifier: admins, Origin: cc.ControlOrigin, AssuranceACR: cc.AssuranceACR, KeyID: keyID, Key: key, Roots: roots}
+		p.Configurations = &deviceprovisioning.NetworkAuthority{Sources: sources, Layers: &deviceprovisioning.SQLNetworkLayers{Store: layers, ControlOrigin: cc.ControlOrigin, Roots: roots}}
+	}
 	for {
 		step, cancel := context.WithTimeout(ctx, 10*time.Second)
 		now, e := store.Now(step, time.Now())
@@ -117,6 +158,20 @@ func run() error {
 			}
 		}
 		cancel()
+		if configurationPublisher != nil && ctx.Err() == nil {
+			// Use a separate deadline AFTER ordinary device publication. Slow or
+			// denied admin work cannot consume the device-renewal transaction's
+			// budget. Parent cancellation still stops both bounded paths.
+			configurationStep, stop := context.WithTimeout(ctx, 10*time.Second)
+			configurationNow, err := store.Now(configurationStep, time.Now())
+			if err == nil {
+				err = configurationPublisher.RunOnce(configurationStep, configurationNow)
+			}
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "configuration_step_unavailable")
+			}
+			stop()
+		}
 		if ctx.Err() != nil {
 			return nil
 		}

@@ -14,13 +14,13 @@ import (
 )
 
 func TestConsoleSourceMutationsRemainInTheClosedActionAllowlist(t *testing.T) {
-	for _, action := range []string{"source.put", "source.sync", "job.get"} {
+	for _, action := range []string{"source.put", "source.sync", "job.get", "configuration.preview.request", "configuration.publish", "configuration.request.get"} {
 		raw := []byte(`{"version":1,"action":"` + action + `","requestId":"synthetic-request-123","payload":{}}`)
 		if !validConsoleAction(raw) {
 			t.Fatal("implemented scoped source action rejected")
 		}
 	}
-	for _, action := range []string{"source.delete", "configuration.publish", "resource.delete", "users.grant", "/v1/admin"} {
+	for _, action := range []string{"source.delete", "configuration.force-apply", "resource.delete", "users.grant", "/v1/admin"} {
 		raw := []byte(`{"version":1,"action":"` + action + `","requestId":"synthetic-request-123","payload":{}}`)
 		if validConsoleAction(raw) {
 			t.Fatal("unimplemented or arbitrary upstream action admitted")
@@ -72,7 +72,7 @@ func TestConsoleUsesSeparateCookieAudienceAndOnlyClosedControlActions(t *testing
 	}
 	for _, bad := range []string{
 		strings.Replace(body, "source.list", "source.delete", 1),
-		strings.Replace(body, "source.list", "configuration.publish", 1),
+		strings.Replace(body, "source.list", "configuration.force-apply", 1),
 		strings.Replace(body, `"version":1`, `"version":2`, 1),
 		strings.Replace(body, `"version":1`, `"version":1,"version":1`, 1),
 		strings.Replace(body, `"requestId":"synthetic-request-123"`, `"requestId":"short"`, 1),
