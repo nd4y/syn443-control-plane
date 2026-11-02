@@ -27,7 +27,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/policy"
 )
 
-var fixtureOwner, fixtureControl, fixtureDevice, fixtureSigner *sql.DB
+var fixtureOwner, fixtureControl, fixtureDevice, fixtureSigner, fixtureSourceWorker *sql.DB
 
 func TestMain(m *testing.M) {
 	u, e := url.Parse(os.Getenv("SYN443_TEST_DATABASE"))
@@ -41,11 +41,10 @@ func TestMain(m *testing.M) {
 	if _, e = fixtureOwner.Exec(enrollment.Schema + "\n" + catalog.Schema + "\n" + invitation.Schema); e != nil {
 		panic(e)
 	}
-	var worker *sql.DB
 	for _, item := range []struct {
 		name   string
 		target **sql.DB
-	}{{"syn443_identity_api", &fixtureDevice}, {"syn443_identity_publisher", &fixtureSigner}, {"syn443_control_api", &fixtureControl}, {"syn443_source_worker", &worker}} {
+	}{{"syn443_identity_api", &fixtureDevice}, {"syn443_identity_publisher", &fixtureSigner}, {"syn443_control_api", &fixtureControl}, {"syn443_source_worker", &fixtureSourceWorker}} {
 		password, _ := random()
 		var statement string
 		var exists bool
@@ -74,7 +73,7 @@ func TestMain(m *testing.M) {
 		panic(e)
 	}
 	code := m.Run()
-	worker.Close()
+	fixtureSourceWorker.Close()
 	fixtureSigner.Close()
 	fixtureDevice.Close()
 	fixtureControl.Close()
@@ -100,7 +99,7 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
-	if _, e := fixtureOwner.Exec(`TRUNCATE managed_invitation_replays,managed_invitations,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations,identity_challenges,identity_sessions,identity_devices,identity_accounts,catalog_acl RESTART IDENTITY CASCADE;UPDATE identity_clock SET second=0 WHERE id=true`); e != nil {
+	if _, e := fixtureOwner.Exec(`TRUNCATE managed_invitation_replays,managed_invitations,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations,identity_challenges,identity_sessions,identity_devices,identity_accounts,catalog_network_drafts,catalog_proofs,catalog_outbox,catalog_audit,catalog_operations,catalog_jobs,catalog_dependencies,catalog_snapshots,catalog_share_heads,catalog_source_grants,catalog_sources,catalog_resources,catalog_acl RESTART IDENTITY CASCADE;UPDATE identity_clock SET second=0 WHERE id=true;UPDATE catalog_clock SET second=0 WHERE id=true`); e != nil {
 		t.Fatal(e)
 	}
 	now := time.Now().UTC().Truncate(time.Second)

@@ -507,9 +507,11 @@
         "internal/configuration/plan_test.go",
         "internal/catalog/network_draft.go",
         "internal/catalog/network_draft_test.go",
-        "internal/catalog/network_draft_postgres_test.go"
+        "internal/catalog/network_draft_postgres_test.go",
+        "internal/deviceprovisioning/network.go",
+        "internal/deviceprovisioning/network_postgres_test.go"
       ],
-      "implementationScope": "Bounded layers/rebase, closed graph/DNS/routing/activation plan and private encrypted SQL draft CAS; current exact Actions acceptance pending.",
+      "implementationScope": "Bounded portable layers/graph/DNS/routing/activation, private SQL drafts and independent source-to-publisher composition. Current composition Actions acceptance pending; persistent approvals/assignments, full settings and UI remain open.",
       "remainingScope": "Full supported application settings, persistent layer assignments, independently approved publication and web/mobile editors."
     },
     {
@@ -565,8 +567,11 @@
         "internal/configuration/network_test.go",
         "internal/enrollment/configuration_authority.go",
         "internal/enrollment/configuration_authority_test.go",
-        "internal/enrollment/configuration_authority_postgres_test.go"
-      ]
+        "internal/enrollment/configuration_authority_postgres_test.go",
+        "internal/deviceprovisioning/network.go",
+        "internal/deviceprovisioning/network_postgres_test.go"
+      ],
+      "implementationScope": "Bounded portable layers/graph/DNS/routing/activation, private SQL drafts and independent source-to-publisher composition. Current composition Actions acceptance pending; persistent approvals/assignments, full settings and UI remain open."
     },
     {
       "id": "PROV-01",

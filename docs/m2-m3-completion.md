@@ -70,3 +70,21 @@ Remaining paths must each add positive, negative, concurrency
 and boundary checks before the corresponding milestone can be accepted. All builds
 and compiled tests execute in GitHub Actions. Private device/operator artifacts
 never become public test fixtures or upload payloads.
+
+## Approved network composition (2026-11-02, acceptance pending)
+
+`deviceprovisioning.NetworkAuthority` composes an independent approved-layer
+reader, the bounded portable compiler and the publisher's role-restricted source
+selection. Actual owner/device/key/grant/base revision/capabilities must match;
+source profiles are deterministically deduplicated and resolved only from
+authorized current snapshots. The prepared lease is capped by both approvals
+and source freshness. Initial and final publication fences recheck immutable
+layer authority and source/share/resource versions in the signing transaction.
+An unavailable authority never falls back to an account template. Approved direct
+configurations still require the same authority and publication role.
+
+Actions runs actual SQL/source-worker/invitation/publisher composition, key-bound
+ES256 output, duplicate profile aliases, foreign/expired/malformed/locked inputs,
+role isolation, revocation, share-head changes and cancellation. This adapter is
+not a persistent approved-layer store: assignments, independent preview/approval
+protocol, administration UI and full settings support remain required for M3.
