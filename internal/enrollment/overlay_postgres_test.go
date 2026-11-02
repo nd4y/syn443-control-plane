@@ -122,6 +122,130 @@ func (o *overlayFixture) publication(t *testing.T, change func(*policy.Payload))
 		t.Fatal(e)
 	}
 }
+
+func overlayReferenceChange(t *testing.T, o *overlayFixture, reference string, version int64, epoch int64) {
+	t.Helper()
+	o.publication(t, func(p *policy.Payload) {
+		raw, e := b64.DecodeString(p.EngineConfigB64)
+		if e != nil {
+			t.Fatal(e)
+		}
+		var document map[string]any
+		if json.Unmarshal(raw, &document) != nil {
+			t.Fatal("fixture network JSON")
+		}
+		managed := document["outbounds"].([]any)[0].(map[string]any)["managed"].(map[string]any)
+		managed["setupReference"], managed["setupVersion"] = reference, version
+		raw, e = json.Marshal(document)
+		if e != nil {
+			t.Fatal(e)
+		}
+		sum := sha256.Sum256(raw)
+		p.EngineConfigB64, p.ContentHash, p.SecurityEpoch = b64.EncodeToString(raw), hex.EncodeToString(sum[:]), epoch
+	})
+}
+func shortOverlayFixture(t *testing.T) *overlayFixture {
+	t.Helper()
+	o := newOverlayFixture(t)
+	c, e := overlay.VerifyCredential(o.envelope, o.api.Roots, o.binding, o.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	c.Reference, c.Version, c.ExpiresMs = random(), 2, o.now.Add(time.Second).UnixMilli()
+	b := o.binding
+	b.Reference, b.Version = c.Reference, c.Version
+	envelope, e := overlay.SignCredential(c, b, "fixture-root", o.key, o.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	tx, e := fixturePublisher.Begin()
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tx.Rollback()
+	if e = o.worker.InstallOverlayGrant(context.Background(), tx, Owner(o.grant.Issuer, o.grant.Subject), b, envelope, o.api.Roots, o.now); e != nil {
+		t.Fatal(e)
+	}
+	if e = tx.Commit(); e != nil {
+		t.Fatal(e)
+	}
+	o.binding, o.envelope = b, envelope
+	o.request.Reference, o.request.Version, o.request.OperationID = b.Reference, b.Version, random()
+	overlayReferenceChange(t, o, b.Reference, b.Version, b.SecurityEpoch)
+	return o
+}
+func TestOverlayExpiredFetchedOperationCanRetireAfterReferenceAndEpochRefresh(t *testing.T) {
+	o := shortOverlayFixture(t)
+	expect(t, o.call(t, false), 200)
+	overlayReferenceChange(t, o, random(), 3, 1)
+	o.fixture.now = o.now.Add(2 * time.Second)
+	o.api.Clock = func() time.Time { return o.now }
+	expect(t, o.call(t, false), 403)
+	for range 2 {
+		r := o.call(t, true)
+		expect(t, r, 200)
+		var reply OverlayReply
+		if identity.Decode(r.Body.Bytes(), &reply, true) != nil || !reply.Consumed || reply.Envelope != "" {
+			t.Fatal("cleanup returned credential material")
+		}
+	}
+	var erased bool
+	if e := fixtureOwner.QueryRow(`SELECT envelope IS NULL FROM identity_overlay_grants WHERE device=$1 AND reference=$2 AND version=$3`, o.session.DeviceID, o.request.Reference, o.request.Version).Scan(&erased); e != nil || !erased {
+		t.Fatal("expired envelope not erased", e)
+	}
+}
+func TestOverlayCleanupStillRequiresCurrentIdentitySessionAndExactFetchedOperation(t *testing.T) {
+	for _, failure := range []string{"account", "device", "session", "namespace", "operation", "capability"} {
+		t.Run(failure, func(t *testing.T) {
+			o := shortOverlayFixture(t)
+			expect(t, o.call(t, false), 200)
+			var e error
+			switch failure {
+			case "account":
+				_, e = fixtureOwner.Exec(`UPDATE identity_accounts SET enabled=false`)
+			case "device":
+				_, e = fixtureOwner.Exec(`UPDATE identity_devices SET active=false`)
+			case "session":
+				_, e = fixtureOwner.Exec(`UPDATE identity_sessions SET active=false`)
+			case "namespace":
+				o.publication(t, func(p *policy.Payload) {
+					raw, _ := b64.DecodeString(p.EngineConfigB64)
+					raw = bytes.Replace(raw, []byte(`"identityEpoch":1`), []byte(`"identityEpoch":2`), 1)
+					sum := sha256.Sum256(raw)
+					p.EngineConfigB64, p.ContentHash = b64.EncodeToString(raw), hex.EncodeToString(sum[:])
+				})
+			case "operation":
+				o.request.OperationID = random()
+			case "capability":
+				o.publication(t, func(p *policy.Payload) {
+					p.RequiredCapabilities = p.RequiredCapabilities[:len(p.RequiredCapabilities)-1]
+				})
+			}
+			if e != nil {
+				t.Fatal(e)
+			}
+			status := 403
+			if failure == "operation" {
+				status = 409
+			}
+			expect(t, o.call(t, true), status)
+			var retained bool
+			if e = fixtureOwner.QueryRow(`SELECT envelope IS NOT NULL FROM identity_overlay_grants WHERE device=$1 AND reference=$2 AND version=$3`, o.session.DeviceID, o.request.Reference, o.request.Version).Scan(&retained); e != nil || !retained {
+				t.Fatal("denied cleanup changed another operation", e)
+			}
+		})
+	}
+}
+func TestOverlayRevokedGrantMayBeErasedButCannotBeFetchedAgain(t *testing.T) {
+	o := newOverlayFixture(t)
+	expect(t, o.call(t, false), 200)
+	if _, e := fixturePublisher.Exec(`UPDATE identity_overlay_grants SET revoked=true WHERE device=$1`, o.session.DeviceID); e != nil {
+		t.Fatal(e)
+	}
+	expect(t, o.call(t, false), 403)
+	expect(t, o.call(t, true), 200)
+	expect(t, o.call(t, true), 200)
+}
 func TestOverlayDeliveryRetryConsumptionAndSeparateRuntimeRoles(t *testing.T) {
 	o := newOverlayFixture(t)
 	for i := 0; i < 2; i++ {

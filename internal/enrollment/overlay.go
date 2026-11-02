@@ -59,7 +59,7 @@ func overlayOwner(service, issuer, subject string) string {
 
 // Only the current approved, key-bound policy authorizes delivery. SQL ready
 // flags or request-supplied identity fields are never enough.
-func (s *Store) overlayPermission(ctx context.Context, tx *sql.Tx, a DeviceAuthority, service string, roots map[string]*ecdsa.PublicKey, r OverlayRequest, now time.Time) (overlay.CredentialBinding, error) {
+func (s *Store) overlayPermission(ctx context.Context, tx *sql.Tx, a DeviceAuthority, service string, roots map[string]*ecdsa.PublicKey, r OverlayRequest, cleanup bool, now time.Time) (overlay.CredentialBinding, error) {
 	var b overlay.CredentialBinding
 	var raw []byte
 	var revision int64
@@ -125,12 +125,12 @@ func (s *Store) overlayPermission(ctx context.Context, tx *sql.Tx, a DeviceAutho
 		if e != nil || !overlayDigest(m.SetupReference) || m.SetupVersion < 1 || m.SetupVersion > 9007199254740991 {
 			return b, ErrUnavailable
 		}
-		if namespace == r.Namespace && m.SetupReference == r.Reference && m.SetupVersion == r.Version {
+		if namespace == r.Namespace && (cleanup || m.SetupReference == r.Reference && m.SetupVersion == r.Version) {
 			if found {
 				return b, ErrUnavailable
 			}
 			found = true
-			b = overlay.CredentialBinding{Address: address, KeyThumbprint: a.Binding.Jkt, Reference: m.SetupReference, Version: m.SetupVersion, SecurityEpoch: p.SecurityEpoch, OfflineUntilMs: min(p.OfflineUntilMs, a.AccountUntilMs)}
+			b = overlay.CredentialBinding{Address: address, KeyThumbprint: a.Binding.Jkt, Reference: r.Reference, Version: r.Version, SecurityEpoch: p.SecurityEpoch, OfflineUntilMs: min(p.OfflineUntilMs, a.AccountUntilMs)}
 		}
 	}
 	if !found {
@@ -189,7 +189,7 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 	}
 	value, e := s.WithDeviceSession(ctx, b, token, proof, now, func(ctx context.Context, tx *sql.Tx, a DeviceAuthority) (DeviceResult, error) {
 		current := now.Add(time.Since(started))
-		permit, e := s.overlayPermission(ctx, tx, a, service, roots, request, current)
+		permit, e := s.overlayPermission(ctx, tx, a, service, roots, request, consume, current)
 		if e != nil {
 			return DeviceResult{}, e
 		}
@@ -204,7 +204,7 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 		if e != nil {
 			return DeviceResult{}, e
 		}
-		if owner != a.Binding.Owner || jkt != a.Binding.Jkt || namespace != request.Namespace || epoch != permit.SecurityEpoch || revoked || expires <= current.UnixMilli() {
+		if owner != a.Binding.Owner || jkt != a.Binding.Jkt || namespace != request.Namespace || epoch > permit.SecurityEpoch || !consume && (epoch != permit.SecurityEpoch || revoked || expires <= current.UnixMilli()) {
 			return DeviceResult{}, ErrDenied
 		}
 		var operation, bodyHash string
@@ -231,9 +231,25 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 			return DeviceResult{}, ErrConflict
 		}
 		until := min(permit.OfflineUntilMs, expires)
+		// Consumption only retires an already-fetched immutable operation. Its
+		// secret is never returned or reused. A current permission for the same
+		// namespace can therefore acknowledge it after key expiry/reference or
+		// security-epoch refresh; fetch retains every exact version/time fence.
+		if consume {
+			until = permit.OfflineUntilMs
+		}
 		if consumed.Valid {
 			if !consume {
 				return DeviceResult{}, ErrDenied
+			}
+			return DeviceResult{OverlayReply{Consumed: true}, until}, nil
+		}
+		if consume {
+			if _, e = tx.ExecContext(ctx, `UPDATE identity_overlay_deliveries SET consumed_ms=$4 WHERE device=$1 AND reference=$2 AND version=$3`, b.Device, request.Reference, request.Version, current.UnixMilli()); e != nil {
+				return DeviceResult{}, e
+			}
+			if _, e = tx.ExecContext(ctx, `UPDATE identity_overlay_grants SET envelope=NULL WHERE device=$1 AND reference=$2 AND version=$3`, b.Device, request.Reference, request.Version); e != nil {
+				return DeviceResult{}, e
 			}
 			return DeviceResult{OverlayReply{Consumed: true}, until}, nil
 		}
@@ -246,15 +262,6 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 		}
 		if _, e = overlay.VerifyCredential(string(envelope), roots, permit, now.Add(time.Since(started))); e != nil {
 			return DeviceResult{}, ErrUnavailable
-		}
-		if consume {
-			if _, e = tx.ExecContext(ctx, `UPDATE identity_overlay_deliveries SET consumed_ms=$4 WHERE device=$1 AND reference=$2 AND version=$3`, b.Device, request.Reference, request.Version, current.UnixMilli()); e != nil {
-				return DeviceResult{}, e
-			}
-			if _, e = tx.ExecContext(ctx, `UPDATE identity_overlay_grants SET envelope=NULL WHERE device=$1 AND reference=$2 AND version=$3`, b.Device, request.Reference, request.Version); e != nil {
-				return DeviceResult{}, e
-			}
-			return DeviceResult{OverlayReply{Consumed: true}, until}, nil
 		}
 		return DeviceResult{OverlayReply{Envelope: string(envelope)}, until}, nil
 	})

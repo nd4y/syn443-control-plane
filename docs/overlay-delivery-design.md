@@ -49,7 +49,7 @@ the same protected operation/body and receives the same grant while permitted.
 A different operation cannot silently start another SDK enrollment. The request
 binds the stable reference/version/namespace, not a physical network, transport
 mode or refresh-only config revision; a direct/VLESS change must not break a
-pending enrollment. The latest authorized policy must still reference it.
+pending enrollment. Fetch requires the latest authorized policy to reference that exact version.
 Consumption acknowledgment is idempotent and returns no secret. After consumption
 or expiry the API cannot return the value. Denial, transient outage, nonce change,
 conflict and expiration are distinct fixed error states without protected values.
@@ -124,3 +124,28 @@ and erase values but cannot change addressed scope, revive or replace envelopes.
 `InstallOverlayGrant` must run inside the independent publisher's final fenced
 assignment transaction. Wiring provider enrollment and this issuer into the new
 configuration compiler remains open. The API has no signing private key.
+
+## Cleanup after a reference/lease refresh (acceptance pending)
+
+Fetch still requires the exact current signed setup reference/version/security
+epoch, an unrevoked and unexpired grant, independent envelope verification and
+the final conservative time fence. Cleanup never grants another use or returns
+a credential. An already-fetched immutable operation may now acknowledge erasure
+after its setup value expires or the current signed policy changes its reference
+or advances its security epoch, while authorizing the same namespace and device key.
+The current account, session, signed policy/capability and namespace remain
+mandatory; an older policy cannot retire a grant from a future security epoch.
+
+Only the exact existing operation/body can transition to consumed. Unknown
+operations, another identity/device/key, withdrawn capability and revoked account
+or session still fail. A revoked setup grant can be erased; it cannot be fetched.
+The acknowledgment deadline uses the current signed authorization/session, never
+the expired setup value. Erasure remains irreversible and idempotent and is
+withheld until SQL commit. The server acknowledgment is not evidence of SDK
+registration; the client must independently persist its native proof first.
+
+New PostgreSQL cases use a separately signed one-second grant, not clock sleeps,
+and check expired consumption/retry after reference+epoch refresh, no refetch,
+protected-envelope erasure and current-scope rejection. Exact Actions acceptance
+is pending. Android still needs its full preparation/materialization/proof/ack
+integration before advertising the managed overlay capability.
