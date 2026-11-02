@@ -91,7 +91,7 @@ func (w *keyWire) UnmarshalJSON(raw []byte) error {
 	if json.Unmarshal(raw, &fields) != nil || fields == nil {
 		return failure("invalid_response", false)
 	}
-	for _, name := range []string{"id", "name", "expires", "valid", "revoked", "used_times", "auto_groups"} {
+	for _, name := range []string{"id", "name", "type", "expires", "valid", "revoked", "used_times", "usage_limit", "auto_groups"} {
 		v, ok := fields[name]
 		if !ok || bytes.Equal(bytes.TrimSpace(v), []byte("null")) {
 			return failure("invalid_response", false)
@@ -110,6 +110,9 @@ func (w *keyWire) UnmarshalJSON(raw []byte) error {
 // Get/list intentionally discard the provider's key or key mask.
 type SetupKey struct {
 	ID, Name       string
+	Type           string
+	UsageLimit     int64
+	Groups         []string
 	Expires        time.Time
 	UsedTimes      int64
 	Valid, Revoked bool
@@ -265,10 +268,89 @@ func (c *Client) account(ctx context.Context) error {
 	return nil
 }
 func metadata(w keyWire) (SetupKey, error) {
-	if !identifier.MatchString(string(w.ID)) || len(w.Name) < 1 || len(w.Name) > 128 || w.Expires.IsZero() || w.UsedTimes < 0 || w.UsedTimes > 9007199254740991 || len(w.Groups) > 16 {
+	if !identifier.MatchString(string(w.ID)) || len(w.Name) < 1 || len(w.Name) > 128 || w.Expires.IsZero() || w.UsedTimes < 0 || w.UsedTimes > 9007199254740991 || w.UsageLimit < 0 || w.UsageLimit > 9007199254740991 || w.Type != "one-off" && w.Type != "reusable" || len(w.Groups) > 16 {
 		return SetupKey{}, failure("invalid_response", false)
 	}
-	return SetupKey{ID: string(w.ID), Name: w.Name, Expires: w.Expires, UsedTimes: w.UsedTimes, Valid: w.Valid, Revoked: w.Revoked}, nil
+	seen := map[string]bool{}
+	for _, group := range w.Groups {
+		if !identifier.MatchString(group) || seen[group] {
+			return SetupKey{}, failure("invalid_response", false)
+		}
+		seen[group] = true
+	}
+	if w.Revoked && w.Valid {
+		return SetupKey{}, failure("invalid_response", false)
+	}
+	return SetupKey{ID: string(w.ID), Name: w.Name, Type: w.Type, UsageLimit: w.UsageLimit, Groups: append([]string{}, w.Groups...), Expires: w.Expires, UsedTimes: w.UsedTimes, Valid: w.Valid, Revoked: w.Revoked}, nil
+}
+
+// Caller has admitted the operation and verified the current resource account.
+func (c *Client) readOwned(ctx context.Context, name, id string) (keyWire, SetupKey, error) {
+	var wire keyWire
+	if e := c.request(ctx, "GET", "/api/setup-keys/"+id, nil, &wire); e != nil {
+		return wire, SetupKey{}, e
+	}
+	m, e := metadata(wire)
+	if e != nil || m.ID != id || m.Name != name {
+		return wire, SetupKey{}, failure("ownership_mismatch", false)
+	}
+	return wire, m, nil
+}
+
+func (c *Client) InspectOwned(ctx context.Context, tag, id string) (SetupKey, error) {
+	name, e := operationName(tag)
+	if e != nil || !identifier.MatchString(id) {
+		return SetupKey{}, failure("invalid_operation", false)
+	}
+	ctx, done, e := c.begin(ctx)
+	if e != nil {
+		return SetupKey{}, e
+	}
+	defer done()
+	if e = c.account(ctx); e != nil {
+		return SetupKey{}, e
+	}
+	_, m, e := c.readOwned(ctx, name, id)
+	return m, e
+}
+
+// DisableOwned preserves usage evidence. A broker must disable and inspect the
+// retained key before deciding whether enrollment was used/unknown; deletion by
+// itself destroys that counter and cannot prove an identity is unregistered.
+func (c *Client) DisableOwned(ctx context.Context, tag, id string) (SetupKey, error) {
+	name, e := operationName(tag)
+	if e != nil || !identifier.MatchString(id) {
+		return SetupKey{}, failure("invalid_operation", false)
+	}
+	ctx, done, e := c.begin(ctx)
+	if e != nil {
+		return SetupKey{}, e
+	}
+	defer done()
+	if e = c.account(ctx); e != nil {
+		return SetupKey{}, e
+	}
+	old, m, e := c.readOwned(ctx, name, id)
+	if e != nil {
+		return SetupKey{}, e
+	}
+	if m.Revoked {
+		return m, nil
+	}
+	body, _ := json.Marshal(map[string]any{"revoked": true, "auto_groups": old.Groups})
+	var wire keyWire
+	if e = c.request(ctx, "PUT", "/api/setup-keys/"+id, body, &wire); e != nil {
+		return SetupKey{}, e
+	}
+	current, e := metadata(wire)
+	beforeGroups := append([]string{}, m.Groups...)
+	afterGroups := append([]string{}, current.Groups...)
+	slices.Sort(beforeGroups)
+	slices.Sort(afterGroups)
+	if e != nil || current.ID != id || current.Name != name || !current.Revoked || current.Valid || current.UsedTimes < m.UsedTimes || current.Type != m.Type || current.UsageLimit != m.UsageLimit || !current.Expires.Equal(m.Expires) || !slices.Equal(afterGroups, beforeGroups) {
+		return SetupKey{}, failure("revocation_response_mismatch", true)
+	}
+	return current, nil
 }
 
 // CreateOneOff is deliberately one attempt. The broker must first persist a

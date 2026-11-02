@@ -673,7 +673,7 @@
         "internal/netbirdapi/client.go",
         "internal/netbirdapi/client_test.go"
       ],
-      "implementationScope": "Addressed overlay credentials/namespace delivery plus bounded NetBird single-account management API adapter; current new adapter Actions acceptance pending.",
+      "implementationScope": "Addressed overlay credentials/namespace delivery plus bounded NetBird single-account management API adapter; initial adapter Actions41449596701 all8 PASS; newer disable/readback extension pending.",
       "remainingScope": "Durable setup-key broker/revocation jobs, managed resource/UI wiring, interrupted-registration keyless recovery, provider reconciliation and real Cloud/device acceptance."
     },
     {
@@ -686,7 +686,7 @@
         "internal/netbirdapi/client.go",
         "internal/netbirdapi/client_test.go"
       ],
-      "implementationScope": "Addressed overlay credentials/namespace delivery plus bounded NetBird single-account management API adapter; current new adapter Actions acceptance pending.",
+      "implementationScope": "Addressed overlay credentials/namespace delivery plus bounded NetBird single-account management API adapter; initial adapter Actions41449596701 all8 PASS; newer disable/readback extension pending.",
       "remainingScope": "Durable setup-key broker/revocation jobs, managed resource/UI wiring, interrupted-registration keyless recovery, provider reconciliation and real Cloud/device acceptance."
     },
     {
@@ -1535,7 +1535,7 @@
         "internal/chatweb/assets/control/app.js",
         "web-tests/control.spec.js"
       ],
-      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Current console Actions acceptance pending.",
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
       "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
     },
     {
@@ -1549,7 +1549,7 @@
         "internal/chatweb/assets/control/app.js",
         "web-tests/control.spec.js"
       ],
-      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Current console Actions acceptance pending.",
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
       "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
     },
     {
@@ -1563,7 +1563,7 @@
         "internal/chatweb/assets/control/app.js",
         "web-tests/control.spec.js"
       ],
-      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Current console Actions acceptance pending.",
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
       "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
     },
     {

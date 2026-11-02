@@ -38,7 +38,7 @@ Actions runs Go OAuth/DPoP/cookie/scope/path/CSRF/size/nonce checks, existing ac
 SQL draft tests, and Chromium source metadata/XSS, draft save/readback, lost reply,
 invalid plan, role withdrawal/logout/expiry and phone-width/dark-theme cases.
 All nine existing and new browser cases must appear and pass without skips.
-Current new console acceptance is pending until its exact Actions run passes.
+The initial console passed all eight mandatory jobs at10da9cb6d384c641fea514de199ed9457cee6f5a, [Actions41447469608](https://github.com/nd4y/syn443-control-plane/actions/runs/41447469608), including all nine required browser outcomes without skips.
 
 Independent signed preview/approval/publication, assignments and users/groups,
 source/resource mutations, three-way conflict editing, full application settings,

@@ -15,6 +15,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -391,5 +392,120 @@ func TestCloseCancelsBoundedReadersAndMutationBodyCancellationRemainsUnknown(t *
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("body read ignored cancellation")
+	}
+}
+
+func TestDisablePreservesUsageCounterAndInspectsIdentityWithoutReturningASecret(t *testing.T) {
+	key := keyExample()
+	var mu sync.Mutex
+	var puts atomic.Int32
+	c, _, _ := fixture(t, func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		if r.URL.Path == "/api/accounts" {
+			writeJSON(w, []map[string]string{{"id": "account-a"}})
+			return
+		}
+		if r.Method == "GET" {
+			writeJSON(w, key)
+			return
+		}
+		if r.Method != "PUT" {
+			t.Error("revocation must preserve provider record")
+			w.WriteHeader(400)
+			return
+		}
+		puts.Add(1)
+		var body struct {
+			Revoked bool     `json:"revoked"`
+			Groups  []string `json:"auto_groups"`
+		}
+		if json.NewDecoder(r.Body).Decode(&body) != nil || !body.Revoked || len(body.Groups) != 1 || body.Groups[0] != "group-a" {
+			t.Error("unsafe revocation")
+			w.WriteHeader(400)
+			return
+		}
+		// Registration may win between the initial read and revocation. Preserve
+		// that evidence instead of interpreting deletion as zero registrations.
+		key.Revoked = true
+		key.Valid = false
+		key.UsedTimes = 1
+		writeJSON(w, key)
+	})
+	for i := 0; i < 2; i++ {
+		meta, e := c.DisableOwned(context.Background(), tag(), "key-a")
+		if e != nil || !meta.Revoked || meta.UsedTimes != 1 || meta.Secret != "" || meta.Type != "one-off" || meta.UsageLimit != 1 {
+			t.Fatal("usage evidence lost", e)
+		}
+	}
+	meta, e := c.InspectOwned(context.Background(), tag(), "key-a")
+	if e != nil || !meta.Revoked || meta.UsedTimes != 1 || meta.Secret != "" || puts.Load() != 1 {
+		t.Fatal("idempotent readback/secret boundary", e)
+	}
+}
+
+func TestDisableUnknownOrMismatchingResponseCannotProveUnusedRegistration(t *testing.T) {
+	for _, scenario := range []string{"lost-reply", "not-revoked", "count-decrease", "changed-id", "changed-name", "changed-groups", "changed-expiry", "foreign-before"} {
+		t.Run(scenario, func(t *testing.T) {
+			var puts atomic.Int32
+			c, _, _ := fixture(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/api/accounts" {
+					writeJSON(w, []map[string]string{{"id": "account-a"}})
+					return
+				}
+				key := keyExample()
+				key.UsedTimes = 1
+				if r.Method == "GET" {
+					if scenario == "foreign-before" {
+						key.Name = "foreign"
+					}
+					writeJSON(w, key)
+					return
+				}
+				puts.Add(1)
+				key.Revoked = true
+				key.Valid = false
+				switch scenario {
+				case "lost-reply":
+					conn, _, e := w.(http.Hijacker).Hijack()
+					if e != nil {
+						t.Error(e)
+						return
+					}
+					conn.Close()
+					return
+				case "not-revoked":
+					key.Revoked = false
+				case "count-decrease":
+					key.UsedTimes = 0
+				case "changed-id":
+					key.ID = "foreign-key"
+				case "changed-name":
+					key.Name = "foreign"
+				case "changed-groups":
+					key.Groups = []string{"foreign"}
+				case "changed-expiry":
+					key.Expires = key.Expires.Add(time.Hour)
+				}
+				writeJSON(w, key)
+			})
+			m, e := c.DisableOwned(context.Background(), tag(), "key-a")
+			wantError(t, e, scenario != "foreign-before")
+			want := int32(1)
+			if scenario == "foreign-before" {
+				want = 0
+			}
+			if m.ID != "" || m.Secret != "" || puts.Load() != want {
+				t.Fatal("uncertain revocation accepted or retried")
+			}
+		})
+	}
+	c, _, calls := fixture(t, nil)
+	_, e := c.DisableOwned(context.Background(), tag(), "../foreign")
+	wantError(t, e, false)
+	_, e = c.InspectOwned(context.Background(), "invalid", "key-a")
+	wantError(t, e, false)
+	if calls.Load() != 0 {
+		t.Fatal("invalid revocation reached provider")
 	}
 }
