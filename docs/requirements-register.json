@@ -498,8 +498,12 @@
     {
       "id": "CFG-01",
       "text": "Полная конфигурация включает профили, источники, цепочки, селекторы, маршруты, DNS, правила приложений, сетевые режимы, домашние сети, проверки, поведение отказов, телеметрию, логи, UI-права, обновления и разрешённые локальные переопределения. Обязательны также route graph/templates, профили проверки отдельных маршрутов, decision policy, условия circuit breaker/истории, бюджеты поиска и назначения версий алгоритма по cohort.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/layered-configuration.md",
+        "internal/configuration/network.go",
+        "internal/configuration/network_test.go"
+      ]
     },
     {
       "id": "CFG-02",
@@ -543,8 +547,12 @@
     {
       "id": "CFG-06",
       "text": "Публикуется неизменяемая ревизия эффективного конфига для устройства. Она не содержит чужих профилей и URL исходных подписок, если устройству не требуется собственная загрузка. Собственный конфиг клиента не зависит от формата выдачи Remnawave и версии её API.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/layered-configuration.md",
+        "internal/configuration/network.go",
+        "internal/configuration/network_test.go"
+      ]
     },
     {
       "id": "PROV-01",

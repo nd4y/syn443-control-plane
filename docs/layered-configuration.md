@@ -52,9 +52,32 @@ incoming prefix. Selected defaults and ordered members are remapped to the clone
 branches; URL-test measures each complete path. A later direct node aliases the
 existing prefix and never discards it for a physical escape. Expanded output
 retains the64-node/four-hop limits, and cached subtrees cannot hide a logical
-dependency depth beyond16. Exact Actions acceptance of the new expansion is pending.
+dependency depth beyond16. The expansion passed all eight required jobs atbee360932c07a7f08e59b6708d1e60e6206b2173, Actions41387722951.
 These capability results describe compiler constraints, not the native interoperability
 acceptance matrix. Routing/DNS emission, full settings persistence and independently
 authorized configuration publication remain unfinished. Profile credentials stay
 server-private; diagnostics redact compiled data. Actions positive/negative/boundary
 and fuzz checks retain the existing85% package gate.
+
+## Typed DNS/routing compiler (acceptance pending)
+
+The new portable network component accepts closed version1 fields instead of native
+JSON injection. It emits ordered domain/suffix/keyword/RE2 rules, canonical IPv4/IPv6
+prefixes, Android package names, network/port constraints, explicit reject and
+explicit match-all rules. Route targets must exist and satisfy their required
+TCP/UDP capabilities across every chain/balancer branch. An unspecified route
+network requires both; a TCP-only route must declare that restriction.
+
+DNS servers have bounded local/UDP/TCP/TLS/HTTPS/QUIC/H3 transport parameters and
+explicit outbound references. Hostname bootstrap uses the app's physical resolver,
+not a resolver depending on its own proxy. Unknown transports, insecure TLS flags,
+URLs/queries instead of addresses or DoH paths, reserved identifiers, dangling
+references and unsupported UDP over TCP-only hops fail before emission. DNS rules
+retain ordered match/query-type semantics; deterministic output is bounded256KiB.
+System DNS remains an explicit policy choice, not a claim of encrypted DNS.
+
+Positive/negative/boundary tests are authored for the existing85% configuration
+package gate. Exact Actions and native parsing/traffic acceptance remain pending.
+This network component does not yet provide the entire portable application-settings
+schema, four-mode runtime selection, persistent layer assignment, independent
+publication or administrative editors. Those M2/M3 requirements remain open.
