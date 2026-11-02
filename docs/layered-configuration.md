@@ -254,3 +254,27 @@ preview/MFA publication, full application settings or the administration UI.
 Locally derived managed-overlay waiting flags are forbidden in prepared publisher
 input, alongside inline keys, SDK paths and namespace overrides. The Android
 identity worker alone may render this fail-closed placeholder for a valid lease.
+
+## Internal configuration work admission
+
+The publisher's private queue plumbing now admits at most4 concurrent20-second
+leases, at most3 attempts and the original180-second administrative deadline.
+It commits the claim before independent OIDC/MFA/DPoP verification. The original
+actor, request/body hash, action, target and accepted time must match; an API
+receipt or queued state is never accepted as approval authority.
+
+A package-private producer transaction repeats live object ACL, original session
+expiry and exact row/lease ownership before and after its SQL effect. Failed,
+cancelled, malformed-result, expired or stolen work rolls back both effect and
+queue result. Actual row-lock waiting counts against the lease. A configuration
+publication receipt is named `published`; activation on Android remains separate.
+Legacy owner-fixture `applied` rows are retained but no new code produces them.
+Work diagnostics redact original receipts and identifiers.
+
+Actions use the actual API queue and restricted publisher role to test original
+receipt tampering, concurrency, lease takeover, bounded retries, ACL withdrawal,
+SQL rollback and cancellation, session expiry during an effect and observed row
+lock expiry before effect admission. A separate80% gate covers this new plumbing.
+The test SQL marker is explicitly not a signed preview producer: independent
+recipient/layer/source resolution, preview signing, activation, HTTP/BFF/worker
+loop wiring and the full administration/settings scope still require completion.

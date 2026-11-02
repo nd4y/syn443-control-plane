@@ -25,3 +25,9 @@ assert selected,'Original configuration request authority'
 value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
 print(f'Original configuration request authority coverage: {value:.1f}% (minimum80%)')
 assert value>=80
+
+selected=[(count,hits) for location,(count,hits) in blocks.items() if '/internal/deviceprovisioning/layer_work.go:' in location]
+assert selected,'Configuration work lease and commit fences'
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f'Configuration work lease and commit fences coverage: {value:.1f}% (minimum80%)')
+assert value>=80

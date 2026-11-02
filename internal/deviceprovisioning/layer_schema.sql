@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS managed_configuration_requests(
  action text NOT NULL CHECK(action IN('configuration.preview.request','configuration.publish')),
  target_kind text NOT NULL CHECK(target_kind IN('template','group','user','device')),target_id text NOT NULL,
  created_ms bigint NOT NULL,deadline_ms bigint NOT NULL,body_hash text NOT NULL,receipt bytea NOT NULL,
- state text NOT NULL DEFAULT 'queued' CHECK(state IN('queued','running','ready','applied','rejected','expired','cancelled')),
+ state text NOT NULL DEFAULT 'queued' CHECK(state IN('queued','running','ready','published','applied','rejected','expired','cancelled')),
  lease text NOT NULL DEFAULT '',lease_until_ms bigint NOT NULL DEFAULT 0,next_ms bigint NOT NULL DEFAULT 0,
  attempts integer NOT NULL DEFAULT 0 CHECK(attempts BETWEEN 0 AND 3),
  error_code text NOT NULL DEFAULT '',result bytea,
@@ -37,11 +37,15 @@ CREATE TABLE IF NOT EXISTS managed_configuration_requests(
  CHECK(octet_length(receipt) BETWEEN 29 AND 524316)
 );
 CREATE INDEX IF NOT EXISTS managed_configuration_due ON managed_configuration_requests(next_ms,lease_until_ms,state);
+-- Retain legacy owner-fixture 'applied' receipts; new publisher code emits only
+-- 'published'. Device activation has its own independent acknowledgement.
+ALTER TABLE managed_configuration_requests DROP CONSTRAINT IF EXISTS managed_configuration_requests_state_check;
+ALTER TABLE managed_configuration_requests ADD CONSTRAINT managed_configuration_requests_state_check CHECK(state IN('queued','running','ready','published','applied','rejected','expired','cancelled'));
 CREATE OR REPLACE FUNCTION managed_configuration_request_invariants() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF (NEW.id,NEW.actor,NEW.request_id,NEW.action,NEW.target_kind,NEW.target_id,NEW.created_ms,NEW.deadline_ms,NEW.body_hash,NEW.receipt)
  IS DISTINCT FROM (OLD.id,OLD.actor,OLD.request_id,OLD.action,OLD.target_kind,OLD.target_id,OLD.created_ms,OLD.deadline_ms,OLD.body_hash,OLD.receipt)
- OR NEW.attempts<OLD.attempts OR OLD.state IN('ready','applied','rejected','expired','cancelled') AND NEW IS DISTINCT FROM OLD THEN
+ OR NEW.attempts<OLD.attempts OR OLD.state IN('ready','published','applied','rejected','expired','cancelled') AND NEW IS DISTINCT FROM OLD THEN
   RAISE EXCEPTION 'immutable configuration request'; END IF;
  RETURN NEW;
 END; $$;
