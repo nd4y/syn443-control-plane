@@ -136,3 +136,27 @@ also runs separate actual API, publisher and provider-worker executables with
 independent SQL roles and TLS management service: pending grant, exactly one POST,
 short-poll addressed delivery and no secret in process diagnostics. This is an
 isolated provider fixture; it does not prove live Cloud registration or SDK traffic.
+
+At`c61ed670db03400662fa4520ab0e9b07c3464c1e` the actual three-process fixture
+passed, but the complete run failed a new positive materializer fixture that
+omitted its activation gate. The next source keeps production validation intact
+and supplies the complete test policy. That run remains unaccepted.
+
+## Obsolete namespace and rollback lease (acceptance pending)
+
+Each reference head tracks the maximum offline permit ever signed for that
+namespace. Ordinary publication extends this bound without rotating its reference.
+A new committed configuration that omits the namespace marks it obsolete, while
+the peer remains available for a permitted previous-config rollback. Readding
+that same namespace before retirement cancels obsolescence and extends its permit.
+The publisher schedules owned provider retirement only after an obsolete head's
+last permit expires. A still-assigned namespace is not retired merely because
+policy refresh is temporarily unavailable. Actual device/account withdrawal
+continues through the separate immediate cleanup intent.
+
+Retired heads cannot return to active state under the same identity epoch. A new
+explicit identity epoch is required; a routine refresh cannot silently reenroll a
+known revoked peer. SQL guards prevent decreasing the last permit or clearing
+retired state. Tests exercise a refreshed rollback lease, removal, the final
+permitted millisecond, retirement and denial of implicit reactivation. The new
+lease columns/fence/scheduler behavior awaits mandatory Actions acceptance.

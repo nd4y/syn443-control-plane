@@ -4,9 +4,11 @@ package enrollment
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -71,7 +73,7 @@ func TestSQLBrokerPolicyReservesReferenceWithPublicationAndDeliversWithoutWaitin
 	if e = p.publish(context.Background(), f.session.DeviceID, f.clock); e != nil {
 		t.Fatal("ordinary policy renewal", e)
 	}
-	if after := currentBrokerHead(t, m, f.request.Namespace); after != head {
+	if after := currentBrokerHead(t, m, f.request.Namespace); !sameBrokerReference(after, head) {
 		t.Fatal("policy refresh changed SDK identity/reference")
 	}
 	var count int
@@ -130,7 +132,7 @@ func TestSQLBrokerPolicyNeverReissuesKnownRegisteredNamespaceOrUnknownCreation(t
 			if e := p.publish(context.Background(), f.session.DeviceID, f.now.Add(6*time.Minute)); e != nil {
 				t.Fatal(e)
 			}
-			if after := currentBrokerHead(t, m, f.request.Namespace); after != before {
+			if after := currentBrokerHead(t, m, f.request.Namespace); !sameBrokerReference(after, before) {
 				t.Fatal("existing or unknown registration silently re-enrolled")
 			}
 		})
@@ -296,8 +298,61 @@ func TestSQLBrokerPolicyRejectsMalformedAndAmbiguousNativeDocumentsBeforeReservi
 	payload.TargetDevice = target.Device
 	payload.KeyThumbprint = target.Thumbprint
 	payload.SecurityEpoch = 0
+	payload.Activation = f.grant.Template.Activation
 	fence, e := m.Prepare(context.Background(), target, f.grant, &payload, f.now)
 	if e != nil || fence == nil || !hasCapability(payload.RequiredCapabilities, "overlay.credentials.v1") {
 		t.Fatal("required overlay capability not materialized", e)
+	}
+}
+
+func TestSQLBrokerObsoleteNamespaceWaitsForLatestRollbackLeaseAndCannotSilentlyReturnAfterRetirement(t *testing.T) {
+	f, p, m := brokerPolicyFixture(t)
+	if e := p.publish(context.Background(), f.session.DeviceID, f.now); e != nil {
+		t.Fatal(e)
+	}
+	first := currentBrokerHead(t, m, f.request.Namespace)
+	if e := p.publish(context.Background(), f.session.DeviceID, f.now.Add(20*time.Second)); e != nil {
+		t.Fatal(e)
+	}
+	extended := currentBrokerHead(t, m, f.request.Namespace)
+	if !sameBrokerReference(first, extended) || extended.permitUntil <= first.permitUntil {
+		t.Fatal("refresh failed to retain identity and extend rollback permit")
+	}
+	managedTemplate := f.grant.Template
+	engine := []byte(`{"outbounds":[{"type":"direct","tag":"direct"}],"route":{"final":"direct"}}`)
+	hash := sha256.Sum256(engine)
+	f.grant.Template.EngineConfigB64 = base64.RawURLEncoding.EncodeToString(engine)
+	f.grant.Template.ContentHash = fmt.Sprintf("%x", hash)
+	if e := Authorize(context.Background(), fixtureOwner, f.grant, f.now); e != nil {
+		t.Fatal(e)
+	}
+	p.Grants = map[string]Grant{Owner(f.grant.Issuer, f.grant.Subject): f.grant}
+	if e := p.publish(context.Background(), f.session.DeviceID, f.now.Add(30*time.Second)); e != nil {
+		t.Fatal(e)
+	}
+	removed := currentBrokerHead(t, m, f.request.Namespace)
+	if !removed.obsolete || removed.retired || removed.permitUntil != extended.permitUntil {
+		t.Fatal("removal retired rollback namespace early")
+	}
+	if e := m.Schedule(context.Background(), time.UnixMilli(extended.permitUntil-1)); e != nil {
+		t.Fatal(e)
+	}
+	var retire bool
+	if e := fixtureOwner.QueryRow(`SELECT retire FROM identity_overlay_broker`).Scan(&retire); e != nil || retire {
+		t.Fatal("rollback peer withdrawn before its last permitted millisecond", e)
+	}
+	if e := m.Schedule(context.Background(), time.UnixMilli(extended.permitUntil)); e != nil {
+		t.Fatal(e)
+	}
+	if e := fixtureOwner.QueryRow(`SELECT retire FROM identity_overlay_broker`).Scan(&retire); e != nil || !retire {
+		t.Fatal("expired obsolete namespace not queued for owned cleanup", e)
+	}
+	f.grant.Template = managedTemplate
+	if e := Authorize(context.Background(), fixtureOwner, f.grant, time.UnixMilli(extended.permitUntil)); e != nil {
+		t.Fatal(e)
+	}
+	p.Grants = map[string]Grant{Owner(f.grant.Issuer, f.grant.Subject): f.grant}
+	if e := p.publish(context.Background(), f.session.DeviceID, time.UnixMilli(extended.permitUntil+1)); e == nil {
+		t.Fatal("retired known namespace silently re-enrolled without new identity epoch")
 	}
 }

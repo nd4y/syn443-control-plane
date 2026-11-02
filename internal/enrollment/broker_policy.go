@@ -68,7 +68,14 @@ func NewBrokerPolicies(store *Store, service string, resources []BrokerPolicyRes
 type brokerPolicyHead struct {
 	namespace, device, owner, jkt, reference string
 	version                                  int64
+	permitUntil                              int64
+	obsolete, retired                        bool
 }
+
+func sameBrokerReference(a, b brokerPolicyHead) bool {
+	return a.namespace == b.namespace && a.device == b.device && a.owner == b.owner && a.jkt == b.jkt && a.reference == b.reference && a.version == b.version
+}
+
 type brokerPolicyChange struct {
 	before  *brokerPolicyHead
 	after   brokerPolicyHead
@@ -76,6 +83,7 @@ type brokerPolicyChange struct {
 	reserve bool
 }
 type brokerPolicyFence struct {
+	device   string
 	policies *BrokerPolicies
 	changes  []brokerPolicyChange
 	until    int64
@@ -103,7 +111,7 @@ func (m *BrokerPolicies) metadata(b BrokerScope) error {
 }
 func (m *BrokerPolicies) readHead(ctx context.Context, namespace string) (*brokerPolicyHead, error) {
 	h := &brokerPolicyHead{namespace: namespace}
-	e := m.store.DB.QueryRowContext(ctx, `SELECT device,owner,jkt,reference,version FROM identity_overlay_reference_heads WHERE namespace=$1`, namespace).Scan(&h.device, &h.owner, &h.jkt, &h.reference, &h.version)
+	e := m.store.DB.QueryRowContext(ctx, `SELECT device,owner,jkt,reference,version,permit_until_ms,obsolete,retired FROM identity_overlay_reference_heads WHERE namespace=$1`, namespace).Scan(&h.device, &h.owner, &h.jkt, &h.reference, &h.version, &h.permitUntil, &h.obsolete, &h.retired)
 	if errors.Is(e, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -154,7 +162,7 @@ func (m *BrokerPolicies) Prepare(ctx context.Context, target ConfigurationTarget
 	if identity.DecodeConfiguration(root["outbounds"], &outbounds) != nil || len(outbounds) < 1 || len(outbounds) > 64 {
 		return nil, identity.ErrInvalid
 	}
-	fence := &brokerPolicyFence{policies: m, until: p.OfflineUntilMs}
+	fence := &brokerPolicyFence{policies: m, until: p.OfflineUntilMs, device: target.Device}
 	for _, outbound := range outbounds {
 		var kind string
 		if json.Unmarshal(outbound["type"], &kind) != nil {
@@ -194,9 +202,9 @@ func (m *BrokerPolicies) Prepare(ctx context.Context, target ConfigurationTarget
 		if e != nil {
 			return nil, e
 		}
-		change := brokerPolicyChange{before: before, after: brokerPolicyHead{namespace: namespace, device: target.Device, owner: target.Owner, jkt: target.Thumbprint, reference: random(), version: 1}, reserve: true}
+		change := brokerPolicyChange{before: before, after: brokerPolicyHead{namespace: namespace, device: target.Device, owner: target.Owner, jkt: target.Thumbprint, reference: random(), version: 1, permitUntil: p.OfflineUntilMs}, reserve: true}
 		if before != nil {
-			if before.device != target.Device || before.owner != target.Owner || before.jkt != target.Thumbprint {
+			if before.retired || before.device != target.Device || before.owner != target.Owner || before.jkt != target.Thumbprint {
 				return nil, ErrDenied
 			}
 			existing, state, used, e := m.readHeadScope(ctx, *before)
@@ -227,7 +235,7 @@ func (m *BrokerPolicies) Prepare(ctx context.Context, target ConfigurationTarget
 		fence.changes = append(fence.changes, change)
 	}
 	if len(fence.changes) == 0 {
-		return nil, nil
+		return fence, nil
 	}
 	root["outbounds"], e = json.Marshal(outbounds)
 	if e != nil {
@@ -259,14 +267,16 @@ func (f *brokerPolicyFence) Lock(ctx context.Context, tx *sql.Tx, now time.Time)
 		}
 		var current brokerPolicyHead
 		current.namespace = c.after.namespace
-		e := tx.QueryRowContext(ctx, `SELECT device,owner,jkt,reference,version FROM identity_overlay_reference_heads WHERE namespace=$1 FOR UPDATE`, current.namespace).Scan(&current.device, &current.owner, &current.jkt, &current.reference, &current.version)
+		e := tx.QueryRowContext(ctx, `SELECT device,owner,jkt,reference,version,permit_until_ms,obsolete,retired FROM identity_overlay_reference_heads WHERE namespace=$1 FOR UPDATE`, current.namespace).Scan(&current.device, &current.owner, &current.jkt, &current.reference, &current.version, &current.permitUntil, &current.obsolete, &current.retired)
 		if errors.Is(e, sql.ErrNoRows) {
 			if c.before != nil {
 				return ErrConflict
 			}
-			_, e = tx.ExecContext(ctx, `INSERT INTO identity_overlay_reference_heads(namespace,device,owner,jkt,reference,version) VALUES($1,$2,$3,$4,$5,$6)`, c.after.namespace, c.after.device, c.after.owner, c.after.jkt, c.after.reference, c.after.version)
-		} else if e == nil && current != c.after {
-			if c.before == nil || current != *c.before {
+			_, e = tx.ExecContext(ctx, `INSERT INTO identity_overlay_reference_heads(namespace,device,owner,jkt,reference,version,permit_until_ms) VALUES($1,$2,$3,$4,$5,$6,$7)`, c.after.namespace, c.after.device, c.after.owner, c.after.jkt, c.after.reference, c.after.version, f.until)
+		} else if e == nil && current.retired {
+			return ErrDenied
+		} else if e == nil && !sameBrokerReference(current, c.after) {
+			if c.before == nil || !sameBrokerReference(current, *c.before) {
 				return ErrConflict
 			}
 			// Renew only a durable cleared/unused result. A registered/unknown record
@@ -287,11 +297,21 @@ func (f *brokerPolicyFence) Lock(ctx context.Context, tx *sql.Tx, now time.Time)
 		if e != nil {
 			return e
 		}
+		if _, e = tx.ExecContext(ctx, `UPDATE identity_overlay_reference_heads SET permit_until_ms=GREATEST(permit_until_ms,$2),obsolete=false WHERE namespace=$1`, c.after.namespace, f.until); e != nil {
+			return e
+		}
 		if c.reserve {
 			if e = f.policies.store.ReserveOverlayBroker(ctx, tx, c.scope, brokerResourcePolicyFence{f.policies, c.scope}, now); e != nil {
 				return e
 			}
 		}
+	}
+	active := []string{}
+	for _, c := range f.changes {
+		active = append(active, c.after.namespace)
+	}
+	if _, e := tx.ExecContext(ctx, `UPDATE identity_overlay_reference_heads SET obsolete=true WHERE device=$1 AND NOT retired AND NOT(namespace=ANY($2::text[]))`, f.device, active); e != nil {
+		return e
 	}
 	return nil
 }
@@ -330,14 +350,28 @@ func (m *BrokerPolicies) Schedule(ctx context.Context, now time.Time) error {
 	if e := m.store.RetireWithdrawnOverlayBrokers(ctx, now); e != nil {
 		return e
 	}
-	_, e := m.store.DB.ExecContext(ctx, `UPDATE identity_devices d SET refresh_after=LEAST(d.refresh_after,$1) FROM identity_overlay_reference_heads h,identity_overlay_broker b WHERE d.id=h.device AND d.active AND b.device=h.device AND b.reference=h.reference AND b.version=h.version AND b.state='cleared' AND b.provider_used=0 AND NOT b.retire AND b.deadline_ms<=$2`, now.Unix(), now.UnixMilli())
+	tx, e := m.store.DB.BeginTx(ctx, nil)
+	if e != nil {
+		return e
+	}
+	defer tx.Rollback()
+	if _, e = tx.ExecContext(ctx, `UPDATE identity_overlay_reference_heads SET retired=true WHERE obsolete AND NOT retired AND permit_until_ms<=$1`, now.UnixMilli()); e != nil {
+		return e
+	}
+	if _, e = tx.ExecContext(ctx, `UPDATE identity_overlay_broker b SET retire=true FROM identity_overlay_reference_heads h WHERE h.namespace=b.namespace AND h.device=b.device AND h.retired AND NOT b.retire`); e != nil {
+		return e
+	}
+	if e = tx.Commit(); e != nil {
+		return e
+	}
+	_, e = m.store.DB.ExecContext(ctx, `UPDATE identity_devices d SET refresh_after=LEAST(d.refresh_after,$1) FROM identity_overlay_reference_heads h,identity_overlay_broker b WHERE d.id=h.device AND d.active AND NOT h.obsolete AND NOT h.retired AND b.device=h.device AND b.reference=h.reference AND b.version=h.version AND b.state='cleared' AND b.provider_used=0 AND NOT b.retire AND b.deadline_ms<=$2`, now.Unix(), now.UnixMilli())
 	return e
 }
 func (m *BrokerPolicies) DeliverReady(ctx context.Context, p *Publisher, roots map[string]*ecdsa.PublicKey, now time.Time) error {
 	if p == nil || p.Store != m.store || p.Key == nil {
 		return ErrDenied
 	}
-	rows, e := m.store.DB.QueryContext(ctx, `SELECT h.namespace,h.device,h.owner,h.jkt,h.reference,h.version FROM identity_overlay_reference_heads h JOIN identity_overlay_broker b ON b.device=h.device AND b.reference=h.reference AND b.version=h.version WHERE b.state='issued' AND NOT b.retire AND b.deadline_ms>$1 AND NOT EXISTS(SELECT 1 FROM identity_overlay_grants g WHERE g.device=b.device AND g.reference=b.reference AND g.version=b.version) ORDER BY b.created_ms,h.device LIMIT 16`, now.UnixMilli())
+	rows, e := m.store.DB.QueryContext(ctx, `SELECT h.namespace,h.device,h.owner,h.jkt,h.reference,h.version FROM identity_overlay_reference_heads h JOIN identity_overlay_broker b ON b.device=h.device AND b.reference=h.reference AND b.version=h.version WHERE NOT h.obsolete AND NOT h.retired AND b.state='issued' AND NOT b.retire AND b.deadline_ms>$1 AND NOT EXISTS(SELECT 1 FROM identity_overlay_grants g WHERE g.device=b.device AND g.reference=b.reference AND g.version=b.version) ORDER BY b.created_ms,h.device LIMIT 16`, now.UnixMilli())
 	if e != nil {
 		return e
 	}

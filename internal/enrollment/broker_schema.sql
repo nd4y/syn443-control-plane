@@ -4,11 +4,14 @@ INSERT INTO identity_overlay_broker_clock VALUES(true,0) ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS identity_overlay_reference_heads(
  namespace text PRIMARY KEY, device text NOT NULL REFERENCES identity_devices(id),
  owner text NOT NULL REFERENCES identity_accounts(owner), jkt text NOT NULL,
- reference text NOT NULL,version bigint NOT NULL CHECK(version BETWEEN 1 AND 9007199254740991)
+ reference text NOT NULL,version bigint NOT NULL CHECK(version BETWEEN 1 AND 9007199254740991),
+ permit_until_ms bigint NOT NULL CHECK(permit_until_ms>0),
+ obsolete boolean NOT NULL DEFAULT false,retired boolean NOT NULL DEFAULT false
 );
 CREATE OR REPLACE FUNCTION identity_overlay_head_invariants() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF (NEW.namespace,NEW.device,NEW.owner,NEW.jkt) IS DISTINCT FROM (OLD.namespace,OLD.device,OLD.owner,OLD.jkt)
+ OR NEW.permit_until_ms<OLD.permit_until_ms OR (OLD.retired AND NOT NEW.retired)
  OR (NEW.reference,NEW.version) IS DISTINCT FROM (OLD.reference,OLD.version) AND (NEW.version<>OLD.version+1 OR NEW.reference=OLD.reference) THEN
  RAISE EXCEPTION 'immutable overlay reference identity'; END IF;
  RETURN NEW;
