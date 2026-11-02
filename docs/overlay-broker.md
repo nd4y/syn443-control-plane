@@ -1,10 +1,17 @@
-# Durable managed-overlay broker (integration and acceptance pending)
+# Durable managed-overlay broker (runtime integration in progress)
 
 `internal/enrollment/broker.go` adds a publisher-reserved SQL journal and a
 separately restricted `syn443_overlay_worker` role. It is not enabled by the
-existing runtime configuration. No live NetBird account is changed by tests.
+existing enrollment runtime configuration. No live NetBird account is changed by tests.
 M2/M3 remain incomplete until resource/policy/scheduler/API/UI/device integration
 and the complete acceptance contract pass.
+
+The SQL broker, role isolation, independently addressed wrapping and opt-in API
+pending/withdrawal paths passed all eight mandatory jobs at
+`8bcde91e02f2351283209a8084ea9a8dbaef7908`,
+[Actions41472655185](https://github.com/nd4y/syn443-control-plane/actions/runs/41472655185),
+including the separate80% broker coverage gate. This is component acceptance;
+the newer worker bootstrap and complete resource/policy/UI wiring remain pending.
 
 The publisher locks the actual SQL account/device, derives the owner tag and
 checks an independent approval/resource fence before reserving an immutable
@@ -47,7 +54,7 @@ late lease callbacks, independent addressed installation, retained peer mapping
 and retirement after audit retention. The broker has a separate required80%
 coverage gate. Compiled tests run only in GitHub Actions.
 
-Still required: configured resource resolver/worker binary, approved portable
+Still required: accepted configured resource resolver/worker binary, approved portable
 overlay materialization, independently scheduled
 wrapping/retirement, bounded inventory/retention and controlled safe renewal.
 Actual Cloud, root/capability upgrades, complete web/native administration and
@@ -63,3 +70,24 @@ IDs/values and peer receipts. Actual account/device withdrawal is propagated by
 the publisher to immutable retirement intent; changing an ordinary config hash
 alone does not retire an established peer. Runtime scheduling/configuration and
 acceptance of these new paths remain pending.
+
+## Isolated provider process (acceptance pending)
+
+`overlay-worker` reads the0600 owner file named by
+`SYN443_OVERLAY_BROKER_CONFIG`: database/encryption key and at most16 pinned
+resource revisions with API origin, account, management origin, logical network,
+approved groups, root CA/network grants and management token. This is private
+server bootstrap input; it is never a device body or a public sample containing
+real values. Archived revisions must remain available until cleanup completes.
+The SQL catalog-backed resource editor/rotation/retention remains required.
+
+The resolver checks exact resource/revision/account/network/management origin and
+group subset before constructing a normal TLS-validated adapter. It copies the
+owner input, refuses redirects/environmental proxies through the adapter and
+closes each admitted client. Its diagnostics redact the entire configuration.
+The worker uses its own monotonic SQL scheduling clock, a40-second operation
+deadline and a2-second polling interval; it cannot modify the identity clock.
+SIGTERM cancels current work without forgetting durable dispatch. Actions builds
+and scans the executable with the other runtime artifacts and a checksum manifest.
+TLS resolver, malformed bootstrap, wrong scope and SQL-clock tests plus a separate
+80% bootstrap coverage gate are required before accepting this new process.

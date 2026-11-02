@@ -558,3 +558,21 @@ func TestSQLBrokerAccountWithdrawalQueuesRetirementWithoutConfigRefreshChurn(t *
 		t.Fatal("withdrawal did not reach owned provider cleanup")
 	}
 }
+
+func TestSQLBrokerOwnClockCannotRollBackOrModifyIdentityClock(t *testing.T) {
+	f := newBrokerFixture(t)
+	first, e := f.worker.BrokerNow(context.Background(), f.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	second, e := f.worker.BrokerNow(context.Background(), f.now.Add(-time.Hour))
+	if e != nil || !first.Equal(second) {
+		t.Fatal("broker clock moved backward", e)
+	}
+	if _, e := fixtureBroker.Exec(`UPDATE identity_clock SET second=0`); e == nil {
+		t.Fatal("provider worker modified identity clock")
+	}
+	if _, e := f.store.BrokerNow(context.Background(), f.now); e == nil {
+		t.Fatal("API acquired broker scheduling clock")
+	}
+}

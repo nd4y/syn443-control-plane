@@ -1,4 +1,6 @@
 -- Owner migration only. The provider worker has no identity/session/signing rights.
+CREATE TABLE IF NOT EXISTS identity_overlay_broker_clock(id boolean PRIMARY KEY CHECK(id),second bigint NOT NULL);
+INSERT INTO identity_overlay_broker_clock VALUES(true,0) ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS identity_overlay_broker (
  device text NOT NULL REFERENCES identity_devices(id), reference text NOT NULL,
  version bigint NOT NULL CHECK(version BETWEEN 1 AND 9007199254740991),
