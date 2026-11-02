@@ -354,6 +354,21 @@ func TestDeviceOperationLocksTokenTupleDeadlineRollbackAndCancellation(t *testin
 	if _, e = f.store.WithDeviceSession(canceled, b, session.AccessToken, next(), f.now, operation); e == nil {
 		t.Fatal("canceled SQL operation accepted")
 	}
+	if _, e = f.store.WithDeviceSession(ctx, b, session.AccessToken, next(), f.now, nil); !errors.Is(e, identity.ErrInvalid) {
+		t.Fatal("nil callback accepted")
+	}
+	if _, e = f.store.WithDeviceSession(ctx, b, "short", next(), f.now, operation); !errors.Is(e, identity.ErrInvalid) {
+		t.Fatal("short token accepted")
+	}
+	value, e := f.store.WithDeviceSession(ctx, b, session.AccessToken, next(), f.now, func(ctx context.Context, tx *sql.Tx, a DeviceAuthority) (DeviceResult, error) {
+		if e := tx.Rollback(); e != nil {
+			t.Fatal(e)
+		}
+		return DeviceResult{Value: "must-not-escape", UntilMs: f.now.Add(time.Minute).UnixMilli()}, nil
+	})
+	if e == nil || value != nil {
+		t.Fatal("uncommitted callback result escaped")
+	}
 	// An actual row-lock wait must not extend the original proof/session authority.
 	locker, e := fixtureOwner.Begin()
 	if e != nil {
