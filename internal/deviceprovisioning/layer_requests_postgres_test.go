@@ -203,7 +203,7 @@ func TestSQLConfigurationQueueRejectsInvalidShapesAndBoundsAdmission(t *testing.
 			}
 		})
 	}
-	if _, e := fixtureOwner.Exec(`INSERT INTO managed_configuration_requests(id,actor,request_id,action,target_kind,target_id,created_ms,deadline_ms,body_hash,receipt) SELECT md5('fixture-job-'||i::text),$1,md5('fixture-op-'||i::text),'configuration.preview.request','device',$2,$3,$3+180000,repeat('0',64),decode(repeat('00',29),'hex') FROM generate_series(1,64) i`, n.actor.ID, n.target.Device, n.f.now.UnixMilli()); e != nil {
+	if _, e := fixtureOwner.Exec(`INSERT INTO managed_configuration_requests(id,actor,request_id,action,target_kind,target_id,created_ms,deadline_ms,body_hash,receipt) SELECT md5('fixture-job-'||i::text),$1,md5('fixture-op-'||i::text),'configuration.preview.request','device',$2,$3::bigint,$3::bigint+180000,repeat('0',64),decode(repeat('00',29),'hex') FROM generate_series(1,64) i`, n.actor.ID, n.target.Device, n.f.now.UnixMilli()); e != nil {
 		t.Fatal(e)
 	}
 	raw, token, proof := configurationCall(t, n, c, "configuration.preview.request", identity.Hash([]byte("after quota")), configurationPreviewInput{p})
