@@ -38,3 +38,8 @@ DO $$BEGIN
   GRANT UPDATE(selection_guard) ON catalog_sources,catalog_resources TO syn443_identity_publisher;
  END IF;
 END$$;
+
+-- Unapproved drafts are API-owned staging. Fetch workers and the independent
+-- signer receive no draft-body access or authority to treat them as active.
+GRANT SELECT,INSERT,UPDATE ON catalog_network_drafts TO syn443_control_api;
+REVOKE ALL ON FUNCTION catalog_network_draft_guard() FROM PUBLIC;

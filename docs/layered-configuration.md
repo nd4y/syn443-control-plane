@@ -127,3 +127,25 @@ NetworkPlan does not yet cover application settings, managed overlay issuance,
 route-check metadata, persistent assignments or administrative publication. Those
 remain explicit full M2/M3 work. Actions require ordinary/race/85-percent package
 gates and a new bounded parser fuzz smoke, with no local compilation.
+
+## Private SQL network drafts (acceptance pending)
+
+The catalog adds actor-private, encrypted NetworkDraft proposals with an explicit
+template/group/user/device target, declared base hash/revision and expected draft
+revision. Put/Get check live object-scoped ACL before accessing the body and
+repeat authority checks after work/row-lock waits. Lost replies retain the exact
+operation response and cannot overwrite newer drafts; another actor has a separate
+namespace even with the same ID. Scope is immutable in SQL and authenticated AAD
+binds actor/ID/revision. Source workers and the independent signer cannot read
+these unapproved bodies. Incomplete semantic references may be saved for editing;
+compilation/publication still require independent live resolution and approval.
+
+A save changes only the proposal, encrypted operation receipt and hash-only audit.
+No active layer, source assignment or device publication is touched. There are
+hard per-actor bounds of64 drafts and256 saved-operation receipts. Draft discard,
+retention, inventory, control API wiring, immutable approved heads/assignments,
+conflict preview, publication and web/native editors remain required work; this
+internal persistence component is not the complete administrative workflow.
+Actions add actual restricted-role PostgreSQL CAS/replay/scope/ciphertext/quota,
+corruption/cancellation and late session/ACL expiry/rollback cases. No live data or
+provider is changed and no compilation runs locally.

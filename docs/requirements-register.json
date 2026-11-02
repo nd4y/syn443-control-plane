@@ -504,9 +504,12 @@
         "internal/configuration/network.go",
         "internal/configuration/network_test.go",
         "internal/configuration/plan.go",
-        "internal/configuration/plan_test.go"
+        "internal/configuration/plan_test.go",
+        "internal/catalog/network_draft.go",
+        "internal/catalog/network_draft_test.go",
+        "internal/catalog/network_draft_postgres_test.go"
       ],
-      "implementationScope": "Bounded layers/rebase plus closed graph/DNS/routing/activation network-plan composition; current exact Actions acceptance pending.",
+      "implementationScope": "Bounded layers/rebase, closed graph/DNS/routing/activation plan and private encrypted SQL draft CAS; current exact Actions acceptance pending.",
       "remainingScope": "Full supported application settings, persistent layer assignments, independently approved publication and web/mobile editors."
     },
     {

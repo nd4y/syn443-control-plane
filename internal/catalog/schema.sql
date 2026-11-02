@@ -115,3 +115,21 @@ CREATE TRIGGER catalog_source_guard BEFORE UPDATE ON catalog_sources FOR EACH RO
 -- row locks without UPDATE privilege on any actual source/resource field.
 ALTER TABLE catalog_sources ADD COLUMN IF NOT EXISTS selection_guard integer NOT NULL DEFAULT 0;
 ALTER TABLE catalog_resources ADD COLUMN IF NOT EXISTS selection_guard integer NOT NULL DEFAULT 0;
+
+-- Mutable drafts are separate from every source/active/publication head. Only
+-- independently approved immutable layers may later feed the signer.
+CREATE TABLE IF NOT EXISTS catalog_network_drafts(
+ actor text NOT NULL,id text NOT NULL,revision bigint NOT NULL CHECK(revision BETWEEN 1 AND 9007199254740991),
+ target_kind text NOT NULL CHECK(target_kind IN('template','group','user','device')),
+ target_id text NOT NULL,saved_at bigint NOT NULL CHECK(saved_at>0),
+ body bytea NOT NULL CHECK(octet_length(body) BETWEEN 29 AND 524288),
+ PRIMARY KEY(actor,id)
+);
+CREATE OR REPLACE FUNCTION catalog_network_draft_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF (NEW.actor,NEW.id,NEW.target_kind,NEW.target_id) IS DISTINCT FROM (OLD.actor,OLD.id,OLD.target_kind,OLD.target_id)
+ OR NEW.revision<>OLD.revision+1 OR NEW.saved_at<OLD.saved_at THEN RAISE EXCEPTION 'immutable draft scope'; END IF;
+ RETURN NEW;
+END; $$;
+DROP TRIGGER IF EXISTS catalog_network_draft_invariants ON catalog_network_drafts;
+CREATE TRIGGER catalog_network_draft_invariants BEFORE UPDATE ON catalog_network_drafts FOR EACH ROW EXECUTE FUNCTION catalog_network_draft_guard();

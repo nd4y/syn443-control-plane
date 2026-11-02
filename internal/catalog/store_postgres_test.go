@@ -72,7 +72,7 @@ func TestMain(m *testing.M) {
 }
 func databaseFixture(t *testing.T) (*Store, *Store, Actor, time.Time) {
 	t.Helper()
-	if _, e := fixtureOwner.Exec(`TRUNCATE catalog_proofs,catalog_outbox,catalog_audit,catalog_operations,catalog_jobs,catalog_dependencies,catalog_snapshots,catalog_share_heads,catalog_source_grants,catalog_sources,catalog_resources,catalog_acl RESTART IDENTITY CASCADE`); e != nil {
+	if _, e := fixtureOwner.Exec(`TRUNCATE catalog_network_drafts,catalog_proofs,catalog_outbox,catalog_audit,catalog_operations,catalog_jobs,catalog_dependencies,catalog_snapshots,catalog_share_heads,catalog_source_grants,catalog_sources,catalog_resources,catalog_acl RESTART IDENTITY CASCADE`); e != nil {
 		t.Fatal(e)
 	}
 	if _, e := fixtureOwner.Exec(`UPDATE catalog_clock SET second=0 WHERE id=true`); e != nil {
