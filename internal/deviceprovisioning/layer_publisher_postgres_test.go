@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/configuration"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
@@ -146,7 +147,11 @@ func TestConfigurationPublisherRejectsChangedDependenciesACLAndImpact(t *testing
 			}
 			switch kind {
 			case "source":
-				exec(`UPDATE catalog_sources SET revision=revision+1 WHERE id=$1`, n.source.ID)
+				changed := n.source
+				changed.Name = "Changed source metadata"
+				if _, e := n.api.PutSource(context.Background(), n.actor, changed, catalog.SecretPatch{Operation: "keep"}, "change-source", n.f.now); e != nil {
+					t.Fatal(e)
+				}
 			case "acl":
 				exec(`DELETE FROM catalog_acl WHERE actor=$1`, n.actor.ID)
 			case "account":
@@ -306,5 +311,77 @@ func TestConfigurationPublisherRollsBackEveryRecipientOnLateSQLFailure(t *testin
 	var count int
 	if e := fixtureOwner.QueryRow(`SELECT count(*) FROM managed_configuration_heads`).Scan(&count); e != nil || count != 2 {
 		t.Fatal("all recipients not committed", e)
+	}
+}
+
+func TestConfigurationPublisherRollsBackFailureAtEveryPersistentBoundary(t *testing.T) {
+	for _, table := range []string{"managed_configuration_layer_versions", "managed_configuration_layer_heads", "managed_configuration_versions", "managed_configuration_heads", "managed_configuration_assignments"} {
+		t.Run(table, func(t *testing.T) {
+			n, c, p, publisher := layerPublisherFixture(t)
+			r := prepareLayerPreview(t, n, c, p, publisher, "preview persistent boundary")
+			queueLayerPublish(t, n, c, r, "publish persistent boundary")
+			if _, e := fixtureOwner.Exec(`CREATE FUNCTION configuration_fixture_boundary_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic persistent boundary failure'; END $$; CREATE TRIGGER configuration_fixture_boundary_failure BEFORE INSERT ON ` + table + ` FOR EACH ROW EXECUTE FUNCTION configuration_fixture_boundary_failure()`); e != nil {
+				t.Fatal(e)
+			}
+			t.Cleanup(func() {
+				if _, e := fixtureOwner.Exec(`DROP TRIGGER IF EXISTS configuration_fixture_boundary_failure ON ` + table + `; DROP FUNCTION IF EXISTS configuration_fixture_boundary_failure()`); e != nil {
+					t.Error(e)
+				}
+			})
+			if e := publisher.RunOnce(context.Background(), n.f.now.Add(time.Second)); !errors.Is(e, enrollment.ErrUnavailable) {
+				t.Fatal("persistent boundary unexpectedly committed", e)
+			}
+			for _, name := range []string{"managed_configuration_versions", "managed_configuration_heads", "managed_configuration_layer_versions", "managed_configuration_layer_heads", "managed_configuration_assignments"} {
+				var count int
+				if e := fixtureOwner.QueryRow(`SELECT count(*) FROM ` + name).Scan(&count); e != nil || count != 0 {
+					t.Fatal("partial persistent boundary", name, e)
+				}
+			}
+		})
+	}
+}
+
+func TestConfigurationPublisherRequiresActualCapabilitiesAndSafeRuntime(t *testing.T) {
+	n, c, p, publisher := layerPublisherFixture(t)
+	for _, bad := range []*ConfigurationPublisher{nil, {}, {Store: publisher.Store, Sources: publisher.Sources, Verifier: publisher.Verifier}} {
+		if e := bad.RunOnce(context.Background(), n.f.now); !errors.Is(e, enrollment.ErrDenied) {
+			t.Fatal("unsafe publisher admitted", e)
+		}
+	}
+	if e := publisher.RunOnce(nil, n.f.now); !errors.Is(e, enrollment.ErrDenied) {
+		t.Fatal("nil context")
+	}
+	layers := proposedNetworkLayers{}
+	if _, e := layers.PrepareLayers(context.Background(), n.target, n.f.now); !errors.Is(e, enrollment.ErrDenied) {
+		t.Fatal("missing independent snapshot")
+	}
+	snapshot, e := prepareConfigurationLayers(context.Background(), publisher.Store, n.actor.ID, "configuration.preview", p, n.f.now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	layers.snapshot = snapshot
+	foreign := n.target
+	foreign.Device = "foreign-device"
+	if _, e = layers.PrepareLayers(context.Background(), foreign, n.f.now); !errors.Is(e, enrollment.ErrDenied) {
+		t.Fatal("substituted actual recipient")
+	}
+	// An explicitly owner-seeded approved device with insufficient advertised
+	// capabilities cannot borrow the initiator's capabilities or compile result.
+	limited := n
+	limited.target.Capabilities = []string{"policy.keybound.v2"}
+	seedConfigurationDevice(t, storedLayersFixture{n: limited}, "limited-device", true)
+	p.TargetID = "limited-device"
+	p.Bundles[0].Device = "limited-device"
+	q := queueConfigurationWork(t, n, c, p, "limited recipient preview")
+	if e = publisher.RunOnce(context.Background(), n.f.now); !errors.Is(e, enrollment.ErrDenied) {
+		t.Fatal("missing device capability", e)
+	}
+	var state string
+	if e = fixtureOwner.QueryRow(`SELECT state FROM managed_configuration_requests WHERE id=$1`, q.ID).Scan(&state); e != nil || state != "rejected" {
+		t.Fatal("capability denial not terminal", e)
+	}
+	head := ConfigurationPublishedHead{n.target.Device, 1, "hash"}
+	if strings.Contains(fmt.Sprintf("%v %#v", head, head), n.target.Device) {
+		t.Fatal("head diagnostic leaked recipient")
 	}
 }
