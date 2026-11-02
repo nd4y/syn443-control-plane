@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 
@@ -247,8 +248,9 @@ func (s *Store) Register(ctx context.Context, principal identity.Principal, proo
 		return result, tx.Commit()
 	}
 	var device, actualOwner string
-	var active bool
-	e = tx.QueryRowContext(ctx, `SELECT id,owner,active FROM identity_devices WHERE jkt=$1 FOR UPDATE`, thumb).Scan(&device, &actualOwner, &active)
+	var active, approved bool
+	var original []byte
+	e = tx.QueryRowContext(ctx, `SELECT id,owner,active,approved,request_body FROM identity_devices WHERE jkt=$1 FOR UPDATE`, thumb).Scan(&device, &actualOwner, &active, &approved, &original)
 	if errors.Is(e, sql.ErrNoRows) {
 		var count int
 		if e = tx.QueryRowContext(ctx, `SELECT count(*) FROM identity_devices WHERE owner=$1 AND active`, owner).Scan(&count); e != nil {
@@ -272,9 +274,25 @@ func (s *Store) Register(ctx context.Context, principal identity.Principal, proo
 		if actualOwner != owner || !active {
 			return result, ErrDenied
 		}
-		// Refreshing an authenticated registration never creates another device or revives a revoked key.
-		data, _ := json.Marshal(receipt)
-		_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET request_body=$2,receipt=$3,retry_after=0 WHERE id=$1`, device, raw, s.Seal(data, "receipt/v1/"+device))
+		// A new authenticated session does not replace independently approved
+		// enrollment evidence. Capabilities need their own approval/migration;
+		// an API-writeable receipt is never an upgrade authority.
+		if approved {
+			var prior Request
+			if identity.Decode(original, &prior, true) != nil {
+				return result, ErrDenied
+			}
+			before, after := append([]string(nil), prior.Capabilities...), append([]string(nil), req.Capabilities...)
+			slices.Sort(before)
+			slices.Sort(after)
+			if !slices.Equal(before, after) {
+				return result, ErrConflict
+			}
+			_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET retry_after=0 WHERE id=$1`, device)
+		} else {
+			data, _ := json.Marshal(receipt)
+			_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET request_body=$2,receipt=$3,retry_after=0 WHERE id=$1`, device, raw, s.Seal(data, "receipt/v1/"+device))
+		}
 	}
 	if e != nil {
 		return result, e

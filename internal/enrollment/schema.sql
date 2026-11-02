@@ -51,6 +51,7 @@ CREATE OR REPLACE FUNCTION identity_device_invariants() RETURNS trigger LANGUAGE
 BEGIN
  IF NEW.id<>OLD.id OR NEW.owner<>OLD.owner OR NEW.jkt<>OLD.jkt
     OR (NOT OLD.active AND NEW.active) OR (OLD.approved AND NOT NEW.approved)
+    OR (OLD.approved AND (NEW.request_body,NEW.receipt) IS DISTINCT FROM (OLD.request_body,OLD.receipt))
     OR NEW.revision<OLD.revision THEN
    RAISE EXCEPTION 'immutable device identity';
  END IF;

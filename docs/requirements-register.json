@@ -172,7 +172,8 @@
       "evidence": [
         "docs/enrollment-pilot.md",
         "docs/identity-lifecycle.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "internal/enrollment/approved_request_postgres_test.go"
       ]
     },
     {
@@ -597,7 +598,9 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/enrollment-pilot.md",
+        "internal/enrollment/approved_request_postgres_test.go"
       ]
     },
     {
@@ -2243,7 +2246,8 @@
       "evidence": [
         "docs/enrollment-pilot.md",
         "docs/identity-lifecycle.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "internal/enrollment/approved_request_postgres_test.go"
       ]
     },
     {
