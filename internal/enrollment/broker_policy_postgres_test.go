@@ -268,3 +268,36 @@ func TestSQLBrokerPolicyMissingCapabilityAndPostPrepareExpiryCannotReserve(t *te
 		t.Fatal("expired unowned transaction accepted")
 	}
 }
+
+func TestSQLBrokerPolicyRejectsMalformedAndAmbiguousNativeDocumentsBeforeReserving(t *testing.T) {
+	f, _, m := brokerPolicyFixture(t)
+	target := ConfigurationTarget{Device: f.session.DeviceID, Owner: Owner(f.grant.Issuer, f.grant.Subject), Thumbprint: f.binding.KeyThumbprint, GrantHash: f.grant.Hash(), Capabilities: []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2", "overlay.credentials.v1"}}
+	for _, document := range []string{`null`, `[]`, `{"outbounds":null}`, `{"outbounds":[]}`, `{"outbounds":[{"type":17}]}`, `{"outbounds":[{"type":"netbird","setup_key":"must-not-enter-managed-policy"}]}`, `{"outbounds":[{"type":"netbird","managed":null}]}`, `{"outbounds":[{"type":"netbird","managed":{"resourceId":"foreign"},"management_url":"https://foreign.example.invalid"}]}`} {
+		payload := f.grant.Template
+		payload.EngineConfigB64 = base64.RawURLEncoding.EncodeToString([]byte(document))
+		if _, e := m.Prepare(context.Background(), target, f.grant, &payload, f.now); e == nil {
+			t.Fatal("malformed managed document accepted")
+		}
+	}
+	payload := f.grant.Template
+	payload.EngineConfigB64 = "="
+	if _, e := m.Prepare(context.Background(), target, f.grant, &payload, f.now); e == nil {
+		t.Fatal("malformed engine encoding accepted")
+	}
+	var count int
+	if e := fixtureOwner.QueryRow(`SELECT count(*) FROM identity_overlay_reference_heads`).Scan(&count); e != nil || count != 0 {
+		t.Fatal("rejected document reserved a head", e)
+	}
+	// The advertised capability must be reflected in the actual signed payload
+	// even when an old owner template did not already require the overlay module.
+	payload, _ = configuredPayload()
+	payload.EngineConfigB64 = f.grant.Template.EngineConfigB64
+	payload.ContentHash = f.grant.Template.ContentHash
+	payload.TargetDevice = target.Device
+	payload.KeyThumbprint = target.Thumbprint
+	payload.SecurityEpoch = 0
+	fence, e := m.Prepare(context.Background(), target, f.grant, &payload, f.now)
+	if e != nil || fence == nil || !hasCapability(payload.RequiredCapabilities, "overlay.credentials.v1") {
+		t.Fatal("required overlay capability not materialized", e)
+	}
+}

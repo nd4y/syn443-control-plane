@@ -29,7 +29,7 @@ import (
 var fixtureOwner *sql.DB
 var fixtureAPI, fixturePublisher *sql.DB
 var fixtureBroker *sql.DB
-var fixtureAPIDSN, fixturePublisherDSN string
+var fixtureAPIDSN, fixturePublisherDSN, fixtureBrokerDSN string
 var b64 = base64.RawURLEncoding
 
 func TestMain(m *testing.M) {
@@ -66,6 +66,8 @@ func TestMain(m *testing.M) {
 			fixtureAPIDSN = copy.String()
 		} else if item.name == "syn443_identity_publisher" {
 			fixturePublisherDSN = copy.String()
+		} else if item.name == "syn443_overlay_worker" {
+			fixtureBrokerDSN = copy.String()
 		}
 		*item.target, e = sql.Open("pgx", copy.String())
 		if e != nil {
@@ -113,7 +115,7 @@ type fixture struct {
 func newFixture(t *testing.T, limit int) *fixture {
 	t.Helper()
 	ctx := context.Background()
-	_, e := fixtureOwner.Exec(`TRUNCATE identity_accounts,identity_devices,identity_challenges,identity_sessions,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations CASCADE;UPDATE identity_clock SET second=0`)
+	_, e := fixtureOwner.Exec(`TRUNCATE identity_accounts,identity_devices,identity_challenges,identity_sessions,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations CASCADE;UPDATE identity_clock SET second=0;UPDATE identity_overlay_broker_clock SET second=0`)
 	if e != nil {
 		t.Fatal(e)
 	}

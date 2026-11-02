@@ -147,11 +147,11 @@ func (m *BrokerPolicies) Prepare(ctx context.Context, target ConfigurationTarget
 		return nil, identity.ErrInvalid
 	}
 	var root map[string]json.RawMessage
-	if identity.DecodeConfiguration(raw, &root) != nil {
+	if identity.DecodeConfiguration(raw, &root) != nil || root == nil {
 		return nil, identity.ErrInvalid
 	}
 	var outbounds []map[string]json.RawMessage
-	if identity.DecodeConfiguration(root["outbounds"], &outbounds) != nil {
+	if identity.DecodeConfiguration(root["outbounds"], &outbounds) != nil || len(outbounds) < 1 || len(outbounds) > 64 {
 		return nil, identity.ErrInvalid
 	}
 	fence := &brokerPolicyFence{policies: m, until: p.OfflineUntilMs}

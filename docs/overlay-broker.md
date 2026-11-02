@@ -125,3 +125,14 @@ pending Actions acceptance. This bootstrap integration does not implement the
 SQL resource editor, independent preview/MFA approval, portable overlay/layer UI,
 obsolete namespace retirement after rollback leases, actual Cloud or final Xperia
 acceptance. Those remain required by the full M2/M3 contract.
+
+The initial materializer run compiled and passed its Go/SQL behavior checks at
+`fc599079f797c90f3472c9a627508e96d2815cbe`, but
+[Actions41483101909](https://github.com/nd4y/syn443-control-plane/actions/runs/41483101909)
+failed its79% materializer coverage against the required80%. It is not accepted.
+Additional malformed document/capability cases retain that gate and reject empty
+or oversized outbound lists before reservation. A new disposable process fixture
+also runs separate actual API, publisher and provider-worker executables with
+independent SQL roles and TLS management service: pending grant, exactly one POST,
+short-poll addressed delivery and no secret in process diagnostics. This is an
+isolated provider fixture; it does not prove live Cloud registration or SDK traffic.
