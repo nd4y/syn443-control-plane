@@ -15,6 +15,7 @@
     "control-openapi.json": "750da56e04c9ca77c1da2883da187d53783cf28680be4200611d41ca377048be",
     "bootstrap.schema.json": "4b384ba7f28835ac3bc08b9b1910fd21017cf51a371a99a8ebafceb11d52dd96",
     "bootstrap-wire-vectors.json": "e7ed68b385ba61d0788b74680f3b8d41117f5acc960150a651a5eb2c30f9af19",
-    "invitation-openapi.json": "0aaf6cf59826265613ce522c7789ea14ec4a00d0392b42a34728911394cf9d2f"
+    "invitation-openapi.json": "0aaf6cf59826265613ce522c7789ea14ec4a00d0392b42a34728911394cf9d2f",
+    "overlay-namespace-vectors.json": "f8fea5472818e3438b600a0d6e51cb9e1e4bc7957bdf150d75e27241a44aebac"
   }
 }

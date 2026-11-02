@@ -731,8 +731,13 @@
     {
       "id": "OVL-06",
       "text": "Идентичности, токены, state directory и секреты разделяются по overlayId/provider/resource. Публикация политики не конвертирует идентичность одной сети в другую. Реализация 1.0 не объединяет автоматически peers, DNS-зоны или маршруты нескольких overlay-провайдеров.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-overlay.md",
+        "contracts/v1/overlay-namespace-vectors.json",
+        "internal/overlay/identity.go",
+        "internal/overlay/identity_test.go"
+      ]
     },
     {
       "id": "OVL-07",
