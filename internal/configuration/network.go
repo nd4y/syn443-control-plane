@@ -26,7 +26,7 @@ type PortRange struct {
 	Last  int `json:"last"`
 }
 type RouteRule struct {
-	HostMatch `json:"match"`
+	HostMatch  `json:"match"`
 	ID         string      `json:"id"`
 	IPPrefixes []string    `json:"ipPrefixes,omitempty"`
 	Packages   []string    `json:"packages,omitempty"`
@@ -45,7 +45,7 @@ type DNSServer struct {
 	Outbound   string `json:"outbound"`
 }
 type DNSRule struct {
-	HostMatch `json:"match"`
+	HostMatch  `json:"match"`
 	ID         string   `json:"id"`
 	QueryTypes []string `json:"queryTypes,omitempty"`
 	Server     string   `json:"server"`
@@ -331,4 +331,7 @@ func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMess
 	}
 	result, err := json.Marshal(map[string]any{"outbounds": graph.Outbounds, "route": map[string]any{"rules": rules, "final": graph.Final}, "dns": map[string]any{"servers": dnsServers, "rules": dnsRules, "final": dnsTag(settings.DNSFinal), "strategy": settings.DNSStrategy}})
 	if err != nil || len(result) > 262144 {
-		re
+		return nil, ErrInvalid
+	}
+	return result, nil
+}
