@@ -218,7 +218,7 @@ func TestConfigurationCatalogFinalFenceRejectsChangedGrantHeadMembershipAndCorru
 			case "key-row":
 				_, e = fixtureOwner.Exec(`UPDATE identity_devices SET active=false`)
 			case "base":
-				_, e = fixtureOwner.Exec(`UPDATE managed_configuration_heads SET body_hash=$1`, configurationHash([]byte("changed configuration hash")))
+				_, e = fixtureOwner.Exec(`DELETE FROM managed_configuration_heads WHERE device=$1`, f.n.target.Device)
 			case "new-device":
 				seedConfigurationDevice(t, f, "new-device", true)
 			case "cipher":

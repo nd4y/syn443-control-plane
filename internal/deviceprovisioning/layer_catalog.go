@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"time"
 
@@ -43,6 +44,12 @@ func (configurationLayerChange) GoString() string    { return "ConfigurationLaye
 func globalLayerAAD(kind, id string, revision int64) string {
 	raw, _ := json.Marshal([]any{kind, id, revision})
 	return "configuration-global-layer/v1/" + string(raw)
+}
+
+// Fixed cause names help administrative conflict diagnosis without exposing
+// recipient identifiers, layer bodies or provider material.
+func configurationConflict(cause string) error {
+	return fmt.Errorf("configuration_%s: %w", cause, enrollment.ErrConflict)
 }
 
 // Resolve actual live recipients and globally immutable layer versions. This
@@ -170,14 +177,14 @@ func resolveConfigurationLayers(ctx context.Context, tx *sql.Tx, store *enrollme
 		return nil, e
 	}
 	if len(ids) != len(p.Bundles) {
-		return nil, enrollment.ErrConflict
+		return nil, configurationConflict("recipient_impact_changed")
 	}
 	s := &configurationLayerSnapshot{store: store, actor: actor, action: action, proposal: p}
 	shared := map[string]configurationLayerChange{}
 	for i, id := range ids {
 		bundle := p.Bundles[i]
 		if bundle.Device != id {
-			return nil, enrollment.ErrConflict
+			return nil, configurationConflict("recipient_order_changed")
 		}
 		var target enrollment.ConfigurationTarget
 		var raw []byte
@@ -188,7 +195,7 @@ func resolveConfigurationLayers(ctx context.Context, tx *sql.Tx, store *enrollme
 		}
 		a, ok := accounts[target.Owner]
 		if !ok {
-			return nil, enrollment.ErrConflict
+			return nil, configurationConflict("recipient_owner_changed")
 		}
 		target.GrantHash = a.grant
 		var request enrollment.Request
@@ -211,7 +218,7 @@ func resolveConfigurationLayers(ctx context.Context, tx *sql.Tx, store *enrollme
 			return nil, enrollment.ErrUnavailable
 		}
 		if revision != bundle.BaseRevision || hash != bundle.BaseHash {
-			return nil, enrollment.ErrConflict
+			return nil, configurationConflict("base_changed")
 		}
 		if e = layerACL(ctx, tx, actor, "configuration.assignments.write", "device", id, current().Unix()); e != nil {
 			return nil, e
@@ -228,7 +235,7 @@ func resolveConfigurationLayers(ctx context.Context, tx *sql.Tx, store *enrollme
 			}
 			if v.ConfigurationRevision != revision {
 				rows.Close()
-				return nil, enrollment.ErrConflict
+				return nil, configurationConflict("assignment_version_changed")
 			}
 			s.Assignments = append(s.Assignments, v)
 		}
@@ -252,7 +259,7 @@ func resolveConfigurationLayers(ctx context.Context, tx *sql.Tx, store *enrollme
 			key := layer.Kind + "\x00" + layer.ID
 			if prior, ok := shared[key]; ok {
 				if prior.Revision != change.Revision || prior.Hash != change.Hash {
-					return nil, enrollment.ErrConflict
+					return nil, configurationConflict("shared_layer_body_changed")
 				}
 				continue
 			}
@@ -269,11 +276,11 @@ func resolveConfigurationLayers(ctx context.Context, tx *sql.Tx, store *enrollme
 				}
 				isTarget := layer.Kind == p.TargetKind && layer.ID == p.TargetID || p.TargetKind == "device" && layer.Kind == "local" && layer.ID == p.TargetID
 				if !isTarget || change.Revision != change.OldRevision+1 {
-					return nil, enrollment.ErrConflict
+					return nil, configurationConflict("parent_or_revision_changed")
 				}
 			} else if e == sql.ErrNoRows {
 				if change.Revision != 1 {
-					return nil, enrollment.ErrConflict
+					return nil, configurationConflict("initial_layer_revision")
 				}
 				if e = layerACL(ctx, tx, actor, "configuration.layers.create", layer.Kind, layer.ID, current().Unix()); e != nil {
 					return nil, e
@@ -325,7 +332,7 @@ func (s *configurationLayerSnapshot) Lock(ctx context.Context, tx *sql.Tx, now t
 		return e
 	}
 	if current.Hash != s.Hash {
-		return enrollment.ErrConflict
+		return configurationConflict("authority_changed")
 	}
 	return nil
 }
