@@ -12,3 +12,10 @@ for package,label in (('/internal/invitation/','Invitation SQL and role'),('/int
     value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
     print(f'{label} coverage: {value:.1f}% (minimum80%)')
     assert value>=80
+
+# A larger established bridge must not hide an untested approved-layer reader.
+selected=[(count,hits) for location,(count,hits) in blocks.items() if '/internal/deviceprovisioning/layer_store.go:' in location]
+assert selected,'Persistent approved layers'
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f'Persistent approved layers coverage: {value:.1f}% (minimum80%)')
+assert value>=80

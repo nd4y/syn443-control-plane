@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 	if e != nil {
 		panic("fixture connection")
 	}
-	if _, e = fixtureOwner.Exec(enrollment.Schema + "\n" + catalog.Schema + "\n" + invitation.Schema); e != nil {
+	if _, e = fixtureOwner.Exec(enrollment.Schema + "\n" + catalog.Schema + "\n" + invitation.Schema + "\n" + ConfigurationSchema); e != nil {
 		panic(e)
 	}
 	for _, item := range []struct {
@@ -69,7 +69,7 @@ func TestMain(m *testing.M) {
 		}
 		(*item.target).SetMaxOpenConns(4)
 	}
-	if _, e = fixtureOwner.Exec(enrollment.Roles + "\n" + catalog.Roles + "\n" + invitation.Roles); e != nil {
+	if _, e = fixtureOwner.Exec(enrollment.Roles + "\n" + catalog.Roles + "\n" + invitation.Roles + "\n" + ConfigurationRoles); e != nil {
 		panic(e)
 	}
 	code := m.Run()
@@ -99,7 +99,7 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
-	if _, e := fixtureOwner.Exec(`TRUNCATE managed_invitation_replays,managed_invitations,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations,identity_challenges,identity_sessions,identity_devices,identity_accounts,catalog_network_drafts,catalog_proofs,catalog_outbox,catalog_audit,catalog_operations,catalog_jobs,catalog_dependencies,catalog_snapshots,catalog_share_heads,catalog_source_grants,catalog_sources,catalog_resources,catalog_acl RESTART IDENTITY CASCADE;UPDATE identity_clock SET second=0 WHERE id=true;UPDATE catalog_clock SET second=0 WHERE id=true`); e != nil {
+	if _, e := fixtureOwner.Exec(`TRUNCATE managed_configuration_heads,managed_configuration_versions,managed_configuration_previews,managed_invitation_replays,managed_invitations,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations,identity_challenges,identity_sessions,identity_devices,identity_accounts,catalog_network_drafts,catalog_proofs,catalog_outbox,catalog_audit,catalog_operations,catalog_jobs,catalog_dependencies,catalog_snapshots,catalog_share_heads,catalog_source_grants,catalog_sources,catalog_resources,catalog_acl RESTART IDENTITY CASCADE;UPDATE identity_clock SET second=0 WHERE id=true;UPDATE catalog_clock SET second=0 WHERE id=true`); e != nil {
 		t.Fatal(e)
 	}
 	now := time.Now().UTC().Truncate(time.Second)

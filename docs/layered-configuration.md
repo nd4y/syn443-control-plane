@@ -1,5 +1,36 @@
 # Declarative configuration layers
 
+## Persistent approved-artifact reader (acceptance pending)
+
+The independent publisher now has an SQLNetworkLayers reader over immutable
+publisher-only preview/version rows and a monotonically increasing per-device
+configuration head. The encrypted body must match the signed portable proposal
+and effective hashes, original actor/origin, full recipient/key/grant/capability
+manifest and its original activation interval. Configuration-head revisions are
+distinct from periodically renewed VPN policy revisions. The reader returns owned
+portable layers to NetworkAuthority, which resolves current authorized source
+snapshots and repeats its source fence in the final signing transaction.
+
+An approved artifact may survive the original administrative token's expiry.
+Every refresh still repeats current SQL ACL, live account/device/key/grant,
+configuration-head CAS, original approval lifetime and source freshness checks.
+New online policy issuance remains capped at seven days and by all shorter
+dependencies. It cannot extend a downloaded offline lease or fall back to an
+owner's raw template after an authority error. Runtime startup checks reject an
+API role accidentally granted approval/head write rights; fetch workers receive
+no artifact-body access. Normalized recipient memberships, global layer-version
+heads, independent preview/request approval and atomic activation writes are not
+provided by this reader yet.
+
+The new PostgreSQL tests seed approved evidence as the fixture owner and exercise
+the reader/compiled-policy/final-fence path, including a real signed refresh after
+admin-session expiry. They are not end-to-end approval UI evidence. Corrupt/foreign/
+expired bodies, recipient/capability mismatches, head/ACL/account/source changes,
+immutability, role contamination and cancellation are covered by Actions and a
+separate80% reader gate. Owner migrations and runtime CLI/API wiring, immutable
+approved layer assignments, full supported application settings and web/native
+publication remain required M3 work. No production migration occurs in tests.
+
 ## Signed preview manifest (acceptance pending)
 
 The configuration package now defines a purpose-separated ES256 preview ticket.
