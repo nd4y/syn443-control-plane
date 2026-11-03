@@ -40,7 +40,7 @@ func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifie
 		return "", envelope, 0, enrollment.ErrDenied
 	}
 	switch envelope.Action {
-	case "configuration.preview.request", "configuration.publish", "configuration.request.get":
+	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get":
 	default:
 		return "", envelope, 0, enrollment.ErrDenied
 	}
@@ -113,6 +113,15 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 	actor, envelope, authorityUntil, e := verifyConfigurationReceipt(ctx, c.Verifier, receipt, c.Origin, c.AssuranceACR, now)
 	if e != nil {
 		return nil, e
+	}
+	if envelope.Action == "configuration.inventory.get" {
+		var input struct {
+			ID string `json:"id"`
+		}
+		if identity.DecodeConfiguration(envelope.Payload, &input) != nil || !configurationObjectID.MatchString(input.ID) {
+			return nil, enrollment.ErrDenied
+		}
+		return c.inventory(ctx, actor, input.ID, authorityUntil, now)
 	}
 	if envelope.Action == "configuration.request.get" {
 		var input struct {

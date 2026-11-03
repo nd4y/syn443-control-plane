@@ -1258,6 +1258,45 @@
               "requestId",
               "payload"
             ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
+                "const": "configuration.inventory.get"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 24,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]{24,128}$"
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
           }
         ]
       },

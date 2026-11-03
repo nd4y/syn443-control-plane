@@ -49,3 +49,9 @@ assert selected,'Protected configuration runtime composition'
 value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
 print(f'Protected configuration runtime composition coverage: {value:.1f}% (minimum80%)')
 assert value>=80
+
+selected=[(count,hits) for location,(count,hits) in blocks.items() if '/internal/deviceprovisioning/layer_inventory.go:' in location]
+assert selected,'Authorized scoped desired-configuration view'
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f'Authorized scoped desired-configuration view coverage: {value:.1f}% (minimum80%)')
+assert value>=80

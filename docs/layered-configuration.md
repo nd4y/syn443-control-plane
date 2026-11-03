@@ -362,3 +362,24 @@ and encrypted immutable versions across restarts. `published` means desired
 server heads are committed; the device's activation receipt remains separate.
 HTTP/SQL/role composition and protected runtime parsing have new Actions tests;
 live deployment, activation delivery mapping and editing UI are not implied.
+
+### Authorized desired-configuration view
+
+`configuration.inventory.get` reads one live approved device under fresh control
+authentication and object-scoped draft/layer read rights. It returns desired
+configuration revision/hash, separately issued policy revision, selected layers,
+effective portable values, field origins and inherited restrictions. It filters
+the original multi-recipient proposal before constructing the response; other
+device bundles, native profiles and source credentials are never returned. An
+existing device with no layered assignment is explicitly `unassigned`, while an
+absent/revoked/unauthorized device is denied. This view is not an activation ACK
+or a connectivity check.
+
+Owner migration adds only a non-authoritative `configuration_guard` column to
+identity_devices. The API can update that guard solely for PostgreSQL row-lock
+eligibility, while identity/key/receipt/active/approved fields remain protected.
+The consistent read locks live account/device authority and repeats ACL/time
+checks; current head/version/body integrity and complete inherited validation
+still apply. SQL/HTTP tests cover scope filtering, field provenance, incomplete
+assignment, revoked rights/account/device, ciphertext failures and role isolation.
+The view and its editing integration still require complete Actions acceptance.

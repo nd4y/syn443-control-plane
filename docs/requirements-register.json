@@ -1566,7 +1566,10 @@
         "internal/chatweb/control.go",
         "internal/chatweb/control_test.go",
         "internal/chatweb/assets/control/app.js",
-        "web-tests/control.spec.js"
+        "web-tests/control.spec.js",
+        "internal/deviceprovisioning/layer_inventory.go",
+        "internal/deviceprovisioning/layer_inventory_postgres_test.go",
+        "docs/layered-configuration.md"
       ],
       "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
       "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
@@ -1599,7 +1602,9 @@
         "docs/layered-configuration.md",
         "internal/configuration/layers.go",
         "internal/configuration/layers_test.go",
-        "internal/configuration/rebase_test.go"
+        "internal/configuration/rebase_test.go",
+        "internal/deviceprovisioning/layer_inventory.go",
+        "internal/deviceprovisioning/layer_inventory_postgres_test.go"
       ]
     },
     {

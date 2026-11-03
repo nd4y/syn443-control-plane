@@ -1,4 +1,6 @@
 -- Owner migration only. A mutable draft/request is never an approved layer head.
+-- Non-authoritative row-lock guard for a consistent authorized device view.
+ALTER TABLE identity_devices ADD COLUMN IF NOT EXISTS configuration_guard integer NOT NULL DEFAULT 0;
 CREATE TABLE IF NOT EXISTS managed_configuration_previews(
  id text PRIMARY KEY,actor text NOT NULL,request_id text NOT NULL,
  body_hash text NOT NULL,body bytea NOT NULL,ticket text NOT NULL,
