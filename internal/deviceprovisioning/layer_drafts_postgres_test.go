@@ -65,10 +65,10 @@ func TestPrivateLayerDraftBoundedStorageExpiryAndConcurrentEditors(t *testing.T)
 	if _, e := draftCall(t, n, c, "configuration.layers.draft.put", "draft storage full", map[string]any{"draft": d}); !errors.Is(e, enrollment.ErrDenied) {
 		t.Fatal("unbounded draft bodies", e)
 	}
-	if _, e := fixtureOwner.Exec(`UPDATE managed_configuration_drafts SET revision=revision+1,saved_ms=$2-2,expires_ms=$2-1 WHERE actor=$1 AND id LIKE 'synthetic-%'`, n.actor.ID, n.f.now.UnixMilli()); e != nil {
+	if _, e := fixtureOwner.Exec(`UPDATE managed_configuration_drafts SET revision=revision+1,saved_ms=$2::bigint-2,expires_ms=$2::bigint-1 WHERE actor=$1 AND id LIKE 'synthetic-%'`, n.actor.ID, n.f.now.UnixMilli()); e != nil {
 		t.Fatal(e)
 	}
-	if _, e := fixtureOwner.Exec(`UPDATE managed_configuration_draft_ops SET expires_ms=$2-1 WHERE actor=$1`, n.actor.ID, n.f.now.UnixMilli()); e != nil {
+	if _, e := fixtureOwner.Exec(`UPDATE managed_configuration_draft_ops SET expires_ms=$2::bigint-1 WHERE actor=$1`, n.actor.ID, n.f.now.UnixMilli()); e != nil {
 		t.Fatal(e)
 	}
 	if _, e := draftCall(t, n, c, "configuration.layers.draft.put", "draft expired capacity reclaimed", map[string]any{"draft": d}); e != nil {

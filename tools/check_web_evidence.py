@@ -19,8 +19,13 @@ expected = {
     'source permission withdrawal erases unsent credentials and disables mutation',
     'desired device view keeps revision provenance and hostile content separate from activation',
     'desired device view distinguishes unassigned expired and mismatched responses',
+    'layer editor preserves inheritance and requires explicit reviewed publication',
+    'layer save lost acknowledgment replays one private revision and remains reopenable',
+    'layer publication lost acknowledgment reuses operation even after terminal commit',
+    'layer conflict mismatched preview and expiry never enable publication',
+    'layer edit invalidates review and authorization withdrawal erases private proposal',
 }
-assert len(cases) >= 14
+assert len(cases) >= 19
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

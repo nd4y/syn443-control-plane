@@ -3,6 +3,7 @@ import http from 'node:http';import fs from 'node:fs';
 let auth=true,denied=false,failSave=false,drafts=new Map(),operations=new Map(),calls=[];
 const originalSource=()=>({id:'source-a',owner:'synthetic-user',name:'<img src=x onerror="window.injected=true">',mode:'server',format:'uri',enabled:true,state:'active',revision:1,networkModes:['wifi'],activeSnapshot:'snapshot-a',validUntil:1800003600,refreshSeconds:3600,maxStaleSeconds:86400});
 let sources=new Map([['source-a',originalSource()]]),jobs=new Map();
+let layerDrafts=new Map(),configurationJobs=new Map(),options={};
 const server=http.createServer(async(req,res)=>{
  const send=(status,data)=>{const headers={'Content-Type':'application/json','Cache-Control':'no-store'};if(req.url.startsWith('/fixture/'))headers.Connection='close';res.writeHead(status,headers);res.end(JSON.stringify(data));};
  if(req.method==='GET'&&['/','/app.js','/style.css'].includes(req.url)){
@@ -10,8 +11,8 @@ const server=http.createServer(async(req,res)=>{
  }
  let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>278528){send(413,{});return;}}
  let body;try{body=JSON.parse(raw||'{}');}catch{send(400,{});return;}
- if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];sources=new Map([['source-a',originalSource()]]);jobs=new Map();send(200,{});return;}
- if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],sources:[...sources.values()],operations:operations.size,calls});return;}
+ if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];sources=new Map([['source-a',originalSource()]]);jobs=new Map();layerDrafts=new Map();configurationJobs=new Map();options={...body};send(200,{});return;}
+ if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],layerDrafts:[...layerDrafts.values()],sources:[...sources.values()],operations:operations.size,calls});return;}
  if(req.url==='/fixture/revoke'){denied=true;send(200,{});return;}
  if(req.url==='/fixture/expire'){auth=false;send(200,{});return;}
  if(req.headers['x-syn443-csrf']!=='1'||req.headers.origin!=='http://127.0.0.1:17851'){send(403,{});return;}
@@ -23,6 +24,30 @@ const server=http.createServer(async(req,res)=>{
  calls.push(body.action);
  const p=body.payload;
  switch(body.action){
+ case 'configuration.layers.draft.get':{const draft=layerDrafts.get(p.id);send(draft?200:403,draft||{});break;}
+ case 'configuration.layers.draft.put':{
+  const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}
+  const d=p.draft,current=layerDrafts.get(d.id);
+  if((current?.revision||0)!==d.revision){send(409,{});break;}
+  if(d.savedAtMs!==0||d.proposal?.draftId!==d.id||d.proposal.draftRevision!==d.revision+1||!d.proposal.bundles?.length){send(400,{});break;}
+  const value={...d,revision:d.revision+1,savedAtMs:Date.now()};layerDrafts.set(d.id,value);operations.set(body.requestId,{raw,value});
+  if(failSave){failSave=false;send(503,{});}else send(200,value);break;
+ }
+ case 'configuration.preview.request':{
+  const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}
+  const id=body.requestId,value={id,state:'queued'},proposal=p.proposal;
+  const result={previewId:'synthetic-preview-'+id,ticket:'synthetic-ticket-for-browser-fixture',preview:{schemaVersion:1,draftId:options.previewMismatch?'different-draft':proposal.draftId,draftRevision:proposal.draftRevision,targetKind:proposal.targetKind,targetId:proposal.targetId,mode:proposal.mode,expiresAtMs:Date.now()+(options.previewExpired?-1000:120000),recipients:proposal.bundles.map(b=>({device:b.device,owner:'synthetic-user',baseRevision:b.baseRevision,baseHash:b.baseHash})),effectiveHash:'b'.repeat(64),dependencyHash:'c'.repeat(64)}};
+  configurationJobs.set(id,{id,state:options.previewConflict?'rejected':'ready',error:options.previewConflict?'configuration_conflict':'',result});operations.set(id,{raw,value});send(200,value);break;
+ }
+ case 'configuration.publish':{
+  const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}
+  const ready=[...configurationJobs.values()].find(j=>j.result?.previewId===p.previewId&&j.result.ticket===p.ticket);
+  if(!ready||ready.state!=='ready'||ready.result.preview.expiresAtMs<=Date.now()){send(403,{});break;}
+  const id=body.requestId,value={id,state:options.failPublish?'published':'queued'};
+  configurationJobs.set(id,{id,state:'published'});operations.set(id,{raw,value});
+  if(options.failPublish){options.failPublish=false;send(503,{});}else send(200,value);break;
+ }
+ case 'configuration.request.get':{const job=configurationJobs.get(p.id);send(job?200:403,job||{});break;}
  case 'configuration.inventory.get':{
   if(p.id==='device-unassigned'){send(200,{device:p.id,owner:'synthetic-user',state:'unassigned',revision:0,hash:'',policyRevision:3,mode:'',approvalUntilMs:0,layers:[]});break;}
   if(!['device-a','device-expired','device-mismatch'].includes(p.id)){send(403,{});break;}

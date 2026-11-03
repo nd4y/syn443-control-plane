@@ -446,3 +446,30 @@ withdrawal, wrong actor/key, quotas/expiry, schema rejection and role contaminat
 This persistence component awaits its complete Actions result. It does not queue
 previews, approve configurations, change sources or activate a device. The full
 editing/review/publication UI and explicit discard/inventory remain open work.
+
+### Layered browser editing workflow
+
+The control console can start a device-layer proposal from an authorized desired
+inventory. It preserves complete inherited layers and base configuration hash,
+increments only the selected device layer, then saves an actor-private proposal.
+The advanced JSON editor also accepts complete explicitly scoped proposals;
+the server remains responsible for validating inheritance, field restrictions
+and the exact full recipient set. Other recipients are never silently inferred
+from one device's inventory.
+
+Only an unchanged saved proposal can request a preview. The console polls the
+bounded server job, checks draft/target/recipient/base bindings and expiry, and
+shows the complete proposed changes, recipients and dependency/effective hashes.
+An explicit review checkbox and separate Publish action are required. An edit
+invalidates review. Queue operations keep identical request bytes when retrying
+an unknown acknowledgement; a queued mutation cannot be silently replaced by
+another editor action. Terminal server conflicts preserve the saved draft and
+require loading/comparing current authority rather than overwriting it.
+
+Server compilation is separate from testing actual connectivity on Android.
+After publication the UI explicitly reports desired server state, with activation
+still unconfirmed. Authentication withdrawal/logout erase proposals, tickets and
+rendered private data; browser persistent storage is unused. Browser fixture
+tests cover this flow, but are not live device/publication acceptance. Automatic
+three-way conflict resolution, full settings forms, shared-target inventory and
+phone-local testing remain required work. This UI change awaits Actions.

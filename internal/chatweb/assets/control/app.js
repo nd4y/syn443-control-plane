@@ -1,6 +1,7 @@
 const $=id=>document.getElementById(id);
 let authenticated=false,busy=false,pending=null,revision=0,opened=null,next='',listedOwner='';
 let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='';
+let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message){$('status').textContent=message;}
@@ -12,11 +13,13 @@ function controls(){
  $('more-sources').disabled=busy||!authenticated||!next||!!pending;
  for(const id of ['owner','inventory-device',...formFields])$(id).disabled=busy||!authenticated||!!pending;
  $('pending').hidden=!pending;for(const id of ['retry-save','discard-save'])$(id).disabled=busy||!authenticated;
+ if(pending&&['layer-preview','layer-publish'].includes(pendingKind))$('discard-save').disabled=true;
  for(const button of $('sources').querySelectorAll('button'))button.disabled=busy||!authenticated||!!pending;
  $('source-secret').disabled=busy||!authenticated||!!pending||$('source-secret-operation').value!=='replace';
  if(!['server','resource'].includes($('source-mode').value))$('sync-source').disabled=true;
+ layerControls();
 }
-function erase(){pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details','inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions'])$(id).replaceChildren();$('inventory-state').textContent='';$('inventory-view').hidden=true;}
+function erase(){clearLayers();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details','inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions'])$(id).replaceChildren();$('inventory-state').textContent='';$('inventory-view').hidden=true;}
 async function request(path,body){
  const raw=typeof body==='string'?body:JSON.stringify(body);
  if(new TextEncoder().encode(raw).length>278528)throw Error('size');
@@ -80,10 +83,12 @@ function showInventory(view){
 async function loadInventory(){
  const device=$('inventory-device').value.trim();
  if(!/^[A-Za-z0-9_-]{1,64}$/.test(device))throw Error('invalid');
+ layerInventory=null;
  $('inventory-view').hidden=true;
  const view=await action('configuration.inventory.get',{id:device});
  if(view.device!==device)throw Error('invalid');
  showInventory(view);
+ layerInventory=structuredClone(view);
  status('Желаемая конфигурация загружена. Это не проверка связи и не подтверждение активации Android.');
 }
 function showDraft(draft){
@@ -123,7 +128,7 @@ async function save(){
  if(new TextEncoder().encode(raw).length>278528)throw Error('size');
  pendingKind='draft';pending=raw;await retry();
 }
-async function retry(){if(!pending)throw Error('invalid');let result;try{result=await request('/control/action',pending);}catch(error){if(error.message==='invalid')pending=null;throw error;}if(pendingKind==='source'){showSource(result);status('Источник сохранён. Активные политики меняются отдельной публикацией.');}else if(pendingKind==='sync'){if(typeof result.id!=='string')throw Error('invalid');sourceJob=result.id;$('job-status').textContent=JSON.stringify(result,null,2);status('Задание обновления поставлено в очередь.');}else{showDraft(result);status('Черновик сохранён. Политики устройств не изменены.');}pending=null;}
+async function retry(){if(!pending)throw Error('invalid');let result;try{result=await request('/control/action',pending);}catch(error){if(error.message==='invalid')pending=null;throw error;}if(pendingKind==='source'){showSource(result);status('Источник сохранён. Активные политики меняются отдельной публикацией.');}else if(pendingKind==='sync'){if(typeof result.id!=='string')throw Error('invalid');sourceJob=result.id;$('job-status').textContent=JSON.stringify(result,null,2);status('Задание обновления поставлено в очередь.');}else if(pendingKind.startsWith('layer-')){acceptLayerMutation(pendingKind,result);}else{showDraft(result);status('Черновик сохранён. Политики устройств не изменены.');}pending=null;}
 function clearSource(){sourceRevision=0;sourceIdentity=null;sourceJob='';for(const id of ['source-id','source-owner','source-name','source-resource','source-external','source-until','source-secret'])$(id).value='';$('source-mode').value='server';$('source-format').value='uri';$('source-refresh').value='3600';$('source-stale').value='86400';$('source-enabled').checked=true;$('source-secret-operation').value='keep';for(const option of $('source-modes').options)option.selected=option.value==='wifi';$('source-version').textContent='Источник не выбран';$('job-status').replaceChildren();}
 function localDate(seconds){const d=new Date(seconds*1000);if(!Number.isFinite(d.getTime()))throw Error('invalid');return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
 function showSource(s){if(!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');sourceIdentity={id:s.id,owner:s.owner};sourceRevision=s.revision;sourceJob='';$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
@@ -141,10 +146,102 @@ $('logout').onclick=()=>work(async()=>{try{await request('/logout',{});}finally{
 $('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>work(()=>sources(true));$('load-inventory').onclick=()=>work(loadInventory);$('open-draft').onclick=()=>work(openDraft);
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
-$('discard-save').onclick=()=>work(async()=>{const kind=pendingKind,sourceId=$('source-id').value.trim();pending=null;if(kind==='draft')await openDraft();else if(sourceId)showSource(await action('source.get',{id:sourceId}));});
+$('discard-save').onclick=()=>work(async()=>{const kind=pendingKind,sourceId=$('source-id').value.trim();pending=null;if(kind.startsWith('layer-')){layerPreview=null;layerJob=null;await loadLayerDraft();}else if(kind==='draft')await openDraft();else if(sourceId)showSource(await action('source.get',{id:sourceId}));});
 $('new-source').onclick=()=>work(async()=>{const owner=$('owner').value.trim();clearSource();$('source-id').value=crypto.randomUUID();$('source-owner').value=owner;$('source-until').value=localDate(Math.floor(Date.now()/1000)+30*86400);$('source-version').textContent='Новый источник';status('Заполните параметры. Для нового HTTPS источника укажите новые учётные данные.');});
 $('source-form').onsubmit=event=>{event.preventDefault();work(saveSource);};
 $('source-secret-operation').onchange=controls;$('source-mode').onchange=controls;
 $('sync-source').onclick=()=>work(async()=>{if(pending||!sourceIdentity)throw Error('invalid');pendingKind='sync';pending=envelope('source.sync',{id:sourceIdentity.id,revision:sourceRevision});await retry();});
 $('source-job').onclick=()=>work(async()=>{if(!sourceJob)throw Error('invalid');$('job-status').textContent=JSON.stringify(await action('job.get',{id:sourceJob}),null,2);status('Состояние задания обновлено.');});
 controls();work(async()=>{await request('/session',{});authenticated=true;status('Вы вошли. Выберите пользователя или откройте личный черновик.');});
+
+function clearLayerReview(){layerPreview=null;$('layer-confirm').checked=false;$('layer-review').hidden=true;$('layer-impact').textContent='';}
+function clearLayers(){layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearLayerReview();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
+function layerUnchanged(){return !!layerSaved&&$('layer-id').value.trim()===layerSaved.id&&$('layer-proposal').value===layerSaved.text;}
+function layerControls(){
+ const disabled=busy||!authenticated||!!pending;
+ for(const id of ['layer-id','layer-proposal','layer-load','layer-save','layer-confirm'])$(id).disabled=disabled||!!layerJob;
+ $('layer-from-device').disabled=disabled||!!layerJob||!layerInventory||layerInventory.state==='unassigned';
+ $('layer-preview').disabled=disabled||!layerUnchanged()||!!layerJob;
+ $('layer-poll').disabled=disabled||!layerJob;
+ $('layer-publish').disabled=disabled||!!layerJob||!layerUnchanged()||!layerPreview||!$('layer-confirm').checked||layerPreview.preview.expiresAtMs<=Date.now();
+}
+function layerProposal(){
+ let proposal;try{proposal=JSON.parse($('layer-proposal').value);}catch{throw Error('invalid');}
+ const id=$('layer-id').value.trim();
+ if(!/^[A-Za-z0-9_-]{1,64}$/.test(id)||!proposal||Array.isArray(proposal)||proposal.draftId!==id||proposal.draftRevision!==layerRevision+1||!Array.isArray(proposal.bundles)||!proposal.bundles.length||proposal.bundles.length>64||layerOpened&&(id!==layerOpened.id||proposal.targetKind!==layerOpened.kind||proposal.targetId!==layerOpened.target))throw Error('invalid');
+ return proposal;
+}
+function showLayerDraft(draft){
+ const p=draft&&draft.proposal;
+ if(!draft||typeof draft.id!=='string'||!Number.isSafeInteger(draft.revision)||draft.revision<1||!Number.isSafeInteger(draft.savedAtMs)||draft.savedAtMs<1||!p||p.draftId!==draft.id||p.draftRevision!==draft.revision||!Array.isArray(p.bundles))throw Error('invalid');
+ layerRevision=draft.revision;layerOpened={id:draft.id,kind:p.targetKind,target:p.targetId};
+ $('layer-id').value=draft.id;$('layer-proposal').value=JSON.stringify(p,null,2);
+ layerSaved={id:draft.id,proposal:structuredClone(p),text:$('layer-proposal').value};
+ layerJob=null;clearLayerReview();$('layer-job').textContent='';$('layer-version').textContent=`Сохранённая версия слоёв: ${draft.revision}`;
+}
+async function loadLayerDraft(){
+ const id=$('layer-id').value.trim();if(!/^[A-Za-z0-9_-]{1,64}$/.test(id))throw Error('invalid');
+ const saved=await action('configuration.layers.draft.get',{id});if(saved.id!==id)throw Error('invalid');showLayerDraft(saved);
+ status('Черновик слоёв загружен. Для новой правки версия предложения увеличивается при сохранении.');
+}
+function editDeviceLayer(){
+ if(!layerInventory||layerInventory.state==='unassigned')throw Error('invalid');
+ const v=structuredClone(layerInventory),layers=v.layers;
+ let own=layers.find(layer=>layer.kind==='device'&&layer.id===v.device);
+ if(own){if(own.revision>=Number.MAX_SAFE_INTEGER)throw Error('invalid');own.revision++;}
+ else{own={id:v.device,kind:'device',priority:0,revision:1,changes:[],permissions:[]};layers.push(own);}
+ layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearLayerReview();
+ const id=crypto.randomUUID();$('layer-id').value=id;
+ $('layer-proposal').value=JSON.stringify({draftId:id,draftRevision:1,targetKind:'device',targetId:v.device,mode:v.mode,approvalUntilMs:Math.max(v.approvalUntilMs,Date.now()+3600000),bundles:[{device:v.device,baseRevision:v.revision,baseHash:v.hash,layers}]},null,2);
+ $('layer-version').textContent='Новый черновик слоёв';$('layer-job').textContent='';
+ status('Наследованные слои сохранены. Внесите изменения в changes слоя device и сохраните черновик.');
+}
+function acceptLayerMutation(kind,result){
+ if(kind==='layer-save'){
+  const submitted=JSON.parse(pending).payload.draft;
+  if(result.id!==submitted.id||result.revision!==submitted.revision+1||result.proposal?.targetKind!==submitted.proposal.targetKind||result.proposal?.targetId!==submitted.proposal.targetId)throw Error('invalid');
+  showLayerDraft(result);status('Личный черновик слоёв сохранён. Желаемые конфигурации не изменены.');return;
+ }
+ if(!result||typeof result.id!=='string'||!['queued','running','ready','published','rejected','expired','cancelled'].includes(result.state))throw Error('invalid');
+ layerJob={id:result.id,kind};clearLayerReview();$('layer-job').textContent=JSON.stringify(result,null,2);
+ status(kind==='layer-preview'?'Предварительная проверка поставлена в очередь.':'Публикация поставлена в очередь. Проверьте результат задания.');
+}
+async function saveLayerDraft(){
+ if(pending||layerJob)throw Error('invalid');
+ let proposal;try{proposal=JSON.parse($('layer-proposal').value);}catch{throw Error('invalid');}
+ // The displayed saved proposal retains its saved revision. A new edit always
+ // advances it explicitly in the transmitted draft, never in inherited layers.
+ if(proposal?.draftRevision===layerRevision&&layerRevision>0)proposal.draftRevision++;
+ const prior=$('layer-proposal').value;$('layer-proposal').value=JSON.stringify(proposal,null,2);
+ try{proposal=layerProposal();}catch(error){$('layer-proposal').value=prior;throw error;}
+ clearLayerReview();pendingKind='layer-save';pending=envelope('configuration.layers.draft.put',{draft:{id:$('layer-id').value.trim(),revision:layerRevision,proposal,savedAtMs:0}});await retry();
+}
+function checkedLayerPreview(result){
+ const p=result&&result.preview,saved=layerSaved?.proposal;
+ if(!saved||!result||typeof result.previewId!=='string'||typeof result.ticket!=='string'||result.ticket.length<24||!p||p.schemaVersion!==1||p.draftId!==saved.draftId||p.draftRevision!==saved.draftRevision||p.targetKind!==saved.targetKind||p.targetId!==saved.targetId||p.mode!==saved.mode||!Number.isSafeInteger(p.expiresAtMs)||p.expiresAtMs<=Date.now()||p.expiresAtMs>Date.now()+180000||!Array.isArray(p.recipients)||p.recipients.length!==saved.bundles.length||!/^([0-9a-f]{64})$/.test(p.effectiveHash)||!/^([0-9a-f]{64})$/.test(p.dependencyHash))throw Error('invalid');
+ const seen=new Set();for(const r of p.recipients){const bundle=saved.bundles.find(b=>b.device===r.device);if(!bundle||seen.has(r.device)||r.baseRevision!==bundle.baseRevision||r.baseHash!==bundle.baseHash)throw Error('invalid');seen.add(r.device);}
+ return result;
+}
+async function pollLayerJob(){
+ if(!layerJob)throw Error('invalid');const job=layerJob,view=await action('configuration.request.get',{id:job.id});
+ if(view.id!==job.id||!['queued','running','ready','published','rejected','expired','cancelled'].includes(view.state))throw Error('invalid');
+ $('layer-job').textContent=JSON.stringify({id:view.id,state:view.state,error:view.error||''},null,2);
+ if(['queued','running'].includes(view.state)){status('Задание ещё выполняется.');return;}
+ layerJob=null;clearLayerReview();
+ if(view.state==='ready'&&job.kind==='layer-preview'){
+  if(!layerUnchanged())throw Error('invalid');layerPreview=checkedLayerPreview(view.result);
+  const p=layerPreview.preview;$('layer-impact').textContent=JSON.stringify({targetKind:p.targetKind,targetId:p.targetId,mode:p.mode,recipients:p.recipients.map(r=>({device:r.device,owner:r.owner,baseRevision:r.baseRevision,baseHash:r.baseHash})),effectiveHash:p.effectiveHash,dependencyHash:p.dependencyHash,expiresAt:inventoryDate(p.expiresAtMs),proposal:layerSaved.proposal},null,2);
+  $('layer-review').hidden=false;status('Проверка сервера завершена. Просмотрите предложение и адресатов, затем подтвердите публикацию.');return;
+ }
+ if(view.state==='published'&&job.kind==='layer-publish'){
+  layerInventory=null;layerSaved=null;$('layer-result').textContent='Желаемая конфигурация опубликована. Активация Android ещё не подтверждена. Перед следующей правкой загрузите актуальную конфигурацию устройства.';status('Желаемые версии опубликованы атомарно. Подтверждение активации устройства проверяется отдельно.');return;
+ }
+ status(view.error==='configuration_conflict'?'Конфликт исходной версии. Сохранённый черновик сохранён; загрузите актуальную конфигурацию и сравните изменения.':'Задание отклонено или истекло. Изменения не подтверждены; проверьте права, источники и исходные версии.');
+}
+$('layer-from-device').onclick=()=>work(async()=>editDeviceLayer());
+$('layer-load').onclick=()=>work(loadLayerDraft);$('layer-save').onclick=()=>work(saveLayerDraft);
+$('layer-id').oninput=$('layer-proposal').oninput=()=>{clearLayerReview();layerControls();};
+$('layer-confirm').onchange=layerControls;
+$('layer-preview').onclick=()=>work(async()=>{if(pending||layerJob||!layerUnchanged())throw Error('invalid');clearLayerReview();pendingKind='layer-preview';pending=envelope('configuration.preview.request',{proposal:layerSaved.proposal});await retry();});
+$('layer-poll').onclick=()=>work(pollLayerJob);
+$('layer-publish').onclick=()=>work(async()=>{if(pending||layerJob||!layerUnchanged()||!$('layer-confirm').checked)throw Error('invalid');const result=checkedLayerPreview(layerPreview);pendingKind='layer-publish';pending=envelope('configuration.publish',{previewId:result.previewId,ticket:result.ticket});await retry();});
