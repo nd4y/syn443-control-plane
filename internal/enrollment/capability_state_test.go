@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
@@ -34,6 +35,19 @@ func TestCapabilityCanonicalSetHasStableHashBoundsAndNoCallerMutation(t *testing
 	}
 	if _, _, e := canonicalCapabilities(tooMany); e == nil {
 		t.Fatal("unbounded set")
+	}
+}
+
+func TestCapabilityPublisherRequiresInitializedContextAndVerifier(t *testing.T) {
+	var absent *Publisher
+	if e := absent.ApproveCapabilitiesOnce(context.Background(), time.Unix(1800000000, 0)); e == nil {
+		t.Fatal("missing publisher")
+	}
+	if e := (&Publisher{}).ApproveCapabilitiesOnce(nil, time.Unix(1800000000, 0)); e == nil {
+		t.Fatal("missing context")
+	}
+	if e := (&Publisher{Store: &Store{}}).ApproveCapabilitiesOnce(context.Background(), time.Unix(1800000000, 0)); e == nil {
+		t.Fatal("missing independent verifier")
 	}
 }
 
