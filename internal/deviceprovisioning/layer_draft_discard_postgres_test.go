@@ -4,7 +4,6 @@ package deviceprovisioning
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
