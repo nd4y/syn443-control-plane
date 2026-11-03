@@ -10,6 +10,12 @@ All automatable implemented behavior must run on pull requests and main in GitHu
 Physical-only release gates: real restricted LTE, RF handover, vendor power management, measured idle energy, external-provider availability and long endurance.
 CI must list these as pending rather than skip them and report success.
 Coverage applies to implemented code; line coverage alone is not behavioral coverage.
+
+Portable managed NetBird adds required Go compilation and PostgreSQL publication
+cases described in [its scope and limits](portable-netbird.md). The regular race,
+fuzz and configuration85% gates remain unchanged. These cases exercise direct and
+VLESS composition, internal DNS, invalid branches/authority fields, missing broker
+retention and stable addressed enrollment reference across transport changes.
 All fixtures use synthetic endpoints, identifiers and secrets. No real provider credentials are needed in CI.
 Every later feature PR updates requirements-register with scope and concrete evidence.
 

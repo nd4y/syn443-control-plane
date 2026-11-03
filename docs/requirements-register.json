@@ -686,7 +686,10 @@
         "docs/netbird-resource.md",
         "internal/netbirdapi/client.go",
         "internal/netbirdapi/client_test.go",
-        "docs/overlay-broker.md"
+        "docs/overlay-broker.md",
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go"
       ],
       "implementationScope": "Addressed overlay credentials/namespace delivery plus bounded NetBird single-account management API adapter; initial adapter Actions41449596701 all8 PASS; newer disable/readback extension pending.",
       "remainingScope": "Durable setup-key broker/revocation jobs, managed resource/UI wiring, interrupted-registration keyless recovery, provider reconciliation and real Cloud/device acceptance."
@@ -700,7 +703,10 @@
         "docs/netbird-resource.md",
         "internal/netbirdapi/client.go",
         "internal/netbirdapi/client_test.go",
-        "docs/overlay-broker.md"
+        "docs/overlay-broker.md",
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go"
       ],
       "implementationScope": "Addressed credential/namespace delivery and account-bound management adapter accepted; durable broker/SQL-role/independent wrapping implementation pending Actions and runtime integration.",
       "remainingScope": "Configured resource/policy/scheduler/API/UI integration, controlled renewal/retention and actual Cloud/final restored-device acceptance; full M2/M3 remain incomplete."
@@ -708,14 +714,22 @@
     {
       "id": "NB-03",
       "text": "Первоначальная выдача NetBird выполняется через однократное зачисление устройства или отдельную OIDC-интеграцию NetBird. Успешный вход в наш Keycloak не назначает пользователю доступ ко всем NetBird peers. Управляющий backend хранит служебный доступ к NetBird только на сервере. NetBird - первый реализуемый overlay-провайдер общего контракта OVL; его API/идентичность и формат peer не являются универсальными правилами для будущих систем.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go"
+      ]
     },
     {
       "id": "NB-04",
       "text": "Для автоматического зачисления предлагаются одноразовые setup keys с минимальными группами и сроком жизни. Они передаются только конкретному устройству и удаляются после использования. Обновление политики, перезапуск и смена сети не создают нового peer. [NetBird setup keys](https://docs.netbird.io/manage/peers/register-machines-using-setup-keys).",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go"
+      ]
     },
     {
       "id": "NB-05",
@@ -723,7 +737,10 @@
       "status": "partial",
       "evidence": [
         "docs/implementation-status.md#evidence-index-and-register-semantics",
-        "docs/overlay-broker.md"
+        "docs/overlay-broker.md",
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go"
       ],
       "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
       "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
@@ -743,7 +760,10 @@
       "text": "Маршруты и DNS выдаются по фактическим назначениям NetBird и нашей политике. Широкий mesh CIDR не угадывается. Внутренние DNS-запросы не уходят публичному резолверу при сбое overlay. Конфликт маршрута NetBird с домашней сетью выявляется до активации.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go"
       ],
       "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
       "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."

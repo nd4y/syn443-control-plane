@@ -108,8 +108,15 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	if e != nil {
 		return nil, e
 	}
+	required := []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}
+	if plan.Graph.NetBird != nil {
+		if !slices.Contains(target.Capabilities, "overlay.credentials.v1") {
+			return nil, enrollment.ErrDenied
+		}
+		required = append(required, "overlay.credentials.v1")
+	}
 	return &enrollment.PreparedConfiguration{EngineConfig: compiled.EngineConfig, Activation: compiled.Activation,
-		RequiredCapabilities: []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}, UntilMs: until,
+		RequiredCapabilities: required, UntilMs: until,
 		Fence: &networkFence{layers: approved.Fence, sources: selection, untilMs: until}}, nil
 }
 

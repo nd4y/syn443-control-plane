@@ -254,6 +254,9 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 			}
 			return prepareErr
 		}
+		if prepared != nil && hasCapability(prepared.RequiredCapabilities, "overlay.credentials.v1") && p.Brokers == nil {
+			return ErrDenied
+		}
 		if err := applyPreparedConfiguration(&payload, prepared, request.Capabilities, now); err != nil {
 			return err
 		}

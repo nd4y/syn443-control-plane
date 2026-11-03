@@ -58,6 +58,11 @@ and cannot label planned behavior operational.
 
 ## Current implementation evidence
 
+[Portable managed NetBird](portable-netbird.md) connects typed layer configuration
+to direct/VLESS underlays and internal DNS, with independent broker publication.
+Its exact CI and affected physical acceptance remain separate; it does not close
+the full settings or administration rows above.
+
 The bounded normalization and pure quarantine components are described in
 [the import matrix](subscription-import.md). The SQL catalog now also contains
 resource definitions, impact-bound sensitive changes, resource-version job fences,

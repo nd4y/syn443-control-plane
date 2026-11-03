@@ -35,6 +35,7 @@ type Graph struct {
 	Profiles  map[string]ProfileReference `json:"profiles"`
 	Chains    map[string]Chain            `json:"chains"`
 	Balancers map[string]Balancer         `json:"balancers"`
+	NetBird   *NetBirdNode                `json:"netbird,omitempty"`
 	Final     string                      `json:"final"`
 }
 type GraphCapability struct {
@@ -127,6 +128,9 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 		if !add(tag) {
 			return CompiledGraph{}, ErrInvalid
 		}
+	}
+	if g.NetBird != nil && (g.NetBird.validate() != nil || !add(g.NetBird.Tag)) {
+		return CompiledGraph{}, ErrInvalid
 	}
 	if !defined[g.Final] {
 		return CompiledGraph{}, ErrInvalid
@@ -280,7 +284,21 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 		colors[tag] = 1
 		var capability GraphCapability
 		level := 0
-		if chain, ok := g.Chains[tag]; ok {
+		if g.NetBird != nil && tag == g.NetBird.Tag {
+			capability = GraphCapability{TCP: true, UDP: true, Hops: 1}
+			if g.NetBird.Mode == "vless" {
+				child, e := visit(g.NetBird.Detour, depth+1)
+				if e != nil || !child.TCP || child.Hops >= 4 {
+					return GraphCapability{}, ErrInvalid
+				}
+				capability.Hops += child.Hops
+				level = levels[g.NetBird.Detour] + 1
+			}
+			features["netbird."+g.NetBird.Mode] = true
+			if e := emit(g.NetBird.outbound()); e != nil {
+				return GraphCapability{}, e
+			}
+		} else if chain, ok := g.Chains[tag]; ok {
 			if len(chain.DialOrder) < 1 || len(chain.DialOrder) > 4 {
 				return capability, ErrInvalid
 			}
@@ -380,6 +398,9 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 		if _, e := visit(tag, 0); e != nil {
 			return CompiledGraph{}, e
 		}
+	}
+	if g.NetBird != nil && g.NetBird.Mode == "vless" && netbirdVLESSDetour(result.Outbounds, g.NetBird.Detour) != nil {
+		return CompiledGraph{}, ErrInvalid
 	}
 	for feature := range features {
 		result.RequiredEngineFeatures = append(result.RequiredEngineFeatures, feature)

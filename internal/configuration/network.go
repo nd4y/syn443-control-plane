@@ -204,6 +204,25 @@ func emitDNSServer(tag string, server DNSServer, graph CompiledGraph) (map[strin
 		return nil, ErrInvalid
 	}
 	result := map[string]any{"tag": tag, "type": server.Transport}
+	if server.Transport == "netbird" {
+		if server.Address != "" || server.Port != 0 || server.ServerName != "" || server.Path != "" || server.Outbound == "" {
+			return nil, ErrInvalid
+		}
+		for _, raw := range graph.Outbounds {
+			var node struct {
+				Type string `json:"type"`
+				Tag  string `json:"tag"`
+			}
+			if json.Unmarshal(raw, &node) != nil {
+				return nil, ErrInvalid
+			}
+			if node.Tag == server.Outbound && node.Type == "netbird" {
+				result["outbound"] = server.Outbound
+				return result, nil
+			}
+		}
+		return nil, ErrInvalid
+	}
 	if server.Transport == "local" {
 		if server.Address != "" || server.Port != 0 || server.ServerName != "" || server.Path != "" || server.Outbound != "" {
 			return nil, ErrInvalid
