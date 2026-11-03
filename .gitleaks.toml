@@ -147,3 +147,10 @@ condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"control-openapi\.json": "c44ce03a193a69b6a50ad1a38899630376221271b23024c4a2870bfd9361186d",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public saved-draft inventory OpenAPI canonical LF digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "70e8e88fd7cc42a1772ea841a0231fb2cfc51d360063f9799803acd452a7984a",?\s*$''']
