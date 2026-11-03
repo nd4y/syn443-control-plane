@@ -420,4 +420,29 @@ with synthetic identity fixtures and real device-key proofs/transactions,
 revocation/receipt substitution, quota shrink, cancellation and late expiry.
 Automatic defaults for new accounts, full application settings and capability
 upgrades remain required; identity admission is not VPN activation or a default
-assignment. This change still awaits its complete Actions result.
+assignment. Its exact-source mandatory Actions jobs passed; the final integrated
+device and full milestone gates remain separate.
+
+### Actor-private layered drafts
+
+The closed `configuration.layers.draft.get/put` actions store an encrypted private
+proposal under the authenticated actor and draft ID. Saving requires live
+object-scoped `configuration.drafts.write`; reading independently requires
+`configuration.drafts.read`. Each save uses an expected revision and a stable
+operation ID. An identical lost-acknowledgement retry returns the original saved
+revision, even after a later edit or expiration of the proposal's approval time.
+Reusing an operation ID with a changed body conflicts. Target scope is immutable.
+
+Draft ciphertext binds actor, ID and revision. Bodies are bounded to256KiB,
+64live drafts and256save receipts per actor. Drafts expire after30days, operation
+receipts after24hours; a subsequent authorized save reclaims that actor's expired
+rows under the same advisory lock. Reads never return expired drafts. Expired
+approval windows must be refreshed before another save or preview. Publication
+still independently verifies the original submitted proposal and live authority.
+The publisher and subscription fetch roles cannot read mutable private drafts.
+
+New SQL/HTTP tests cover concurrent-editor CAS, lost acknowledgements, scope
+withdrawal, wrong actor/key, quotas/expiry, schema rejection and role contamination.
+This persistence component awaits its complete Actions result. It does not queue
+previews, approve configurations, change sources or activate a device. The full
+editing/review/publication UI and explicit discard/inventory remain open work.

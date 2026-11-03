@@ -55,3 +55,9 @@ assert selected,'Authorized scoped desired-configuration view'
 value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
 print(f'Authorized scoped desired-configuration view coverage: {value:.1f}% (minimum80%)')
 assert value>=80
+
+selected=[(count,hits) for location,(count,hits) in blocks.items() if '/internal/deviceprovisioning/layer_drafts.go:' in location]
+assert selected,'Private layered draft persistence and CAS'
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f'Private layered draft persistence and CAS coverage: {value:.1f}% (minimum80%)')
+assert value>=80

@@ -120,6 +120,12 @@ func ConfigurationRuntimeRole(ctx context.Context, db *sql.DB, publisher bool) e
 			return enrollment.ErrDenied
 		}
 	}
+	for _, table := range []string{"managed_configuration_drafts", "managed_configuration_draft_ops"} {
+		var read, insert, update, remove bool
+		if e := db.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,$1::text,'SELECT'),has_any_column_privilege(current_user,$1::text,'INSERT'),has_any_column_privilege(current_user,$1::text,'UPDATE'),has_table_privilege(current_user,$1::text,'DELETE')`, table).Scan(&read, &insert, &update, &remove); e != nil || read == publisher || insert == publisher || update != (!publisher && table == "managed_configuration_drafts") || remove == publisher {
+			return enrollment.ErrDenied
+		}
+	}
 	return nil
 }
 

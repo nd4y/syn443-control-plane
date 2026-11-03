@@ -18,8 +18,12 @@ var configurationObjectID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 var configurationRequestID = regexp.MustCompile(`^[A-Za-z0-9_-]{24,128}$`)
 var configurationBodyHash = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
+func configurationTargetShape(kind, id string) bool {
+	return configurationObjectID.MatchString(id) && (kind == "template" || kind == "group" || kind == "user" || kind == "device")
+}
+
 func validateProposalShape(ctx context.Context, p LayerProposal, now time.Time) error {
-	if !configurationObjectID.MatchString(p.DraftID) || p.DraftRevision < 1 || p.DraftRevision > 9007199254740991 || p.ApprovalUntilMs <= now.UnixMilli() || p.ApprovalUntilMs-now.UnixMilli() > 366*24*time.Hour.Milliseconds() {
+	if !configurationTargetShape(p.TargetKind, p.TargetID) || !configurationObjectID.MatchString(p.DraftID) || p.DraftRevision < 1 || p.DraftRevision > 9007199254740991 || p.ApprovalUntilMs <= now.UnixMilli() || p.ApprovalUntilMs-now.UnixMilli() > 366*24*time.Hour.Milliseconds() {
 		return enrollment.ErrDenied
 	}
 	for _, b := range p.Bundles {
@@ -40,7 +44,7 @@ func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifie
 		return "", envelope, 0, enrollment.ErrDenied
 	}
 	switch envelope.Action {
-	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get":
+	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put":
 	default:
 		return "", envelope, 0, enrollment.ErrDenied
 	}
@@ -113,6 +117,24 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 	actor, envelope, authorityUntil, e := verifyConfigurationReceipt(ctx, c.Verifier, receipt, c.Origin, c.AssuranceACR, now)
 	if e != nil {
 		return nil, e
+	}
+	if envelope.Action == "configuration.layers.draft.get" {
+		var input struct {
+			ID string `json:"id"`
+		}
+		if identity.DecodeConfiguration(envelope.Payload, &input) != nil || !configurationObjectID.MatchString(input.ID) {
+			return nil, enrollment.ErrDenied
+		}
+		return c.getDraft(ctx, actor, input.ID, authorityUntil, now)
+	}
+	if envelope.Action == "configuration.layers.draft.put" {
+		var input struct {
+			Draft ConfigurationDraft `json:"draft"`
+		}
+		if identity.DecodeConfiguration(envelope.Payload, &input) != nil {
+			return nil, enrollment.ErrDenied
+		}
+		return c.putDraft(ctx, actor, envelope.RequestID, configurationHash(raw), input.Draft, authorityUntil, now)
 	}
 	if envelope.Action == "configuration.inventory.get" {
 		var input struct {

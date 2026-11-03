@@ -1,4 +1,20 @@
 -- Owner migration only. A mutable draft/request is never an approved layer head.
+CREATE TABLE IF NOT EXISTS managed_configuration_drafts(
+ actor text NOT NULL,id text NOT NULL,target_kind text NOT NULL CHECK(target_kind IN('template','group','user','device')),target_id text NOT NULL,
+ revision bigint NOT NULL CHECK(revision BETWEEN 1 AND 9007199254740991),body_hash text NOT NULL,body bytea NOT NULL,
+ saved_ms bigint NOT NULL,expires_ms bigint NOT NULL,PRIMARY KEY(actor,id),CHECK(expires_ms>saved_ms),CHECK(octet_length(body) BETWEEN 29 AND 262172)
+);
+CREATE TABLE IF NOT EXISTS managed_configuration_draft_ops(
+ actor text NOT NULL,request_id text NOT NULL,body_hash text NOT NULL,response bytea NOT NULL,expires_ms bigint NOT NULL,
+ PRIMARY KEY(actor,request_id),CHECK(octet_length(response) BETWEEN 29 AND 262172)
+);
+CREATE OR REPLACE FUNCTION managed_configuration_draft_invariants() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF (NEW.actor,NEW.id,NEW.target_kind,NEW.target_id) IS DISTINCT FROM (OLD.actor,OLD.id,OLD.target_kind,OLD.target_id)
+ OR NEW.revision<>OLD.revision+1 THEN RAISE EXCEPTION 'configuration draft CAS'; END IF; RETURN NEW;
+END; $$;
+DROP TRIGGER IF EXISTS managed_configuration_draft_guard ON managed_configuration_drafts;
+CREATE TRIGGER managed_configuration_draft_guard BEFORE UPDATE ON managed_configuration_drafts FOR EACH ROW EXECUTE FUNCTION managed_configuration_draft_invariants();
 -- Non-authoritative row-lock guard for a consistent authorized device view.
 ALTER TABLE identity_devices ADD COLUMN IF NOT EXISTS configuration_guard integer NOT NULL DEFAULT 0;
 CREATE TABLE IF NOT EXISTS managed_configuration_previews(

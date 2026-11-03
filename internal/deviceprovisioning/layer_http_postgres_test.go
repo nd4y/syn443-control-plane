@@ -41,6 +41,20 @@ func TestConfigurationHTTPOriginalReceiptPreviewPublishAndPoll(t *testing.T) {
 	// Feature opt-in is fail closed even when the generic API schema knows it.
 	call("configuration.preview.request", "disabled preview", configurationPreviewInput{p}, 403)
 	api.Configurations = c.ControlAction
+	// Actor-private draft persistence goes through the same closed HTTP schema,
+	// proof verification and live ACL boundary; it does not queue publication.
+	inputDraft := ConfigurationDraft{ID: p.DraftID, Proposal: p}
+	var savedDraft ConfigurationDraft
+	if json.Unmarshal(call("configuration.layers.draft.put", "HTTP draft save", map[string]any{"draft": inputDraft}, 200), &savedDraft) != nil || savedDraft.Revision != 1 {
+		t.Fatal("HTTP draft save")
+	}
+	if json.Unmarshal(call("configuration.layers.draft.get", "HTTP draft read", map[string]string{"id": p.DraftID}, 200), &savedDraft) != nil || savedDraft.Revision != 1 {
+		t.Fatal("HTTP draft read")
+	}
+	call("configuration.layers.draft.put", "HTTP draft stale edit", map[string]any{"draft": inputDraft}, 409)
+	call("configuration.layers.draft.get", "HTTP draft unknown field", map[string]any{"id": p.DraftID, "approved": true}, 400)
+	inputDraft.SavedAtMs = 1
+	call("configuration.layers.draft.put", "HTTP draft forged observation", map[string]any{"draft": inputDraft}, 400)
 	var queued ConfigurationRequestView
 	if json.Unmarshal(call("configuration.preview.request", "HTTP preview", configurationPreviewInput{p}, 200), &queued) != nil || queued.State != "queued" {
 		t.Fatal("HTTP queue")

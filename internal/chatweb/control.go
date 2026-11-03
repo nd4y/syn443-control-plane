@@ -19,7 +19,7 @@ func validConsoleAction(raw []byte) bool {
 		return false
 	}
 	switch request.Action {
-	case "source.list", "source.get", "source.snapshot", "source.shares.get", "source.put", "source.sync", "job.get", "resource.get", "configuration.draft.get", "configuration.draft.put", "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get":
+	case "source.list", "source.get", "source.snapshot", "source.shares.get", "source.put", "source.sync", "job.get", "resource.get", "configuration.draft.get", "configuration.draft.put", "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put":
 		return true
 	}
 	return false
