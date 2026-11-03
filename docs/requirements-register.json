@@ -718,7 +718,8 @@
       "evidence": [
         "docs/portable-netbird.md",
         "internal/configuration/netbird_test.go",
-        "internal/enrollment/netbird_configuration_postgres_test.go"
+        "internal/enrollment/netbird_configuration_postgres_test.go",
+        "internal/deviceprovisioning/network_overlay_postgres_test.go"
       ]
     },
     {
@@ -728,7 +729,8 @@
       "evidence": [
         "docs/portable-netbird.md",
         "internal/configuration/netbird_test.go",
-        "internal/enrollment/netbird_configuration_postgres_test.go"
+        "internal/enrollment/netbird_configuration_postgres_test.go",
+        "internal/deviceprovisioning/network_overlay_postgres_test.go"
       ]
     },
     {

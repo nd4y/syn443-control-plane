@@ -13,6 +13,9 @@ does not claim that every peer currently has a P2P connection. `mode: vless`
 requires an explicit graph detour. Every selectable branch must end in VLESS;
 direct, HTTP, SOCKS, SSH, cyclic and missing branches are rejected before signing.
 There is no automatic switch from an assigned VLESS underlay to physical access.
+The current VLESS adapter carries relay traffic through that underlay and blocks
+physical ICE/UDP sockets. P2P preference belongs to the normal direct mode; the
+emergency VLESS path must not claim a direct peer connection or bypass its proxy.
 
 The node can be a final/route target or an initial hop to a proxy inside the home
 network. Its explicit VLESS detour provides the emergency ingress. Expanding the
@@ -38,6 +41,9 @@ portable field nor a successful preview enrolls a peer or authorizes a resource.
 GitHub Actions runs direct/VLESS and source-chain compilation, closed decoding,
 identity/hop/cycle/fail-closed checks and real role-restricted PostgreSQL signed
 publication, missing-broker retention and reference-continuity tests. These tests
+also require the credential module at the approved-layer boundary and retain the
+shorter source-freshness deadline and final source fence for mixed configurations.
+They
 do not prove external provider availability or physical Android acceptance of
 this exact compiled publication. Full application settings, four-context client
 selection, templates for future devices and remaining mobile administration are
