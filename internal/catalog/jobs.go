@@ -162,6 +162,11 @@ func (s *Store) Claim(ctx context.Context, now time.Time) (Job, error) {
 	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('catalog/claim-budget/v1',0))`); e != nil {
 		return job, ErrUnavailable
 	}
+	// Bounded migration cleanup of terminal inputs written by older workers.
+	// SKIP LOCKED avoids blocking live work; replay identities/receipts remain.
+	if _, e = tx.ExecContext(ctx, `WITH retired AS (SELECT id FROM catalog_jobs WHERE payload IS NOT NULL AND phase IN('succeeded','failed','cancelled','dead_letter') ORDER BY updated_at,id LIMIT 32 FOR UPDATE SKIP LOCKED) UPDATE catalog_jobs j SET payload=NULL,lease='',lease_until=0 FROM retired r WHERE j.id=r.id`); e != nil {
+		return job, ErrUnavailable
+	}
 	// Crash/expiry transitions remain durable and visible rather than vanishing.
 	if _, e = tx.ExecContext(ctx, `UPDATE catalog_jobs SET phase='dead_letter',reason='deadline_or_retry_limit',updated_at=$1 WHERE phase IN('queued','running') AND (deadline<=$1 OR attempts>=8 AND lease_until<=$1)`, now.Unix()); e != nil {
 		return job, ErrUnavailable

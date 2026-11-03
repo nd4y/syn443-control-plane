@@ -93,3 +93,19 @@ inventory, complete supported settings and web/mobile editors remain open.
 The initial [control console](control-console.md) now consumes source/profile metadata
 and actor-private draft get/put through a separately scoped OAuth/DPoP BFF.
 Its exact Actions acceptance is pending; publication and the full panel remain open.
+
+## Terminal source input erasure (new source, acceptance pending)
+
+Raw manual/device import bodies are temporary encrypted job input. A SQL trigger
+erases that input and the execution lease when a job succeeds, fails permanently,
+is cancelled or reaches its deadline/retry limit. Terminal phases cannot be
+reopened in place. Operation identity, keyed body hash, outcome and audit remain
+available for idempotent replay; an administrative retry must create a new job.
+Transient queued retries retain the encrypted input and existing fencing rules.
+
+Each ordinary claim also scrubs at most32 terminal input records left by older
+workers, using an indexed predicate and row locks with SKIP LOCKED. It does not
+delete snapshots, receipts or audit, change a live job or acquire additional SQL
+privileges. PostgreSQL tests exercise each terminal path, replay, late leases,
+attempted reintroduction, retry preservation and bounded legacy cleanup.
+Broader snapshot/history/outbox retention remains a separate open requirement.

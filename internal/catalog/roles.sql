@@ -24,6 +24,7 @@ GRANT SELECT,INSERT,UPDATE ON catalog_outbox TO syn443_control_api,syn443_source
 REVOKE ALL ON FUNCTION catalog_snapshot_immutable() FROM PUBLIC;
 REVOKE ALL ON FUNCTION catalog_audit_actor_guard() FROM PUBLIC;
 REVOKE ALL ON FUNCTION catalog_source_immutable() FROM PUBLIC;
+REVOKE ALL ON FUNCTION catalog_terminal_input_erasure() FROM PUBLIC;
 -- Neither source worker nor control API receives device session, signing key or
 -- authority to approve identity publication. Additional signer grants are explicit.
 

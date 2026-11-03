@@ -63,6 +63,21 @@ CREATE TABLE IF NOT EXISTS catalog_jobs(
 );
 CREATE UNIQUE INDEX IF NOT EXISTS catalog_one_source_job ON catalog_jobs(source_id) WHERE phase IN('queued','running');
 CREATE INDEX IF NOT EXISTS catalog_due_jobs ON catalog_jobs(not_before,created_at) WHERE phase IN('queued','running');
+CREATE INDEX IF NOT EXISTS catalog_terminal_inputs ON catalog_jobs(updated_at,id) WHERE payload IS NOT NULL AND phase IN('succeeded','failed','cancelled','dead_letter');
+-- Retain replay/audit identity, never an unnecessary raw subscription after work
+-- ends. Enforce at the SQL boundary for every cancellation and failure path.
+CREATE OR REPLACE FUNCTION catalog_terminal_input_erasure() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='UPDATE' AND OLD.phase IN('succeeded','failed','cancelled','dead_letter') AND NEW.phase<>OLD.phase THEN
+  RAISE EXCEPTION 'terminal catalog job';
+ END IF;
+ IF NEW.phase IN('succeeded','failed','cancelled','dead_letter') THEN
+  NEW.payload=NULL; NEW.lease=''; NEW.lease_until=0;
+ END IF;
+ RETURN NEW;
+END; $$;
+DROP TRIGGER IF EXISTS catalog_terminal_input_guard ON catalog_jobs;
+CREATE TRIGGER catalog_terminal_input_guard BEFORE INSERT OR UPDATE ON catalog_jobs FOR EACH ROW EXECUTE FUNCTION catalog_terminal_input_erasure();
 CREATE INDEX IF NOT EXISTS catalog_due_sources ON catalog_sources(next_sync) WHERE enabled;
 CREATE TABLE IF NOT EXISTS catalog_operations(
  actor text NOT NULL,request_id text NOT NULL,action text NOT NULL,target text NOT NULL,
