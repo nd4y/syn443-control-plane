@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"slices"
 	"strconv"
@@ -41,6 +42,10 @@ var brokerRoles string
 var Schema = identitySchema + "\n" + supportchat.Schema + "\n" + overlaySchema + "\n" + brokerSchema
 var Roles = identityRoles + "\n" + supportchat.Roles + "\n" + overlayRoles + "\n" + brokerRoles
 var ErrDenied = errors.New("access_denied")
+
+// Identity admission may complete before an initial desired configuration is
+// assigned. It remains an authorization denial for ordinary policy issuance.
+var ErrConfigurationUnassigned = fmt.Errorf("configuration_unassigned: %w", ErrDenied)
 var ErrConflict = errors.New("idempotency_conflict")
 var ErrReplay = errors.New("proof_replayed")
 var ErrReuse = errors.New("session_reuse")

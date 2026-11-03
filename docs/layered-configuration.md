@@ -356,7 +356,7 @@ Only that worker receives `SYN443_CONFIGURATION_SIGNING_KEY_FILE` and
 device publication runs before a separately bounded administrative step.
 
 This is opt-in for a controlled assignment migration: every participating device
-needs an approved configuration head. Missing/invalid authority fails closed,
+needs an approved configuration head before receiving a layered VPN policy. Missing/invalid authority fails closed,
 without fallback to the old flat template. Preserve public signing-key history
 and encrypted immutable versions across restarts. `published` means desired
 server heads are committed; the device's activation receipt remains separate.
@@ -397,3 +397,27 @@ Layer identity is `(kind,id)`, matching immutable SQL histories and assignments.
 The device and local layers may both use the actual device ID. Same-kind
 duplicates remain invalid, and shared IDs never bypass inherited locks/choices.
 Pure merge and actual multi-layer publication/readback tests cover this case.
+
+### First device admission before configuration assignment
+
+The identity publisher independently verifies the original OIDC/invitation
+receipt, device-key proof, grant and advertised capabilities before marking a new
+device identity approved. If the configured authority reports no desired head,
+that identity admission freezes the original request/receipt but issues no VPN
+policy, offline lease, native profile or overlay reservation. It does not fall
+back to the owner's flat template. The existing policy endpoint remains pending.
+
+The admitted device can then receive an explicitly authorized first layered
+assignment through the same preview/publication pipeline. Device renewal is
+scheduled after that atomic publication; ordinary signature/key/grant/source and
+activation gates still apply. Admission locks account/device rows, repeats live
+quota/receipt/grant/deadline checks and supports a lost reply without rewriting
+identity. Original token expiry and invitation fences bound the initial effect.
+Existing malformed/unauthorized configuration failures do not trigger admission.
+
+Actions add HTTP direct-login and invitation/SQL/first-policy composition tests
+with synthetic identity fixtures and real device-key proofs/transactions,
+revocation/receipt substitution, quota shrink, cancellation and late expiry.
+Automatic defaults for new accounts, full application settings and capability
+upgrades remain required; identity admission is not VPN activation or a default
+assignment. This change still awaits its complete Actions result.

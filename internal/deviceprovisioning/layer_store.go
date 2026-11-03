@@ -141,7 +141,7 @@ func (a *SQLNetworkLayers) read(ctx context.Context, device string) (approvedLay
 	var r approvedLayerRow
 	e := a.Store.DB.QueryRowContext(ctx, `SELECT v.device,v.revision,v.owner,v.jkt,v.grant_hash,v.actor,v.preview,v.body_hash,v.approved_at_ms,p.body,p.ticket,p.issued_at_ms,p.expires_at_ms FROM managed_configuration_heads h JOIN managed_configuration_versions v ON v.device=h.device AND v.revision=h.revision AND v.body_hash=h.body_hash JOIN managed_configuration_previews p ON p.id=v.preview AND p.actor=v.actor AND p.body_hash=v.body_hash WHERE h.device=$1`, device).Scan(&r.device, &r.revision, &r.owner, &r.jkt, &r.grant, &r.actor, &r.preview, &r.hash, &r.approved, &r.body, &r.ticket, &r.issued, &r.expires)
 	if e == sql.ErrNoRows {
-		return r, enrollment.ErrDenied
+		return r, enrollment.ErrConfigurationUnassigned
 	}
 	if e != nil {
 		return r, enrollment.ErrUnavailable

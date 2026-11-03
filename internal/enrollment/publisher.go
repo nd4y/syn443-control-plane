@@ -133,6 +133,8 @@ func (p *Publisher) RunOnce(ctx context.Context, now time.Time) error {
 			code := "temporarily_unavailable"
 			if errors.Is(e, identity.ErrInvalid) {
 				code = "reauthentication_required"
+			} else if errors.Is(e, ErrConfigurationUnassigned) {
+				code = "configuration_pending"
 			}
 			// Retry is per device; existing permitted publication is retained.
 			if _, e = p.Store.DB.ExecContext(ctx, `UPDATE identity_devices SET publication_error=$2,retry_after=$3 WHERE id=$1 AND revision=$4 AND active`, id.id, code, now.Unix()+30, id.revision); e != nil {
@@ -165,6 +167,7 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 		return identity.ErrInvalid
 	}
 	var approvalFence ApprovalFence
+	var admissionUntil int64
 	if !s.Approved {
 		raw, e := p.Store.Open(s.Receipt, "receipt/v1/"+id)
 		if e != nil {
@@ -174,6 +177,7 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 		if identity.Decode(raw, &receipt, true) != nil {
 			return identity.ErrInvalid
 		}
+		admissionUntil = receipt.AcceptedAt + 180
 		switch receipt.Kind {
 		case "invite-v1":
 			if p.InvitationApproval == nil || !idPattern.MatchString(receipt.InvitationID) {
@@ -191,6 +195,7 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 			if e != nil {
 				return identity.ErrInvalid
 			}
+			admissionUntil = min(admissionUntil, principal.Expires)
 			proof, e := identity.RequestProof(receipt.Proof, identity.ProofContext{Method: "POST", URI: receipt.URI, Token: receipt.Token, BodyHash: identity.Hash(s.Raw), Now: now})
 			if e != nil || proof.Claims.Nonce == "" || proof.Thumbprint != s.Jkt || principal.Thumbprint != s.Jkt || principal.Issuer != g.Issuer || principal.Subject != g.Subject {
 				return identity.ErrInvalid
@@ -228,6 +233,9 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	if p.Configurations != nil {
 		prepared, prepareErr := p.Configurations.Prepare(ctx, ConfigurationTarget{Device: id, Owner: s.Owner, Thumbprint: s.Jkt, GrantHash: s.Grant, CurrentRevision: s.Revision, Capabilities: append([]string(nil), request.Capabilities...)}, now)
 		if prepareErr != nil {
+			if !s.Approved && errors.Is(prepareErr, ErrConfigurationUnassigned) {
+				return p.admitIdentity(ctx, s, g, approvalFence, admissionUntil, now.Add(time.Since(started)))
+			}
 			return prepareErr
 		}
 		if err := applyPreparedConfiguration(&payload, prepared, request.Capabilities, now); err != nil {
