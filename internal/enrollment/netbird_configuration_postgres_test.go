@@ -21,7 +21,7 @@ func TestSQLPortableNetBirdPublicationRequiresBrokerAndKeepsIdentityAcrossEmerge
 	a := f.binding.Address
 	plan := configuration.NetworkPlan{SchemaVersion: 1,
 		Graph: configuration.Graph{Final: "direct", NetBird: &configuration.NetBirdNode{Tag: "home", OverlayID: a.OverlayID, ResourceID: a.ResourceID, NetworkID: a.NetworkID, IdentityEpoch: a.IdentityEpoch, ManagementURL: a.ManagementURL, Mode: "direct"},
-			Profiles: map[string]configuration.ProfileReference{"entry": {SourceID: "synthetic", ProfileID: "entry_profile"}}},
+			Profiles: map[string]configuration.ProfileReference{"entry": {SourceID: "synthetic", ProfileID: "entry_profile"}}, Chains: map[string]configuration.Chain{}, Balancers: map[string]configuration.Balancer{}},
 		Network: configuration.NetworkSettings{SchemaVersion: 1, RequiredNetworks: []string{"tcp", "udp"}, DNSFinal: "system", DNSStrategy: "prefer_ipv4",
 			DNSServers: map[string]configuration.DNSServer{"home-dns": {Transport: "netbird", Outbound: "home"}},
 			DNSRules:   []configuration.DNSRule{{ID: "home-name", HostMatch: configuration.HostMatch{DomainSuffixes: []string{"home.example.invalid"}}, Server: "home-dns"}},
