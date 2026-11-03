@@ -6,17 +6,17 @@ const formFields=['draft-id','target-kind','target-id','base-revision','base-has
 function status(message){$('status').textContent=message;}
 function controls(){
  $('login').disabled=busy||authenticated;$('logout').disabled=busy||!authenticated;
- for(const id of ['load-sources','open-draft','save-draft','new-draft','new-source','save-source'])$(id).disabled=busy||!authenticated||!!pending;
+ for(const id of ['load-sources','load-inventory','open-draft','save-draft','new-draft','new-source','save-source'])$(id).disabled=busy||!authenticated||!!pending;
  for(const id of sourceFields)$(id).disabled=busy||!authenticated||!!pending||sourceIdentity&&['source-id','source-owner'].includes(id);
  $('sync-source').disabled=busy||!authenticated||!!pending||!sourceIdentity;$('source-job').disabled=busy||!authenticated||!!pending||!sourceJob;
  $('more-sources').disabled=busy||!authenticated||!next||!!pending;
- for(const id of ['owner',...formFields])$(id).disabled=busy||!authenticated||!!pending;
+ for(const id of ['owner','inventory-device',...formFields])$(id).disabled=busy||!authenticated||!!pending;
  $('pending').hidden=!pending;for(const id of ['retry-save','discard-save'])$(id).disabled=busy||!authenticated;
  for(const button of $('sources').querySelectorAll('button'))button.disabled=busy||!authenticated||!!pending;
  $('source-secret').disabled=busy||!authenticated||!!pending||$('source-secret-operation').value!=='replace';
  if(!['server','resource'].includes($('source-mode').value))$('sync-source').disabled=true;
 }
-function erase(){pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','draft-id','target-id','base-hash','plan'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details'])$(id).replaceChildren();}
+function erase(){pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details','inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions'])$(id).replaceChildren();$('inventory-state').textContent='';$('inventory-view').hidden=true;}
 async function request(path,body){
  const raw=typeof body==='string'?body:JSON.stringify(body);
  if(new TextEncoder().encode(raw).length>278528)throw Error('size');
@@ -29,6 +29,63 @@ const envelope=(action,payload)=>JSON.stringify({version:1,action,requestId:cryp
 const action=(name,payload)=>request('/control/action',envelope(name,payload));
 async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру плана.',size:'План превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.');}finally{busy=false;controls();}}
 function textItem(list,text){const item=document.createElement('li');item.textContent=text;list.append(item);return item;}
+function inventoryPair(list,name,value){const term=document.createElement('dt');term.textContent=name;const detail=document.createElement('dd');detail.textContent=value;list.append(term,detail);}
+function inventoryOrigin(origin){return origin&&typeof origin==='object'&&!Array.isArray(origin)&&typeof origin.layerId==='string'&&typeof origin.kind==='string'&&Number.isSafeInteger(origin.revision)&&origin.revision>=0;}
+function inventoryDate(milliseconds){const date=new Date(milliseconds);if(!Number.isFinite(date.getTime()))throw Error('invalid');return date.toISOString();}
+function showInventory(view){
+ if(!view||typeof view!=='object'||Array.isArray(view))throw Error('invalid');
+ const {device,owner,state,revision,hash,policyRevision,layers,effective}=view;
+ if(typeof device!=='string'||!device||device.length>64||typeof owner!=='string'||!['assigned','unassigned','expired'].includes(state)||!Number.isSafeInteger(revision)||revision<0||typeof hash!=='string'||hash.length>64||!Number.isSafeInteger(policyRevision)||policyRevision<0||!Array.isArray(layers)||effective!==undefined&&effective!==null&&(typeof effective!=='object'||Array.isArray(effective)))throw Error('invalid');
+ const assigned=state==='assigned'||state==='expired';
+ if(!assigned&&(revision!==0||hash!==''||layers.length||effective))throw Error('invalid');
+ if(assigned&&(revision<1||!/^[0-9a-f]{64}$/.test(hash)||!effective||typeof view.mode!=='string'||!view.mode||!Number.isSafeInteger(view.approvalUntilMs)||view.approvalUntilMs<1))throw Error('invalid');
+ $('inventory-state').textContent=`Состояние назначения: ${{assigned:'Назначена',unassigned:'Не назначена',expired:'Истекла'}[state]}`;
+ const meta=$('inventory-meta');meta.replaceChildren();
+ inventoryPair(meta,'Устройство',device);inventoryPair(meta,'Владелец',owner);
+ inventoryPair(meta,'Желаемая версия',String(revision));inventoryPair(meta,'Хэш желаемой конфигурации',hash||'-');
+ inventoryPair(meta,'Версия выданной политики',String(policyRevision));
+ if(assigned){inventoryPair(meta,'Режим сети',view.mode);if(view.approvalUntilMs>0)inventoryPair(meta,'Подтверждение действительно до',inventoryDate(view.approvalUntilMs));}
+ const layerList=$('inventory-layers');layerList.replaceChildren();
+ for(const layer of layers){
+  if(!layer||typeof layer!=='object'||Array.isArray(layer)||typeof layer.id!=='string'||typeof layer.kind!=='string'||!Number.isSafeInteger(layer.priority)||!Number.isSafeInteger(layer.revision)||layer.revision<1||layer.changes!=null&&!Array.isArray(layer.changes)||layer.permissions!=null&&!Array.isArray(layer.permissions))throw Error('invalid');
+  textItem(layerList,`${layer.kind} · ${layer.id} · приоритет ${layer.priority} · версия ${layer.revision} · изменений ${layer.changes?.length||0} · разрешений ${layer.permissions?.length||0}`);
+ }
+ if(!layerList.children.length)textItem(layerList,'Наследованные слои отсутствуют.');
+ const documentNode=$('inventory-effective');
+ if(effective){if(effective.document===undefined)throw Error('invalid');documentNode.textContent=JSON.stringify(effective.document,null,2);}else documentNode.textContent='Нет действующих настроек.';
+ const fieldList=$('inventory-fields');fieldList.replaceChildren();
+ const origins=effective&&effective.fields;
+ if(origins!==undefined&&origins!==null&&(typeof origins!=='object'||Array.isArray(origins)))throw Error('invalid');
+ if(origins)for(const path of Object.keys(origins)){
+  const origin=origins[path];if(!inventoryOrigin(origin))throw Error('invalid');
+  textItem(fieldList,`${path} ← ${origin.kind} · ${origin.layerId} · версия ${origin.revision}`);
+ }
+ if(!fieldList.children.length)textItem(fieldList,'Источники полей не возвращены.');
+ const restrictionList=$('inventory-restrictions');restrictionList.replaceChildren();
+ const restrictions=effective&&effective.restrictions;
+ if(restrictions!==undefined&&restrictions!==null&&!Array.isArray(restrictions))throw Error('invalid');
+ for(const restriction of restrictions||[]){
+  const permission=restriction&&restriction.permission,origin=restriction&&restriction.origin;
+  if(!permission||typeof permission!=='object'||Array.isArray(permission)||typeof permission.path!=='string'||typeof permission.mode!=='string'||!inventoryOrigin(origin))throw Error('invalid');
+  let text=`${permission.path} · режим ${permission.mode}`;
+  if(Array.isArray(permission.choices))text+=` · вариантов ${permission.choices.length}`;
+  if(Number.isSafeInteger(permission.minimum))text+=` · минимум ${permission.minimum}`;
+  if(Number.isSafeInteger(permission.maximum))text+=` · максимум ${permission.maximum}`;
+  text+=` · источник ${origin.kind} · ${origin.layerId} · версия ${origin.revision}`;
+  textItem(restrictionList,text);
+ }
+ if(!restrictionList.children.length)textItem(restrictionList,'Ограничения не возвращены.');
+ $('inventory-view').hidden=false;
+}
+async function loadInventory(){
+ const device=$('inventory-device').value.trim();
+ if(!/^[A-Za-z0-9_-]{1,64}$/.test(device))throw Error('invalid');
+ $('inventory-view').hidden=true;
+ const view=await action('configuration.inventory.get',{id:device});
+ if(view.device!==device)throw Error('invalid');
+ showInventory(view);
+ status('Желаемая конфигурация загружена. Это не проверка связи и не подтверждение активации Android.');
+}
 function showDraft(draft){
  if(!Number.isSafeInteger(draft.revision)||draft.revision<1)throw Error('invalid');
  opened={id:draft.id,kind:draft.targetKind,target:draft.targetId};revision=draft.revision;
@@ -81,7 +138,7 @@ async function saveSource(){
 }
 $('login').onclick=()=>work(async()=>{const result=await request('/login',{});const target=new URL(result.url);if(target.protocol!=='https:'&&!(location.hostname==='127.0.0.1'&&target.protocol==='http:'&&target.hostname==='127.0.0.1'))throw Error('invalid');location.assign(target.href);});
 $('logout').onclick=()=>work(async()=>{try{await request('/logout',{});}finally{authenticated=false;erase();}status('Вы вышли. Локальная копия черновика очищена.');});
-$('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>work(()=>sources(true));$('open-draft').onclick=()=>work(openDraft);
+$('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>work(()=>sources(true));$('load-inventory').onclick=()=>work(loadInventory);$('open-draft').onclick=()=>work(openDraft);
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
 $('discard-save').onclick=()=>work(async()=>{const kind=pendingKind,sourceId=$('source-id').value.trim();pending=null;if(kind==='draft')await openDraft();else if(sourceId)showSource(await action('source.get',{id:sourceId}));});

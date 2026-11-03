@@ -23,6 +23,14 @@ const server=http.createServer(async(req,res)=>{
  calls.push(body.action);
  const p=body.payload;
  switch(body.action){
+ case 'configuration.inventory.get':{
+  if(p.id==='device-unassigned'){send(200,{device:p.id,owner:'synthetic-user',state:'unassigned',revision:0,hash:'',policyRevision:3,mode:'',approvalUntilMs:0,layers:[]});break;}
+  if(!['device-a','device-expired','device-mismatch'].includes(p.id)){send(403,{});break;}
+  const origin={kind:'template',layerId:'template-a',revision:2};
+  send(200,{device:p.id==='device-mismatch'?'other-device':p.id,owner:'synthetic-user',state:p.id==='device-expired'?'expired':'assigned',revision:7,hash:'a'.repeat(64),policyRevision:23,mode:'wifi',approvalUntilMs:1800003600000,
+   layers:[{id:'template-a',kind:'template',priority:0,revision:2,changes:[],permissions:null}],
+   effective:{document:{note:'<img src=x onerror="window.injected=true">'},fields:{'/network/dnsStrategy':origin},restrictions:[{permission:{path:'/network/dnsStrategy',mode:'choice',choices:['prefer_ipv4','ipv4_only']},origin}]}});break;
+ }
  case 'source.list':send(200,{sources:[...sources.values()],next:p.after?'':'source-a'});break;
  case 'source.get':{const source=sources.get(p.id);send(source?200:403,source||{});break;}
  case 'source.put':{

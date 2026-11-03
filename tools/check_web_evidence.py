@@ -17,8 +17,10 @@ expected = {
     'source editor saves metadata without exposing prior secrets and tracks sync job',
     'source mutation lost acknowledgment retries the same request and clears new secret on success',
     'source permission withdrawal erases unsent credentials and disables mutation',
+    'desired device view keeps revision provenance and hostile content separate from activation',
+    'desired device view distinguishes unassigned expired and mismatched responses',
 }
-assert len(cases) >= 12
+assert len(cases) >= 14
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

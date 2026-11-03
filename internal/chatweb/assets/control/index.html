@@ -33,4 +33,12 @@
 <label for="plan">План сети, JSON</label><textarea id="plan" rows="22" maxlength="262144" spellcheck="false" autocomplete="off" required></textarea>
 <p>Профили задаются ссылками sourceId/profileId. Ключи, пароли и состояние NetBird сюда не переносятся.</p><button id="save-draft" disabled>Сохранить черновик</button></form>
 <div id="pending" hidden><p>Изменение не подтверждено. Повтор использует ту же операцию.</p><button id="retry-save">Повторить операцию</button><button id="discard-save">Отменить повтор и проверить версию на сервере</button></div>
+</section><section class="wide" aria-labelledby="inventory-title"><h2 id="inventory-title">Конфигурация устройства (только чтение)</h2>
+<p>Показана желаемая конфигурация на сервере. Это не проверка связи и не подтверждение активации Android. Версия выданной политики ведётся отдельно от желаемой конфигурации.</p>
+<label for="inventory-device">ID устройства</label><input id="inventory-device" autocomplete="off" maxlength="64"><button id="load-inventory" disabled>Загрузить конфигурацию</button>
+<div id="inventory-view" hidden><p id="inventory-state"></p><dl id="inventory-meta"></dl>
+<h3>Наследованные слои</h3><ul id="inventory-layers"></ul>
+<h3>Действующие переносимые настройки</h3><pre id="inventory-effective"></pre>
+<h3>Источники полей</h3><ul id="inventory-fields"></ul>
+<h3>Ограничения</h3><ul id="inventory-restrictions"></ul></div>
 </section></main></body></html>

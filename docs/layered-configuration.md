@@ -383,3 +383,12 @@ checks; current head/version/body integrity and complete inherited validation
 still apply. SQL/HTTP tests cover scope filtering, field provenance, incomplete
 assignment, revoked rights/account/device, ciphertext failures and role isolation.
 The view and its editing integration still require complete Actions acceptance.
+
+The dark responsive control console includes the desired-device view. It shows
+the issued policy counter separately, preserves field origins/restrictions and
+clears private rendered state on logout/revocation. Null empty permission lists
+remain compatible with actual Go JSON. Device-response binding is checked before
+display; pending mutations disable the viewer, and all values are DOM text. The
+browser fixture checks assigned/unassigned/expired views, XSS, mobile overflow,
+scope withdrawal and no publication side effect. This UI is read-only; editing,
+local testing, three-way review and explicit publication remain separate work.
