@@ -325,7 +325,7 @@ func TestCapabilityDeviceApprovalPreservesOriginalEvidenceAndReplaysLostReply(t 
 	input.RequestID = random()
 	input.Capabilities = final.Capabilities
 	fresh, _ := json.Marshal(input)
-	changedEnrollment(t, c.f, c.key, fresh, 200)
+	currentSession := changedEnrollment(t, c.f, c.key, fresh, 200)
 	input.RequestID = random()
 	input.Capabilities = before.Capabilities
 	old, _ := json.Marshal(input)
@@ -342,7 +342,8 @@ func TestCapabilityDeviceApprovalPreservesOriginalEvidenceAndReplaysLostReply(t 
 	if e := c.f.publisher().RunOnce(ctx, c.f.now); e != nil {
 		t.Fatal(e)
 	}
-	expect(t, c.f.call(t, c.key, "GET", "/v1/device/policy", c.session.AccessToken, c.session.Nonce, nil), 200)
+	expect(t, c.f.call(t, c.key, "GET", "/v1/device/policy", c.session.AccessToken, c.session.Nonce, nil), 403)
+	expect(t, c.f.call(t, c.key, "GET", "/v1/device/policy", currentSession.AccessToken, currentSession.Nonce, nil), 200)
 }
 
 func TestCapabilityOIDCApprovalUsesFreshBoundIdentityWithoutSessionReadPrivileges(t *testing.T) {

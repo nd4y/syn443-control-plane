@@ -13,7 +13,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
 
-func changedEnrollment(t *testing.T, f *fixture, k *ecdsa.PrivateKey, raw []byte, want int) {
+func changedEnrollment(t *testing.T, f *fixture, k *ecdsa.PrivateKey, raw []byte, want int) Session {
 	t.Helper()
 	token := f.token(k)
 	r := f.call(t, k, "POST", "/v1/devices/enroll", token, "", raw)
@@ -22,7 +22,13 @@ func changedEnrollment(t *testing.T, f *fixture, k *ecdsa.PrivateKey, raw []byte
 	if nonce == "" {
 		t.Fatal("missing fresh nonce")
 	}
-	expect(t, f.call(t, k, "POST", "/v1/devices/enroll", token, nonce, raw), want)
+	reply := f.call(t, k, "POST", "/v1/devices/enroll", token, nonce, raw)
+	expect(t, reply, want)
+	var session Session
+	if want == 200 && identity.Decode(reply.Body.Bytes(), &session, true) != nil {
+		t.Fatal("reauthentication session shape")
+	}
+	return session
 }
 
 func TestApprovedRequestAndReceiptSurviveReauthenticationAndPolicyRenewal(t *testing.T) {
