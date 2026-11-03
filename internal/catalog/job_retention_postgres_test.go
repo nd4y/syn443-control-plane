@@ -61,7 +61,7 @@ func TestSQLTerminalJobsEraseRawInputButKeepIdempotentReceipts(t *testing.T) {
 				phase = "cancelled"
 			case "source-change":
 				source.Name = "changed"
-				_, e = api.PutSource(ctx, actor, source, SecretPatch{Operation: "keep"}, "edit-source", now)
+				mustSource(t, api, actor, source, "edit-source", now)
 				phase = "cancelled"
 			case "deadline":
 				_, e = worker.Claim(ctx, now.Add(901*time.Second))
