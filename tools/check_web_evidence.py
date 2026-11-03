@@ -29,8 +29,12 @@ expected = {
     'three-way layer conflict requires an explicit local or server choice',
     'three-way layer merge refuses inherited edits unbound history and overlapping paths',
     'three-way layer merge represents removals and concurrent creation without lost edits',
+    'private layer draft inventory lists metadata and reopens without implicit publication',
+    'private layer draft inventory rejects substituted duplicate oversized and unexpected metadata',
+    'private layer draft inventory disappears on rights withdrawal and logout',
+    'empty private layer draft inventory preserves an unsaved proposal and does not invent a copy',
 }
-assert len(cases) >= 24
+assert len(cases) >= 28
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

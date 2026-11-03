@@ -44,6 +44,7 @@
 </section><section class="wide" aria-labelledby="layer-title"><h2 id="layer-title">Редактирование и публикация слоёв</h2>
 <p>Начните с конфигурации выбранного устройства или откройте сохранённый черновик. Предложение содержит все наследованные слои; меняйте только разрешённую область. Сервер проверяет ограничения, актуальность исходных версий и полный список затронутых устройств.</p>
 <button id="layer-from-device" disabled>Править слой выбранного устройства</button>
+<button id="layer-list" disabled>Сохранённые черновики текущего адресата</button><label for="layer-saved">Сохранённая копия</label><select id="layer-saved" disabled></select><button id="layer-open-saved" disabled>Открыть выбранный черновик</button><p id="layer-list-status"></p>
 <label for="layer-id">ID личного черновика слоёв</label><input id="layer-id" maxlength="64" autocomplete="off"><button id="layer-load" disabled>Открыть черновик слоёв</button>
 <p id="layer-version">Черновик слоёв не открыт</p>
 <label for="layer-proposal">Переносимое предложение, JSON</label><textarea id="layer-proposal" rows="24" maxlength="262144" autocomplete="off" spellcheck="false"></textarea>

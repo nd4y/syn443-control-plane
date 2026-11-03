@@ -14,6 +14,39 @@ async function start(page,request,options={}){
 async function save(page){await page.locator('#layer-save').click();await expect(page.locator('#layer-version')).toHaveText('Сохранённая версия слоёв: 1');}
 async function preview(page){await page.locator('#layer-preview').click();await expect(page.locator('#layer-poll')).toBeEnabled();await page.locator('#layer-poll').click();}
 
+test('private layer draft inventory lists metadata and reopens without implicit publication',async({page,request})=>{
+ await start(page,request);await save(page);const before=await page.locator('#layer-proposal').inputValue();
+ await page.locator('#layer-list').click();await expect(page.locator('#layer-saved option')).toHaveCount(1);
+ await expect(page.locator('#layer-proposal')).toHaveValue(before);expect((await state(request)).operations).toBe(1);
+ await page.locator('#layer-proposal').fill('{}');await page.locator('#layer-open-saved').click();
+ await expect(page.locator('#layer-proposal')).toHaveValue(before);await expect(page.locator('#layer-version')).toHaveText('Сохранённая версия слоёв: 1');
+ const s=await state(request);expect(s.calls).toContain('configuration.layers.drafts.list');expect(s.calls).toContain('configuration.layers.draft.get');expect(s.calls).not.toContain('configuration.preview.request');expect(s.calls).not.toContain('configuration.publish');expect(s.operations).toBe(1);
+});
+
+test('private layer draft inventory rejects substituted duplicate oversized and unexpected metadata',async({page,request})=>{
+ for(const options of [{draftListMismatch:true},{draftListDuplicate:true},{draftListExcess:true},{draftListExtra:true}]){
+  await start(page,request,options);await save(page);const before=await page.locator('#layer-proposal').inputValue();
+  await page.locator('#layer-list').click();await expect(page.locator('#status')).toContainText('Проверьте поля');
+  await expect(page.locator('#layer-saved option')).toHaveCount(0);await expect(page.locator('#layer-open-saved')).toBeDisabled();await expect(page.locator('#layer-proposal')).toHaveValue(before);
+  expect(await page.evaluate(()=>window.injected)).toBeUndefined();expect((await state(request)).operations).toBe(1);
+ }
+});
+
+test('private layer draft inventory disappears on rights withdrawal and logout',async({page,request})=>{
+ await start(page,request);await save(page);await page.locator('#layer-list').click();await expect(page.locator('#layer-saved option')).toHaveCount(1);
+ await request.post(origin+'/fixture/revoke',{data:{}});await page.locator('#layer-list').click();await expect(page.locator('#status')).toContainText('Доступ отозван');
+ await expect(page.locator('#layer-saved option')).toHaveCount(0);await expect(page.locator('#layer-proposal')).toHaveValue('');await expect(page.locator('#layer-list')).toBeDisabled();
+ await start(page,request);await save(page);await page.locator('#layer-list').click();await expect(page.locator('#layer-saved option')).toHaveCount(1);
+ await page.locator('#logout').click();await expect(page.locator('#layer-saved option')).toHaveCount(0);await expect(page.locator('#layer-list-status')).toHaveText('');
+ expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
+});
+
+test('empty private layer draft inventory preserves an unsaved proposal and does not invent a copy',async({page,request})=>{
+ await start(page,request);const before=await page.locator('#layer-proposal').inputValue();await page.locator('#layer-list').click();
+ await expect(page.locator('#layer-list-status')).toContainText('нет сохранённых');await expect(page.locator('#layer-saved option')).toHaveCount(0);
+ await expect(page.locator('#layer-open-saved')).toBeDisabled();await expect(page.locator('#layer-proposal')).toHaveValue(before);expect((await state(request)).operations).toBe(0);
+});
+
 test('layer editor preserves inheritance and requires explicit reviewed publication',async({page,request})=>{
  const proposal=await start(page,request);await save(page);await preview(page);
  await expect(page.locator('#layer-review')).toBeVisible();await expect(page.locator('#layer-impact')).toContainText('template-a');await expect(page.locator('#layer-impact')).toContainText('device-a');

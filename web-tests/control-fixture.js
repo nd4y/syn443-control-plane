@@ -29,6 +29,13 @@ const server=http.createServer(async(req,res)=>{
   if(p.id!=='device-a'||p.revision!==7||p.hash!=='a'.repeat(64)){send(403,{});break;}
   send(200,{device:p.id,owner:'synthetic-user',state:'assigned',revision:7,hash:'a'.repeat(64),currentRevision:options.remoteChanged?8:7,historical:true,mode:'wifi',approvalUntilMs:1800003600000,layers:[{id:'template-a',kind:'template',priority:0,revision:2,changes:[],permissions:null}]});break;
  }
+ case 'configuration.layers.drafts.list':{
+  let rows=[...layerDrafts.values()].filter(d=>d.proposal.targetKind===p.targetKind&&d.proposal.targetId===p.targetId).map(d=>({id:d.id,revision:d.revision,savedAtMs:d.savedAtMs})).sort((a,b)=>b.savedAtMs-a.savedAtMs||a.id.localeCompare(b.id));
+  if(options.draftListDuplicate&&rows.length)rows.push({...rows[0]});
+  if(options.draftListExcess&&rows.length)rows=Array.from({length:65},(_,i)=>({...rows[0],id:'overflow-'+i}));
+  if(options.draftListExtra&&rows.length)rows[0].body='<img src=x onerror="window.injected=true">';
+  send(200,{targetKind:p.targetKind,targetId:options.draftListMismatch?'another-device':p.targetId,drafts:rows});break;
+ }
  case 'configuration.layers.draft.get':{const draft=layerDrafts.get(p.id);send(draft?200:403,draft||{});break;}
  case 'configuration.layers.draft.put':{
   const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}

@@ -1569,7 +1569,8 @@
         "web-tests/control.spec.js",
         "internal/deviceprovisioning/layer_inventory.go",
         "internal/deviceprovisioning/layer_inventory_postgres_test.go",
-        "docs/layered-configuration.md"
+        "docs/layered-configuration.md",
+        "docs/private-draft-inventory.md"
       ],
       "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
       "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
@@ -1970,7 +1971,8 @@
         "internal/catalog/http_postgres_test.go",
         "cmd/source-worker/main.go",
         "cmd/control-api/main.go",
-        "docs/overlay-broker.md"
+        "docs/overlay-broker.md",
+        "docs/private-draft-inventory.md"
       ]
     },
     {

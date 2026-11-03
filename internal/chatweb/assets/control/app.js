@@ -4,6 +4,7 @@ let authenticated=false,busy=false,pending=null,revision=0,opened=null,next='',l
 let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='';
 let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null;
 let layerComparison=null;
+let layerDraftInventory=null;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message){$('status').textContent=message;}
@@ -158,7 +159,8 @@ controls();work(async()=>{await request('/session',{});authenticated=true;status
 
 function clearLayerReview(){layerPreview=null;$('layer-confirm').checked=false;$('layer-review').hidden=true;$('layer-impact').textContent='';}
 function clearLayerComparison(){layerComparison=null;$('layer-comparison').hidden=true;$('layer-diff').textContent='';$('layer-conflicts').replaceChildren();}
-function clearLayers(){layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
+function clearDraftInventory(){layerDraftInventory=null;$('layer-saved').replaceChildren();$('layer-list-status').textContent='';}
+function clearLayers(){layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearDraftInventory();clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
 function layerUnchanged(){return !!layerSaved&&$('layer-id').value.trim()===layerSaved.id&&$('layer-proposal').value===layerSaved.text;}
 function layerControls(){
  const disabled=busy||!authenticated||!!pending;
@@ -169,6 +171,8 @@ function layerControls(){
  $('layer-publish').disabled=disabled||!!layerJob||!layerUnchanged()||!layerPreview||!$('layer-confirm').checked||layerPreview.preview.expiresAtMs<=Date.now();
  $('layer-compare').disabled=disabled||!!layerJob;
  $('layer-merge').disabled=disabled||!!layerJob||!layerComparison?.result?.ready;
+ $('layer-list').disabled=disabled||!!layerJob;$('layer-saved').disabled=disabled||!!layerJob||!layerDraftInventory?.drafts.length;
+ $('layer-open-saved').disabled=disabled||!!layerJob||!layerDraftInventory?.drafts.length;
  for(const button of $('layer-conflicts').querySelectorAll('button'))button.disabled=disabled||!!layerJob;
 }
 function layerProposal(){
@@ -190,6 +194,36 @@ async function loadLayerDraft(){
  const saved=await action('configuration.layers.draft.get',{id});if(saved.id!==id)throw Error('invalid');showLayerDraft(saved);
  status('Черновик слоёв загружен. Для новой правки версия предложения увеличивается при сохранении.');
 }
+function draftInventoryTarget(){
+ let targetKind='device',targetId=$('inventory-device').value.trim();
+ if($('layer-proposal').value.trim()){
+  let proposal;try{proposal=JSON.parse($('layer-proposal').value);}catch{throw Error('invalid');}
+  targetKind=proposal?.targetKind;targetId=proposal?.targetId;
+ }
+ if(!['template','group','user','device'].includes(targetKind)||typeof targetId!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(targetId))throw Error('invalid');
+ return {targetKind,targetId};
+}
+async function listLayerDrafts(){
+ const scope=draftInventoryTarget();clearDraftInventory();
+ const result=await action('configuration.layers.drafts.list',scope);
+ if(!result||Object.keys(result).sort().join(',')!=='drafts,targetId,targetKind'||result.targetKind!==scope.targetKind||result.targetId!==scope.targetId||!Array.isArray(result.drafts)||result.drafts.length>64)throw Error('invalid');
+ const ids=new Set();
+ for(const row of result.drafts){
+  if(!row||Object.keys(row).sort().join(',')!=='id,revision,savedAtMs'||typeof row.id!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(row.id)||ids.has(row.id)||!Number.isSafeInteger(row.revision)||row.revision<1||!Number.isSafeInteger(row.savedAtMs)||row.savedAtMs<1)throw Error('invalid');
+  ids.add(row.id);
+ }
+ layerDraftInventory=structuredClone(result);
+ for(const row of result.drafts){const option=document.createElement('option');option.value=row.id;option.textContent=`${row.id} - версия ${row.revision}`;$('layer-saved').append(option);}
+ $('layer-list-status').textContent=result.drafts.length?`Сохранённых копий: ${result.drafts.length}`:'Для этого адресата нет сохранённых черновиков.';
+ status('Список загружен. Открытие копии выполняется отдельной кнопкой.');
+}
+$('layer-list').onclick=()=>work(listLayerDrafts);
+$('layer-open-saved').onclick=()=>work(async()=>{
+ const inventory=layerDraftInventory,id=$('layer-saved').value,row=inventory?.drafts.find(x=>x.id===id);if(!row)throw Error('invalid');
+ const saved=await action('configuration.layers.draft.get',{id});
+ if(!saved||saved.id!==id||saved.revision<row.revision||saved.proposal?.targetKind!==inventory.targetKind||saved.proposal?.targetId!==inventory.targetId)throw Error('invalid');
+ showLayerDraft(saved);status('Сохранённая копия открыта. Проверьте правку перед сохранением и публикацией.');
+});
 function editDeviceLayer(){
  if(!layerInventory||layerInventory.state==='unassigned')throw Error('invalid');
  const v=structuredClone(layerInventory),layers=v.layers;

@@ -61,5 +61,17 @@ replacement, ciphertext, wrong key/scope, restricted roles, cancellation and
 destructive privilege contamination. Runtime parsing tests include equivalent
 base64 spellings of the same forbidden shared key. Source5e816cc9e65548b68b6e1d3c1166b01c6212c2e7 passed all8 mandatory jobs in
 [Actions41562534053](https://github.com/nd4y/syn443-control-plane/actions/runs/41562534053). Authenticated web/mobile resource editing, audited retirement and
-bounded secret retention, plus actual Cloud integration through this SQL path,
-remain required work; this component does not complete M2/M3.
+bounded secret retention and complete Cloud data-plane acceptance remain required
+work; this component does not complete M2/M3.
+
+A bounded physical test with server source4f1adc26f42420ea54a5a91ccc9e7b4ccfd03fd1
+and Android v35 exercised actual Cloud registration through this SQL path. The
+owner imported one encrypted resource version; the worker had no inline PAT.
+The signed invitation/policy flow reached direct management and signal. After
+the peer diagnostic failed to report a fresh terminal result within its deadline,
+the test stopped and logged out. Automatic retirement deleted the one used key
+and enrolled peer using durable native evidence; independent provider HTTP404 and
+complete pre/post inventory comparisons passed. Original phone configuration,
+SDK identities, settings and temporary forwards were restored. Required internal
+peer reachability remains unverified; this observation does not establish a
+successful tunnel-health or full M2/M3 gate.

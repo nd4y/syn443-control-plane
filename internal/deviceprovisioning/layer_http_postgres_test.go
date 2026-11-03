@@ -40,6 +40,7 @@ func TestConfigurationHTTPOriginalReceiptPreviewPublishAndPoll(t *testing.T) {
 	}
 	// Feature opt-in is fail closed even when the generic API schema knows it.
 	call("configuration.preview.request", "disabled preview", configurationPreviewInput{p}, 403)
+	call("configuration.layers.drafts.list", "disabled private inventory", map[string]string{"targetKind": p.TargetKind, "targetId": p.TargetID}, 403)
 	api.Configurations = c.ControlAction
 	// Actor-private draft persistence goes through the same closed HTTP schema,
 	// proof verification and live ACL boundary; it does not queue publication.
@@ -48,6 +49,11 @@ func TestConfigurationHTTPOriginalReceiptPreviewPublishAndPoll(t *testing.T) {
 	if json.Unmarshal(call("configuration.layers.draft.put", "HTTP draft save", map[string]any{"draft": inputDraft}, 200), &savedDraft) != nil || savedDraft.Revision != 1 {
 		t.Fatal("HTTP draft save")
 	}
+	var privateInventory ConfigurationDraftInventory
+	if json.Unmarshal(call("configuration.layers.drafts.list", "HTTP private inventory", map[string]string{"targetKind": p.TargetKind, "targetId": p.TargetID}, 200), &privateInventory) != nil || len(privateInventory.Drafts) != 1 || privateInventory.Drafts[0].ID != p.DraftID {
+		t.Fatal("HTTP private inventory")
+	}
+	call("configuration.layers.drafts.list", "HTTP inventory unknown field", map[string]any{"targetKind": p.TargetKind, "targetId": p.TargetID, "actor": "foreign"}, 400)
 	if json.Unmarshal(call("configuration.layers.draft.get", "HTTP draft read", map[string]string{"id": p.DraftID}, 200), &savedDraft) != nil || savedDraft.Revision != 1 {
 		t.Fatal("HTTP draft read")
 	}

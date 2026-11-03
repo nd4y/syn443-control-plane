@@ -44,7 +44,7 @@ func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifie
 		return "", envelope, 0, enrollment.ErrDenied
 	}
 	switch envelope.Action {
-	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.history.get":
+	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.history.get":
 	default:
 		return "", envelope, 0, enrollment.ErrDenied
 	}
@@ -117,6 +117,16 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 	actor, envelope, authorityUntil, e := verifyConfigurationReceipt(ctx, c.Verifier, receipt, c.Origin, c.AssuranceACR, now)
 	if e != nil {
 		return nil, e
+	}
+	if envelope.Action == "configuration.layers.drafts.list" {
+		var input struct {
+			TargetKind string `json:"targetKind"`
+			TargetID   string `json:"targetId"`
+		}
+		if identity.DecodeConfiguration(envelope.Payload, &input) != nil || !configurationTargetShape(input.TargetKind, input.TargetID) {
+			return nil, enrollment.ErrDenied
+		}
+		return c.draftInventory(ctx, actor, input.TargetKind, input.TargetID, authorityUntil, now)
 	}
 	if envelope.Action == "configuration.layers.draft.get" {
 		var input struct {

@@ -1420,6 +1420,54 @@
               "requestId",
               "payload"
             ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
+                "const": "configuration.layers.drafts.list"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 24,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]{24,128}$"
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "targetKind": {
+                    "enum": [
+                      "template",
+                      "group",
+                      "user",
+                      "device"
+                    ]
+                  },
+                  "targetId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  }
+                },
+                "required": [
+                  "targetKind",
+                  "targetId"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
           }
         ]
       },
