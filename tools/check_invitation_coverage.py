@@ -67,3 +67,9 @@ assert selected,'Actor-private target-scoped draft inventory'
 value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
 print(f'Actor-private draft inventory coverage: {value:.1f}% (minimum80%)')
 assert value>=80
+
+selected=[(count,hits) for location,(count,hits) in blocks.items() if '/internal/deviceprovisioning/layer_draft_discard.go:' in location]
+assert selected,'Actor-private discard and old-operation replay fences'
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f'Actor-private discard coverage: {value:.1f}% (minimum80%)')
+assert value>=80

@@ -14,6 +14,35 @@ async function start(page,request,options={}){
 async function save(page){await page.locator('#layer-save').click();await expect(page.locator('#layer-version')).toHaveText('Сохранённая версия слоёв: 1');}
 async function preview(page){await page.locator('#layer-preview').click();await expect(page.locator('#layer-poll')).toBeEnabled();await page.locator('#layer-poll').click();}
 
+test('private layer discard requires confirmation and retains unsaved editor without publication',async({page,request})=>{
+ await start(page,request);await save(page);await page.locator('#layer-list').click();
+ const edited=JSON.parse(await page.locator('#layer-proposal').inputValue());edited.mode='home_wifi';
+ const text=JSON.stringify(edited,null,2);await page.locator('#layer-proposal').fill(text);
+ await expect(page.locator('#layer-discard')).toBeDisabled();await page.locator('#layer-discard-confirm').check();await page.locator('#layer-discard').click();
+ await expect(page.locator('#layer-version')).toHaveText('Сохранённый черновик удалён');await expect(page.locator('#layer-proposal')).toHaveValue(text);
+ await expect(page.locator('#layer-saved option')).toHaveCount(0);await expect(page.locator('#layer-preview')).toBeDisabled();await expect(page.locator('#layer-discard')).toBeDisabled();
+ const s=await state(request);expect(s.layerDrafts).toHaveLength(0);expect(s.operations).toBe(2);expect(s.calls).not.toContain('configuration.preview.request');expect(s.calls).not.toContain('configuration.publish');
+});
+
+test('private layer discard lost acknowledgment retains exact operation until verified receipt',async({page,request})=>{
+ await start(page,request,{discardFailOnce:true});await save(page);const text=await page.locator('#layer-proposal').inputValue();
+ await page.locator('#layer-discard-confirm').check();await page.locator('#layer-discard').click();
+ await expect(page.locator('#pending')).toBeVisible();await expect(page.locator('#discard-save')).toBeDisabled();
+ await expect(page.locator('#layer-version')).toHaveText('Сохранённая версия слоёв: 1');expect((await state(request)).operations).toBe(2);
+ await page.locator('#retry-save').click();await expect(page.locator('#pending')).toBeHidden();await expect(page.locator('#layer-version')).toHaveText('Сохранённый черновик удалён');
+ await expect(page.locator('#layer-proposal')).toHaveValue(text);const s=await state(request);expect(s.operations).toBe(2);expect(s.calls.filter(x=>x==='configuration.layers.draft.discard')).toHaveLength(2);
+});
+
+test('private layer discard conflicts and substituted receipts never clear the current editor',async({page,request})=>{
+ for(const options of [{discardConflict:true},{discardMismatch:true}]){
+  await start(page,request,options);await save(page);const text=await page.locator('#layer-proposal').inputValue();
+  await page.locator('#layer-discard-confirm').check();await page.locator('#layer-discard').click();
+  await expect(page.locator('#status')).toContainText(options.discardConflict?'Версия изменилась':'Проверьте поля');
+  await expect(page.locator('#layer-version')).toHaveText('Сохранённая версия слоёв: 1');await expect(page.locator('#layer-proposal')).toHaveValue(text);await expect(page.locator('#layer-publish')).toBeDisabled();
+  const s=await state(request);expect(s.calls).not.toContain('configuration.publish');expect(s.calls).not.toContain('configuration.preview.request');
+ }
+});
+
 test('private layer draft inventory lists metadata and reopens without implicit publication',async({page,request})=>{
  await start(page,request);await save(page);const before=await page.locator('#layer-proposal').inputValue();
  await page.locator('#layer-list').click();await expect(page.locator('#layer-saved option')).toHaveCount(1);

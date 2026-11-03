@@ -1468,6 +1468,65 @@
               "requestId",
               "payload"
             ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
+                "const": "configuration.layers.draft.discard"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 24,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]{24,128}$"
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "targetKind": {
+                    "enum": [
+                      "template",
+                      "group",
+                      "user",
+                      "device"
+                    ]
+                  },
+                  "targetId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "id",
+                  "revision",
+                  "targetKind",
+                  "targetId"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
           }
         ]
       },

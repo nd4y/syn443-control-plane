@@ -43,7 +43,8 @@ func (c *ConfigurationControl) getDraft(ctx context.Context, actor, id string, u
 	var kind, target, hash string
 	var revision, saved, expires int64
 	var protected []byte
-	e = tx.QueryRowContext(ctx, `SELECT target_kind,target_id,revision,body_hash,body,saved_ms,expires_ms FROM managed_configuration_drafts WHERE actor=$1 AND id=$2 FOR SHARE`, actor, id).Scan(&kind, &target, &revision, &hash, &protected, &saved, &expires)
+	var discarded bool
+	e = tx.QueryRowContext(ctx, `SELECT target_kind,target_id,revision,body_hash,body,saved_ms,expires_ms,discarded FROM managed_configuration_drafts WHERE actor=$1 AND id=$2 FOR SHARE`, actor, id).Scan(&kind, &target, &revision, &hash, &protected, &saved, &expires, &discarded)
 	if e == sql.ErrNoRows {
 		return draft, enrollment.ErrDenied
 	}
@@ -52,6 +53,9 @@ func (c *ConfigurationControl) getDraft(ctx context.Context, actor, id string, u
 	}
 	if e = layerACL(ctx, tx, actor, "configuration.drafts.read", kind, target, current().Unix()); e != nil {
 		return draft, e
+	}
+	if discarded {
+		return draft, enrollment.ErrDenied
 	}
 	plain, e := c.Store.Open(protected, configurationDraftAAD(actor, id, revision))
 	if e != nil || configurationHash(plain) != hash || identity.DecodeConfiguration(plain, &draft) != nil || draft.ID != id || draft.Revision != revision || draft.Proposal.DraftID != id || draft.Proposal.DraftRevision != revision || draft.SavedAtMs != saved || draft.Proposal.TargetKind != kind || draft.Proposal.TargetID != target {
@@ -97,6 +101,14 @@ func (c *ConfigurationControl) putDraft(ctx context.Context, actor, request, bod
 	}
 	if _, e = tx.ExecContext(ctx, `DELETE FROM managed_configuration_drafts WHERE actor=$1 AND expires_ms<=$2`, actor, current().UnixMilli()); e != nil {
 		return draft, enrollment.ErrUnavailable
+	}
+	var discarded bool
+	e = tx.QueryRowContext(ctx, `SELECT discarded FROM managed_configuration_drafts WHERE actor=$1 AND id=$2`, actor, draft.ID).Scan(&discarded)
+	if e != nil && e != sql.ErrNoRows {
+		return draft, enrollment.ErrUnavailable
+	}
+	if discarded {
+		return draft, enrollment.ErrConflict
 	}
 	var previous string
 	var response []byte
@@ -149,7 +161,7 @@ func (c *ConfigurationControl) putDraft(ctx context.Context, actor, request, bod
 	}
 	if !exists {
 		var count int
-		if e = tx.QueryRowContext(ctx, `SELECT count(*) FROM managed_configuration_drafts WHERE actor=$1`, actor).Scan(&count); e != nil {
+		if e = tx.QueryRowContext(ctx, `SELECT count(*) FROM managed_configuration_drafts WHERE actor=$1 AND NOT discarded`, actor).Scan(&count); e != nil {
 			return draft, enrollment.ErrUnavailable
 		}
 		if count >= 64 {

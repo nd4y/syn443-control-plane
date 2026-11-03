@@ -49,7 +49,7 @@ func (c *ConfigurationControl) draftInventory(ctx context.Context, actor, kind, 
 	if e = layerACL(ctx, tx, actor, "configuration.drafts.read", kind, target, current().Unix()); e != nil {
 		return result, e
 	}
-	rows, e := tx.QueryContext(ctx, `SELECT id,revision,saved_ms,expires_ms FROM managed_configuration_drafts WHERE actor=$1 AND target_kind=$2 AND target_id=$3 AND expires_ms>$4 ORDER BY saved_ms DESC,id LIMIT 65 FOR SHARE`, actor, kind, target, current().UnixMilli())
+	rows, e := tx.QueryContext(ctx, `SELECT id,revision,saved_ms,expires_ms FROM managed_configuration_drafts WHERE actor=$1 AND target_kind=$2 AND target_id=$3 AND expires_ms>$4 AND NOT discarded ORDER BY saved_ms DESC,id LIMIT 65 FOR SHARE`, actor, kind, target, current().UnixMilli())
 	if e != nil {
 		return result, enrollment.ErrUnavailable
 	}

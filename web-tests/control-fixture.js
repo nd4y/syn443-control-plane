@@ -3,7 +3,7 @@ import http from 'node:http';import fs from 'node:fs';
 let auth=true,denied=false,failSave=false,drafts=new Map(),operations=new Map(),calls=[];
 const originalSource=()=>({id:'source-a',owner:'synthetic-user',name:'<img src=x onerror="window.injected=true">',mode:'server',format:'uri',enabled:true,state:'active',revision:1,networkModes:['wifi'],activeSnapshot:'snapshot-a',validUntil:1800003600,refreshSeconds:3600,maxStaleSeconds:86400});
 let sources=new Map([['source-a',originalSource()]]),jobs=new Map();
-let layerDrafts=new Map(),configurationJobs=new Map(),options={};
+let layerDrafts=new Map(),discardedDrafts=new Set(),configurationJobs=new Map(),options={};
 const server=http.createServer(async(req,res)=>{
  const send=(status,data)=>{const headers={'Content-Type':'application/json','Cache-Control':'no-store'};if(req.url.startsWith('/fixture/'))headers.Connection='close';res.writeHead(status,headers);res.end(JSON.stringify(data));};
  if(req.method==='GET'&&['/','/app.js','/style.css','/layer-merge.js'].includes(req.url)){
@@ -11,7 +11,7 @@ const server=http.createServer(async(req,res)=>{
  }
  let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>278528){send(413,{});return;}}
  let body;try{body=JSON.parse(raw||'{}');}catch{send(400,{});return;}
- if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];sources=new Map([['source-a',originalSource()]]);jobs=new Map();layerDrafts=new Map();configurationJobs=new Map();options={...body};send(200,{});return;}
+ if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];sources=new Map([['source-a',originalSource()]]);jobs=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
  if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],layerDrafts:[...layerDrafts.values()],sources:[...sources.values()],operations:operations.size,calls});return;}
  if(req.url==='/fixture/revoke'){denied=true;send(200,{});return;}
  if(req.url==='/fixture/expire'){auth=false;send(200,{});return;}
@@ -36,8 +36,16 @@ const server=http.createServer(async(req,res)=>{
   if(options.draftListExtra&&rows.length)rows[0].body='<img src=x onerror="window.injected=true">';
   send(200,{targetKind:p.targetKind,targetId:options.draftListMismatch?'another-device':p.targetId,drafts:rows});break;
  }
+ case 'configuration.layers.draft.discard':{
+  const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}
+  const draft=layerDrafts.get(p.id);if(!draft||draft.revision!==p.revision||draft.proposal.targetKind!==p.targetKind||draft.proposal.targetId!==p.targetId){send(409,{});break;}
+  if(options.discardConflict){send(409,{});break;}
+  const value={id:p.id,revision:p.revision,discarded:true};layerDrafts.delete(p.id);discardedDrafts.add(p.id);operations.set(body.requestId,{raw,value});
+  if(options.discardFailOnce){options.discardFailOnce=false;send(503,{});}else send(200,options.discardMismatch?{...value,id:'wrong-draft'}:value);break;
+ }
  case 'configuration.layers.draft.get':{const draft=layerDrafts.get(p.id);send(draft?200:403,draft||{});break;}
  case 'configuration.layers.draft.put':{
+  if(discardedDrafts.has(p.draft.id)){send(409,{});break;}
   const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}
   const d=p.draft,current=layerDrafts.get(d.id);
   if((current?.revision||0)!==d.revision){send(409,{});break;}

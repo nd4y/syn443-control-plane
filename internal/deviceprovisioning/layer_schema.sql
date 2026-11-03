@@ -8,10 +8,13 @@ CREATE TABLE IF NOT EXISTS managed_configuration_draft_ops(
  actor text NOT NULL,request_id text NOT NULL,body_hash text NOT NULL,response bytea NOT NULL,expires_ms bigint NOT NULL,
  PRIMARY KEY(actor,request_id),CHECK(octet_length(response) BETWEEN 29 AND 262172)
 );
+ALTER TABLE managed_configuration_drafts ADD COLUMN IF NOT EXISTS discarded boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS managed_configuration_drafts_live_scope ON managed_configuration_drafts(actor,target_kind,target_id,saved_ms DESC,id) WHERE NOT discarded;
 CREATE OR REPLACE FUNCTION managed_configuration_draft_invariants() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF (NEW.actor,NEW.id,NEW.target_kind,NEW.target_id) IS DISTINCT FROM (OLD.actor,OLD.id,OLD.target_kind,OLD.target_id)
- OR NEW.revision<>OLD.revision+1 THEN RAISE EXCEPTION 'configuration draft CAS'; END IF; RETURN NEW;
+ OR OLD.discarded OR (NEW.discarded AND NEW.revision<>OLD.revision)
+ OR (NOT NEW.discarded AND NEW.revision<>OLD.revision+1) THEN RAISE EXCEPTION 'configuration draft CAS'; END IF; RETURN NEW;
 END; $$;
 DROP TRIGGER IF EXISTS managed_configuration_draft_guard ON managed_configuration_drafts;
 CREATE TRIGGER managed_configuration_draft_guard BEFORE UPDATE ON managed_configuration_drafts FOR EACH ROW EXECUTE FUNCTION managed_configuration_draft_invariants();

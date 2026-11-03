@@ -109,6 +109,18 @@ func TestConfigurationHTTPOriginalReceiptPreviewPublishAndPoll(t *testing.T) {
 	c.Store = original
 	call("configuration.request.get", "HTTP invalid envelope", map[string]any{"id": publish.ID, "ready": true}, 400)
 	call("configuration.preview.request", "HTTP untrusted recipients", map[string]any{"proposal": p, "approved": true}, 400)
+	inputDiscard := ConfigurationDraftDiscard{ID: p.DraftID, Revision: 1, TargetKind: p.TargetKind, TargetID: p.TargetID}
+	call("configuration.layers.draft.discard", "HTTP unknown discard field", map[string]any{"id": p.DraftID, "revision": 1, "targetKind": p.TargetKind, "targetId": p.TargetID, "approved": true}, 400)
+	var discarded ConfigurationDraftDiscarded
+	if json.Unmarshal(call("configuration.layers.draft.discard", "HTTP discard", inputDiscard, 200), &discarded) != nil || !discarded.Discarded || discarded.ID != p.DraftID {
+		t.Fatal("HTTP discard receipt")
+	}
+	call("configuration.layers.draft.discard", "HTTP discard", inputDiscard, 200)
+	call("configuration.layers.draft.get", "HTTP discarded read", map[string]string{"id": p.DraftID}, 403)
+	if json.Unmarshal(call("configuration.inventory.get", "HTTP unchanged desired after discard", map[string]string{"id": n.target.Device}, 200), &view) != nil || view.Revision != 1 || view.State != "assigned" {
+		t.Fatal("discard changed desired state")
+	}
+
 	if _, e = fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, n.actor.ID); e != nil {
 		t.Fatal(e)
 	}

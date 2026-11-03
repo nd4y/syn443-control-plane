@@ -16,7 +16,7 @@ function controls(){
  $('more-sources').disabled=busy||!authenticated||!next||!!pending;
  for(const id of ['owner','inventory-device',...formFields])$(id).disabled=busy||!authenticated||!!pending;
  $('pending').hidden=!pending;for(const id of ['retry-save','discard-save'])$(id).disabled=busy||!authenticated;
- if(pending&&['layer-preview','layer-publish'].includes(pendingKind))$('discard-save').disabled=true;
+ if(pending&&['layer-preview','layer-publish','layer-discard'].includes(pendingKind))$('discard-save').disabled=true;
  for(const button of $('sources').querySelectorAll('button'))button.disabled=busy||!authenticated||!!pending;
  $('source-secret').disabled=busy||!authenticated||!!pending||$('source-secret-operation').value!=='replace';
  if(!['server','resource'].includes($('source-mode').value))$('sync-source').disabled=true;
@@ -160,7 +160,7 @@ controls();work(async()=>{await request('/session',{});authenticated=true;status
 function clearLayerReview(){layerPreview=null;$('layer-confirm').checked=false;$('layer-review').hidden=true;$('layer-impact').textContent='';}
 function clearLayerComparison(){layerComparison=null;$('layer-comparison').hidden=true;$('layer-diff').textContent='';$('layer-conflicts').replaceChildren();}
 function clearDraftInventory(){layerDraftInventory=null;$('layer-saved').replaceChildren();$('layer-list-status').textContent='';}
-function clearLayers(){layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearDraftInventory();clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
+function clearLayers(){$('layer-discard-confirm').checked=false;layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearDraftInventory();clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
 function layerUnchanged(){return !!layerSaved&&$('layer-id').value.trim()===layerSaved.id&&$('layer-proposal').value===layerSaved.text;}
 function layerControls(){
  const disabled=busy||!authenticated||!!pending;
@@ -173,6 +173,8 @@ function layerControls(){
  $('layer-merge').disabled=disabled||!!layerJob||!layerComparison?.result?.ready;
  $('layer-list').disabled=disabled||!!layerJob;$('layer-saved').disabled=disabled||!!layerJob||!layerDraftInventory?.drafts.length;
  $('layer-open-saved').disabled=disabled||!!layerJob||!layerDraftInventory?.drafts.length;
+ $('layer-discard-confirm').disabled=disabled||!!layerJob||!layerSaved;
+ $('layer-discard').disabled=disabled||!!layerJob||!layerSaved||!$('layer-discard-confirm').checked;
  for(const button of $('layer-conflicts').querySelectorAll('button'))button.disabled=disabled||!!layerJob;
 }
 function layerProposal(){
@@ -184,7 +186,7 @@ function layerProposal(){
 function showLayerDraft(draft){
  const p=draft&&draft.proposal;
  if(!draft||typeof draft.id!=='string'||!Number.isSafeInteger(draft.revision)||draft.revision<1||!Number.isSafeInteger(draft.savedAtMs)||draft.savedAtMs<1||!p||p.draftId!==draft.id||p.draftRevision!==draft.revision||!Array.isArray(p.bundles))throw Error('invalid');
- layerRevision=draft.revision;layerOpened={id:draft.id,kind:p.targetKind,target:p.targetId};
+ $('layer-discard-confirm').checked=false;layerRevision=draft.revision;layerOpened={id:draft.id,kind:p.targetKind,target:p.targetId};
  $('layer-id').value=draft.id;$('layer-proposal').value=JSON.stringify(p,null,2);
  layerSaved={id:draft.id,proposal:structuredClone(p),text:$('layer-proposal').value};
  layerJob=null;clearLayerReview();clearLayerComparison();$('layer-job').textContent='';$('layer-version').textContent=`Сохранённая версия слоёв: ${draft.revision}`;
@@ -237,6 +239,16 @@ function editDeviceLayer(){
  status('Наследованные слои сохранены. Внесите изменения в changes слоя device и сохраните черновик.');
 }
 function acceptLayerMutation(kind,result){
+ if(kind==='layer-discard'){
+  const submitted=JSON.parse(pending).payload;
+  if(!result||Object.keys(result).sort().join(',')!=='discarded,id,revision'||result.discarded!==true||result.id!==submitted.id||result.revision!==submitted.revision)throw Error('invalid');
+  layerSaved=null;layerOpened=null;layerRevision=0;clearLayerReview();clearLayerComparison();clearDraftInventory();$('layer-discard-confirm').checked=false;
+  // Retain unsaved text. A future save requires the user to start/open a new
+  // draft; the discarded ID is never silently reused or rewritten.
+  $('layer-version').textContent='Сохранённый черновик удалён';
+  status('Сохранённая копия удалена. Текст остался в редакторе; для сохранения создайте новый черновик. Желаемая конфигурация не изменена.');return;
+ }
+
  if(kind==='layer-save'){
   const submitted=JSON.parse(pending).payload.draft;
   if(result.id!==submitted.id||result.revision!==submitted.revision+1||result.proposal?.targetKind!==submitted.proposal.targetKind||result.proposal?.targetId!==submitted.proposal.targetId)throw Error('invalid');
@@ -281,7 +293,12 @@ async function pollLayerJob(){
 $('layer-from-device').onclick=()=>work(async()=>editDeviceLayer());
 $('layer-load').onclick=()=>work(loadLayerDraft);$('layer-save').onclick=()=>work(saveLayerDraft);
 $('layer-id').oninput=$('layer-proposal').oninput=()=>{clearLayerReview();clearLayerComparison();layerControls();};
-$('layer-confirm').onchange=layerControls;
+$('layer-confirm').onchange=$('layer-discard-confirm').onchange=layerControls;
+$('layer-discard').onclick=()=>work(async()=>{
+ if(pending||layerJob||!layerSaved||!$('layer-discard-confirm').checked)throw Error('invalid');
+ const p=layerSaved.proposal;clearLayerReview();pendingKind='layer-discard';
+ pending=envelope('configuration.layers.draft.discard',{id:layerSaved.id,revision:layerRevision,targetKind:p.targetKind,targetId:p.targetId});await retry();
+});
 $('layer-preview').onclick=()=>work(async()=>{if(pending||layerJob||!layerUnchanged())throw Error('invalid');clearLayerReview();pendingKind='layer-preview';pending=envelope('configuration.preview.request',{proposal:layerSaved.proposal});await retry();});
 $('layer-poll').onclick=()=>work(pollLayerJob);
 $('layer-publish').onclick=()=>work(async()=>{if(pending||layerJob||!layerUnchanged()||!$('layer-confirm').checked)throw Error('invalid');const result=checkedLayerPreview(layerPreview);pendingKind='layer-publish';pending=envelope('configuration.publish',{previewId:result.previewId,ticket:result.ticket});await retry();});

@@ -1573,7 +1573,7 @@
         "docs/private-draft-inventory.md"
       ],
       "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
-      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
+      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required. Explicit actor-private discard now has CAS/tombstone/replay fences and browser confirmation source; exact new CI is pending."
     },
     {
       "id": "EDIT-03",

@@ -49,6 +49,7 @@
 <p id="layer-version">Черновик слоёв не открыт</p>
 <label for="layer-proposal">Переносимое предложение, JSON</label><textarea id="layer-proposal" rows="24" maxlength="262144" autocomplete="off" spellcheck="false"></textarea>
 <p>Нативные конфиги, ключи и пароли сюда не добавляйте. Сохранение не меняет устройства. Предварительная проверка компилирует маршруты на сервере, но не проверяет доступность сети с телефона.</p>
+<label><input id="layer-discard-confirm" type="checkbox" disabled> Подтверждаю удаление сохранённого черновика. Несохранённый текст останется в редакторе.</label><button id="layer-discard" disabled>Удалить сохранённый черновик</button>
 <button id="layer-save" disabled>Сохранить черновик слоёв</button><button id="layer-preview" disabled>Проверить предложение на сервере</button><button id="layer-poll" disabled>Проверить задание конфигурации</button>
 <pre id="layer-job"></pre><div id="layer-review" hidden><h3>Проверенное предложение</h3><pre id="layer-impact"></pre><label><input id="layer-confirm" type="checkbox"> Проверил изменения и список затронутых устройств</label><button id="layer-publish" disabled>Опубликовать желаемую конфигурацию</button></div>
 <button id="layer-compare" disabled>Сравнить с текущей версией устройства</button><div id="layer-comparison" hidden><h3>Исходная, локальная и текущая конфигурации</h3><pre id="layer-diff"></pre><ul id="layer-conflicts"></ul><button id="layer-merge" disabled>Перенести результат сравнения в редактор</button></div>

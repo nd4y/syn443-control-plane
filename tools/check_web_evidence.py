@@ -34,7 +34,12 @@ expected = {
     'private layer draft inventory disappears on rights withdrawal and logout',
     'empty private layer draft inventory preserves an unsaved proposal and does not invent a copy',
 }
-assert len(cases) >= 28
+expected.update({
+    'private layer discard requires confirmation and retains unsaved editor without publication',
+    'private layer discard lost acknowledgment retains exact operation until verified receipt',
+    'private layer discard conflicts and substituted receipts never clear the current editor',
+})
+assert len(cases) >= 31
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

@@ -44,7 +44,7 @@ func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifie
 		return "", envelope, 0, enrollment.ErrDenied
 	}
 	switch envelope.Action {
-	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.history.get":
+	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.layers.draft.discard", "configuration.history.get":
 	default:
 		return "", envelope, 0, enrollment.ErrDenied
 	}
@@ -136,6 +136,13 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 			return nil, enrollment.ErrDenied
 		}
 		return c.getDraft(ctx, actor, input.ID, authorityUntil, now)
+	}
+	if envelope.Action == "configuration.layers.draft.discard" {
+		var input ConfigurationDraftDiscard
+		if identity.DecodeConfiguration(envelope.Payload, &input) != nil {
+			return nil, enrollment.ErrDenied
+		}
+		return c.discardDraft(ctx, actor, envelope.RequestID, configurationHash(raw), input, authorityUntil, now)
 	}
 	if envelope.Action == "configuration.layers.draft.put" {
 		var input struct {

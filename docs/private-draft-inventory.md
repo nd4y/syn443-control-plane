@@ -24,5 +24,31 @@ Actions adds actual SQL/HTTP scope, expiry, bounds, storage-fault and delayed
 authorization cases, a separate80% inventory coverage gate and four required
 browser cases (minimum28). The implementation remains unaccepted until the
 complete exact-source matrix and independently checked browser artifact pass.
-Explicit server-side discard and broader application/mobile administration
-remain separate M3 work.
+All eight jobs passed at5960a071afb8863f5196663857e1204aaffcb8d3
+(run41612379303); independent archive SHA/CRC/XML verification found all28
+required browser cases with no errors, failures or skips.
+
+## Explicit discard (new source, acceptance pending)
+
+`configuration.layers.draft.discard` requires the exact saved ID/revision/target,
+current actor-scoped write permission and fresh administrative assurance. The
+transaction serializes against saves and repeats authority after waits. It replaces
+the encrypted proposal with an encrypted minimal receipt and a30day tombstone.
+The ID cannot be reused during that interval. A prior save request cannot return
+its obsolete content after discard. Existing encrypted operation receipts retain
+their maximum24h lifetime. Tombstones do not consume the64 live-copy allowance;
+the existing256-per24h operation bound also bounds tombstone accumulation.
+
+Lost discard replies retry the same operation/body. A changed body or version
+conflicts. SQL prevents reversing or editing a committed tombstone. Expiry does
+not become publication, and even the largest valid draft revision can be discarded.
+No approved preview, configuration head, assignment or active VPN changes.
+
+The responsive editor requires explicit confirmation, retains unsaved text and
+checks the exact receipt before clearing saved-copy state. An uncertain discard
+cannot be abandoned as if it were known not to have happened. Creating a new copy
+requires a new ID. Logout or loss of authority still clears private editor state.
+Actions adds actual PostgreSQL CAS/replay/rights/expiry/quota/concurrency and
+receipt-integrity checks, an independent80% discard gate and three required
+browser scenarios (minimum31). Broader application/mobile administration remains
+open; neither discard source nor its device path is accepted before exact CI.
