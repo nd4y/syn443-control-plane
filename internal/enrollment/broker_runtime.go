@@ -16,7 +16,7 @@ import (
 )
 
 // Bootstrap configuration is private owner input, never a control/device request.
-// The SQL catalog-backed resource authority remains a separate integration.
+// SQL-backed authority uses the same exact resource shape and revision binding.
 // Archived revisions must be retained until their durable cleanup is complete.
 type BrokerResource struct {
 	ResourceID       string   `json:"resourceId"`
@@ -35,10 +35,12 @@ func (BrokerResource) String() string   { return "OverlayBrokerResource([redacte
 func (BrokerResource) GoString() string { return "OverlayBrokerResource([redacted])" }
 
 type BrokerRuntimeConfig struct {
-	Database        string           `json:"database"`
-	EncryptionKey   string           `json:"encryptionKey"`
-	Resources       []BrokerResource `json:"resources"`
-	FixtureLoopback bool             `json:"fixtureLoopback"`
+	Database              string           `json:"database"`
+	EncryptionKey         string           `json:"encryptionKey"`
+	Resources             []BrokerResource `json:"resources"`
+	FixtureLoopback       bool             `json:"fixtureLoopback"`
+	ResourceCatalog       bool             `json:"resourceCatalog,omitempty"`
+	ResourceEncryptionKey string           `json:"resourceEncryptionKey,omitempty"`
 }
 
 func (BrokerRuntimeConfig) String() string   { return "OverlayBrokerRuntimeConfig([redacted])" }
@@ -56,10 +58,42 @@ func ReadBrokerRuntimeConfig(path string) (BrokerRuntimeConfig, error) {
 	if e != nil || len(key) != 32 || c.Database == "" {
 		return BrokerRuntimeConfig{}, identity.ErrInvalid
 	}
-	if _, e = NewBrokerResources(c.Resources, c.FixtureLoopback); e != nil {
-		return BrokerRuntimeConfig{}, e
+	if c.ResourceCatalog {
+		if _, e = c.catalogKey(); e != nil || len(c.Resources) != 0 {
+			return BrokerRuntimeConfig{}, identity.ErrInvalid
+		}
+	} else {
+		if c.ResourceEncryptionKey != "" {
+			return BrokerRuntimeConfig{}, identity.ErrInvalid
+		}
+		if _, e = NewBrokerResources(c.Resources, c.FixtureLoopback); e != nil {
+			return BrokerRuntimeConfig{}, e
+		}
 	}
 	return c, nil
+}
+
+func (c BrokerRuntimeConfig) catalogKey() ([]byte, error) {
+	key, e := base64.StdEncoding.Strict().DecodeString(c.ResourceEncryptionKey)
+	identityKey, identityError := base64.StdEncoding.Strict().DecodeString(c.EncryptionKey)
+	if e != nil || len(key) != 32 || base64.StdEncoding.EncodeToString(key) != c.ResourceEncryptionKey || identityError != nil || len(identityKey) != 32 || bytes.Equal(key, identityKey) {
+		return nil, identity.ErrInvalid
+	}
+	return key, nil
+}
+
+func (c BrokerRuntimeConfig) ResourceResolver(store *Store) (BrokerResolver, error) {
+	if !c.ResourceCatalog {
+		if c.ResourceEncryptionKey != "" {
+			return nil, identity.ErrInvalid
+		}
+		return NewBrokerResources(c.Resources, c.FixtureLoopback)
+	}
+	key, e := c.catalogKey()
+	if e != nil || len(c.Resources) != 0 || store == nil {
+		return nil, identity.ErrInvalid
+	}
+	return NewBrokerResourceCatalog(store.DB, key, c.FixtureLoopback)
 }
 
 type brokerResourceKey struct {

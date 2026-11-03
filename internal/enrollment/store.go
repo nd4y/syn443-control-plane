@@ -39,8 +39,14 @@ var brokerSchema string
 //go:embed broker_roles.sql
 var brokerRoles string
 
-var Schema = identitySchema + "\n" + supportchat.Schema + "\n" + overlaySchema + "\n" + brokerSchema
-var Roles = identityRoles + "\n" + supportchat.Roles + "\n" + overlayRoles + "\n" + brokerRoles
+//go:embed broker_resource_schema.sql
+var brokerResourceSchema string
+
+//go:embed broker_resource_roles.sql
+var brokerResourceRoles string
+
+var Schema = identitySchema + "\n" + supportchat.Schema + "\n" + overlaySchema + "\n" + brokerSchema + "\n" + brokerResourceSchema
+var Roles = identityRoles + "\n" + supportchat.Roles + "\n" + overlayRoles + "\n" + brokerRoles + "\n" + brokerResourceRoles
 var ErrDenied = errors.New("access_denied")
 
 // Identity admission may complete before an initial desired configuration is

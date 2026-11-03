@@ -1,8 +1,10 @@
 package enrollment
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -20,6 +22,67 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/overlay"
 )
+
+func TestBrokerRuntimeSQLCatalogUsesSeparateKeyAndClosedOwnerBootstrap(t *testing.T) {
+	identityKey := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{18}, 32))
+	resourceKey := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{19}, 32))
+	base := BrokerRuntimeConfig{Database: "postgres://fixture@127.0.0.1/test?sslmode=disable", EncryptionKey: identityKey, ResourceCatalog: true, ResourceEncryptionKey: resourceKey}
+	path := filepath.Join(t.TempDir(), "catalog.json")
+	write := func(c BrokerRuntimeConfig) {
+		t.Helper()
+		raw, e := json.Marshal(c)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if e = os.WriteFile(path, raw, 0600); e != nil {
+			t.Fatal(e)
+		}
+	}
+	write(base)
+	loaded, e := ReadBrokerRuntimeConfig(path)
+	if e != nil || !loaded.ResourceCatalog || len(loaded.Resources) != 0 {
+		t.Fatal("SQL resource bootstrap", e)
+	}
+	db, e := sql.Open("pgx", base.Database)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.Close()
+	resolver, e := loaded.ResourceResolver(&Store{DB: db})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, ok := resolver.(*BrokerResourceCatalog); !ok {
+		t.Fatal("SQL resource mode ignored")
+	}
+	if _, e = loaded.ResourceResolver(nil); e == nil {
+		t.Fatal("missing SQL catalog database")
+	}
+	for _, mutate := range []func(*BrokerRuntimeConfig){
+		func(c *BrokerRuntimeConfig) { c.ResourceEncryptionKey = "invalid" },
+		func(c *BrokerRuntimeConfig) { c.ResourceEncryptionKey = c.EncryptionKey },
+		func(c *BrokerRuntimeConfig) { c.EncryptionKey = resourceKey + "\n" },
+		func(c *BrokerRuntimeConfig) { c.Resources = []BrokerResource{brokerResourceExample()} },
+		func(c *BrokerRuntimeConfig) { c.ResourceCatalog = false },
+	} {
+		c := base
+		mutate(&c)
+		write(c)
+		if _, e = ReadBrokerRuntimeConfig(path); e == nil {
+			t.Fatal("ambiguous or shared-key resource authority")
+		}
+		if _, e = c.ResourceResolver(&Store{DB: db}); e == nil {
+			t.Fatal("resolver bypassed protected bootstrap checks")
+		}
+	}
+	legacy := BrokerRuntimeConfig{Resources: []BrokerResource{brokerResourceExample()}}
+	if _, e = legacy.ResourceResolver(nil); e != nil {
+		t.Fatal("legacy isolated bootstrap broken", e)
+	}
+	if strings.Contains(fmt.Sprintf("%v %#v", base, base), resourceKey) {
+		t.Fatal("resource key in diagnostics")
+	}
+}
 
 func brokerResourceExample() BrokerResource {
 	return BrokerResource{ResourceID: "resource-a", Revision: 1, AccountID: "account-a", APIOrigin: "https://api.example.invalid", ManagementOrigin: "https://overlay.example.invalid", NetworkID: "tenant", Groups: []string{"group-a"}, Token: "synthetic-netbird-management-token"}

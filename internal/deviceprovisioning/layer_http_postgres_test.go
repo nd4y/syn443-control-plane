@@ -126,6 +126,13 @@ func TestConfigurationRuntimeStoresPreserveActualRestrictedProcessRoles(t *testi
 			t.Fatal("wrong process obtained publisher authority")
 		}
 	}
+	for _, db := range []*sql.DB{fixtureControl, fixtureSourceWorker, fixtureSigner, fixtureDevice} {
+		rows, e := db.Query(`SELECT body FROM identity_overlay_resource_versions`)
+		if e == nil {
+			rows.Close()
+			t.Fatal("control/source/identity process obtained overlay management PAT history")
+		}
+	}
 	if _, e := r.SourceStore(context.Background(), fixtureSourceWorker); e == nil {
 		t.Fatal("source worker obtained independent publication authority")
 	}

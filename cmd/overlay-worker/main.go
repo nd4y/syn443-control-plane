@@ -17,19 +17,22 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	resources, e := enrollment.NewBrokerResources(c.Resources, c.FixtureLoopback)
-	if e != nil {
-		return e
-	}
 	store, e := enrollment.OpenStore(enrollment.Config{Database: c.Database, EncryptionKey: c.EncryptionKey})
 	if e != nil {
 		return e
 	}
 	defer store.DB.Close()
+	resources, e := c.ResourceResolver(store)
+	if e != nil {
+		return e
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	check, cancel := context.WithTimeout(ctx, 5*time.Second)
 	e = store.BrokerRuntimeRole(check)
+	if catalog, ok := resources.(*enrollment.BrokerResourceCatalog); e == nil && ok {
+		e = catalog.RuntimeRole(check)
+	}
 	cancel()
 	if e != nil {
 		return e

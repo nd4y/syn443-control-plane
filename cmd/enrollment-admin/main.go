@@ -2,7 +2,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"github.com/nd4y/syn443-control-plane/internal/deviceprovisioning"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
@@ -27,6 +29,29 @@ func run() error {
 		return identity.ErrInvalid
 	}
 	switch os.Args[1] {
+	case "overlay-resource-put":
+		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_OVERLAY_RESOURCE"), 98304)
+		if e != nil {
+			return e
+		}
+		var input struct {
+			EncryptionKey    string                    `json:"encryptionKey"`
+			PreviousRevision int64                     `json:"previousRevision"`
+			Resource         enrollment.BrokerResource `json:"resource"`
+		}
+		if identity.DecodeOperatorDocument(raw, &input) != nil || input.EncryptionKey == c.EncryptionKey {
+			return identity.ErrInvalid
+		}
+		key, e := base64.StdEncoding.Strict().DecodeString(input.EncryptionKey)
+		identityKey, identityError := base64.StdEncoding.Strict().DecodeString(c.EncryptionKey)
+		if e != nil || len(key) != 32 || base64.StdEncoding.EncodeToString(key) != input.EncryptionKey || identityError != nil || bytes.Equal(key, identityKey) {
+			return identity.ErrInvalid
+		}
+		catalog, e := enrollment.NewBrokerResourceCatalog(store.DB, key, false)
+		if e != nil {
+			return e
+		}
+		return catalog.Put(ctx, input.Resource, input.PreviousRevision, time.Now())
 	case "configuration-migrate":
 		_, e = store.DB.ExecContext(ctx, deviceprovisioning.ConfigurationSchema)
 		return e
