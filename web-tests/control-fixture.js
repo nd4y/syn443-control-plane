@@ -6,7 +6,7 @@ let sources=new Map([['source-a',originalSource()]]),jobs=new Map();
 let layerDrafts=new Map(),configurationJobs=new Map(),options={};
 const server=http.createServer(async(req,res)=>{
  const send=(status,data)=>{const headers={'Content-Type':'application/json','Cache-Control':'no-store'};if(req.url.startsWith('/fixture/'))headers.Connection='close';res.writeHead(status,headers);res.end(JSON.stringify(data));};
- if(req.method==='GET'&&['/','/app.js','/style.css'].includes(req.url)){
+ if(req.method==='GET'&&['/','/app.js','/style.css','/layer-merge.js'].includes(req.url)){
   const name=req.url==='/'?'index.html':req.url.slice(1);res.writeHead(200,{'Content-Type':name.endsWith('js')?'text/javascript':name.endsWith('css')?'text/css':'text/html','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"});res.end(fs.readFileSync(new URL('../internal/chatweb/assets/control/'+name,import.meta.url)));return;
  }
  let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>278528){send(413,{});return;}}
@@ -15,6 +15,7 @@ const server=http.createServer(async(req,res)=>{
  if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],layerDrafts:[...layerDrafts.values()],sources:[...sources.values()],operations:operations.size,calls});return;}
  if(req.url==='/fixture/revoke'){denied=true;send(200,{});return;}
  if(req.url==='/fixture/expire'){auth=false;send(200,{});return;}
+ if(req.url==='/fixture/advance'){options.remoteChanged=true;send(200,{});return;}
  if(req.headers['x-syn443-csrf']!=='1'||req.headers.origin!=='http://127.0.0.1:17851'){send(403,{});return;}
  if(!auth){send(401,{});return;}
  if(req.url==='/session'){send(200,{authenticated:true});return;}
@@ -24,6 +25,10 @@ const server=http.createServer(async(req,res)=>{
  calls.push(body.action);
  const p=body.payload;
  switch(body.action){
+ case 'configuration.history.get':{
+  if(p.id!=='device-a'||p.revision!==7||p.hash!=='a'.repeat(64)){send(403,{});break;}
+  send(200,{device:p.id,owner:'synthetic-user',state:'assigned',revision:7,hash:'a'.repeat(64),currentRevision:options.remoteChanged?8:7,historical:true,mode:'wifi',approvalUntilMs:1800003600000,layers:[{id:'template-a',kind:'template',priority:0,revision:2,changes:[],permissions:null}]});break;
+ }
  case 'configuration.layers.draft.get':{const draft=layerDrafts.get(p.id);send(draft?200:403,draft||{});break;}
  case 'configuration.layers.draft.put':{
   const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}
@@ -53,7 +58,8 @@ const server=http.createServer(async(req,res)=>{
   if(!['device-a','device-expired','device-mismatch'].includes(p.id)){send(403,{});break;}
   const origin={kind:'template',layerId:'template-a',revision:2};
   send(200,{device:p.id==='device-mismatch'?'other-device':p.id,owner:'synthetic-user',state:p.id==='device-expired'?'expired':'assigned',revision:7,hash:'a'.repeat(64),policyRevision:23,mode:'wifi',approvalUntilMs:1800003600000,
-   layers:[{id:'template-a',kind:'template',priority:0,revision:2,changes:[],permissions:null}],
+   ...(options.remoteChanged?{revision:8,hash:'d'.repeat(64)}:{}),
+   layers:[{id:'template-a',kind:'template',priority:0,revision:2,changes:[],permissions:null},...(options.remoteChanged?[{id:p.id,kind:'device',priority:0,revision:1,changes:[{path:'/network/dnsStrategy',operation:'set',value:'ipv6_only'}],permissions:[]}]:[])],
    effective:{document:{note:'<img src=x onerror="window.injected=true">'},fields:{'/network/dnsStrategy':origin},restrictions:[{permission:{path:'/network/dnsStrategy',mode:'choice',choices:['prefer_ipv4','ipv4_only']},origin}]}});break;
  }
  case 'source.list':send(200,{sources:[...sources.values()],next:p.after?'':'source-a'});break;

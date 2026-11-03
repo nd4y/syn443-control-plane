@@ -25,13 +25,21 @@ type ConfigurationInventory struct {
 	ApprovalUntilMs int64                    `json:"approvalUntilMs"`
 	Layers          []configuration.Layer    `json:"layers"`
 	Effective       *configuration.Effective `json:"effective,omitempty"`
+	CurrentRevision int64                    `json:"currentRevision"`
+	Historical      bool                     `json:"historical,omitempty"`
 }
 
 func (ConfigurationInventory) String() string   { return "ConfigurationInventory([redacted])" }
 func (ConfigurationInventory) GoString() string { return "ConfigurationInventory([redacted])" }
 
 func (c *ConfigurationControl) inventory(ctx context.Context, actor, device string, authorityUntil int64, now time.Time) (ConfigurationInventory, error) {
-	r := ConfigurationInventory{Device: device, State: "unassigned", Layers: []configuration.Layer{}}
+	return c.inventoryAt(ctx, actor, device, 0, "", authorityUntil, now)
+}
+
+// Historical reads have the same live identity, grant and per-layer ACL gates
+// as current reads. A caller must bind the expected immutable revision/hash.
+func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device string, revision int64, hash string, authorityUntil int64, now time.Time) (ConfigurationInventory, error) {
+	r := ConfigurationInventory{Device: device, State: "unassigned", Layers: []configuration.Layer{}, Historical: revision > 0}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	started := time.Now()
@@ -56,7 +64,10 @@ func (c *ConfigurationControl) inventory(ctx context.Context, actor, device stri
 	}
 	var body []byte
 	var preview, owner, thumb, versionGrant string
-	e = tx.QueryRowContext(ctx, `SELECT h.revision,h.body_hash,p.body,v.preview,v.owner,v.jkt,v.grant_hash FROM managed_configuration_heads h JOIN managed_configuration_versions v ON v.device=h.device AND v.revision=h.revision AND v.body_hash=h.body_hash JOIN managed_configuration_previews p ON p.id=v.preview AND p.actor=v.actor AND p.body_hash=v.body_hash WHERE h.device=$1`, device).Scan(&r.Revision, &r.Hash, &body, &preview, &owner, &thumb, &versionGrant)
+	e = tx.QueryRowContext(ctx, `SELECT v.revision,v.body_hash,p.body,v.preview,v.owner,v.jkt,v.grant_hash,h.revision FROM managed_configuration_heads h JOIN managed_configuration_versions v ON v.device=h.device AND v.revision=CASE WHEN $2::bigint=0 THEN h.revision ELSE $2::bigint END AND v.revision<=h.revision JOIN managed_configuration_previews p ON p.id=v.preview AND p.actor=v.actor AND p.body_hash=v.body_hash WHERE h.device=$1 AND ($2::bigint=0 AND v.body_hash=h.body_hash OR $2::bigint>0 AND v.body_hash=$3)`, device, revision, hash).Scan(&r.Revision, &r.Hash, &body, &preview, &owner, &thumb, &versionGrant, &r.CurrentRevision)
+	if e == sql.ErrNoRows && revision > 0 {
+		return r, enrollment.ErrDenied
+	}
 	if e != nil && e != sql.ErrNoRows {
 		return r, enrollment.ErrUnavailable
 	}

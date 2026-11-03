@@ -44,7 +44,7 @@ func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifie
 		return "", envelope, 0, enrollment.ErrDenied
 	}
 	switch envelope.Action {
-	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put":
+	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.history.get":
 	default:
 		return "", envelope, 0, enrollment.ErrDenied
 	}
@@ -144,6 +144,17 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 			return nil, enrollment.ErrDenied
 		}
 		return c.inventory(ctx, actor, input.ID, authorityUntil, now)
+	}
+	if envelope.Action == "configuration.history.get" {
+		var input struct {
+			ID       string `json:"id"`
+			Revision int64  `json:"revision"`
+			Hash     string `json:"hash"`
+		}
+		if identity.DecodeConfiguration(envelope.Payload, &input) != nil || !configurationObjectID.MatchString(input.ID) || input.Revision < 1 || input.Revision > 9007199254740991 || !configurationBodyHash.MatchString(input.Hash) {
+			return nil, enrollment.ErrDenied
+		}
+		return c.inventoryAt(ctx, actor, input.ID, input.Revision, input.Hash, authorityUntil, now)
 	}
 	if envelope.Action == "configuration.request.get" {
 		var input struct {

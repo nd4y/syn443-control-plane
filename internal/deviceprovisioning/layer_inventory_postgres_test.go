@@ -119,3 +119,53 @@ func TestConfigurationInventoryRequiresLiveDeviceParentACLAndCipherIntegrity(t *
 		})
 	}
 }
+
+func TestConfigurationHistoryBindsImmutableBaseWhileRecheckingLiveAuthority(t *testing.T) {
+	n, c, p, publisher := layerPublisherFixture(t)
+	first := prepareLayerPreview(t, n, c, p, publisher, "history initial preview")
+	queueLayerPublish(t, n, c, first, "history initial publish")
+	if e := publisher.RunOnce(context.Background(), n.f.now.Add(time.Second)); e != nil {
+		t.Fatal(e)
+	}
+	n.f.now = n.f.now.Add(2 * time.Second)
+	p.DraftRevision++
+	p.Bundles[0].BaseRevision = 1
+	p.Bundles[0].BaseHash = first.Preview.DraftHash
+	p.Bundles[0].Layers = append(p.Bundles[0].Layers, configuration.Layer{Kind: "device", ID: n.target.Device, Revision: 1, Changes: []configuration.Change{{Path: "/network/dnsStrategy", Operation: "set", Value: json.RawMessage(`"ipv4_only"`)}}})
+	second := prepareLayerPreview(t, n, c, p, publisher, "history second preview")
+	queueLayerPublish(t, n, c, second, "history second publish")
+	if e := publisher.RunOnce(context.Background(), n.f.now.Add(time.Second)); e != nil {
+		t.Fatal(e)
+	}
+	call := func(revision int64, hash string) (ConfigurationInventory, error) {
+		t.Helper()
+		raw, token, proof := configurationCall(t, n, c, "configuration.history.get", identity.Hash([]byte(fmt.Sprintf("history %d %s", revision, hash))), map[string]any{"id": n.target.Device, "revision": revision, "hash": hash})
+		v, e := c.Dispatch(context.Background(), token, proof, raw, n.f.now)
+		if e != nil {
+			return ConfigurationInventory{}, e
+		}
+		return v.(ConfigurationInventory), nil
+	}
+	old, e := call(1, first.Preview.DraftHash)
+	if e != nil || !old.Historical || old.Revision != 1 || old.CurrentRevision != 2 || old.Hash != first.Preview.DraftHash || len(old.Layers) != 1 || old.Effective == nil {
+		t.Fatal("immutable historical base", e)
+	}
+	current, e := inventoryCall(t, n, c, n.target.Device, "history current desired")
+	if e != nil || current.Historical || current.Revision != 2 || current.CurrentRevision != 2 || len(current.Layers) != 2 {
+		t.Fatal("current view confused with historical base", e)
+	}
+	for _, test := range []struct {
+		revision int64
+		hash     string
+	}{{0, first.Preview.DraftHash}, {1, second.Preview.DraftHash}, {3, first.Preview.DraftHash}, {1, "invalid"}} {
+		if _, e = call(test.revision, test.hash); !errors.Is(e, enrollment.ErrDenied) {
+			t.Fatal("unbound historical revision", e)
+		}
+	}
+	if _, e = fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, n.actor.ID); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = call(1, first.Preview.DraftHash); !errors.Is(e, enrollment.ErrDenied) {
+		t.Fatal("historical rights survived live withdrawal", e)
+	}
+}

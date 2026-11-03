@@ -24,8 +24,13 @@ expected = {
     'layer publication lost acknowledgment reuses operation even after terminal commit',
     'layer conflict mismatched preview and expiry never enable publication',
     'layer edit invalidates review and authorization withdrawal erases private proposal',
+    'layer comparison resolves conflict into a draft without silently saving or publishing',
+    'three-way layer merge preserves current parents and combines independent paths',
+    'three-way layer conflict requires an explicit local or server choice',
+    'three-way layer merge refuses inherited edits unbound history and overlapping paths',
+    'three-way layer merge represents removals and concurrent creation without lost edits',
 }
-assert len(cases) >= 19
+assert len(cases) >= 24
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

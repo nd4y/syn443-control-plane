@@ -119,3 +119,10 @@ condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"control-openapi\.json": "1e0ae6150b72ad750bf3aaa16c459a73ee3bcb9fea23900dd258e94c76622a09",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public immutable-configuration-history OpenAPI digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "365a592142b9dfdb259a5c681fb4c96fa3dfc1fb07cb388fe5451e8f5feaa2db",?\s*$''']

@@ -55,3 +55,13 @@ test('layer edit invalidates review and authorization withdrawal erases private 
  expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
  await start(page,request);await save(page);await preview(page);await page.locator('#logout').click();await expect(page.locator('#layer-proposal')).toHaveValue('');await expect(page.locator('#layer-impact')).toHaveText('');
 });
+
+test('layer comparison resolves conflict into a draft without silently saving or publishing',async({page,request})=>{
+ await start(page,request);await save(page);await request.post(origin+'/fixture/advance',{data:{}});await page.locator('#layer-compare').click();
+ await expect(page.locator('#layer-comparison')).toBeVisible();await expect(page.locator('#layer-conflicts')).toContainText('device/changes/network/dnsStrategy');await expect(page.locator('#layer-merge')).toBeDisabled();
+ await page.locator('#layer-conflicts').getByRole('button',{name:'Оставить локальное'}).click();await expect(page.locator('#layer-merge')).toBeEnabled();
+ expect((await state(request)).operations).toBe(1);await page.locator('#layer-merge').click();await expect(page.locator('#layer-comparison')).toBeHidden();
+ const merged=JSON.parse(await page.locator('#layer-proposal').inputValue());expect(merged.bundles[0].baseRevision).toBe(8);expect(merged.bundles[0].baseHash).toBe('d'.repeat(64));expect(merged.bundles[0].layers.find(l=>l.kind==='device').revision).toBe(2);
+ await expect(page.locator('#layer-preview')).toBeDisabled();expect((await state(request)).operations).toBe(1);
+ await page.locator('#layer-save').click();await expect(page.locator('#layer-version')).toHaveText('Сохранённая версия слоёв: 2');const s=await state(request);expect(s.operations).toBe(2);expect(s.calls).not.toContain('configuration.publish');
+});

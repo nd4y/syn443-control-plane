@@ -1,7 +1,9 @@
+import {mergeDeviceProposal} from './layer-merge.js';
 const $=id=>document.getElementById(id);
 let authenticated=false,busy=false,pending=null,revision=0,opened=null,next='',listedOwner='';
 let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='';
 let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null;
+let layerComparison=null;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message){$('status').textContent=message;}
@@ -36,7 +38,7 @@ function inventoryPair(list,name,value){const term=document.createElement('dt');
 function inventoryOrigin(origin){return origin&&typeof origin==='object'&&!Array.isArray(origin)&&typeof origin.layerId==='string'&&typeof origin.kind==='string'&&Number.isSafeInteger(origin.revision)&&origin.revision>=0;}
 function inventoryDate(milliseconds){const date=new Date(milliseconds);if(!Number.isFinite(date.getTime()))throw Error('invalid');return date.toISOString();}
 function showInventory(view){
- if(!view||typeof view!=='object'||Array.isArray(view))throw Error('invalid');
+ if(!view||typeof view!=='object'||Array.isArray(view)||view.historical)throw Error('invalid');
  const {device,owner,state,revision,hash,policyRevision,layers,effective}=view;
  if(typeof device!=='string'||!device||device.length>64||typeof owner!=='string'||!['assigned','unassigned','expired'].includes(state)||!Number.isSafeInteger(revision)||revision<0||typeof hash!=='string'||hash.length>64||!Number.isSafeInteger(policyRevision)||policyRevision<0||!Array.isArray(layers)||effective!==undefined&&effective!==null&&(typeof effective!=='object'||Array.isArray(effective)))throw Error('invalid');
  const assigned=state==='assigned'||state==='expired';
@@ -155,7 +157,8 @@ $('source-job').onclick=()=>work(async()=>{if(!sourceJob)throw Error('invalid');
 controls();work(async()=>{await request('/session',{});authenticated=true;status('Вы вошли. Выберите пользователя или откройте личный черновик.');});
 
 function clearLayerReview(){layerPreview=null;$('layer-confirm').checked=false;$('layer-review').hidden=true;$('layer-impact').textContent='';}
-function clearLayers(){layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearLayerReview();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
+function clearLayerComparison(){layerComparison=null;$('layer-comparison').hidden=true;$('layer-diff').textContent='';$('layer-conflicts').replaceChildren();}
+function clearLayers(){layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
 function layerUnchanged(){return !!layerSaved&&$('layer-id').value.trim()===layerSaved.id&&$('layer-proposal').value===layerSaved.text;}
 function layerControls(){
  const disabled=busy||!authenticated||!!pending;
@@ -164,6 +167,9 @@ function layerControls(){
  $('layer-preview').disabled=disabled||!layerUnchanged()||!!layerJob;
  $('layer-poll').disabled=disabled||!layerJob;
  $('layer-publish').disabled=disabled||!!layerJob||!layerUnchanged()||!layerPreview||!$('layer-confirm').checked||layerPreview.preview.expiresAtMs<=Date.now();
+ $('layer-compare').disabled=disabled||!!layerJob;
+ $('layer-merge').disabled=disabled||!!layerJob||!layerComparison?.result?.ready;
+ for(const button of $('layer-conflicts').querySelectorAll('button'))button.disabled=disabled||!!layerJob;
 }
 function layerProposal(){
  let proposal;try{proposal=JSON.parse($('layer-proposal').value);}catch{throw Error('invalid');}
@@ -177,7 +183,7 @@ function showLayerDraft(draft){
  layerRevision=draft.revision;layerOpened={id:draft.id,kind:p.targetKind,target:p.targetId};
  $('layer-id').value=draft.id;$('layer-proposal').value=JSON.stringify(p,null,2);
  layerSaved={id:draft.id,proposal:structuredClone(p),text:$('layer-proposal').value};
- layerJob=null;clearLayerReview();$('layer-job').textContent='';$('layer-version').textContent=`Сохранённая версия слоёв: ${draft.revision}`;
+ layerJob=null;clearLayerReview();clearLayerComparison();$('layer-job').textContent='';$('layer-version').textContent=`Сохранённая версия слоёв: ${draft.revision}`;
 }
 async function loadLayerDraft(){
  const id=$('layer-id').value.trim();if(!/^[A-Za-z0-9_-]{1,64}$/.test(id))throw Error('invalid');
@@ -190,7 +196,7 @@ function editDeviceLayer(){
  let own=layers.find(layer=>layer.kind==='device'&&layer.id===v.device);
  if(own){if(own.revision>=Number.MAX_SAFE_INTEGER)throw Error('invalid');own.revision++;}
  else{own={id:v.device,kind:'device',priority:0,revision:1,changes:[],permissions:[]};layers.push(own);}
- layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearLayerReview();
+ layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearLayerReview();clearLayerComparison();
  const id=crypto.randomUUID();$('layer-id').value=id;
  $('layer-proposal').value=JSON.stringify({draftId:id,draftRevision:1,targetKind:'device',targetId:v.device,mode:v.mode,approvalUntilMs:Math.max(v.approvalUntilMs,Date.now()+3600000),bundles:[{device:v.device,baseRevision:v.revision,baseHash:v.hash,layers}]},null,2);
  $('layer-version').textContent='Новый черновик слоёв';$('layer-job').textContent='';
@@ -240,8 +246,33 @@ async function pollLayerJob(){
 }
 $('layer-from-device').onclick=()=>work(async()=>editDeviceLayer());
 $('layer-load').onclick=()=>work(loadLayerDraft);$('layer-save').onclick=()=>work(saveLayerDraft);
-$('layer-id').oninput=$('layer-proposal').oninput=()=>{clearLayerReview();layerControls();};
+$('layer-id').oninput=$('layer-proposal').oninput=()=>{clearLayerReview();clearLayerComparison();layerControls();};
 $('layer-confirm').onchange=layerControls;
 $('layer-preview').onclick=()=>work(async()=>{if(pending||layerJob||!layerUnchanged())throw Error('invalid');clearLayerReview();pendingKind='layer-preview';pending=envelope('configuration.preview.request',{proposal:layerSaved.proposal});await retry();});
 $('layer-poll').onclick=()=>work(pollLayerJob);
 $('layer-publish').onclick=()=>work(async()=>{if(pending||layerJob||!layerUnchanged()||!$('layer-confirm').checked)throw Error('invalid');const result=checkedLayerPreview(layerPreview);pendingKind='layer-publish';pending=envelope('configuration.publish',{previewId:result.previewId,ticket:result.ticket});await retry();});
+
+function renderLayerComparison(){
+ const s=layerComparison;s.result=mergeDeviceProposal(s.base,s.current,s['local'],s.choices);
+ $('layer-diff').textContent=JSON.stringify({base:s.base,local:s['local'],current:s.current,merged:s.result.proposal},null,2);
+ const list=$('layer-conflicts');list.replaceChildren();
+ for(const conflict of s.result.conflicts){
+  const item=textItem(list,`${conflict.path} · исходное: ${JSON.stringify(conflict.base)??'отсутствует'} · локальное: ${JSON.stringify(conflict['local'])??'отсутствует'} · серверное: ${JSON.stringify(conflict.remote)??'отсутствует'} · выбор: ${conflict.choice||'не выбран'}`);
+  for(const [choice,label] of [['local','Оставить локальное'],['remote','Оставить серверное']]){const button=document.createElement('button');button.textContent=label;button.onclick=()=>{s.choices[conflict.path]=choice;renderLayerComparison();layerControls();};item.append(document.createElement('br'),button);}
+ }
+ if(!s.result.conflicts.length)textItem(list,'Конфликтов значений нет. Проверьте обновлённые родительские слои и результат.');
+ $('layer-comparison').hidden=false;
+}
+$('layer-compare').onclick=()=>work(async()=>{
+ if(layerJob||pending)throw Error('invalid');clearLayerReview();clearLayerComparison();
+ let local;try{local=JSON.parse($('layer-proposal').value);}catch{throw Error('invalid');}
+ if(local?.targetKind!=='device'||local.bundles?.length!==1)throw Error('invalid');const bundle=local.bundles[0];
+ const current=await action('configuration.inventory.get',{id:local.targetId});
+ const base=bundle.baseRevision===0?{device:local.targetId,owner:current.owner,revision:0,hash:'',layers:[],mode:local.mode,approvalUntilMs:local.approvalUntilMs}:await action('configuration.history.get',{id:local.targetId,revision:bundle.baseRevision,hash:bundle.baseHash});
+ layerComparison={base,current,local,choices:Object.create(null),result:null};renderLayerComparison();status('Сравните исходную, локальную и текущую версии. Разрешите каждый конфликт перед переносом в черновик.');
+});
+$('layer-merge').onclick=()=>work(async()=>{
+ const s=layerComparison;if(!s?.result.ready||pending||layerJob)throw Error('invalid');
+ const result=mergeDeviceProposal(s.base,s.current,s['local'],s.choices);if(!result.ready)throw Error('invalid');result.proposal.draftRevision=layerRevision+1;
+ $('layer-proposal').value=JSON.stringify(result.proposal,null,2);clearLayerReview();clearLayerComparison();status('Результат сравнения перенесён только в редактор. Сохраните, повторно проверьте и явно опубликуйте.');
+});

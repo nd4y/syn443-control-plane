@@ -471,5 +471,28 @@ After publication the UI explicitly reports desired server state, with activatio
 still unconfirmed. Authentication withdrawal/logout erase proposals, tickets and
 rendered private data; browser persistent storage is unused. Browser fixture
 tests cover this flow, but are not live device/publication acceptance. Automatic
-three-way conflict resolution, full settings forms, shared-target inventory and
-phone-local testing remain required work. This UI change awaits Actions.
+shared-target conflict resolution, full settings forms, shared-target inventory
+and phone-local testing remain required work. Single-device comparison is
+described below. This UI change awaits Actions.
+
+The closed `configuration.history.get` action reads one immutable device revision
+only when both its revision and content hash match. Current account, device,
+grant and all selected-layer read rights are rechecked; historical membership
+does not authorize access. Responses identify `historical` and the current head
+revision. Other device bundles/native credentials remain filtered. This is a
+read-only base for three-way conflict review, never a restore/publication action.
+Actual SQL/HTTP tests cover two revisions, wrong hashes, future/zero revisions
+and live scope withdrawal. This history component awaits Actions acceptance.
+
+For a single-device proposal the browser comparison reads that bound historical
+base and a fresh current desired head. It preserves current inherited parents,
+combines independent target-layer path edits and requires an explicit local or
+server choice for each conflicting value, including removals. Overlapping paths,
+modified inherited layers, wrong history/device bindings and a historical view
+used as current are rejected. Unchanged target heads retain their exact immutable
+null/empty representation. The original, local, current and proposed result are
+shown together. Applying the comparison updates only the editor, without saving
+or publishing; the ordinary draft CAS, new preview and explicit publication still
+apply. If the head changes again, the publisher rejects that stale base. Shared
+targets require full-impact manual proposals; automatic multi-device rebasing is
+not implemented. Pure merge and browser conflict scenarios are added to Actions.

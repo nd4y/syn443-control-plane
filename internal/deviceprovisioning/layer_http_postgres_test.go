@@ -85,6 +85,10 @@ func TestConfigurationHTTPOriginalReceiptPreviewPublishAndPoll(t *testing.T) {
 	if json.Unmarshal(call("configuration.inventory.get", "HTTP desired inventory", map[string]string{"id": n.target.Device}, 200), &view) != nil || view.Revision != 1 || view.State != "assigned" || view.Effective == nil {
 		t.Fatal("HTTP desired view")
 	}
+	if json.Unmarshal(call("configuration.history.get", "HTTP historical inventory", map[string]any{"id": n.target.Device, "revision": 1, "hash": view.Hash}, 200), &view) != nil || !view.Historical || view.CurrentRevision != 1 {
+		t.Fatal("HTTP historical view")
+	}
+	call("configuration.history.get", "HTTP unbound historical inventory", map[string]any{"id": n.target.Device, "revision": 0, "hash": view.Hash}, 400)
 	call("configuration.publish", "HTTP mismatched ticket", configurationPublishInput{result.PreviewID, result.Ticket + "x"}, 403)
 	changed := p
 	changed.DraftRevision++
