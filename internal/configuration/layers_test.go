@@ -184,6 +184,30 @@ func TestLayerBoundsAndFailClosedSupportedSchema(t *testing.T) {
 	}
 }
 
+func TestDeviceAndLocalLayerShareTheirBoundDeviceIDWithoutLosingRestrictions(t *testing.T) {
+	base := layer("base", "template", setting("/ui/theme", `"dark"`))
+	base.Permissions = []Permission{{Path: "/ui", Mode: "free"}}
+	device := layer("device-a", "device")
+	device.Permissions = []Permission{{Path: "/ui/theme", Mode: "choice", Choices: []json.RawMessage{[]byte(`"dark"`), []byte(`"system"`)}}}
+	local := layer("device-a", "local", setting("/ui/theme", `"system"`))
+	merged, e := Merge(context.Background(), []Layer{base, device, local}, supported)
+	if e != nil || merged.Fields["/ui/theme"].Kind != "local" || merged.Fields["/ui/theme"].LayerID != "device-a" {
+		t.Fatal("scoped identity collision", e)
+	}
+	local.Changes = []Change{setting("/ui/theme", `"light"`)}
+	if _, e = Merge(context.Background(), []Layer{base, device, local}, supported); !errors.Is(e, ErrLocked) {
+		t.Fatal("same ID bypassed inherited choice", e)
+	}
+	device.Permissions = []Permission{{Path: "/ui/theme", Mode: "locked"}}
+	local.Changes = []Change{setting("/ui/theme", `"system"`)}
+	if _, e = Merge(context.Background(), []Layer{base, device, local}, supported); !errors.Is(e, ErrLocked) {
+		t.Fatal("same ID bypassed parent lock", e)
+	}
+	if _, e = Merge(context.Background(), []Layer{base, device, device}, supported); !errors.Is(e, ErrInvalid) {
+		t.Fatal("duplicate within same kind admitted", e)
+	}
+}
+
 func TestPermissionBoundsAndAtomicArrays(t *testing.T) {
 	lo, hi := int64(10), int64(1)
 	for _, p := range []Permission{{Path: "bad", Mode: "free"}, {Path: "/mode", Mode: "unknown"}, {Path: "/mode", Mode: "locked", Minimum: &lo}, {Path: "/mode", Mode: "choice"}, {Path: "/mode", Mode: "choice", Choices: []json.RawMessage{[]byte(`"a"`), []byte(`"a"`)}}, {Path: "/mode", Mode: "range"}, {Path: "/mode", Mode: "range", Minimum: &lo, Maximum: &hi}} {

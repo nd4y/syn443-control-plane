@@ -392,3 +392,8 @@ display; pending mutations disable the viewer, and all values are DOM text. The
 browser fixture checks assigned/unassigned/expired views, XSS, mobile overflow,
 scope withdrawal and no publication side effect. This UI is read-only; editing,
 local testing, three-way review and explicit publication remain separate work.
+
+Layer identity is `(kind,id)`, matching immutable SQL histories and assignments.
+The device and local layers may both use the actual device ID. Same-kind
+duplicates remain invalid, and shared IDs never bypass inherited locks/choices.
+Pure merge and actual multi-layer publication/readback tests cover this case.

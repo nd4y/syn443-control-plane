@@ -387,3 +387,24 @@ func TestConfigurationPublisherRequiresActualCapabilitiesAndSafeRuntime(t *testi
 		t.Fatal("head diagnostic leaked recipient")
 	}
 }
+
+func TestConfigurationPublisherKeepsDeviceAndLocalLayerNamespacesDistinct(t *testing.T) {
+	n, c, p, publisher := layerPublisherFixture(t)
+	p.Bundles[0].Layers[0].Permissions = []configuration.Permission{{Path: "/network", Mode: "free"}}
+	device := configuration.Layer{ID: n.target.Device, Kind: "device", Revision: 1, Permissions: []configuration.Permission{{Path: "/network/dnsStrategy", Mode: "choice", Choices: []json.RawMessage{[]byte(`"prefer_ipv4"`), []byte(`"ipv4_only"`)}}}}
+	local := configuration.Layer{ID: n.target.Device, Kind: "local", Revision: 1, Changes: []configuration.Change{{Path: "/network/dnsStrategy", Operation: "set", Value: json.RawMessage(`"ipv4_only"`)}}}
+	p.Bundles[0].Layers = append(p.Bundles[0].Layers, device, local)
+	r := prepareLayerPreview(t, n, c, p, publisher, "scoped layer identity preview")
+	queueLayerPublish(t, n, c, r, "scoped layer identity publication")
+	if e := publisher.RunOnce(context.Background(), n.f.now.Add(time.Second)); e != nil {
+		t.Fatal(e)
+	}
+	v, e := inventoryCall(t, n, c, n.target.Device, "scoped layer identity view")
+	if e != nil || len(v.Layers) != 3 || v.Effective.Fields["/network/dnsStrategy"].Kind != "local" {
+		t.Fatal("scoped provenance", e)
+	}
+	var count int
+	if e = fixtureOwner.QueryRow(`SELECT count(*) FROM managed_configuration_assignments WHERE device=$1 AND id=$1 AND kind IN('device','local')`, n.target.Device).Scan(&count); e != nil || count != 2 {
+		t.Fatal("separate scoped assignment references", e)
+	}
+}

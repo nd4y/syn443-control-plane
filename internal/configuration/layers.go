@@ -317,9 +317,10 @@ func Merge(ctx context.Context, input []Layer, validate func(json.RawMessage) er
 	for index, l := range layers {
 		encoded, e := json.Marshal(l)
 		order := kindOrder(l.Kind)
+		identity := l.Kind + "\x00" + l.ID
 		changes += len(l.Changes)
 		permissions += len(l.Permissions)
-		if e != nil || changes > 512 || permissions > 256 || !id.MatchString(l.ID) || seen[l.ID] || order < 0 || l.Priority < -10000 || l.Priority > 10000 || l.Kind != "group" && l.Priority != 0 || l.Revision < 1 || l.Revision > 9007199254740991 || len(l.Changes) > 256 || len(l.Permissions) > 256 || len(encoded) > 262144 {
+		if e != nil || changes > 512 || permissions > 256 || !id.MatchString(l.ID) || seen[identity] || order < 0 || l.Priority < -10000 || l.Priority > 10000 || l.Kind != "group" && l.Priority != 0 || l.Revision < 1 || l.Revision > 9007199254740991 || len(l.Changes) > 256 || len(l.Permissions) > 256 || len(encoded) > 262144 {
 			return result, ErrInvalid
 		}
 		var owned Layer
@@ -327,7 +328,7 @@ func Merge(ctx context.Context, input []Layer, validate func(json.RawMessage) er
 			return result, ErrInvalid
 		}
 		layers[index] = owned
-		seen[l.ID] = true
+		seen[identity] = true
 		kinds[l.Kind]++
 		if l.Kind != "group" && kinds[l.Kind] > 1 || l.Kind == "group" && kinds[l.Kind] > 16 {
 			return result, ErrInvalid
