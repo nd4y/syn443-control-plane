@@ -85,6 +85,8 @@ func failure(w http.ResponseWriter, err error) {
 		code, status = "identity_invalid", 401
 	case errors.Is(err, ErrDenied):
 		code, status = "access_denied", 403
+	case errors.Is(err, ErrCapabilitiesUpdate):
+		code, status = "capabilities_update_required", 409
 	case errors.Is(err, ErrConflict):
 		code, status = "idempotency_conflict", 409
 	case errors.Is(err, ErrReplay):
@@ -114,8 +116,9 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	isOverlay := a.OverlayServiceID != "" && (path == "/v1/device/overlay/fetch" || path == "/v1/device/overlay/consume")
+	isCapabilities := path == "/v1/device/capabilities" || path == "/v1/devices/capabilities"
 	isInvite := path == "/v1/invitations/time" || path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
-	allowed := isOverlay && r.Method == "POST" || isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
+	allowed := isCapabilities && (r.Method == "GET" || r.Method == "POST") || isOverlay && r.Method == "POST" || isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
 	if !allowed {
 		http.NotFound(w, r)
 		return
@@ -211,6 +214,25 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(w, e)
 		return
 	}
+	if isCapabilities && (r.Header.Get("Origin") != "" || r.Method == "POST" && len(raw) == 0) {
+		failure(w, identity.ErrInvalid)
+		return
+	}
+	if path == "/v1/devices/capabilities" {
+		principal, e := a.Verifier.Verify(ctx, token, now)
+		if e != nil {
+			failure(w, identity.ErrInvalid)
+			return
+		}
+		value, e := a.Store.CapabilityOIDC(ctx, principal, proof, raw, CapabilityReceipt{Token: token, Proof: r.Header.Get("DPoP"), URI: a.Origin + path, AcceptedAt: now.Unix()}, now)
+		if e != nil {
+			failure(w, e)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(value)
+		return
+	}
 	if path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" {
 		principal, e := a.Verifier.Verify(ctx, token, now)
 		if e != nil {
@@ -241,6 +263,16 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if (!binding.Active && path != "/v1/device/revoke") || binding.Jkt != proof.Thumbprint {
 		failure(w, ErrDenied)
+		return
+	}
+	if path == "/v1/device/capabilities" {
+		value, e := a.Store.CapabilityDevice(ctx, binding, token, proof, raw, CapabilityReceipt{Token: token, Proof: r.Header.Get("DPoP"), URI: a.Origin + path, AcceptedAt: now.Unix()}, now)
+		if e != nil {
+			failure(w, e)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(value)
 		return
 	}
 	if isOverlay {

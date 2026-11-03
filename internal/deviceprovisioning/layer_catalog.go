@@ -211,7 +211,11 @@ func resolveConfigurationLayers(ctx context.Context, tx *sql.Tx, store *enrollme
 		if e != nil || thumb != target.Thumbprint {
 			return nil, enrollment.ErrDenied
 		}
-		target.Capabilities = append([]string(nil), request.Capabilities...)
+		available, e := enrollment.EffectiveCapabilities(ctx, tx, id, request.Capabilities)
+		if e != nil {
+			return nil, e
+		}
+		target.Capabilities = append([]string(nil), available.Capabilities...)
 		caps, e := configuration.PreviewCapabilitiesHash(target.Capabilities)
 		if e != nil {
 			return nil, enrollment.ErrDenied

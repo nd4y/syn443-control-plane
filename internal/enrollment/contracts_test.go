@@ -34,6 +34,10 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 	values["OverlayOperation"] = OverlayRequest{random(), "managed-netbird/" + random(), random(), 1}
 	values["OverlayCredentialReply"] = OverlayReply{Envelope: "synthetic-addressed-envelope", Consumed: false}
 	values["OverlayConsumed"] = OverlayReply{Consumed: true}
+	caps := []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}
+	values["CapabilityInput"] = CapabilityInput{RequestID: random(), PreviousHash: random(), Capabilities: caps}
+	values["CapabilitySnapshot"] = CapabilitySnapshot{CapabilityState: CapabilityState{Version: 0, Hash: random(), Capabilities: caps}, AuthorityHash: random()}
+	values["CapabilityRequest"] = CapabilityRequestView{RequestID: random(), State: "queued"}
 	for name, value := range values {
 		schema, e := compiler.Compile(base + "#/components/schemas/" + name)
 		if e != nil {
@@ -63,7 +67,7 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 		}
 	}
 	paths := doc["paths"].(map[string]any)
-	expected := map[string]bool{"/v1/devices/enroll": true, "/v1/identity/devices/revoke": true, "/v1/device/session/refresh": true, "/v1/device/revoke": true, "/v1/device/policy": true, "/v1/device/overlay/fetch": true, "/v1/device/overlay/consume": true}
+	expected := map[string]bool{"/v1/devices/enroll": true, "/v1/identity/devices/revoke": true, "/v1/device/session/refresh": true, "/v1/device/revoke": true, "/v1/device/policy": true, "/v1/device/overlay/fetch": true, "/v1/device/overlay/consume": true, "/v1/device/capabilities": true, "/v1/devices/capabilities": true}
 	if len(paths) != len(expected) {
 		t.Fatal("unexpected API scope")
 	}
@@ -72,6 +76,29 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 			t.Fatal("unexpected API endpoint")
 		}
 		methods := value.(map[string]any)
+		if path == "/v1/device/capabilities" || path == "/v1/devices/capabilities" {
+			if len(methods) != 2 {
+				t.Fatal("unexpected capability API method")
+			}
+			security := "deviceDPoP"
+			if path == "/v1/devices/capabilities" {
+				security = "oidcDPoP"
+			}
+			for _, method := range []string{"get", "post"} {
+				operation, ok := methods[method].(map[string]any)
+				if !ok || operation["parameters"] == nil {
+					t.Fatal("missing capability operation proof")
+				}
+				entries, ok := operation["security"].([]any)
+				if !ok || len(entries) != 1 {
+					t.Fatal("capability operation lacks authentication")
+				}
+				if _, ok := entries[0].(map[string]any)[security]; !ok {
+					t.Fatal("wrong capability authentication audience")
+				}
+			}
+			continue
+		}
 		method := "post"
 		if path == "/v1/device/policy" {
 			method = "get"

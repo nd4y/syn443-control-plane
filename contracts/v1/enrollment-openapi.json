@@ -3,7 +3,7 @@
   "info": {
     "title": "SYN443 M2 enrollment pilot",
     "version": "0.4.0",
-    "description": "Bounded loopback-hosted pilot over HTTPS. No invites, admin session or full panel. Successful OIDC login alone grants nothing; an owner assignment is required. Duplicate/case-variant/unknown request members and any URL query are rejected. No caller-supplied issuer/key URL is followed. Fresh OIDC identity can revoke its own prior keys after logout/lost enrollment response. Cleanup grants no session/config and never mutates another account."
+    "description": "Key-bound device enrollment, sessions, addressed configuration/overlay delivery and independently approved capability declarations. Owner account grants remain authoritative; no caller-supplied approval flag or URL is trusted."
   },
   "paths": {
     "/v1/devices/enroll": {
@@ -49,7 +49,7 @@
             }
           },
           "409": {
-            "description": "Idempotency conflict or fresh authentication required.",
+            "description": "Idempotency conflict or capabilities_update_required: approved capability changes need independent migration; original registration evidence and existing sessions remain unchanged.",
             "content": {
               "application/json": {
                 "schema": {
@@ -617,6 +617,310 @@
         },
         "description": "Disabled unless owner overlayServiceId is configured and matches the signed service. No Origin/query. Fresh session-bound DPoP/nonce binds exact raw body. Current approved key-bound signed policy and account grant authorize namespace/reference/version/epoch. Same stable operation/body retries; another operation/body conflicts. Consume is idempotent and erases encrypted server envelope. No API signing private key. Registration/SDK proof remains a separate native acceptance gate."
       }
+    },
+    "/v1/device/capabilities": {
+      "get": {
+        "operationId": "capabilitySnapshotDevice",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale expected capability hash, changed request body/ID or a forbidden downgrade."
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Current availability or bounded request receipt; queued is not approved and approved availability is not VPN activation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitySnapshot"
+                }
+              }
+            }
+          }
+        },
+        "description": "Own approved device availability only. Original enrollment evidence stays immutable. GET returns current approved set; POST queues original proof for independent publisher approval. No session, grant, configuration, VPN activation or permission is granted."
+      },
+      "post": {
+        "operationId": "capabilityRequestDevice",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale expected capability hash, changed request body/ID or a forbidden downgrade."
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Current availability or bounded request receipt; queued is not approved and approved availability is not VPN activation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilityRequest"
+                }
+              }
+            }
+          }
+        },
+        "description": "Own approved device availability only. Original enrollment evidence stays immutable. GET returns current approved set; POST queues original proof for independent publisher approval. No session, grant, configuration, VPN activation or permission is granted.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/capabilities": {
+      "get": {
+        "operationId": "capabilitySnapshotIdentity",
+        "security": [
+          {
+            "oidcDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale expected capability hash, changed request body/ID or a forbidden downgrade."
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Current availability or bounded request receipt; queued is not approved and approved availability is not VPN activation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitySnapshot"
+                }
+              }
+            }
+          }
+        },
+        "description": "Own approved device availability only. Original enrollment evidence stays immutable. GET returns current approved set; POST queues original proof for independent publisher approval. No session, grant, configuration, VPN activation or permission is granted."
+      },
+      "post": {
+        "operationId": "capabilityRequestIdentity",
+        "security": [
+          {
+            "oidcDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale expected capability hash, changed request body/ID or a forbidden downgrade."
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Current availability or bounded request receipt; queued is not approved and approved availability is not VPN activation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilityRequest"
+                }
+              }
+            }
+          }
+        },
+        "description": "Own approved device availability only. Original enrollment evidence stays immutable. GET returns current approved set; POST queues original proof for independent publisher approval. No session, grant, configuration, VPN activation or permission is granted.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityInput"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -797,7 +1101,8 @@
               "provisioning_pending",
               "reauthentication_required",
               "use_dpop_nonce",
-              "temporarily_unavailable"
+              "temporarily_unavailable",
+              "capabilities_update_required"
             ]
           }
         }
@@ -887,6 +1192,117 @@
         "properties": {
           "consumed": {
             "const": true
+          }
+        }
+      },
+      "CapabilityInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "previousHash",
+          "capabilities"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{24,128}$"
+          },
+          "previousHash": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "capabilities": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,64}$"
+            }
+          }
+        }
+      },
+      "CapabilitySnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "hash",
+          "capabilities",
+          "authorityHash"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 13
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "capabilities": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,64}$"
+            }
+          },
+          "authorityHash": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        }
+      },
+      "CapabilityRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "state",
+          "version",
+          "hash"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{24,128}$"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "approved",
+              "rejected"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 13
+          },
+          "hash": {
+            "type": "string",
+            "anyOf": [
+              {
+                "const": ""
+              },
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$"
+              }
+            ]
+          },
+          "error": {
+            "enum": [
+              "capability_denied",
+              "capability_conflict",
+              "capability_expired"
+            ]
           }
         }
       }

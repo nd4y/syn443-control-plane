@@ -106,6 +106,12 @@ type snapshot struct {
 }
 
 func (p *Publisher) RunOnce(ctx context.Context, now time.Time) error {
+	if e := p.Store.RuntimeRole(ctx, true); e != nil {
+		return e
+	}
+	capabilityContext, capabilityCancel := context.WithTimeout(ctx, 3*time.Second)
+	capabilityError := p.ApproveCapabilitiesOnce(capabilityContext, now)
+	capabilityCancel()
 	rows, e := p.Store.DB.QueryContext(ctx, `SELECT id,revision FROM identity_devices WHERE active AND retry_after<=$1 AND (NOT approved OR refresh_after<=$1) ORDER BY refresh_after,id LIMIT 16`, now.Unix())
 	if e != nil {
 		return e
@@ -141,6 +147,9 @@ func (p *Publisher) RunOnce(ctx context.Context, now time.Time) error {
 				return e
 			}
 		}
+	}
+	if capabilityError != nil && !errors.Is(capabilityError, ErrDenied) && !errors.Is(capabilityError, ErrConflict) && !errors.Is(capabilityError, identity.ErrInvalid) {
+		return capabilityError
 	}
 	return nil
 }
@@ -203,6 +212,13 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 		default:
 			return identity.ErrInvalid
 		}
+	}
+	if s.Approved {
+		available, e := EffectiveCapabilities(ctx, p.Store.DB, id, request.Capabilities)
+		if e != nil {
+			return e
+		}
+		request.Capabilities = available.Capabilities
 	}
 	caps := map[string]bool{}
 	for _, v := range request.Capabilities {

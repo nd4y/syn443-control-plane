@@ -45,14 +45,21 @@ var brokerResourceSchema string
 //go:embed broker_resource_roles.sql
 var brokerResourceRoles string
 
-var Schema = identitySchema + "\n" + supportchat.Schema + "\n" + overlaySchema + "\n" + brokerSchema + "\n" + brokerResourceSchema
-var Roles = identityRoles + "\n" + supportchat.Roles + "\n" + overlayRoles + "\n" + brokerRoles + "\n" + brokerResourceRoles
+//go:embed capability_schema.sql
+var capabilitySchema string
+
+//go:embed capability_roles.sql
+var capabilityRoles string
+
+var Schema = identitySchema + "\n" + supportchat.Schema + "\n" + overlaySchema + "\n" + brokerSchema + "\n" + brokerResourceSchema + "\n" + capabilitySchema
+var Roles = identityRoles + "\n" + supportchat.Roles + "\n" + overlayRoles + "\n" + brokerRoles + "\n" + brokerResourceRoles + "\n" + capabilityRoles
 var ErrDenied = errors.New("access_denied")
 
 // Identity admission may complete before an initial desired configuration is
 // assigned. It remains an authorization denial for ordinary policy issuance.
 var ErrConfigurationUnassigned = fmt.Errorf("configuration_unassigned: %w", ErrDenied)
 var ErrConflict = errors.New("idempotency_conflict")
+var ErrCapabilitiesUpdate = fmt.Errorf("capabilities_update_required: %w", ErrConflict)
 var ErrReplay = errors.New("proof_replayed")
 var ErrReuse = errors.New("session_reuse")
 var ErrPending = errors.New("provisioning_pending")
@@ -212,15 +219,8 @@ func (s *Store) Register(ctx context.Context, principal identity.Principal, proo
 	if identity.Decode(raw, &req, true) != nil || !idPattern.MatchString(req.RequestID) || len(req.Capabilities) < 3 || len(req.Capabilities) > 16 {
 		return result, identity.ErrInvalid
 	}
-	caps := map[string]bool{}
-	for _, v := range req.Capabilities {
-		if len(v) < 1 || len(v) > 64 || caps[v] {
-			return result, identity.ErrInvalid
-		}
-		caps[v] = true
-	}
-	if !caps["engine-config.v1"] || !caps["tun.lease.v1"] || !caps["policy.keybound.v2"] {
-		return result, identity.ErrInvalid
+	if _, _, e := canonicalCapabilities(req.Capabilities); e != nil {
+		return result, e
 	}
 	thumb, e := req.Key.Thumbprint()
 	if e != nil || thumb != principal.Thumbprint || thumb != proof.Thumbprint || proof.Claims.RequestHash != identity.Hash(raw) {
@@ -293,11 +293,14 @@ func (s *Store) Register(ctx context.Context, principal identity.Principal, proo
 			if identity.Decode(original, &prior, true) != nil {
 				return result, ErrDenied
 			}
-			before, after := append([]string(nil), prior.Capabilities...), append([]string(nil), req.Capabilities...)
-			slices.Sort(before)
+			available, err := EffectiveCapabilities(ctx, tx, device, prior.Capabilities)
+			if err != nil {
+				return result, err
+			}
+			before, after := available.Capabilities, append([]string(nil), req.Capabilities...)
 			slices.Sort(after)
 			if !slices.Equal(before, after) {
-				return result, ErrConflict
+				return result, ErrCapabilitiesUpdate
 			}
 			_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET retry_after=0 WHERE id=$1`, device)
 		} else {
