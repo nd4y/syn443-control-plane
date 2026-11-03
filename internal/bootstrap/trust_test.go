@@ -38,6 +38,29 @@ func descriptorFixture(t *testing.T) (Descriptor, Anchor, *ecdsa.PrivateKey, tim
 	d := Descriptor{SchemaVersion: 1, Audience: "syn443-client-bootstrap", RootEpoch: 1, Revision: 1, ServiceID: "service-a", Issuer: "https://identity.example.invalid/realms/test", ClientID: "syn443-android", APIOrigin: "https://api.example.invalid", Roots: map[string]string{online.ID: online.SPKI}, IssuedAt: now.Unix(), NotBefore: now.Unix(), Expires: now.Add(time.Hour).Unix()}
 	return d, root, key, now
 }
+
+func TestControlPanelOriginIsSignedCanonicalAndOptionalForLegacyDescriptors(t *testing.T) {
+	d, root, key, now := descriptorFixture(t)
+	legacy, e := json.Marshal(d)
+	if e != nil || bytes.Contains(legacy, []byte("controlPanelOrigin")) {
+		t.Fatal("legacy descriptor changed", e)
+	}
+	d.ControlPanelOrigin = "https://control.example.invalid"
+	raw, e := SignDescriptor(d, root, key, now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	verified, _, e := VerifyDescriptor(raw, root, Floor{}, now)
+	if e != nil || verified.ControlPanelOrigin != d.ControlPanelOrigin {
+		t.Fatal("panel origin not authenticated", e)
+	}
+	for _, bad := range []string{"http://control.example.invalid", "https://control.example.invalid/", "https://control.example.invalid/path", "https://user@control.example.invalid", "https://control.example.invalid?token=synthetic", "https://control.example.invalid#fragment", "https://CONTROL.example.invalid", "https://control.example.invalid:443", "https://control.example.invalid:0443", "https://control.example.invalid."} {
+		d.ControlPanelOrigin = bad
+		if _, e := SignDescriptor(d, root, key, now); e == nil {
+			t.Fatal("unsafe panel origin signed")
+		}
+	}
+}
 func TestServiceDescriptorSignatureFloorAndRootSeparation(t *testing.T) {
 	d, root, key, now := descriptorFixture(t)
 	raw, e := SignDescriptor(d, root, key, now)

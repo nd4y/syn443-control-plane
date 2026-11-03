@@ -190,6 +190,18 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 9007199254740991
+        },
+        "controlPanelOrigin": {
+          "type": "string",
+          "maxLength": 2048,
+          "anyOf": [
+            {
+              "const": ""
+            },
+            {
+              "pattern": "^https://[^/?#@]+$"
+            }
+          ]
         }
       }
     },

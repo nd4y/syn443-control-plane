@@ -59,7 +59,7 @@ Cloud tokens itself. Historical resource credentials are retained at this stage.
 SQL tests add immutable revision/CAS/replay, old-version resolution after a
 replacement, ciphertext, wrong key/scope, restricted roles, cancellation and
 destructive privilege contamination. Runtime parsing tests include equivalent
-base64 spellings of the same forbidden shared key. New source is pending Actions
-acceptance. Authenticated web/mobile resource editing, audited retirement and
+base64 spellings of the same forbidden shared key. Source5e816cc9e65548b68b6e1d3c1166b01c6212c2e7 passed all8 mandatory jobs in
+[Actions41562534053](https://github.com/nd4y/syn443-control-plane/actions/runs/41562534053). Authenticated web/mobile resource editing, audited retirement and
 bounded secret retention, plus actual Cloud integration through this SQL path,
 remain required work; this component does not complete M2/M3.

@@ -13,7 +13,7 @@
     "policy-device-signature.json": "08d74647c816787c85ddd00a9089e3efdaa278b48848723f51a71e26ce5bf15e",
     "chat-openapi.json": "505800fd34c456c86c31345ec18b20be5009e233b1e69f4d637c6688b9b5e3ed",
     "control-openapi.json": "365a592142b9dfdb259a5c681fb4c96fa3dfc1fb07cb388fe5451e8f5feaa2db",
-    "bootstrap.schema.json": "4b384ba7f28835ac3bc08b9b1910fd21017cf51a371a99a8ebafceb11d52dd96",
+    "bootstrap.schema.json": "57a45444510439dc01bc7717cff1dcce1ac3f31a463d7320601d873d9171f051",
     "bootstrap-wire-vectors.json": "e7ed68b385ba61d0788b74680f3b8d41117f5acc960150a651a5eb2c30f9af19",
     "invitation-openapi.json": "0aaf6cf59826265613ce522c7789ea14ec4a00d0392b42a34728911394cf9d2f",
     "overlay-namespace-vectors.json": "f8fea5472818e3438b600a0d6e51cb9e1e4bc7957bdf150d75e27241a44aebac",

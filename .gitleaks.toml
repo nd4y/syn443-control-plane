@@ -126,3 +126,10 @@ condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"control-openapi\.json": "365a592142b9dfdb259a5c681fb4c96fa3dfc1fb07cb388fe5451e8f5feaa2db",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public optional control-panel bootstrap schema digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"bootstrap\.schema\.json": "57a45444510439dc01bc7717cff1dcce1ac3f31a463d7320601d873d9171f051",?\s*$''']

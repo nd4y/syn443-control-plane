@@ -42,18 +42,19 @@ type Floor struct {
 	Hash      string `json:"hash"`
 }
 type Descriptor struct {
-	SchemaVersion int               `json:"schemaVersion"`
-	Audience      string            `json:"audience"`
-	RootEpoch     int64             `json:"rootEpoch"`
-	Revision      int64             `json:"revision"`
-	ServiceID     string            `json:"serviceId"`
-	Issuer        string            `json:"issuer"`
-	ClientID      string            `json:"clientId"`
-	APIOrigin     string            `json:"apiOrigin"`
-	Roots         map[string]string `json:"roots"`
-	IssuedAt      int64             `json:"issuedAt"`
-	NotBefore     int64             `json:"notBefore"`
-	Expires       int64             `json:"expires"`
+	SchemaVersion      int               `json:"schemaVersion"`
+	Audience           string            `json:"audience"`
+	RootEpoch          int64             `json:"rootEpoch"`
+	Revision           int64             `json:"revision"`
+	ServiceID          string            `json:"serviceId"`
+	Issuer             string            `json:"issuer"`
+	ClientID           string            `json:"clientId"`
+	APIOrigin          string            `json:"apiOrigin"`
+	ControlPanelOrigin string            `json:"controlPanelOrigin,omitempty"`
+	Roots              map[string]string `json:"roots"`
+	IssuedAt           int64             `json:"issuedAt"`
+	NotBefore          int64             `json:"notBefore"`
+	Expires            int64             `json:"expires"`
 }
 
 func (Descriptor) String() string   { return "BootstrapDescriptor([redacted])" }
@@ -77,7 +78,7 @@ func secureURL(raw string, allowPath bool) bool {
 	}
 	if u.Port() != "" {
 		n, e := strconv.Atoi(u.Port())
-		if e != nil || n < 1 || n > 65535 {
+		if e != nil || n < 1 || n > 65535 || n == 443 {
 			return false
 		}
 	}
@@ -121,6 +122,9 @@ func (a Anchor) Validate() error {
 	return e
 }
 func (d Descriptor) validate(anchor Anchor, now time.Time) error {
+	if d.ControlPanelOrigin != "" && !secureURL(d.ControlPanelOrigin, false) {
+		return ErrUntrusted
+	}
 	if d.SchemaVersion != 1 || d.Audience != "syn443-client-bootstrap" || d.RootEpoch != anchor.Epoch || d.Revision < 1 || d.Revision > 9007199254740991 || !identifier.MatchString(d.ServiceID) || !identifier.MatchString(d.ClientID) || !secureURL(d.APIOrigin, false) || !secureURL(d.Issuer, true) || len(d.Roots) < 1 || len(d.Roots) > 4 || d.IssuedAt < 1 || d.IssuedAt > now.Unix()+30 || d.NotBefore < d.IssuedAt || d.NotBefore > now.Unix() || d.Expires <= now.Unix() || d.Expires-d.IssuedAt > 30*86400 {
 		return ErrUntrusted
 	}
