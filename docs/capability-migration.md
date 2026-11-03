@@ -30,7 +30,7 @@ approved while erasing its credential receipt. Transient verification/storage
 failure retains bounded pending evidence; deterministic denial clears it.
 
 Device-session approval uses a narrow owner-defined boolean SQL fence. It locks
-and checks exact session/device/generation/access-token digest and expiry, without
+and checks exact session/device/generation/access-token digest, nonce and expiry, without
 returning session hashes or granting publisher table access or minting rights.
 The function has a fixed `pg_catalog` search path, fully qualified SQL and no
 dynamic SQL. PUBLIC/API cannot execute it. Startup rejects additional publisher

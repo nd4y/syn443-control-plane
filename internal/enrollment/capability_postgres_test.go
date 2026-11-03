@@ -149,7 +149,7 @@ func TestCapabilitySessionFenceIsNarrowAndRolesCannotApprove(t *testing.T) {
 	call := func(token string, generation, at int64) bool {
 		t.Helper()
 		var allowed bool
-		if e := fixturePublisher.QueryRow(`SELECT public.identity_capability_session_fence($1::text,$2::text,$3::bigint,$4::text,$5::bigint)`, binding.Session, binding.Device, generation, identity.Hash([]byte(token)), at).Scan(&allowed); e != nil {
+		if e := fixturePublisher.QueryRow(`SELECT public.identity_capability_session_fence($1::text,$2::text,$3::bigint,$4::text,$5::text,$6::bigint)`, binding.Session, binding.Device, generation, identity.Hash([]byte(token)), c.session.Nonce, at).Scan(&allowed); e != nil {
 			t.Fatal(e)
 		}
 		return allowed
@@ -159,7 +159,7 @@ func TestCapabilitySessionFenceIsNarrowAndRolesCannotApprove(t *testing.T) {
 	}
 	var definer, apiExec, sessionRead bool
 	var path string
-	if e = fixtureOwner.QueryRow(`SELECT prosecdef,array_to_string(proconfig,','),has_function_privilege('syn443_identity_api',oid,'EXECUTE') FROM pg_proc WHERE oid='public.identity_capability_session_fence(text,text,bigint,text,bigint)'::regprocedure`).Scan(&definer, &path, &apiExec); e != nil || !definer || path != "search_path=pg_catalog" || apiExec {
+	if e = fixtureOwner.QueryRow(`SELECT prosecdef,array_to_string(proconfig,','),has_function_privilege('syn443_identity_api',oid,'EXECUTE') FROM pg_proc WHERE oid='public.identity_capability_session_fence(text,text,bigint,text,text,bigint)'::regprocedure`).Scan(&definer, &path, &apiExec); e != nil || !definer || path != "search_path=pg_catalog" || apiExec {
 		t.Fatal("unsafe definer function exposure", e)
 	}
 	if e = fixturePublisher.QueryRow(`SELECT has_any_column_privilege(current_user,'identity_sessions','SELECT')`).Scan(&sessionRead); e != nil || sessionRead {
@@ -170,11 +170,11 @@ func TestCapabilitySessionFenceIsNarrowAndRolesCannotApprove(t *testing.T) {
 			t.Fatal("API approved capabilities")
 		}
 	}
-	if _, e = fixtureOwner.Exec(`GRANT EXECUTE ON FUNCTION identity_capability_session_fence(text,text,bigint,text,bigint) TO syn443_identity_api`); e != nil {
+	if _, e = fixtureOwner.Exec(`GRANT EXECUTE ON FUNCTION identity_capability_session_fence(text,text,bigint,text,text,bigint) TO syn443_identity_api`); e != nil {
 		t.Fatal(e)
 	}
 	t.Cleanup(func() {
-		if _, e := fixtureOwner.Exec(`REVOKE EXECUTE ON FUNCTION identity_capability_session_fence(text,text,bigint,text,bigint) FROM syn443_identity_api`); e != nil {
+		if _, e := fixtureOwner.Exec(`REVOKE EXECUTE ON FUNCTION identity_capability_session_fence(text,text,bigint,text,text,bigint) FROM syn443_identity_api`); e != nil {
 			t.Error(e)
 		}
 	})
@@ -382,7 +382,7 @@ func TestCapabilityOIDCApprovalUsesFreshBoundIdentityWithoutSessionReadPrivilege
 }
 
 func TestCapabilityPendingAuthorityWithdrawalCannotApprove(t *testing.T) {
-	for _, kind := range []string{"device", "account", "grant", "session", "generation", "expiry"} {
+	for _, kind := range []string{"device", "account", "grant", "session", "generation", "nonce", "expiry"} {
 		t.Run(kind, func(t *testing.T) {
 			c := newCapabilityFixture(t)
 			raw := capabilityBody(t, "withdrawn "+kind, c.snapshot(t), "overlay.credentials.v1")
@@ -400,6 +400,8 @@ func TestCapabilityPendingAuthorityWithdrawalCannotApprove(t *testing.T) {
 				_, e = fixtureOwner.Exec(`UPDATE identity_sessions SET active=false WHERE access_hash=$1`, identity.Hash([]byte(c.session.AccessToken)))
 			case "generation":
 				_, e = fixtureOwner.Exec(`UPDATE identity_sessions SET generation=generation+1 WHERE access_hash=$1`, identity.Hash([]byte(c.session.AccessToken)))
+			case "nonce":
+				_, e = fixtureOwner.Exec(`UPDATE identity_sessions SET nonce=$2 WHERE access_hash=$1`, identity.Hash([]byte(c.session.AccessToken)), random())
 			case "expiry":
 				at = at.Add(181 * time.Second)
 			}
@@ -424,7 +426,7 @@ func TestCapabilityPendingAuthorityWithdrawalCannotApprove(t *testing.T) {
 }
 
 func TestCapabilityPublisherReverifiesOriginalProofInsteadOfApiFlags(t *testing.T) {
-	for _, kind := range []string{"uri", "token", "body", "key", "nonce", "proof-time"} {
+	for _, kind := range []string{"uri", "token", "body", "key", "nonce", "foreign-nonce", "proof-time"} {
 		t.Run(kind, func(t *testing.T) {
 			c := newCapabilityFixture(t)
 			raw := capabilityBody(t, "untrusted receipt "+kind, c.snapshot(t), "overlay.credentials.v1")
@@ -446,6 +448,8 @@ func TestCapabilityPublisherReverifiesOriginalProofInsteadOfApiFlags(t *testing.
 				receipt.Proof = signed(t, key(t), "POST", uri, c.session.AccessToken, c.session.Nonce, raw, c.f.now)
 			case "nonce":
 				receipt.Proof = signed(t, c.key, "POST", uri, c.session.AccessToken, "", raw, c.f.now)
+			case "foreign-nonce":
+				receipt.Proof = signed(t, c.key, "POST", uri, c.session.AccessToken, random(), raw, c.f.now)
 			case "proof-time":
 				receipt.Proof = signed(t, c.key, "POST", uri, c.session.AccessToken, c.session.Nonce, raw, c.f.now.Add(-5*time.Minute))
 			}

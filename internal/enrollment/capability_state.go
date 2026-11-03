@@ -57,7 +57,7 @@ func EffectiveCapabilities(ctx context.Context, query CapabilityQuery, device st
 	}
 	caps, raw, e := canonicalCapabilities(original)
 	if e != nil {
-		return result, e
+		return result, ErrDenied
 	}
 	result = CapabilityState{Capabilities: caps, Hash: identity.Hash(raw)}
 	var body []byte

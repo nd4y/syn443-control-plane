@@ -82,7 +82,7 @@ func (p *Publisher) approveCapability(ctx context.Context, w capabilityWork, cur
 	if receipt.URI != p.Origin+path {
 		return ErrDenied
 	}
-	proof, e := identity.VerifyProof(receipt.Proof, identity.ProofContext{Method: "POST", URI: receipt.URI, Token: receipt.Token, BodyHash: w.hash, Now: time.Unix(receipt.AcceptedAt, 0)})
+	proof, e := identity.RequestProof(receipt.Proof, identity.ProofContext{Method: "POST", URI: receipt.URI, Token: receipt.Token, BodyHash: w.hash, Now: time.Unix(receipt.AcceptedAt, 0)})
 	if e != nil || proof.Thumbprint != w.key || proof.Claims.Nonce == "" {
 		return ErrDenied
 	}
@@ -147,7 +147,7 @@ func (p *Publisher) approveCapability(ctx context.Context, w capabilityWork, cur
 	}
 	if w.kind == "device" {
 		var allowed bool
-		if e = tx.QueryRowContext(ctx, `SELECT public.identity_capability_session_fence($1::text,$2::text,$3::bigint,$4::text,$5::bigint)`, w.session, w.device, w.generation, identity.Hash([]byte(receipt.Token)), current().Unix()).Scan(&allowed); e != nil {
+		if e = tx.QueryRowContext(ctx, `SELECT public.identity_capability_session_fence($1::text,$2::text,$3::bigint,$4::text,$5::text,$6::bigint)`, w.session, w.device, w.generation, identity.Hash([]byte(receipt.Token)), proof.Claims.Nonce, current().Unix()).Scan(&allowed); e != nil {
 			return ErrUnavailable
 		}
 		if !allowed {

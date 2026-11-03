@@ -53,13 +53,13 @@ CREATE INDEX IF NOT EXISTS identity_capability_work ON identity_capability_reque
 
 -- A narrow boolean lock/fence, not a session reader or session minting method.
 -- Fixed identifiers/search_path; no dynamic SQL or secret/hash output.
-CREATE OR REPLACE FUNCTION identity_capability_session_fence(p_session text,p_device text,p_generation bigint,p_token_hash text,p_now bigint)
+CREATE OR REPLACE FUNCTION identity_capability_session_fence(p_session text,p_device text,p_generation bigint,p_token_hash text,p_nonce text,p_now bigint)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER STRICT SET search_path=pg_catalog AS $$
-DECLARE actual_device text;actual_active boolean;actual_generation bigint;actual_until bigint;actual_hash text;
+DECLARE actual_device text;actual_active boolean;actual_generation bigint;actual_until bigint;actual_hash text;actual_nonce text;
 BEGIN
- SELECT s.device,s.active,s.generation,s.access_until,s.access_hash INTO actual_device,actual_active,actual_generation,actual_until,actual_hash
+ SELECT s.device,s.active,s.generation,s.access_until,s.access_hash,s.nonce INTO actual_device,actual_active,actual_generation,actual_until,actual_hash,actual_nonce
  FROM public.identity_sessions s WHERE s.id=p_session FOR SHARE;
  IF NOT FOUND THEN RETURN false; END IF;
- RETURN actual_device=p_device AND actual_active AND actual_generation=p_generation AND actual_until>p_now AND actual_hash=p_token_hash;
+ RETURN actual_device=p_device AND actual_active AND actual_generation=p_generation AND actual_until>p_now AND actual_hash=p_token_hash AND actual_nonce=p_nonce;
 END; $$;
-REVOKE ALL ON FUNCTION identity_capability_session_fence(text,text,bigint,text,bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION identity_capability_session_fence(text,text,bigint,text,text,bigint) FROM PUBLIC;
