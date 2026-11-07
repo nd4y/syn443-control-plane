@@ -2094,9 +2094,13 @@
               "additionalProperties": false,
               "required": ["method", "target"],
               "properties": {
-                "method": {"enum": ["tcp", "tls", "https_204", "ssh_banner"]},
-                "target": {"type": "string", "minLength": 1, "maxLength": 2048}
-              }
+                "method": {"enum": ["tcp", "tls", "https_204", "ssh_banner", "https_exit_ip"]},
+                "target": {"type": "string", "minLength": 1, "maxLength": 2048},
+                "expected_ip": {"type": "string", "minLength": 2, "maxLength": 45, "pattern": "^[0-9a-fA-F:.]+$"}
+              },
+              "if": {"properties": {"method": {"const": "https_exit_ip"}}},
+              "then": {"required": ["expected_ip"]},
+              "else": {"not": {"required": ["expected_ip"]}}
             }
           }
         }

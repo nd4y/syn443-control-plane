@@ -44,8 +44,9 @@ func TestNetworkPlanEmitsScopedPerOutboundHealthChecks(t *testing.T) {
 	graph := networkGraph(t)
 	settings := networkBase()
 	settings.RouteChecks = []OutboundCheckPlan{
-		{Outbound: "entry", Required: true, Checks: []OutboundCheck{{"ssh_banner", "home.example.invalid:22"}, {"tcp", "[2001:db8::5]:443"}}},
-		{Outbound: "tunnel", Checks: []OutboundCheck{{"https_204", "https://health.example.invalid/generate_204"}, {"tls", "https://health.example.invalid:443/"}}},
+		{Outbound: "entry", Required: true, Checks: []OutboundCheck{{Method: "ssh_banner", Target: "home.example.invalid:22"}, {Method: "tcp", Target: "[2001:db8::5]:443"}}},
+		{Outbound: "tunnel", Checks: []OutboundCheck{{Method: "https_204", Target: "https://health.example.invalid/generate_204"}, {Method: "tls", Target: "https://health.example.invalid:443/"},
+			{Method: "https_exit_ip", Target: "https://health.example.invalid/address", ExpectedIP: "2001:db8::9"}}},
 	}
 	raw, err := CompileNetwork(graph, cloneNetwork(t, settings))
 	if err != nil {
@@ -58,12 +59,15 @@ func TestNetworkPlanEmitsScopedPerOutboundHealthChecks(t *testing.T) {
 		t.Fatal("signed engine config lost per-outbound checks")
 	}
 	cases := []OutboundCheck{
-		{"icmp", "node.example.invalid"},
-		{"tcp", "node.example.invalid:65536"},
-		{"ssh_banner", "user@node.example.invalid:22"},
-		{"https_204", "http://health.example.invalid/"},
-		{"https_204", "https://user@health.example.invalid/"},
-		{"tls", "https://health.example.invalid/#"},
+		{Method: "icmp", Target: "node.example.invalid"},
+		{Method: "tcp", Target: "node.example.invalid:65536"},
+		{Method: "ssh_banner", Target: "user@node.example.invalid:22"},
+		{Method: "https_204", Target: "http://health.example.invalid/"},
+		{Method: "https_204", Target: "https://user@health.example.invalid/"},
+		{Method: "tls", Target: "https://health.example.invalid/#"},
+		{Method: "https_exit_ip", Target: "https://health.example.invalid/address"},
+		{Method: "https_exit_ip", Target: "https://health.example.invalid/address", ExpectedIP: "::ffff:192.0.2.9"},
+		{Method: "https_204", Target: "https://health.example.invalid/", ExpectedIP: "192.0.2.9"},
 	}
 	for _, item := range cases {
 		bad := networkBase()

@@ -127,6 +127,16 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 			return nil, enrollment.ErrDenied
 		}
 		required = append(required, "route.health.v1")
+		for _, group := range plan.Network.RouteChecks {
+			if !slices.ContainsFunc(group.Checks, func(check configuration.OutboundCheck) bool { return check.Method == "https_exit_ip" }) {
+				continue
+			}
+			if !slices.Contains(target.Capabilities, policy.RouteExitIP) {
+				return nil, enrollment.ErrDenied
+			}
+			required = append(required, policy.RouteExitIP)
+			break
+		}
 	}
 	if plan.Network.RouteFailover != nil {
 		required = append(required, "route.failover.v1")

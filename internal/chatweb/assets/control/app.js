@@ -13,7 +13,7 @@ let sourceShares=null;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message){$('status').textContent=message;}
-const routeCheckMethods={tcp:'TCP',tls:'TLS',https_204:'HTTPS 204',ssh_banner:'SSH banner'};
+const routeCheckMethods={tcp:'TCP',tls:'TLS',https_204:'HTTPS 204',ssh_banner:'SSH banner',https_exit_ip:'IP выхода по HTTPS'};
 function routeDraft(){
  const value=JSON.parse($('plan').value),graph=value.graph,network=value.network;
  if(!graph||!network||Array.isArray(graph)||Array.isArray(network)||typeof graph!=='object'||typeof network!=='object')throw Error('invalid');
@@ -27,6 +27,7 @@ function routeDraft(){
 }
 function drawRouteChecks(){
  const editor=$('route-check-editor'),select=$('route-check-path'),list=$('route-check-list');
+ $('route-check-exit').hidden=$('route-check-method').value!=='https_exit_ip';
  const cooldown=$('route-reserve-cooldown');cooldown.checked=false;cooldown.disabled=true;
  const rollout=$('route-cooldown-rollout');rollout.hidden=true;
  $('route-rollout-id').value='';$('route-rollout-share').value='';
@@ -51,11 +52,12 @@ function drawRouteChecks(){
    if(!item||typeof item.method!=='string'||typeof item.target!=='string')continue;
    const li=document.createElement('li'),remove=document.createElement('button');
    const method=Object.hasOwn(routeCheckMethods,item.method)?routeCheckMethods[item.method]:item.method;
-   li.textContent=`${row.outbound} · ${method} · ${item.target}${row.required===true?' · обязательная':''} `;
+   const expected=item.method==='https_exit_ip'&&typeof item.expected_ip==='string'?` · ${item.expected_ip}`:'';
+   li.textContent=`${row.outbound} · ${method} · ${item.target}${expected}${row.required===true?' · обязательная':''} `;
    remove.type='button';remove.textContent='Удалить проверку';
    remove.onclick=()=>work(async()=>{
     const current=routeDraft(),group=current.checks.find(r=>r.outbound===row.outbound);
-    const index=group?.checks.findIndex(c=>c?.method===item.method&&c?.target===item.target);
+    const index=group?.checks.findIndex(c=>c?.method===item.method&&c?.target===item.target&&c?.expected_ip===item.expected_ip);
     if(!group||index===undefined||index<0)throw Error('invalid');
     group.checks.splice(index,1);
     if(!group.checks.length)current.checks.splice(current.checks.indexOf(group),1);
@@ -106,7 +108,7 @@ function controls(){
  layerControls();
  drawRouteChecks();
 }
-function erase(){clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details','inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions'])$(id).replaceChildren();$('inventory-state').textContent='';$('inventory-view').hidden=true;}
+function erase(){clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details','inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions'])$(id).replaceChildren();$('inventory-state').textContent='';$('inventory-view').hidden=true;}
 async function request(path,body){
  const raw=typeof body==='string'?body:JSON.stringify(body);
  if(path===sourceImportPath?raw.length>14*1024*1024+65536:new TextEncoder().encode(raw).length>278528)throw Error('size');
@@ -232,7 +234,7 @@ function showDraft(draft){
  if(!Number.isSafeInteger(draft.revision)||draft.revision<1)throw Error('invalid');
  opened={id:draft.id,kind:draft.targetKind,target:draft.targetId};revision=draft.revision;
  $('draft-id').value=draft.id;$('target-kind').value=draft.targetKind;$('target-id').value=draft.targetId;
- $('base-revision').value=String(draft.baseRevision);$('base-hash').value=draft.baseHash;$('plan').value=JSON.stringify(draft.plan,null,2);$('route-check-target').value='';
+ $('base-revision').value=String(draft.baseRevision);$('base-hash').value=draft.baseHash;$('plan').value=JSON.stringify(draft.plan,null,2);$('route-check-target').value='';$('route-check-ip').value='';
  $('draft-version').textContent=`Версия черновика: ${draft.revision}`;
 }
 async function sources(more=false){
@@ -401,7 +403,7 @@ async function saveSource(){
 $('login').onclick=()=>work(async()=>{const result=await request('/login',{});const target=new URL(result.url);if(target.protocol!=='https:'&&!(location.hostname==='127.0.0.1'&&target.protocol==='http:'&&target.hostname==='127.0.0.1'))throw Error('invalid');location.assign(target.href);});
 $('logout').onclick=()=>work(async()=>{try{await request('/logout',{});}finally{authenticated=false;erase();}status('Вы вышли. Локальная копия черновика очищена.');});
 $('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>work(()=>sources(true));$('load-inventory').onclick=()=>work(loadInventory);$('open-draft').onclick=()=>work(openDraft);
-$('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
+$('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
 $('plan').oninput=drawRouteChecks;
 $('route-reserve-cooldown').onchange=()=>{
@@ -436,16 +438,23 @@ $('route-check-required').onchange=()=>{
   row.required=value;applyRouteChecks(current);
  });
 };
+$('route-check-method').onchange=()=>{$('route-check-ip').value='';drawRouteChecks();};
 $('route-check-add').onclick=()=>{
  const path=$('route-check-path').value,method=$('route-check-method').value,target=$('route-check-target').value.trim();
+ const expectedIP=$('route-check-ip').value.trim();
  const required=$('route-check-required').checked;
  work(async()=>{
   const current=routeDraft();
   if(!current.tags.has(path)||!Object.hasOwn(routeCheckMethods,method)||!target||target.length>2048||/[^!-~]/.test(target))throw Error('invalid');
+  const check={method,target};
+  if(method==='https_exit_ip'){
+   if(!/^[0-9a-fA-F:.]{2,45}$/.test(expectedIP)||new URL(target).protocol!=='https:')throw Error('invalid');
+   check.expected_ip=expectedIP;
+  }
   let group=current.checks.find(row=>row.outbound===path);
   if(!group){if(current.checks.length>=16)throw Error('invalid');group={outbound:path,required,checks:[]};current.checks.push(group);}
   if(group.checks.length>=4||group.checks.some(row=>row?.method===method&&row?.target===target))throw Error('invalid');
-  group.required=required;group.checks.push({method,target});applyRouteChecks(current);$('route-check-target').value='';
+  group.required=required;group.checks.push(check);applyRouteChecks(current);$('route-check-target').value='';$('route-check-ip').value='';
  });
 };
 $('discard-save').onclick=()=>work(async()=>{const kind=pendingKind,sourceId=$('source-id').value.trim();pending=null;if(kind.startsWith('layer-')){layerPreview=null;layerJob=null;await loadLayerDraft();}else if(kind==='draft')await openDraft();else if(sourceId)showSource(await action('source.get',{id:sourceId}));});

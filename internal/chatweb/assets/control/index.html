@@ -48,8 +48,9 @@
 <fieldset id="route-check-editor" disabled><legend>Проверки маршрутов</legend>
 <label for="route-check-path">Выход</label><select id="route-check-path"></select>
 <label><input id="route-check-required" type="checkbox"> Обязательная проверка при применении</label>
-<label for="route-check-method">Способ проверки</label><select id="route-check-method"><option value="tcp">TCP</option><option value="tls">TLS</option><option value="https_204">HTTPS 204</option><option value="ssh_banner">SSH banner</option></select>
+<label for="route-check-method">Способ проверки</label><select id="route-check-method"><option value="tcp">TCP</option><option value="tls">TLS</option><option value="https_204">HTTPS 204</option><option value="ssh_banner">SSH banner</option><option value="https_exit_ip">IP выхода по HTTPS</option></select>
 <label for="route-check-target">Адрес проверки</label><input id="route-check-target" type="text" maxlength="2048" autocomplete="off" placeholder="host:port или https://…">
+<div id="route-check-exit" hidden><label for="route-check-ip">Ожидаемый IP выхода</label><input id="route-check-ip" type="text" maxlength="45" autocomplete="off" spellcheck="false"></div>
 <button id="route-check-add" type="button">Добавить проверку</button><ul id="route-check-list"></ul>
 <label><input id="route-reserve-cooldown" type="checkbox" disabled> Откладывать фоновые проверки резервов после подтверждённых сбоев</label>
 <p>Настройка доступна для внутреннего маршрута по Wi-Fi. Без указания доли она действует для всех выбранных устройств, если все её поддерживают.</p>
