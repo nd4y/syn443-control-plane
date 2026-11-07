@@ -38,6 +38,7 @@ func CheckReportRole(ctx context.Context, db *sql.DB) error {
  AND NOT has_any_column_privilege(current_user,'public.identity_telemetry_hourly','UPDATE')
  AND NOT has_table_privilege(current_user,'public.identity_telemetry_hourly','DELETE')
  AND NOT has_table_privilege(current_user,'public.identity_telemetry_hourly','TRUNCATE')
+ AND NOT has_any_column_privilege(current_user,'public.identity_telemetry_analysis_events','SELECT')
  AND NOT has_any_column_privilege(current_user,'public.identity_telemetry_events','SELECT')
  AND NOT has_any_column_privilege(current_user,'public.identity_telemetry_events','INSERT')
  AND NOT has_any_column_privilege(current_user,'public.identity_telemetry_events','UPDATE')
@@ -59,7 +60,7 @@ func ReportHour(ctx context.Context, db *sql.DB, hour, now time.Time) (HourRepor
 		return HourReport{}, ErrInvalid
 	}
 	out := HourReport{SchemaVersion: 1, HourStartMS: hour.UnixMilli(), Rows: []hourRow{}}
-	rows, err := db.QueryContext(ctx, `SELECT kind,code,mode,events,timed,duration_total_ms
+	rows, err := db.QueryContext(ctx, `SELECT kind,code,mode,events,timed,duration_total_ms,baseline_reselections,conservative_reselections
  FROM public.identity_telemetry_hourly WHERE hour_start_ms=$1 ORDER BY kind,code,mode LIMIT 257`, out.HourStartMS)
 	if err != nil {
 		return HourReport{}, ErrUnavailable
@@ -68,12 +69,16 @@ func ReportHour(ctx context.Context, db *sql.DB, hour, now time.Time) (HourRepor
 	var total int64
 	for rows.Next() {
 		var row hourRow
-		if err = rows.Scan(&row.Kind, &row.Code, &row.Mode, &row.Events, &row.Timed, &row.Duration); err != nil {
+		if err = rows.Scan(&row.Kind, &row.Code, &row.Mode, &row.Events, &row.Timed, &row.Duration,
+			&row.BaselineReselections, &row.ConservativeReselections); err != nil {
 			return HourReport{}, ErrUnavailable
 		}
 		total += row.Events
 		if len(out.Rows) >= 256 || total > MaxHourlyEvents || !codes[row.Kind][row.Code] || !modes[row.Mode] ||
-			row.Events <= 0 || row.Timed < 0 || row.Timed > row.Events || row.Duration < 0 || row.Duration > row.Timed*600_000 {
+			row.Events <= 0 || row.Timed < 0 || row.Timed > row.Events || row.Duration < 0 || row.Duration > row.Timed*600_000 ||
+			row.BaselineReselections < 0 || row.BaselineReselections > row.Events ||
+			row.ConservativeReselections < 0 || row.ConservativeReselections > row.Events-row.BaselineReselections ||
+			(row.BaselineReselections > 0 || row.ConservativeReselections > 0) && (row.Kind != "route" || row.Code != "reselected") {
 			return HourReport{}, ErrUnavailable
 		}
 		out.Rows = append(out.Rows, row)

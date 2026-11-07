@@ -9,7 +9,7 @@ test('hourly telemetry distinguishes data empty and mismatched reports and clear
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
  await expect(status).toHaveText('Сводка за 2026-01-02T01:00Z');
- await expect(rows.locator('td')).toHaveText(['probe','ok','wifi','3','26 мс']);
+ await expect(rows.locator('td')).toHaveText(['probe','ok','wifi','3','26 мс','—']);
  await hour.fill('2026-01-02T02:00');await button.click();
  await expect(status).toContainText('нет готовой сводки');await expect(rows).toHaveText('');
  await hour.fill('2026-01-02T03:00');await button.click();
@@ -19,6 +19,17 @@ test('hourly telemetry distinguishes data empty and mismatched reports and clear
  await request.post(origin+'/fixture/expire',{data:{}});
  await button.click();await expect(button).toBeDisabled();await expect(rows).toHaveText('');
  await expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
+});
+
+test('hourly route summary shows only valid counts for the two decision algorithms',async({page,request})=>{
+ await reset(request,{decisionTelemetry:true});await page.goto(origin);
+ const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows');
+ await expect(button).toBeEnabled();
+ await hour.fill('2026-01-02T01:00');await button.click();
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','—','Базовый: 1, консервативный: 2']);
+ await hour.fill('2026-01-02T04:00');await button.click();
+ await expect(page.locator('#telemetry-status')).toContainText('Не удалось загрузить');
+ await expect(rows).toHaveText('');
 });
 
 test('scoped telemetry denial preserves an unrelated unsaved draft',async({page,request})=>{

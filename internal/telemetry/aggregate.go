@@ -22,12 +22,14 @@ const (
 type Hourly struct{ Groups, Events int64 }
 
 type hourRow struct {
-	Kind     string `json:"kind"`
-	Code     string `json:"code"`
-	Mode     string `json:"mode"`
-	Events   int64  `json:"events"`
-	Timed    int64  `json:"timed"`
-	Duration int64  `json:"duration"`
+	Kind                     string `json:"kind"`
+	Code                     string `json:"code"`
+	Mode                     string `json:"mode"`
+	Events                   int64  `json:"events"`
+	Timed                    int64  `json:"timed"`
+	Duration                 int64  `json:"duration"`
+	BaselineReselections     int64  `json:"baselineReselections,omitempty"`
+	ConservativeReselections int64  `json:"conservativeReselections,omitempty"`
 }
 
 func CheckAnalysisRole(ctx context.Context, db *sql.DB) error {
@@ -49,6 +51,10 @@ func CheckAnalysisRole(ctx context.Context, db *sql.DB) error {
  AND NOT has_any_column_privilege(current_user,'public.identity_devices','SELECT')
  AND NOT has_any_column_privilege(current_user,'public.identity_accounts','SELECT')
  AND NOT has_any_column_privilege(current_user,'public.identity_sessions','SELECT')
+ AND has_table_privilege(current_user,'public.identity_telemetry_analysis_events','SELECT')
+ AND NOT has_any_column_privilege(current_user,'public.identity_telemetry_analysis_events','INSERT')
+ AND NOT has_any_column_privilege(current_user,'public.identity_telemetry_analysis_events','UPDATE')
+ AND NOT has_table_privilege(current_user,'public.identity_telemetry_analysis_events','DELETE')
  AND has_table_privilege(current_user,'public.identity_telemetry_hourly','SELECT')
  AND has_table_privilege(current_user,'public.identity_telemetry_hourly','INSERT')
  AND has_table_privilege(current_user,'public.identity_telemetry_hourly','DELETE')`).Scan(&scoped)
@@ -78,9 +84,10 @@ func AggregateHour(ctx context.Context, db *sql.DB, hour, now time.Time) (Hourly
 		return Hourly{}, ErrUnavailable
 	}
 	rows, err := tx.QueryContext(ctx, `WITH evidence AS MATERIALIZED (
- SELECT kind,code,mode,duration_ms FROM public.identity_telemetry_events
+ SELECT kind,code,mode,duration_ms,decision_variant FROM public.identity_telemetry_analysis_events
  WHERE received_at_ms >= $1 AND received_at_ms < $2 LIMIT $3)
- SELECT kind,code,mode,count(*),count(duration_ms),coalesce(sum(duration_ms),0)
+ SELECT kind,code,mode,count(*),count(duration_ms),coalesce(sum(duration_ms),0),
+  count(*) FILTER (WHERE decision_variant=1),count(*) FILTER (WHERE decision_variant=2)
  FROM evidence GROUP BY kind,code,mode ORDER BY kind,code,mode LIMIT 257`,
 		hour.UnixMilli(), end.UnixMilli(), MaxHourlyEvents+1)
 	if err != nil {
@@ -90,7 +97,8 @@ func AggregateHour(ctx context.Context, db *sql.DB, hour, now time.Time) (Hourly
 	grouped := make([]hourRow, 0, 32)
 	for rows.Next() {
 		var row hourRow
-		if err = rows.Scan(&row.Kind, &row.Code, &row.Mode, &row.Events, &row.Timed, &row.Duration); err != nil {
+		if err = rows.Scan(&row.Kind, &row.Code, &row.Mode, &row.Events, &row.Timed, &row.Duration,
+			&row.BaselineReselections, &row.ConservativeReselections); err != nil {
 			rows.Close()
 			return Hourly{}, ErrUnavailable
 		}
@@ -113,9 +121,11 @@ func AggregateHour(ctx context.Context, db *sql.DB, hour, now time.Time) (Hourly
 	if err != nil {
 		return Hourly{}, ErrUnavailable
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO public.identity_telemetry_hourly(hour_start_ms,kind,code,mode,events,timed,duration_total_ms)
- SELECT $1,kind,code,mode,events,timed,duration FROM jsonb_to_recordset($2::jsonb)
- AS e(kind text,code text,mode text,events bigint,timed bigint,duration bigint)`, hour.UnixMilli(), string(encoded)); err != nil {
+	if _, err = tx.ExecContext(ctx, `INSERT INTO public.identity_telemetry_hourly(hour_start_ms,kind,code,mode,events,timed,duration_total_ms,baseline_reselections,conservative_reselections)
+ SELECT $1,kind,code,mode,events,timed,duration,coalesce("baselineReselections",0),coalesce("conservativeReselections",0)
+ FROM jsonb_to_recordset($2::jsonb)
+ AS e(kind text,code text,mode text,events bigint,timed bigint,duration bigint,
+  "baselineReselections" bigint,"conservativeReselections" bigint)`, hour.UnixMilli(), string(encoded)); err != nil {
 		return Hourly{}, ErrUnavailable
 	}
 	if err = tx.Commit(); err != nil {

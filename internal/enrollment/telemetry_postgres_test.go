@@ -90,7 +90,7 @@ func TestTelemetrySummaryUsesScopedRolesAndKeepsLastCompleteHour(t *testing.T) {
 		t.Fatal("over-budget summary was accepted", err)
 	}
 	verify()
-	if _, err := fixtureOwner.Exec(`INSERT INTO identity_telemetry_hourly VALUES($1,'probe','ok','wifi',1,0,0)`,
+	if _, err := fixtureOwner.Exec(`INSERT INTO identity_telemetry_hourly(hour_start_ms,kind,code,mode,events,timed,duration_total_ms) VALUES($1,'probe','ok','wifi',1,0,0)`,
 		period.Add(-telemetry.SummaryRetention-time.Hour).UnixMilli()); err != nil {
 		t.Fatal(err)
 	}
@@ -98,6 +98,45 @@ func TestTelemetrySummaryUsesScopedRolesAndKeepsLastCompleteHour(t *testing.T) {
 		t.Fatal("aggregate retention did not remove only expired hours", err, got)
 	}
 	verify()
+}
+
+func TestTelemetryReportCountsOnlyKnownDecisionsWithoutRawRevisionAccess(t *testing.T) {
+	f := newFixture(t, 1)
+	f.api.TelemetryEnabled = true
+	k := key(t)
+	session, _, _ := f.register(t, k)
+	ctx := t.Context()
+	for _, column := range []string{"device", "policy_revision", "algorithm_revision"} {
+		if _, err := fixtureAnalysis.Exec("SELECT " + column + " FROM identity_telemetry_events"); err == nil {
+			t.Fatal("analysis role read a restricted raw column", column)
+		}
+	}
+	if _, err := fixtureTelemetryReader.Exec(`SELECT decision_variant FROM identity_telemetry_analysis_events`); err == nil {
+		t.Fatal("report reader could see individual variant labels")
+	}
+	for _, stamp := range []struct {
+		policy    int64
+		algorithm int
+	}{{41, 1}, {42, 2}, {0, 1}, {43, 99}} {
+		batch := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 60,
+			PolicyRevision: stamp.policy, AlgorithmRevision: stamp.algorithm,
+			Events: []telemetry.Event{{ID: random(), AtMS: f.now.UnixMilli(), Kind: "route", Code: "reselected", Mode: "wifi"}}}
+		body, _ := json.Marshal(batch)
+		expect(t, f.call(t, k, http.MethodPost, telemetryPath, session.AccessToken, session.Nonce, body), http.StatusOK)
+	}
+	hour := f.now.UTC().Truncate(time.Hour)
+	now := hour.Add(3 * time.Hour)
+	if _, err := telemetry.AggregateHour(ctx, fixtureAnalysis, hour, now); err != nil {
+		t.Fatal(err)
+	}
+	report, err := telemetry.ReportHour(ctx, fixtureTelemetryReader, hour, now)
+	if err != nil || !report.Available || len(report.Rows) != 1 {
+		t.Fatal("could not read the decision aggregate", err)
+	}
+	row := report.Rows[0]
+	if row.Events != 4 || row.BaselineReselections != 1 || row.ConservativeReselections != 1 {
+		t.Fatal("unknown or missing decision stamps entered an algorithm count")
+	}
 }
 
 func TestDeviceTelemetryIsBoundedDeduplicatedAndScopedToItsSession(t *testing.T) {

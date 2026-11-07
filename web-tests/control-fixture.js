@@ -33,8 +33,11 @@ const server=http.createServer(async(req,res)=>{
   if(Object.keys(p).length!==1||!/^\d{4}-\d{2}-\d{2}T\d{2}:00Z$/.test(p.hour)){send(400,{});break;}
   if(options.telemetryDenied){send(404,{});break;}
   const empty=p.hour.endsWith('T02:00Z');
+  const row=options.decisionTelemetry?{kind:'route',code:'reselected',mode:'wifi',events:4,timed:0,duration:0,
+   baselineReselections:1,conservativeReselections:p.hour.endsWith('T04:00Z')?4:2}:
+   {kind:'probe',code:'ok',mode:'wifi',events:3,timed:2,duration:51,ignored:'synthetic-untrusted-data'};
   send(200,{schemaVersion:1,hourStartMs:Date.parse(p.hour)+(p.hour.endsWith('T03:00Z')?3600000:0),available:!empty,
-   rows:empty?[]:[{kind:'probe',code:'ok',mode:'wifi',events:3,timed:2,duration:51,ignored:'synthetic-untrusted-data'}]});break;
+   rows:empty?[]:[row]});break;
  }
  case 'configuration.history.get':{
   if(p.id!=='device-a'||p.revision!==7||p.hash!=='a'.repeat(64)){send(403,{});break;}
