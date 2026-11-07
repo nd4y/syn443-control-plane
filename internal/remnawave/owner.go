@@ -14,6 +14,7 @@ import (
 )
 
 type ownerConfig struct {
+	FixtureLoopback          bool     `json:"fixtureLoopback,omitempty"`
 	ResourceID               string   `json:"resourceId"`
 	ProviderType             string   `json:"providerType"`
 	APIVersion               string   `json:"apiVersion"`
@@ -70,7 +71,7 @@ func NewFromOwnerFile(path string) (*Client, error) {
 	if e != nil {
 		return nil, e
 	}
-	c := Config{Instance: resources.Instance{ResourceID: o.ResourceID, ProviderType: o.ProviderType, APIVersion: o.APIVersion, Endpoint: o.Endpoint, Enabled: o.Enabled, CredentialRef: o.ResourceID + "/api-token"}, Token: strings.TrimSpace(string(token))}
+	c := Config{FixtureLoopback: o.FixtureLoopback, Instance: resources.Instance{ResourceID: o.ResourceID, ProviderType: o.ProviderType, APIVersion: o.APIVersion, Endpoint: o.Endpoint, Enabled: o.Enabled, CredentialRef: o.ResourceID + "/api-token"}, Token: strings.TrimSpace(string(token))}
 	if o.CertificateAuthorityFile != "" {
 		cert, e := privateFile(o.CertificateAuthorityFile, 2*1024*1024, false)
 		if e != nil {

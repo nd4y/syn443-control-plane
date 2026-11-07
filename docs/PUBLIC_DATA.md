@@ -27,6 +27,19 @@ Pre-commit inspects the actual staged bytes; pre-push checks all reachable histo
 Missing scanners fail closed. Hooks are a local safeguard, not a server-side access boundary.
 CI tests that each exact digest exception accepts its reviewed value and rejects changed
 values or the same value at another path.
+
+The credential URL check recognizes two exact Go read-only data sequences in the
+Linux ELF runtime. Their adjacent eight-byte literals come from Go 1.27.3
+(`regexp/backtrack.go:168`, `net/textproto/reader.go:838`,
+`crypto/internal/fips140/pbkdf2/cast.go:33`, `crypto/x509/pem_decrypt.go:105`),
+jsonschema v6.0.3 (`draft.go:145`), pgx v5.11.0 (`pgconn/config.go:125,504,714,716,723`,
+`pgconn/defaults.go:58`, `pgconn/errors.go:245`) and, for the overlay worker,
+four public identity field names in `internal/overlay/identity.go`.
+The check requires the three pinned version markers and the complete match,
+including the prefix that begins before the URL match. Other credential matches
+and all other privacy and secret checks still run. Changes to the sequence or
+dependencies require fresh provenance before updating the rule.
+
 APK payloads are additionally scanned as ZIP containers: Gitleaks otherwise skips the
 binary `.apk` file. The real scanner self-test checks both a clean APK and detection
 inside an embedded synthetic asset. Upload allowlists match the scanned report paths.

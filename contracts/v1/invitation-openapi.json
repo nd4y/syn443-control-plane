@@ -1,0 +1,518 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SYN443 confirmed invitation API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/invitations/time": {
+      "get": {
+        "operationId": "invitationTime",
+        "description": "No Origin, query or bearer Authorization. TLS Date, no-store and bounded admission. The code grants no session before independent approval/publication.",
+        "responses": {
+          "200": {
+            "description": "Exact scoped result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Time"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Key/proof/nonce/replay rejected"
+          },
+          "403": {
+            "description": "Account/grant/expiry/revocation denied"
+          },
+          "409": {
+            "description": "Key/body/request/version conflict"
+          },
+          "429": {
+            "description": "Bounded admission; Retry-After"
+          },
+          "503": {
+            "description": "No durable success claimed"
+          }
+        }
+      }
+    },
+    "/v1/invitations/claim": {
+      "post": {
+        "operationId": "invitationClaim",
+        "description": "No Origin, query or bearer Authorization. TLS Date, no-store and bounded admission. The code grants no session before independent approval/publication.",
+        "responses": {
+          "200": {
+            "description": "Exact scoped result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Key/proof/nonce/replay rejected"
+          },
+          "403": {
+            "description": "Account/grant/expiry/revocation denied"
+          },
+          "409": {
+            "description": "Key/body/request/version conflict"
+          },
+          "429": {
+            "description": "Bounded admission; Retry-After"
+          },
+          "503": {
+            "description": "No durable success claimed"
+          }
+        },
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            },
+            "description": "ES256 P-256 proof, exact configured htu/method/req_hash, fresh iat/jti; no ath. Status/completion/abandon also bind claim nonce."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Strict JSON, at most8192 UTF8 bytes. Persist exact body/requestId before dispatch. New proof on retry.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Claim"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invitations/status": {
+      "post": {
+        "operationId": "invitationStatus",
+        "description": "No Origin, query or bearer Authorization. TLS Date, no-store and bounded admission. The code grants no session before independent approval/publication.",
+        "responses": {
+          "200": {
+            "description": "Exact scoped result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Key/proof/nonce/replay rejected"
+          },
+          "403": {
+            "description": "Account/grant/expiry/revocation denied"
+          },
+          "409": {
+            "description": "Key/body/request/version conflict"
+          },
+          "429": {
+            "description": "Bounded admission; Retry-After"
+          },
+          "503": {
+            "description": "No durable success claimed"
+          }
+        },
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            },
+            "description": "ES256 P-256 proof, exact configured htu/method/req_hash, fresh iat/jti; no ath. Status/completion/abandon also bind claim nonce."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Strict JSON, at most8192 UTF8 bytes. Persist exact body/requestId before dispatch. New proof on retry.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invitations/complete": {
+      "post": {
+        "operationId": "invitationComplete",
+        "description": "No Origin, query or bearer Authorization. TLS Date, no-store and bounded admission. The code grants no session before independent approval/publication.",
+        "responses": {
+          "200": {
+            "description": "Exact scoped result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Completion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Key/proof/nonce/replay rejected"
+          },
+          "403": {
+            "description": "Account/grant/expiry/revocation denied"
+          },
+          "409": {
+            "description": "Key/body/request/version conflict"
+          },
+          "429": {
+            "description": "Bounded admission; Retry-After"
+          },
+          "503": {
+            "description": "No durable success claimed"
+          },
+          "202": {
+            "description": "Still awaiting independent device publication; Retry-After2. No session."
+          }
+        },
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            },
+            "description": "ES256 P-256 proof, exact configured htu/method/req_hash, fresh iat/jti; no ath. Status/completion/abandon also bind claim nonce."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Strict JSON, at most8192 UTF8 bytes. Persist exact body/requestId before dispatch. New proof on retry.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invitations/abandon": {
+      "post": {
+        "operationId": "invitationAbandon",
+        "description": "No Origin, query or bearer Authorization. TLS Date, no-store and bounded admission. The code grants no session before independent approval/publication.",
+        "responses": {
+          "200": {
+            "description": "Exact scoped result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Abandoned"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Key/proof/nonce/replay rejected"
+          },
+          "403": {
+            "description": "Account/grant/expiry/revocation denied"
+          },
+          "409": {
+            "description": "Key/body/request/version conflict"
+          },
+          "429": {
+            "description": "Bounded admission; Retry-After"
+          },
+          "503": {
+            "description": "No durable success claimed"
+          }
+        },
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            },
+            "description": "ES256 P-256 proof, exact configured htu/method/req_hash, fresh iat/jti; no ath. Status/completion/abandon also bind claim nonce."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Strict JSON, at most8192 UTF8 bytes. Persist exact body/requestId before dispatch. New proof on retry.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRequest"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Time": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "serviceId"
+        ]
+      },
+      "Claim": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{24,128}$",
+            "maxLength": 128
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "maxLength": 43
+          },
+          "key": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kty": {
+                "const": "EC"
+              },
+              "crv": {
+                "const": "P-256"
+              },
+              "x": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$",
+                "maxLength": 43
+              },
+              "y": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$",
+                "maxLength": 43
+              }
+            },
+            "required": [
+              "kty",
+              "crv",
+              "x",
+              "y"
+            ]
+          },
+          "capabilities": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,64}$",
+              "maxLength": 64
+            }
+          }
+        },
+        "required": [
+          "requestId",
+          "code",
+          "key",
+          "capabilities"
+        ]
+      },
+      "DeviceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "maxLength": 43
+          },
+          "requestId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{24,128}$",
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "id",
+          "requestId"
+        ]
+      },
+      "ClaimState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "maxLength": 43
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 9007199254740991
+          },
+          "state": {
+            "enum": [
+              "pending_approval",
+              "provisioning",
+              "ready",
+              "completed",
+              "expired",
+              "revoked"
+            ]
+          },
+          "pairCode": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$",
+            "maxLength": 6
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "maxLength": 43
+          },
+          "deviceId": {
+            "type": "string",
+            "pattern": "^(?:[A-Za-z0-9_-]{43})?$",
+            "maxLength": 43
+          },
+          "expires": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "ownerTag": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "maxLength": 43
+          },
+          "error": {
+            "enum": [
+              "",
+              "authorization_changed",
+              "unsupported_capabilities",
+              "temporarily_unavailable",
+              "reauthentication_required"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "state",
+          "pairCode",
+          "nonce",
+          "deviceId",
+          "expires",
+          "ownerTag"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "maxLength": 43
+          },
+          "accessToken": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "maxLength": 43
+          },
+          "refreshToken": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "maxLength": 43
+          },
+          "accessUntilMs": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "refreshUntilMs": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "maxLength": 43
+          }
+        },
+        "required": [
+          "deviceId",
+          "accessToken",
+          "refreshToken",
+          "accessUntilMs",
+          "refreshUntilMs",
+          "generation",
+          "nonce"
+        ]
+      },
+      "Completion": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/Session"
+          },
+          "ownerTag": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "maxLength": 43
+          }
+        },
+        "required": [
+          "session",
+          "ownerTag"
+        ]
+      },
+      "Abandoned": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "revoked": {
+            "const": true
+          }
+        },
+        "required": [
+          "revoked"
+        ]
+      }
+    }
+  }
+}

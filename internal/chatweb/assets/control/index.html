@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>SYN443 - Управление</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
+<body><header><div><strong>SYN443</strong><h1>Управление</h1></div><nav><button id="login">Войти через Keycloak</button><button id="logout" disabled>Выйти</button></nav></header>
+<p id="status" role="status">Войдите с административной учётной записью.</p>
+<main><section aria-labelledby="sources-title"><h2 id="sources-title">Источники</h2>
+<label for="owner">ID пользователя</label><input id="owner" autocomplete="off" maxlength="128"><button id="load-sources" disabled>Загрузить источники</button>
+<ul id="sources"></ul><button id="more-sources" disabled>Следующая страница</button><h3>Профили источника</h3><ul id="profiles"></ul><pre id="source-details"></pre>
+<h3>Настройки источника</h3><button id="new-source" disabled>Новый источник</button><p id="source-version">Источник не выбран</p>
+<form id="source-form"><label for="source-id">ID источника</label><input id="source-id" autocomplete="off" maxlength="48" required>
+<label for="source-owner">ID владельца</label><input id="source-owner" autocomplete="off" maxlength="128" required>
+<label for="source-name">Название</label><input id="source-name" autocomplete="off" maxlength="256" required>
+<label for="source-mode">Получение профилей</label><select id="source-mode"><option value="server">HTTPS на сервере</option><option value="device">HTTPS на устройстве по Wi-Fi</option><option value="manual">Ручной импорт</option><option value="resource">Remnawave API</option></select>
+<div id="source-device-settings" hidden><label for="source-device">ID устройства для загрузки</label><input id="source-device" autocomplete="off" maxlength="128"><p>После привязки изменить устройство нельзя. Для загрузки устройство должно быть онлайн по Wi-Fi и запустить SYN443.</p></div>
+<label for="source-format">Формат</label><select id="source-format"><option value="uri">URI</option><option value="base64">Base64</option><option value="singbox">sing-box</option><option value="xray">Xray</option><option value="mihomo">Mihomo</option></select>
+<label for="source-resource">Ресурс (для Remnawave API)</label><input id="source-resource" autocomplete="off" maxlength="48">
+<label for="source-external">ID пользователя в Remnawave</label><input id="source-external" autocomplete="off" maxlength="15">
+<label for="source-until">Разрешён до</label><input id="source-until" type="datetime-local" required>
+<label for="source-refresh">Интервал обновления, секунды</label><input id="source-refresh" type="number" min="60" max="86400" value="3600" required>
+<label for="source-stale">Допустимый возраст профилей, секунды</label><input id="source-stale" type="number" min="300" max="604800" value="86400" required>
+<label for="source-modes">Режимы сети</label><select id="source-modes" multiple size="4"><option value="home_wifi">Домашний Wi-Fi</option><option value="wifi" selected>Wi-Fi</option><option value="cellular_restricted">LTE с ограничениями</option><option value="cellular">LTE</option></select>
+<label><input id="source-enabled" type="checkbox" checked> Включён</label>
+<label for="source-secret-operation">Учётные данные</label><select id="source-secret-operation"><option value="keep">Сохранить прежние</option><option value="replace">Заменить</option><option value="delete">Удалить</option></select>
+<label for="source-secret">Новые параметры HTTPS, JSON</label><textarea id="source-secret" rows="5" maxlength="65536" autocomplete="off" spellcheck="false"></textarea>
+<p>Для HTTPS: объект с полем url и при необходимости headers, rootCa, allowedNetworks. Прежние значения не отображаются. Изменение секрета требует свежей MFA.</p>
+<button id="save-source" disabled>Сохранить источник</button></form>
+<button id="sync-source" disabled>Обновить профили</button><button id="source-job" disabled>Проверить задание</button><pre id="job-status"></pre>
+<label for="source-import-file">Файл подписки до 10 МиБ</label><input id="source-import-file" type="file" disabled>
+<button id="source-import" disabled>Импортировать в ручной источник</button>
+<h3>История заданий источника</h3>
+<button id="source-history" disabled>Загрузить историю</button><button id="source-history-more" disabled>Более ранние задания</button>
+<p id="source-history-status" role="status"></p><ul id="source-history-list"></ul>
+<h3>Получатели источника</h3>
+<button id="source-shares-load" disabled>Загрузить получателей</button>
+<p id="source-shares-revision"></p><ul id="source-shares-list"></ul>
+<label for="source-shares-kind">Тип получателя</label><select id="source-shares-kind" disabled><option value="user">Пользователь</option><option value="device">Устройство</option><option value="group">Группа</option></select>
+<label for="source-shares-id">ID получателя</label><input id="source-shares-id" maxlength="128" autocomplete="off" disabled>
+<button id="source-shares-add" disabled>Добавить получателя</button>
+<label><input id="source-shares-confirm" type="checkbox" disabled>Подтверждаю новый список. Сервер проверит права и свежую MFA.</label>
+<button id="source-shares-save" disabled>Сохранить получателей</button>
+</section><section aria-labelledby="draft-title"><h2 id="draft-title">Личный черновик конфигурации</h2>
+<p>Сохранение черновика не меняет VPN на устройствах. Для публикации нужны отдельные проверка и подтверждение.</p>
+<label for="draft-id">ID черновика</label><input id="draft-id" autocomplete="off" maxlength="128"><button id="open-draft" disabled>Открыть черновик</button><button id="new-draft" disabled>Новый черновик</button>
+<form id="draft-form"><label for="target-kind">Область правки</label><select id="target-kind"><option value="device">Устройство</option><option value="user">Пользователь</option><option value="group">Группа</option><option value="template">Шаблон</option></select>
+<label for="target-id">ID адресата</label><input id="target-id" autocomplete="off" maxlength="128" required>
+<p id="draft-version">Новый черновик</p><label for="base-revision">Исходная версия конфигурации</label><input id="base-revision" type="number" min="0" max="9007199254740991" value="0" required>
+<label for="base-hash">SHA-256 исходной версии (для версии 0 оставьте пустым)</label><input id="base-hash" autocomplete="off" maxlength="64">
+<label for="plan">План сети, JSON</label><textarea id="plan" rows="22" maxlength="262144" spellcheck="false" autocomplete="off" required></textarea>
+<fieldset id="route-check-editor" disabled><legend>Проверки маршрутов</legend>
+<label for="route-check-path">Выход</label><select id="route-check-path"></select>
+<label><input id="route-check-required" type="checkbox"> Обязательная проверка при применении</label>
+<label for="route-check-method">Способ проверки</label><select id="route-check-method"><option value="tcp">TCP</option><option value="tls">TLS</option><option value="https_204">HTTPS 204</option><option value="ssh_banner">SSH banner</option></select>
+<label for="route-check-target">Адрес проверки</label><input id="route-check-target" type="text" maxlength="2048" autocomplete="off" placeholder="host:port или https://…">
+<button id="route-check-add" type="button">Добавить проверку</button><ul id="route-check-list"></ul>
+</fieldset>
+<p>Профили задаются ссылками sourceId/profileId. Ключи, пароли и состояние NetBird сюда не переносятся.</p><button id="save-draft" disabled>Сохранить черновик</button></form>
+<div id="pending" hidden><p>Изменение не подтверждено. Повтор использует ту же операцию.</p><button id="retry-save">Повторить операцию</button><button id="discard-save">Отменить повтор и проверить версию на сервере</button></div>
+</section><section class="wide" aria-labelledby="inventory-title"><h2 id="inventory-title">Конфигурация устройства (только чтение)</h2>
+<p>Показана желаемая конфигурация на сервере. Это не проверка связи и не подтверждение активации Android. Версия выданной политики ведётся отдельно от желаемой конфигурации.</p>
+<label for="inventory-device">ID устройства</label><input id="inventory-device" autocomplete="off" maxlength="64"><button id="load-inventory" disabled>Загрузить конфигурацию</button>
+<div id="inventory-view" hidden><p id="inventory-state"></p><dl id="inventory-meta"></dl>
+<h3>Наследованные слои</h3><ul id="inventory-layers"></ul>
+<h3>Действующие переносимые настройки</h3><pre id="inventory-effective"></pre>
+<h3>Источники полей</h3><ul id="inventory-fields"></ul>
+<h3>Ограничения</h3><ul id="inventory-restrictions"></ul></div>
+</section><section class="wide" aria-labelledby="layer-title"><h2 id="layer-title">Редактирование и публикация слоёв</h2>
+<p>Начните с конфигурации выбранного устройства или откройте сохранённый черновик. Предложение содержит все наследованные слои; меняйте только разрешённую область. Сервер проверяет ограничения, актуальность исходных версий и полный список затронутых устройств.</p>
+<button id="layer-from-device" disabled>Править слой выбранного устройства</button>
+<button id="layer-list" disabled>Сохранённые черновики текущего адресата</button><label for="layer-saved">Сохранённая копия</label><select id="layer-saved" disabled></select><button id="layer-open-saved" disabled>Открыть выбранный черновик</button><p id="layer-list-status"></p>
+<label for="layer-id">ID личного черновика слоёв</label><input id="layer-id" maxlength="64" autocomplete="off"><button id="layer-load" disabled>Открыть черновик слоёв</button>
+<p id="layer-version">Черновик слоёв не открыт</p>
+<label for="layer-proposal">Переносимое предложение, JSON</label><textarea id="layer-proposal" rows="24" maxlength="262144" autocomplete="off" spellcheck="false"></textarea>
+<p>Нативные конфиги, ключи и пароли сюда не добавляйте. Сохранение не меняет устройства. Предварительная проверка компилирует маршруты на сервере, но не проверяет доступность сети с телефона.</p>
+<label><input id="layer-discard-confirm" type="checkbox" disabled> Подтверждаю удаление сохранённого черновика. Несохранённый текст останется в редакторе.</label><button id="layer-discard" disabled>Удалить сохранённый черновик</button>
+<button id="layer-save" disabled>Сохранить черновик слоёв</button><button id="layer-preview" disabled>Проверить предложение на сервере</button><button id="layer-poll" disabled>Проверить задание конфигурации</button>
+<pre id="layer-job"></pre><div id="layer-review" hidden><h3>Проверенное предложение</h3><pre id="layer-impact"></pre><label><input id="layer-confirm" type="checkbox"> Проверил изменения и список затронутых устройств</label><button id="layer-publish" disabled>Опубликовать желаемую конфигурацию</button></div>
+<button id="layer-compare" disabled>Сравнить с текущей версией устройства</button><div id="layer-comparison" hidden><h3>Исходная, локальная и текущая конфигурации</h3><pre id="layer-diff"></pre><ul id="layer-conflicts"></ul><button id="layer-merge" disabled>Перенести результат сравнения в редактор</button></div>
+<p id="layer-result">Результат публикации не является подтверждением активации Android.</p>
+</section></main></body></html>

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "SYN443 M2 enrollment pilot",
-    "version": "0.3.0",
-    "description": "Bounded loopback-hosted pilot over HTTPS. No invites, admin session or full panel. Successful OIDC login alone grants nothing; an owner assignment is required. Duplicate/case-variant/unknown request members and any URL query are rejected. No caller-supplied issuer/key URL is followed. Fresh OIDC identity can revoke its own prior keys after logout/lost enrollment response. Cleanup grants no session/config and never mutates another account."
+    "version": "0.4.0",
+    "description": "Key-bound device enrollment, sessions, addressed configuration/overlay delivery and independently approved capability declarations. Owner account grants remain authoritative; no caller-supplied approval flag or URL is trusted."
   },
   "paths": {
     "/v1/devices/enroll": {
@@ -49,7 +49,7 @@
             }
           },
           "409": {
-            "description": "Idempotency conflict or fresh authentication required.",
+            "description": "Idempotency conflict or capabilities_update_required: approved capability changes need independent migration; original registration evidence and existing sessions remain unchanged.",
             "content": {
               "application/json": {
                 "schema": {
@@ -263,6 +263,113 @@
         }
       }
     },
+    "/v1/device/control-panel": {
+      "get": {
+        "operationId": "deviceControlPanelHint",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "responses": {
+          "200": {"description": "Short-lived navigation eligibility for the authenticated owner. Zero means unavailable.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ControlPanelHint"}}}},
+          "401": {"description": "Invalid or replayed device proof."},
+          "403": {"description": "Device session denied."},
+          "404": {"description": "Control panel discovery disabled."},
+          "429": {"description": "Admission budget exceeded."},
+          "503": {"description": "Control panel discovery temporarily unavailable."}
+        }
+      }
+    },
+    "/v1/device/sources/claim": {
+      "get": {
+        "operationId": "claimDeviceSourceFetch",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "responses": {
+          "200": {"description": "One addressed device fetch lease. The response must not be cached or logged.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DeviceSourceLease"}}}},
+          "204": {"description": "No compatible pending job for this device."},
+          "401": {"description": "Invalid or replayed proof."},
+          "403": {"description": "Device session denied."},
+          "404": {"description": "Device fetch disabled."},
+          "503": {"description": "Catalog or device capacity unavailable."}
+        }
+      }
+    },
+    "/v1/device/sources/result": {
+      "post": {
+        "operationId": "submitDeviceSourceFetch",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "requestBody": {
+          "required": true,
+          "description": "43-byte job ID, LF, 43-byte lease ID, LF and 1 to 10485760 provider bytes. The proof binds the complete frame.",
+          "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary", "minLength": 89, "maxLength": 10485848}}}
+        },
+        "responses": {
+          "204": {"description": "Encrypted input accepted for source worker normalization or the exact result already accepted."},
+          "401": {"description": "Invalid or replayed proof, or malformed frame."},
+          "403": {"description": "Device session or job scope denied."},
+          "404": {"description": "Device fetch disabled."},
+          "409": {"description": "Lease expired, result changed or source revision superseded."},
+          "503": {"description": "Catalog or device capacity unavailable."}
+        }
+      }
+    },
+    "/v1/device/sources/v2/claim": {
+      "get": {
+        "operationId": "claimConditionalDeviceSourceFetch",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "responses": {
+          "200": {"description": "Addressed lease with optional validators for the active snapshot. No logging or caching.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DeviceSourceLease"}}}},
+          "204": {"description": "No compatible pending job for this device."},
+          "401": {"description": "Invalid or replayed proof."},
+          "403": {"description": "Device session denied."},
+          "404": {"description": "Device fetch disabled."},
+          "503": {"description": "Catalog or device capacity unavailable."}
+        }
+      }
+    },
+    "/v1/device/sources/v2/result": {
+      "post": {
+        "operationId": "submitConditionalDeviceSourceFetch",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "requestBody": {
+          "required": true,
+          "description": "The original job and lease prefix, then NUL S443 0x02, a two-byte big-endian JSON length, metadata and optional provider bytes. Metadata is at most 4096 bytes. 200 and 304 allow etag, lastModified and quota; 304 has no body and requires the active snapshot. A provider error (401, 403, 404, 410, 429 or 5xx) sends only status. The proof binds the complete frame.",
+          "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary", "minLength": 110, "maxLength": 10489952}}}
+        },
+        "responses": {
+          "204": {"description": "Encrypted input accepted for worker normalization or identical result already accepted."},
+          "401": {"description": "Invalid or replayed proof, or malformed frame."},
+          "403": {"description": "Device session or job scope denied."},
+          "404": {"description": "Device fetch disabled."},
+          "409": {"description": "Lease expired, result changed or source revision superseded."},
+          "503": {"description": "Catalog or device capacity unavailable."}
+        }
+      }
+    },
+    "/v1/device/telemetry": {
+      "post": {
+        "operationId": "uploadDeviceTelemetry",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "requestBody": {
+          "required": true, "description": "Technical events only. Complete proof-bound JSON is limited to 16 KiB. Device and owner are derived from the current session.",
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TelemetryBatch"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Exact scoped event IDs in request order, returned after SQL commit. Existing event IDs remain immutable.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TelemetryReceipt"}}}
+          },
+          "401": {"description": "Invalid proof or closed telemetry envelope."},
+          "403": {"description": "Device session denied."},
+          "404": {"description": "Ingestion disabled."},
+          "429": {"description": "Scoped upload budget exhausted."},
+          "503": {"description": "Ingestion unavailable."}
+        }
+      }
+    },
     "/v1/device/policy": {
       "get": {
         "operationId": "policy",
@@ -433,6 +540,494 @@
           }
         }
       }
+    },
+    "/v1/device/overlay/fetch": {
+      "post": {
+        "operationId": "overlayFetch",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict or fresh authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Addressed credential or idempotent consumption acknowledgment; Cache-Control:no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverlayCredentialReply"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Endpoint disabled, wrong method or URL query."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverlayOperation"
+              }
+            }
+          }
+        },
+        "description": "Disabled unless owner overlayServiceId is configured and matches the signed service. No Origin/query. Fresh session-bound DPoP/nonce binds exact raw body. Current approved key-bound signed policy and account grant authorize namespace/reference/version/epoch. Same stable operation/body retries; another operation/body conflicts. Consume is idempotent and erases encrypted server envelope. No API signing private key. Registration/SDK proof remains a separate native acceptance gate."
+      }
+    },
+    "/v1/device/overlay/consume": {
+      "post": {
+        "operationId": "overlayConsume",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict or fresh authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Addressed credential or idempotent consumption acknowledgment; Cache-Control:no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverlayConsumed"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Endpoint disabled, wrong method or URL query."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverlayOperation"
+              }
+            }
+          }
+        },
+        "description": "Disabled unless owner overlayServiceId is configured and matches the signed service. No Origin/query. Fresh session-bound DPoP/nonce binds exact raw body. Current approved key-bound signed policy and account grant authorize namespace/reference/version/epoch. Same stable operation/body retries; another operation/body conflicts. Consume is idempotent and erases encrypted server envelope. No API signing private key. Registration/SDK proof remains a separate native acceptance gate."
+      }
+    },
+    "/v1/device/capabilities": {
+      "get": {
+        "operationId": "capabilitySnapshotDevice",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale expected capability hash, changed request body/ID or a forbidden downgrade."
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Current availability or bounded request receipt; queued is not approved and approved availability is not VPN activation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitySnapshot"
+                }
+              }
+            }
+          }
+        },
+        "description": "Own approved device availability only. Original enrollment evidence stays immutable. GET returns current approved set; POST queues original proof for independent publisher approval. No session, grant, configuration, VPN activation or permission is granted."
+      },
+      "post": {
+        "operationId": "capabilityRequestDevice",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale expected capability hash, changed request body/ID or a forbidden downgrade."
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Current availability or bounded request receipt; queued is not approved and approved availability is not VPN activation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilityRequest"
+                }
+              }
+            }
+          }
+        },
+        "description": "Own approved device availability only. Original enrollment evidence stays immutable. GET returns current approved set; POST queues original proof for independent publisher approval. No session, grant, configuration, VPN activation or permission is granted.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/capabilities": {
+      "get": {
+        "operationId": "capabilitySnapshotIdentity",
+        "security": [
+          {
+            "oidcDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale expected capability hash, changed request body/ID or a forbidden downgrade."
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Current availability or bounded request receipt; queued is not approved and approved availability is not VPN activation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitySnapshot"
+                }
+              }
+            }
+          }
+        },
+        "description": "Own approved device availability only. Original enrollment evidence stays immutable. GET returns current approved set; POST queues original proof for independent publisher approval. No session, grant, configuration, VPN activation or permission is granted."
+      },
+      "post": {
+        "operationId": "capabilityRequestIdentity",
+        "security": [
+          {
+            "oidcDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale expected capability hash, changed request body/ID or a forbidden downgrade."
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "200": {
+            "description": "Current availability or bounded request receipt; queued is not approved and approved availability is not VPN activation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilityRequest"
+                }
+              }
+            }
+          }
+        },
+        "description": "Own approved device availability only. Original enrollment evidence stays immutable. GET returns current approved set; POST queues original proof for independent publisher approval. No session, grant, configuration, VPN activation or permission is granted.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityInput"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -449,6 +1044,81 @@
       }
     },
     "schemas": {
+      "TelemetryReceipt": {
+        "type": "object", "additionalProperties": false,
+        "required": ["schemaVersion", "eventIds"],
+        "properties": {
+          "schemaVersion": {"const": 1},
+          "eventIds": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"}}
+        }
+      },
+      "TelemetryBatch": {
+        "type": "object", "additionalProperties": false,
+        "required": ["schemaVersion", "session", "build", "policyRevision", "algorithmRevision", "events"],
+        "properties": {
+          "schemaVersion": {"const": 1},
+          "session": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+          "build": {"type": "integer", "minimum": 1, "maximum": 2100000000},
+          "policyRevision": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "algorithmRevision": {"type": "integer", "minimum": 1, "maximum": 1000000},
+          "events": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/components/schemas/TelemetryEvent"}}
+        }
+      },
+      "TelemetryEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "atMs", "elapsedMs", "networkEpoch", "kind", "code", "mode"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+          "atMs": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+          "elapsedMs": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "networkEpoch": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "kind": {"enum": ["network", "vpn", "probe", "route", "policy", "engine", "overlay"]},
+          "code": {"type": "string", "pattern": "^[a-z_]{2,32}$", "description": "Closed allowlist for the chosen kind; free-form details are rejected."},
+          "mode": {"enum": ["unknown", "home_wifi", "wifi", "cellular_restricted", "cellular"]},
+          "path": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+          "durationMs": {"type": "integer", "minimum": 0, "maximum": 600000}
+        }
+      },
+      "DeviceSourceLease": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["jobId", "lease", "until", "networkModes", "credential"],
+        "properties": {
+          "jobId": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+          "lease": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+          "until": {"type": "integer", "minimum": 1, "maximum": 9007199254740},
+          "networkModes": {"type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true,
+            "items": {"enum": ["home_wifi", "wifi", "cellular_restricted", "cellular"]}},
+          "validators": {
+            "type": "object", "additionalProperties": false, "minProperties": 1,
+            "description": "Only version 2 leases may contain validators.",
+            "properties": {
+              "etag": {"type": "string", "minLength": 2, "maxLength": 512},
+              "lastModified": {"type": "string", "minLength": 1, "maxLength": 128}
+            }
+          },
+          "credential": {
+            "type": "object", "additionalProperties": false, "required": ["url"],
+            "properties": {
+              "url": {"type": "string", "minLength": 1, "maxLength": 8192},
+              "headers": {"type": "object", "maxProperties": 4, "additionalProperties": {"type": "string", "maxLength": 4096}},
+              "redirectOrigins": {"type": "array", "maxItems": 3, "items": {"type": "string", "maxLength": 8192}},
+              "allowedNetworks": {"type": "array", "maxItems": 8, "items": {"type": "string", "maxLength": 50}},
+              "rootCa": {"type": "string", "maxLength": 32768}
+            }
+          }
+        }
+      },
+      "ControlPanelHint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schemaVersion", "untilMs"],
+        "properties": {
+          "schemaVersion": {"const": 1},
+          "untilMs": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
+        }
+      },
       "PublicKey": {
         "type": "object",
         "additionalProperties": false,
@@ -613,7 +1283,8 @@
               "provisioning_pending",
               "reauthentication_required",
               "use_dpop_nonce",
-              "temporarily_unavailable"
+              "temporarily_unavailable",
+              "capabilities_update_required"
             ]
           }
         }
@@ -643,6 +1314,177 @@
               "maxLength": 43,
               "pattern": "^[A-Za-z0-9_-]{43}$"
             }
+          }
+        }
+      },
+      "OverlayOperation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operationId",
+          "namespace",
+          "reference",
+          "version"
+        ],
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{24,128}$"
+          },
+          "namespace": {
+            "type": "string",
+            "pattern": "^managed-netbird/[A-Za-z0-9_-]{43}$"
+          },
+          "reference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "OverlayCredentialReply": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "envelope",
+          "consumed"
+        ],
+        "properties": {
+          "envelope": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16384,
+            "description": "Independently verified addressed JWS. Never log or persist without per-grant protection."
+          },
+          "consumed": {
+            "const": false
+          }
+        }
+      },
+      "OverlayConsumed": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "consumed"
+        ],
+        "properties": {
+          "consumed": {
+            "const": true
+          }
+        }
+      },
+      "CapabilityInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "previousHash",
+          "capabilities"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{24,128}$"
+          },
+          "previousHash": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "capabilities": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,64}$"
+            }
+          }
+        }
+      },
+      "CapabilitySnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "hash",
+          "capabilities",
+          "authorityHash"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 13
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "capabilities": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,64}$"
+            }
+          },
+          "authorityHash": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        }
+      },
+      "CapabilityRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "state",
+          "version",
+          "hash"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{24,128}$"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "approved",
+              "rejected"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 13
+          },
+          "hash": {
+            "type": "string",
+            "anyOf": [
+              {
+                "const": ""
+              },
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$"
+              }
+            ]
+          },
+          "error": {
+            "enum": [
+              "capability_denied",
+              "capability_conflict",
+              "capability_expired"
+            ]
           }
         }
       }

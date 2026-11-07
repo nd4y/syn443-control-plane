@@ -39,3 +39,16 @@ Fresh-identity owner cleanup now handles lost enrollment outcomes after private-
 Enrollment publications now require payload2 and `policy.keybound.v2`, with an independently signed device-key thumbprint checked against the local key. Legacy payload1 is preserved for the M1 local-management path, not accepted as a new enrollment policy. See [identity lifecycle](identity-lifecycle.md).
 
 The new bound-policy regressions reject wrong-key delivery even with a valid signature/device ID, reject clients missing the required capability before registration state is created, and reject owner templates that choose a device key. Go/Kotlin consume the same locked public signature fixture; numeric/boolean strings are not coerced. Android browser/controller wiring remains pending.
+
+Approved enrollment request/receipt bytes are now immutable in SQL. Reauthentication
+may mint a fresh session for the same active key and equivalent capability set,
+but preserves the independently approved evidence used by later publication.
+Pending requests may still receive fresh authenticated evidence before approval.
+A changed capability set on an approved device returns409 without replacing its
+working session or policy. Capability migration is a separate, still pending
+approval path, including the older three-capability client upgrade. This guard
+does not retrospectively authenticate data in an older database; existing stored
+evidence needs the operator's migration review. Actions cover direct restricted-role
+SQL attacks, reauthentication, capability ordering/conflicts, renewal, pending
+evidence refresh and corrupted approved input. Temporary PostgreSQL readiness
+checks now use TCP so the transient initdb Unix-socket server cannot satisfy them.

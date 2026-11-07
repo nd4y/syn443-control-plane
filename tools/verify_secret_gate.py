@@ -48,6 +48,15 @@ with tempfile.TemporaryDirectory() as directory:
     (work / 'unreviewed.json').write_text(json.dumps({'enrollment-openapi.json': enrollment_digest}, indent=2))
     scan(1)
     (work / 'unreviewed.json').unlink()
+    control_digest = json.loads((root / 'contracts/lock.json').read_text())['files']['control-openapi.json']
+    target.write_text(json.dumps({'control-openapi.json': control_digest}, indent=2))
+    scan(0)
+    target.write_text(json.dumps({'control-openapi.json': ('0' if control_digest[0] != '0' else '1') + control_digest[1:]}, indent=2))
+    scan(1)
+    target.unlink()
+    (work / 'unreviewed.json').write_text(json.dumps({'control-openapi.json': control_digest}, indent=2))
+    scan(1)
+    (work / 'unreviewed.json').unlink()
     # The signature fixture has a public RFC7638 hash, not an API credential.
     # Exercise the actual recursive-hex decoder; changed value/other path still fail.
     fixture = json.loads((root / 'contracts/v1/policy-device-signature.json').read_text())

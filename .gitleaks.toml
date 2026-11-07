@@ -7,6 +7,64 @@ useDefault = true
 [[rules]]
 id = "generic-api-key"
 [[rules.allowlists]]
+description = "Reviewed SHA-256 of the public telemetry enrollment contract"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"enrollment-openapi\.json": "e990e90b1e803c4936ea7de99a389a6de106992b663a05128ac828fb3340d001",?\s*$''',
+  '''^\s*"enrollment-openapi\.json": "8164ea6939c1efa0eb9247c64b71be05b306aea072fa6539cd790d13d37f2fa9",?\s*$''',
+]
+
+[[rules.allowlists]]
+description = "Reviewed SHA-256 of public Wi-Fi failover contracts"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"control-openapi\.json": "d61d0ec2ce489b02386ade55bb0ce73f687cc4f567b20a09b0bd42160fd5c1ad",?\s*$''',
+  '''^\s*"policy-payload\.schema\.json": "1469551248c3b9616a9fec40f69d7c4116a0dd2b0abe12ea81fb17589faad2e8",?\s*$''',
+]
+
+[[rules.allowlists]]
+description = "Reviewed SHA-256 of public managed route check contracts"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"control-openapi\.json": "69bfcda814f60739ab27c3e1cb3d84d8c4b22968752f6a723d7912fa60d5afdf",?\s*$''',
+  '''^\s*"policy-payload\.schema\.json": "4ed312601682e569e00fac5eb45c4058470b0fef17bdafbbd478aeb1bb9769a8",?\s*$''',
+]
+
+[[rules.allowlists]]
+description = "Reviewed SHA-256 of the public conditional device subscription contract"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"enrollment-openapi\.json": "9717a9c42d87840061957e4a8f48552b434267dea12a080d4b26e8c2e6784936",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed SHA-256 of the public device subscription enrollment contract"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"enrollment-openapi\.json": "783323605fe5cb4862843124151df1942d889f0e20f16db9c3f3f8b9e5a63491",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed SHA-256 of the public device source binding contract"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "6912315373be7d324ae8ceea8bb6d39021a263950a2c7791ce3299149519d39f",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed SHA-256 of the public device control panel enrollment contract"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"enrollment-openapi\.json": "ba51c2f1ce58a298ab118c8ee77e62e5e79be52f749957b2c89314a72f2455c5",?\s*$''']
+
+[[rules.allowlists]]
 description = "Reviewed public OpenAPI content digest"
 condition = "AND"
 paths = ['''^contracts/lock\.json$''']
@@ -56,3 +114,115 @@ condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"chat-openapi\.json": "505800fd34c456c86c31345ec18b20be5009e233b1e69f4d637c6688b9b5e3ed",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public control catalog OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "750da56e04c9ca77c1da2883da187d53783cf28680be4200611d41ca377048be",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed historical control catalog OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "5a53bfbe2b1ad5d3ea3cb8de800edb862147f2d835e3475d9427806b81b53357",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public invitation OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"invitation-openapi\.json": "0aaf6cf59826265613ce522c7789ea14ec4a00d0392b42a34728911394cf9d2f",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public overlay credential schema content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"overlay-credential\.schema\.json": "4228df5c2b78542393f9b22b4576b9243c221708226510442a7315507c14e44d",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public addressed-overlay enrollment OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"enrollment-openapi\.json": "7373970f3214d21025877afea7e3741a90669509d2e2f317e14fc0cd0e91476b",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public portable-draft control OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "f4108843755843f07633588454e65953e17bb034cda219bbf47b7ed5bdec2927",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public configuration-approval control OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "4fece33d51e6153c478bf2d052a1d28f1a0512f7a06baeaff5d050a63bbdc87d",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public desired-configuration view OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "a97cd679f2feab2a8ba16c885abb208df54550c6888deed3a9d252c6ee39ad63",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public private-layer-draft OpenAPI content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "1e0ae6150b72ad750bf3aaa16c459a73ee3bcb9fea23900dd258e94c76622a09",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public immutable-configuration-history OpenAPI digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "365a592142b9dfdb259a5c681fb4c96fa3dfc1fb07cb388fe5451e8f5feaa2db",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public optional control-panel bootstrap schema digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"bootstrap\.schema\.json": "57a45444510439dc01bc7717cff1dcce1ac3f31a463d7320601d873d9171f051",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public capability-declaration OpenAPI digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"enrollment-openapi\.json": "4e150e6a8847ad2fa15f2c23277331dd42453a8993ebed0cfc6756032b2cdd3f",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public actor-private draft inventory OpenAPI digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "c44ce03a193a69b6a50ad1a38899630376221271b23024c4a2870bfd9361186d",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public saved-draft inventory OpenAPI canonical LF digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "70e8e88fd7cc42a1772ea841a0231fb2cfc51d360063f9799803acd452a7984a",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public private-draft discard OpenAPI canonical LF digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "2783d7eab61f2b187fcb5c2b63f847f50eb78c833215fadbc4f05944b63d6c51",?\s*$''']
+
+[[rules.allowlists]]
+description = "Reviewed public source job history OpenAPI canonical LF digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "ad02a58d44da29e0038e743b37ce29fa90c37061989779688f2e31a3c7670e34",?\s*$''']

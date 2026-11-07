@@ -10,6 +10,12 @@ All automatable implemented behavior must run on pull requests and main in GitHu
 Physical-only release gates: real restricted LTE, RF handover, vendor power management, measured idle energy, external-provider availability and long endurance.
 CI must list these as pending rather than skip them and report success.
 Coverage applies to implemented code; line coverage alone is not behavioral coverage.
+
+Portable managed NetBird adds required Go compilation and PostgreSQL publication
+cases described in [its scope and limits](portable-netbird.md). The regular race,
+fuzz and configuration85% gates remain unchanged. These cases exercise direct and
+VLESS composition, internal DNS, invalid branches/authority fields, missing broker
+retention and stable addressed enrollment reference across transport changes.
 All fixtures use synthetic endpoints, identifiers and secrets. No real provider credentials are needed in CI.
 Every later feature PR updates requirements-register with scope and concrete evidence.
 
@@ -18,3 +24,6 @@ The mandatory `keycloak` Actions job uses a digest-pinned temporary IdP and gene
 M1 recovery gates (REC-01-06 / AC82-AC90) have partial cross-repository implementation and scoped acceptance; see [current evidence](implementation-status.md). Implemented paths require deterministic model/trace tests and Android fault injection must cover durable intent/config, exponential backoff/jitter and flapping, Stop/stale effects, optional-outbound partial startup without private leaks, full native hang and controller/service death, truthful status with detailed logs disabled, and persisted budgets across restart/reboot/clock changes. Physical Pixel evidence separately covers Wi-Fi/LTE/restricted LTE, actual OS restart/Force stop/revoke/Always-on behavior, Doze and energy. A live control looper, a JVM timeout, or process isolation alone does not prove these gates.
 
 M2 identity/enrollment pilot: see [scope and evidence](enrollment-pilot.md). Actions must run strict OIDC/DPoP crypto and schema tests, real temporary PostgreSQL role/transaction races, Keycloak code/key/refresh conformance, and the Android identity JVM suite with its 90% protocol-class line gate. These do not establish Android browser enrollment or physical policy activation. Raw operator identity/device evidence is never an upload payload.
+
+The enrollment job includes the [isolated PostgreSQL restore drill](database-recovery.md).
+Its dump is temporary and must not be uploaded.

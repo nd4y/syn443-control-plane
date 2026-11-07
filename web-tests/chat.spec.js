@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';import fs from 'node:fs/promises';import crypto from 'node:crypto';
-test.beforeEach(async({request})=>{await request.post('/fixture/reset',{data:{}});});
+test.beforeEach(async({request})=>{const reset=await request.post('/fixture/reset',{data:{}});expect(reset.status()).toBe(200);expect(reset.headers().connection).toBe('close');});
 async function open(page){await page.goto('/');await page.getByRole('button',{name:/Пользователь/}).click();await expect(page.locator('#send')).toBeEnabled();}
 test('administrator sends text and hostile content remains text',async({page})=>{
  await open(page);const value='<img src=x onerror="window.executed=true">';await page.locator('#text').fill(value);await page.locator('#send').click();await expect(page.locator('#messages')).toContainText(value);await expect(page.locator('#messages img')).toHaveCount(0);expect(await page.evaluate(()=>window.executed)).toBeUndefined();

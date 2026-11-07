@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/egress"
 	"github.com/nd4y/syn443-control-plane/internal/resources"
 )
 
@@ -33,6 +34,22 @@ func subscriptionBody() string {
 }
 func binding() resources.Binding {
 	return resources.Binding{ResourceID: "panel-a", ExternalUserID: "42"}
+}
+
+func TestProductionLoopbackNeedsMoreThanAnOwnerNetworkGrant(t *testing.T) {
+	_, server, calls := fixture(t, nil)
+	roots := x509.NewCertPool()
+	roots.AddCert(server.Certificate())
+	c, e := New(Config{Instance: resources.Instance{ResourceID: "panel-a", ProviderType: resources.Remnawave, APIVersion: "3.4", Endpoint: server.URL, CredentialRef: "synthetic-owner", Enabled: true}, Token: fixtureToken, Roots: roots, AllowedNetworks: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer c.Close()
+	_, e = c.ReadAssignment(context.Background(), binding())
+	var failure *resources.Error
+	if !errors.As(e, &failure) || failure.Code != "address_not_allowed" || calls.Load() != 0 {
+		t.Fatal("private grant bypassed production control-loopback boundary")
+	}
 }
 
 func fixture(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.Server, *atomic.Int32) {
@@ -64,7 +81,7 @@ func fixture(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.Server,
 	s.StartTLS()
 	pool := x509.NewCertPool()
 	pool.AddCert(s.Certificate())
-	c, e := New(Config{Instance: resources.Instance{ResourceID: "panel-a", ProviderType: resources.Remnawave, APIVersion: "3.4", Endpoint: s.URL, CredentialRef: "owner-config", Enabled: true}, Token: fixtureToken, Roots: pool, AllowedNetworks: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}})
+	c, e := New(Config{Instance: resources.Instance{ResourceID: "panel-a", ProviderType: resources.Remnawave, APIVersion: "3.4", Endpoint: s.URL, CredentialRef: "owner-config", Enabled: true}, Token: fixtureToken, FixtureLoopback: true, Roots: pool, AllowedNetworks: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}})
 	if e != nil {
 		t.Fatal("fixture adapter construction failed")
 	}
@@ -131,11 +148,11 @@ func TestConstructionAndDestinationPolicy(t *testing.T) {
 		addresses = append(addresses, netip.AddrFrom4(o).String())
 	}
 	for _, v := range addresses {
-		if allowedIP(netip.MustParseAddr(v), nil) {
+		if egress.PublicIP(netip.MustParseAddr(v)) {
 			t.Fatal("nonpublic destination allowed without grant")
 		}
 	}
-	if !publicIP(netip.MustParseAddr("8.8.8.8")) || !publicIP(netip.MustParseAddr("2606:4700:4700::1111")) {
+	if !egress.PublicIP(netip.MustParseAddr("8.8.8.8")) || !egress.PublicIP(netip.MustParseAddr("2606:4700:4700::1111")) {
 		t.Fatal("public address rejected")
 	}
 	c, _, calls := fixture(t, nil)
@@ -172,7 +189,7 @@ func TestProviderStatusAndSchemaErrors(t *testing.T) {
 		status           int
 	}{
 		{"unauthorized", "", "access_denied", 401}, {"forbidden", "", "access_denied", 403}, {"missing", "", "assignment_not_found", 404}, {"limited", "", "rate_limited", 429}, {"server", "", "provider_unavailable", 503}, {"redirect", "", "unexpected_response", 302},
-		{"duplicate", `{"response":{"id":42,"id":42}}`, "invalid_response", 200}, {"trailing", userBody() + `{}`, "invalid_response", 200}, {"string-id", strings.Replace(userBody(), `"id":42`, `"id":"42"`, 1), "identity_mismatch", 200}, {"foreign", strings.Replace(userBody(), `"id":42`, `"id":43`, 1), "identity_mismatch", 200}, {"inactive", strings.Replace(userBody(), "ACTIVE", "DISABLED", 1), "access_denied", 200}, {"unknown-status", strings.Replace(userBody(), "ACTIVE", "OTHER", 1), "invalid_response", 200}, {"bad-expiry", strings.Replace(userBody(), expiry, "invalid", 1), "invalid_response", 200}, {"expired", strings.Replace(userBody(), expiry, "2025-01-01T00:00:00Z", 1), "access_denied", 200}, {"large", strings.Repeat(" ", maxBody+1), "invalid_response", 200},
+		{"duplicate", `{"response":{"id":42,"id":42}}`, "invalid_response", 200}, {"trailing", userBody() + `{}`, "invalid_response", 200}, {"string-id", strings.Replace(userBody(), `"id":42`, `"id":"42"`, 1), "identity_mismatch", 200}, {"foreign", strings.Replace(userBody(), `"id":42`, `"id":43`, 1), "identity_mismatch", 200}, {"inactive", strings.Replace(userBody(), "ACTIVE", "DISABLED", 1), "assignment_revoked", 200}, {"unknown-status", strings.Replace(userBody(), "ACTIVE", "OTHER", 1), "invalid_response", 200}, {"bad-expiry", strings.Replace(userBody(), expiry, "invalid", 1), "invalid_response", 200}, {"expired", strings.Replace(userBody(), expiry, "2025-01-01T00:00:00Z", 1), "assignment_expired", 200}, {"large", strings.Repeat(" ", maxBody+1), "invalid_response", 200},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c, _, calls := fixture(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(tc.status); io.WriteString(w, tc.body) })
@@ -186,7 +203,7 @@ func TestProviderStatusAndSchemaErrors(t *testing.T) {
 }
 func TestSubscriptionCannotCrossIdentityOrSilentlyEmpty(t *testing.T) {
 	for _, tc := range []struct{ old, new, want string }{
-		{`"shortUuid":"synthetic-short"`, `"shortUuid":"foreign"`, "identity_mismatch"}, {`"isFound":true`, `"isFound":false`, "assignment_not_found"}, {`"isFound":true,`, "", "invalid_response"}, {`"isActive":true`, `"isActive":false`, "access_denied"}, {expiry, "2026-01-03T00:00:00Z", "inconsistent_snapshot"}, {`"trafficUsedBytes":"9007199254740993"`, `"trafficUsedBytes":"-1"`, "invalid_response"}, {`["https://proxy.example.invalid/synthetic-profile"]`, `[]`, "empty_snapshot"}, {`https://proxy.example.invalid/synthetic-profile`, `file:///etc/passwd`, "invalid_response"},
+		{`"shortUuid":"synthetic-short"`, `"shortUuid":"foreign"`, "identity_mismatch"}, {`"isFound":true`, `"isFound":false`, "assignment_not_found"}, {`"isFound":true,`, "", "invalid_response"}, {`"isActive":true`, `"isActive":false`, "assignment_revoked"}, {expiry, "2026-01-03T00:00:00Z", "inconsistent_snapshot"}, {`"trafficUsedBytes":"9007199254740993"`, `"trafficUsedBytes":"-1"`, "invalid_response"}, {`["https://proxy.example.invalid/synthetic-profile"]`, `[]`, "empty_snapshot"}, {`https://proxy.example.invalid/synthetic-profile`, `file:///etc/passwd`, "invalid_response"},
 	} {
 		t.Run(tc.want+tc.old, func(t *testing.T) {
 			c, _, _ := fixture(t, func(w http.ResponseWriter, r *http.Request) {
