@@ -42,6 +42,28 @@ test('manual subscription file retries exactly once without exposing or storing 
  expect(state.calls).not.toContain('configuration.publish');
  expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
 });
+
+test('source recipient edits require confirmation and retry the same scoped mutation',async({page,request})=>{
+ await reset(request,{sharesFailOnce:true});await page.goto(origin);await expect(page.locator('#load-sources')).toBeEnabled();
+ await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();
+ await page.getByRole('button',{name:'Настроить источник'}).first().click();
+ await page.locator('#source-shares-load').click();
+ const recipient=page.locator('#source-shares-id'),list=page.locator('#source-shares-list');
+ await expect(recipient).toBeEnabled();await page.locator('#source-shares-kind').selectOption('device');
+ await recipient.fill('device-a');await page.locator('#source-shares-add').click();await expect(list).toContainText('Устройство · device-a');
+ await expect(page.locator('#source-shares-save')).toBeDisabled();
+ await page.locator('#source-shares-confirm').check();await page.locator('#source-shares-save').click();
+ await expect(page.locator('#pending')).toBeVisible();await expect(recipient).toBeDisabled();
+ await page.locator('#retry-save').click();
+ await expect(page.locator('#source-shares-revision')).toContainText('Версия списка: 1');
+ await expect(page.locator('#pending')).toBeHidden();await expect(list).toContainText('device-a');
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.calls.filter(call=>call==='source.shares.put')).toHaveLength(2);
+ expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
+ await request.post(origin+'/fixture/revoke',{data:{}});
+ await page.locator('#source-shares-load').click();
+ await expect(list).toHaveText('');await expect(page.locator('#source-shares-save')).toBeDisabled();
+});
 async function draft(page){await page.locator('#draft-id').fill('draft-a');await page.locator('#target-id').fill('device-a');await page.locator('#plan').fill(JSON.stringify(plan,null,2));}
 test('console safely renders source metadata and saves/reopens its private draft',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();

@@ -3,6 +3,7 @@ import http from 'node:http';import fs from 'node:fs';
 let auth=true,denied=false,failSave=false,drafts=new Map(),operations=new Map(),calls=[];
 const originalSource=()=>({id:'source-a',owner:'synthetic-user',name:'<img src=x onerror="window.injected=true">',mode:'server',format:'uri',enabled:true,state:'active',revision:1,networkModes:['wifi'],activeSnapshot:'snapshot-a',validUntil:1800003600,refreshSeconds:3600,maxStaleSeconds:86400});
 let sources=new Map([['source-a',originalSource()]]),jobs=new Map();
+let shares=new Map();
 let layerDrafts=new Map(),discardedDrafts=new Set(),configurationJobs=new Map(),options={};
 const server=http.createServer(async(req,res)=>{
  const send=(status,data)=>{const headers={'Content-Type':'application/json','Cache-Control':'no-store'};if(req.url.startsWith('/fixture/'))headers.Connection='close';res.writeHead(status,headers);res.end(JSON.stringify(data));};
@@ -13,7 +14,7 @@ const server=http.createServer(async(req,res)=>{
  const limit=importing?14*1024*1024+65536:278528;
  let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>limit){send(413,{});return;}}
  let body;try{body=JSON.parse(raw||'{}');}catch{send(400,{});return;}
- if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
+ if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();shares=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
  if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],layerDrafts:[...layerDrafts.values()],sources:[...sources.values()],operations:operations.size,calls});return;}
  if(req.url==='/fixture/revoke'){denied=true;send(200,{});return;}
  if(req.url==='/fixture/expire'){auth=false;send(200,{});return;}
@@ -83,6 +84,19 @@ const server=http.createServer(async(req,res)=>{
  }
  case 'source.list':send(200,{sources:[...sources.values()],next:p.after?'':'source-a'});break;
  case 'source.get':{const source=sources.get(p.id);send(source?200:403,source||{});break;}
+ case 'source.shares.get':{
+  if(!sources.has(p.id)){send(403,{});break;}
+  send(200,shares.get(p.id)||{revision:0,recipients:[]});break;
+ }
+ case 'source.shares.put':{
+  const prior=operations.get(body.requestId);
+  if(prior){send(prior.raw===raw?200:409,prior.value);break;}
+  const source=sources.get(p.id),current=shares.get(p.id)||{revision:0};
+  if(source?.revision!==p.revision||p.shares.revision!==current.revision){send(409,{});break;}
+  const value={revision:current.revision+1,recipients:p.shares.recipients};shares.set(p.id,value);operations.set(body.requestId,{raw,value});
+  if(options.sharesFailOnce){options.sharesFailOnce=false;send(503,{});}else send(200,value);
+  break;
+ }
  case 'source.put':{
   const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}
   const source=p.source,current=sources.get(source.id);

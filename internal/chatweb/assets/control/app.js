@@ -3,11 +3,13 @@ const $=id=>document.getElementById(id);
 const sourceImportPath='/control/source/import';
 const sourceImportBytes=10*1024*1024;
 const jobStates={queued:'В очереди',running:'Выполняется',succeeded:'Завершено',failed:'Ошибка',cancelled:'Отменено',dead_letter:'Истёк срок или лимит повторов'};
+const recipientKinds={user:'Пользователь',device:'Устройство',group:'Группа'};
 let authenticated=false,busy=false,pending=null,revision=0,opened=null,next='',listedOwner='';
 let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='',sourceHistoryNext='';
 let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null;
 let layerComparison=null;
 let layerDraftInventory=null;
+let sourceShares=null;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message){$('status').textContent=message;}
@@ -20,6 +22,11 @@ function controls(){
  $('source-history-more').disabled=$('source-history').disabled||!sourceHistoryNext;
  $('source-import-file').disabled=busy||!authenticated||!!pending||sourceIdentity?.mode!=='manual';
  $('source-import').disabled=$('source-import-file').disabled||!$('source-import-file').files.length;
+ $('source-shares-load').disabled=$('source-history').disabled;
+ const sharesBlocked=$('source-shares-load').disabled||!sourceShares;
+ for(const id of ['source-shares-kind','source-shares-id','source-shares-add','source-shares-confirm'])$(id).disabled=sharesBlocked;
+ $('source-shares-save').disabled=sharesBlocked||!$('source-shares-confirm').checked||!sharesChanged();
+ for(const button of $('source-shares-list').querySelectorAll('button'))button.disabled=sharesBlocked;
  $('more-sources').disabled=busy||!authenticated||!next||!!pending;
  for(const id of ['owner','inventory-device',...formFields])$(id).disabled=busy||!authenticated||!!pending;
  $('pending').hidden=!pending;for(const id of ['retry-save','discard-save'])$(id).disabled=busy||!authenticated;
@@ -163,6 +170,12 @@ async function retry(){
  catch(error){if(['invalid','size','importSize'].includes(error.message))pending=null;throw error;}
  if(pendingKind==='source'){
   showSource(result);status('Источник сохранён. Активные политики меняются отдельной публикацией.');
+ }else if(pendingKind==='shares'){
+  const attempted=JSON.parse(pending).payload;
+  const view=validateShares(result);
+  if(attempted.id!==sourceIdentity?.id||attempted.revision!==sourceRevision
+     ||view.revision!==attempted.shares.revision+1||recipientKey(view.recipients)!==recipientKey(attempted.shares.recipients))throw Error('invalid');
+  showSourceShares(view);status('Получатели источника сохранены.');
  }else if(['sync','import'].includes(pendingKind)){
   if(result.sourceId!==sourceIdentity?.id||typeof result.id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(result.id)
       ||typeof result.phase!=='string'||!Object.hasOwn(jobStates,result.phase))throw Error('invalid');
@@ -176,9 +189,9 @@ async function retry(){
  }
  pending=null;
 }
-function clearSource(){sourceRevision=0;sourceIdentity=null;sourceJob='';clearSourceHistory();for(const id of ['source-id','source-owner','source-name','source-resource','source-external','source-until','source-secret','source-import-file'])$(id).value='';$('source-mode').value='server';$('source-format').value='uri';$('source-refresh').value='3600';$('source-stale').value='86400';$('source-enabled').checked=true;$('source-secret-operation').value='keep';for(const option of $('source-modes').options)option.selected=option.value==='wifi';$('source-version').textContent='Источник не выбран';$('job-status').replaceChildren();}
+function clearSource(){sourceRevision=0;sourceIdentity=null;sourceJob='';clearSourceHistory();clearSourceShares();for(const id of ['source-id','source-owner','source-name','source-resource','source-external','source-until','source-secret','source-import-file'])$(id).value='';$('source-mode').value='server';$('source-format').value='uri';$('source-refresh').value='3600';$('source-stale').value='86400';$('source-enabled').checked=true;$('source-secret-operation').value='keep';for(const option of $('source-modes').options)option.selected=option.value==='wifi';$('source-version').textContent='Источник не выбран';$('job-status').replaceChildren();}
 function localDate(seconds){const d=new Date(seconds*1000);if(!Number.isFinite(d.getTime()))throw Error('invalid');return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-function showSource(s){if(!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');sourceIdentity={id:s.id,owner:s.owner,mode:s.mode};sourceRevision=s.revision;sourceJob='';clearSourceHistory();$('source-import-file').value='';$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
+function showSource(s){if(!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');sourceIdentity={id:s.id,owner:s.owner,mode:s.mode};sourceRevision=s.revision;sourceJob='';clearSourceHistory();clearSourceShares();$('source-import-file').value='';$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
 async function importSource(){
  const field=$('source-import-file'),file=field.files[0];
  if(pending||sourceIdentity?.mode!=='manual'||!file||file.size<1)throw Error('invalid');
@@ -196,6 +209,55 @@ async function importSource(){
 }
 function clearSourceHistory(){
  sourceHistoryNext='';$('source-history-status').textContent='';$('source-history-list').replaceChildren();
+}
+function clearSourceShares(){
+ sourceShares=null;$('source-shares-kind').value='user';$('source-shares-id').value='';$('source-shares-confirm').checked=false;
+ $('source-shares-revision').textContent='';$('source-shares-list').replaceChildren();
+}
+function recipientKey(recipients){return recipients.map(r=>r.kind+':'+r.id).sort().join('\n');}
+function sharesChanged(){return !!sourceShares&&sourceShares.initial!==recipientKey(sourceShares.recipients);}
+function validRecipient(item){
+ return item&&typeof item.kind==='string'&&Object.hasOwn(recipientKinds,item.kind)
+     &&typeof item.id==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(item.id);
+}
+function validateShares(view){
+ if(!view||!Number.isSafeInteger(view.revision)||view.revision<0||!Array.isArray(view.recipients)||view.recipients.length>256
+    ||!view.recipients.every(validRecipient))throw Error('invalid');
+ const recipients=view.recipients.map(({kind,id})=>({kind,id}));
+ if(new Set(recipients.map(r=>r.kind+':'+r.id)).size!==recipients.length)throw Error('invalid');
+ return {revision:view.revision,recipients};
+}
+function renderSourceShares(){
+ const list=$('source-shares-list');list.replaceChildren();
+ $('source-shares-revision').textContent=`Версия списка: ${sourceShares.revision}`+(sharesChanged()?' · есть правки':'');
+ for(const [index,r] of sourceShares.recipients.entries()){
+  const item=textItem(list,`${recipientKinds[r.kind]} · ${r.id} `);
+  const remove=document.createElement('button');remove.textContent='Удалить';
+  remove.onclick=()=>{if(busy||pending||!sourceShares)return;sourceShares.recipients.splice(index,1);$('source-shares-confirm').checked=false;renderSourceShares();controls();};
+  item.append(remove);
+ }
+}
+function showSourceShares(view){
+ sourceShares={...view,initial:recipientKey(view.recipients)};
+ $('source-shares-id').value='';$('source-shares-confirm').checked=false;renderSourceShares();
+}
+async function loadSourceShares(){
+ if(!sourceIdentity)throw Error('invalid');
+ showSourceShares(validateShares(await action('source.shares.get',{id:sourceIdentity.id})));
+ status('Список получателей загружен.');
+}
+function addSourceRecipient(){
+ const r={kind:$('source-shares-kind').value,id:$('source-shares-id').value.trim()};
+ if(!sourceShares||sourceShares.recipients.length>=256||!validRecipient(r)
+    ||sourceShares.recipients.some(old=>old.kind===r.kind&&old.id===r.id))throw Error('invalid');
+ if(sourceIdentity.mode==='device'&&(r.kind!=='user'||r.id!==sourceIdentity.owner))throw Error('invalid');
+ sourceShares.recipients.push(r);$('source-shares-id').value='';$('source-shares-confirm').checked=false;renderSourceShares();
+}
+async function saveSourceShares(){
+ if(!sourceIdentity||!sourceShares||!sharesChanged()||!$('source-shares-confirm').checked||pending)throw Error('invalid');
+ const shares={revision:sourceShares.revision,recipients:sourceShares.recipients};
+ pendingKind='shares';pending=envelope('source.shares.put',{id:sourceIdentity.id,revision:sourceRevision,shares});
+ await retry();
 }
 async function sourceHistory(more=false){
  const sourceId=sourceIdentity?.id;
@@ -244,6 +306,10 @@ $('source-history').onclick=()=>work(()=>sourceHistory());
 $('source-history-more').onclick=()=>work(()=>sourceHistory(true));
 $('source-import-file').onchange=controls;
 $('source-import').onclick=()=>work(importSource);
+$('source-shares-load').onclick=()=>work(loadSourceShares);
+$('source-shares-add').onclick=()=>work(addSourceRecipient);
+$('source-shares-confirm').onchange=controls;
+$('source-shares-save').onclick=()=>work(saveSourceShares);
 controls();work(async()=>{await request('/session',{});authenticated=true;status('Вы вошли. Выберите пользователя или откройте личный черновик.');});
 
 function clearLayerReview(){layerPreview=null;$('layer-confirm').checked=false;$('layer-review').hidden=true;$('layer-impact').textContent='';}

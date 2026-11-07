@@ -14,7 +14,7 @@ import (
 )
 
 func TestConsoleSourceMutationsRemainInTheClosedActionAllowlist(t *testing.T) {
-	for _, action := range []string{"source.put", "source.sync", "job.get", "job.list", "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.layers.draft.discard", "configuration.history.get"} {
+	for _, action := range []string{"source.put", "source.sync", "source.shares.put", "job.get", "job.list", "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.layers.draft.discard", "configuration.history.get"} {
 		raw := []byte(`{"version":1,"action":"` + action + `","requestId":"synthetic-request-123","payload":{}}`)
 		if !validConsoleAction(raw, false) {
 			t.Fatal("implemented scoped source action rejected")
@@ -63,6 +63,10 @@ func TestConsoleUsesSeparateCookieAudienceAndOnlyClosedControlActions(t *testing
 	history := `{"version":1,"action":"job.list","requestId":"synthetic-history-request","payload":{"sourceId":"source-a","after":""}}`
 	if w := webCall(s, "/control/action", history, cookie); w.Code != 200 {
 		t.Fatal("scoped job history did not reach the control API", w.Code)
+	}
+	shares := `{"version":1,"action":"source.shares.put","requestId":"synthetic-share-request","payload":{"id":"source-a","revision":1,"shares":{"revision":0,"recipients":[]}}}`
+	if w := webCall(s, "/control/action", shares, cookie); w.Code != 200 {
+		t.Fatal("source recipient mutation did not reach the control API", w.Code)
 	}
 	request := httptest.NewRequest("POST", "/control/action", strings.NewReader(body))
 	request.AddCookie(cookie)

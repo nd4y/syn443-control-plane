@@ -16,8 +16,8 @@ Refresh queues a SQL job and the
 screen reads its state. Unacknowledged mutations retry the identical body/request
 identity; fields stay locked until the result or a fresh server read is chosen.
 Permission/session withdrawal and logout erase both draft and new source-secret
-memory. The console keeps the temporary edit in the current tab. Device fetch,
-source-share editing and full resource/user/group administration remain unfinished.
+memory. The console keeps the temporary edit in the current tab. Device fetch
+and full resource/user/group administration remain unfinished.
 
 For a saved manual source, the console submits a file up to 10 MiB to
 `/control/source/import`. That BFF endpoint accepts only `source.import` and
@@ -28,6 +28,14 @@ Other control requests retain their ordinary limit. The source worker parses
 the file, applies normal quarantine and erases raw input on terminal outcomes.
 The file selector clears after the body is prepared. An uncertain reply keeps
 the same pending operation in tab memory for an explicit retry.
+
+The source recipient editor uses the selected source revision and the loaded
+share revision. It shows an editable list of user, device or group identifiers,
+requires confirmation and retries the exact operation if a reply is lost.
+The control API independently verifies fresh MFA, source share and recipient
+receive rights. Source recipient changes are separate from publishing device
+policies. The signer still requires verified membership before using group
+grants. The page clears the list on source change or session withdrawal.
 
 Three new required browser cases cover save/read-without-secrets/sync job,
 lost-acknowledgment idempotency and denial erasure. The browser gate now requires

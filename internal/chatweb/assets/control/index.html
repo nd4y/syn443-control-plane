@@ -28,6 +28,14 @@
 <h3>История заданий источника</h3>
 <button id="source-history" disabled>Загрузить историю</button><button id="source-history-more" disabled>Более ранние задания</button>
 <p id="source-history-status" role="status"></p><ul id="source-history-list"></ul>
+<h3>Получатели источника</h3>
+<button id="source-shares-load" disabled>Загрузить получателей</button>
+<p id="source-shares-revision"></p><ul id="source-shares-list"></ul>
+<label for="source-shares-kind">Тип получателя</label><select id="source-shares-kind" disabled><option value="user">Пользователь</option><option value="device">Устройство</option><option value="group">Группа</option></select>
+<label for="source-shares-id">ID получателя</label><input id="source-shares-id" maxlength="128" autocomplete="off" disabled>
+<button id="source-shares-add" disabled>Добавить получателя</button>
+<label><input id="source-shares-confirm" type="checkbox" disabled>Подтверждаю новый список. Сервер проверит права и свежую MFA.</label>
+<button id="source-shares-save" disabled>Сохранить получателей</button>
 </section><section aria-labelledby="draft-title"><h2 id="draft-title">Личный черновик конфигурации</h2>
 <p>Сохранение черновика не меняет VPN на устройствах. Для публикации нужны отдельные проверка и подтверждение.</p>
 <label for="draft-id">ID черновика</label><input id="draft-id" autocomplete="off" maxlength="128"><button id="open-draft" disabled>Открыть черновик</button><button id="new-draft" disabled>Новый черновик</button>
