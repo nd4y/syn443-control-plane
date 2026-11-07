@@ -396,6 +396,17 @@ func TestSQLProtectedCacheAndSourceCredentialsRemainScoped(t *testing.T) {
 	if e != nil || cache.ETag != `"cached-version"` || meta.ID != first.ID || len(old) != 1 {
 		t.Fatal("working cache lost its source snapshot")
 	}
+	legacy, e := worker.seal([]byte(`{"ETag":"legacy"}`), aad("fetch-cache", source.ID, source.Revision))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = fixtureOwner.Exec(`UPDATE catalog_sources SET fetch_cache=$2 WHERE id=$1`, source.ID, legacy); e != nil {
+		t.Fatal(e)
+	}
+	cache, meta, old, e = worker.SyncCache(ctx, job, now.Add(time.Second))
+	if e != nil || cache.ETag != "" || meta.ID != first.ID || len(old) != 1 {
+		t.Fatal("unbound legacy validators were reused or blocked a full refresh", e)
+	}
 	if e = api.Cancel(ctx, actor, job.ID, "cancel", now.Add(time.Second)); e != nil {
 		t.Fatal(e)
 	}

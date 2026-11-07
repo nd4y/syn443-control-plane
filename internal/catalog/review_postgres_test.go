@@ -78,13 +78,21 @@ func TestSQLCandidateReviewIsExplicitAndCannotBreakReferences(t *testing.T) {
 	source := mustSource(t, api, actor, sourceExample(now), "create", now)
 	lines := []string{"http://one.example.invalid:443", "http://two.example.invalid:443", "http://three.example.invalid:443"}
 	job, profiles := manualWork(t, api, worker, actor, source, "first", strings.Join(lines, "\n"), now)
-	first, e := worker.Complete(ctx, job, profiles, subscriptions.Quota{}, subscriptions.Cache{}, now)
+	first, e := worker.Complete(ctx, job, profiles, subscriptions.Quota{}, subscriptions.Cache{ETag: `"working"`}, now)
 	if e != nil {
 		t.Fatal(e)
 	}
 	job, profiles = manualWork(t, api, worker, actor, source, "candidate", lines[0], now)
-	candidate, e := worker.Complete(ctx, job, profiles, subscriptions.Quota{}, subscriptions.Cache{}, now)
+	candidate, e := worker.Complete(ctx, job, profiles, subscriptions.Quota{}, subscriptions.Cache{ETag: `"quarantined"`}, now)
 	if e != nil || candidate.State != "quarantined" {
+		t.Fatal(e)
+	}
+	job, _ = manualWork(t, api, worker, actor, source, "cache-after-quarantine", lines[0], now)
+	cache, active, _, e := worker.SyncCache(ctx, job, now)
+	if e != nil || active.ID != first.ID || cache.ETag != `"working"` {
+		t.Fatal("unapproved candidate validators were attached to the working snapshot", e)
+	}
+	if e = api.Cancel(ctx, actor, job.ID, "cancel-cache-probe", now); e != nil {
 		t.Fatal(e)
 	}
 	review := Review{SourceID: source.ID, SourceRevision: source.Revision, Candidate: candidate.ID, Hash: candidate.Hash, Active: first.ID, Approve: true}
@@ -129,6 +137,10 @@ func TestSQLCandidateReviewIsExplicitAndCannotBreakReferences(t *testing.T) {
 		t.Fatal("review head not committed", e)
 	}
 	job, profiles = manualWork(t, api, worker, actor, source, "new-large", strings.Join(lines, "\n"), now)
+	cache, active, _, e = worker.SyncCache(ctx, job, now)
+	if e != nil || active.ID != candidate.ID || cache.ETag != "" {
+		t.Fatal("manual promotion inherited validators for a different snapshot", e)
+	}
 	large, e := worker.Complete(ctx, job, profiles, subscriptions.Quota{}, subscriptions.Cache{}, now)
 	if e != nil {
 		t.Fatal(e)

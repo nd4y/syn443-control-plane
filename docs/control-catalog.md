@@ -31,6 +31,10 @@ authentication failures preserve only the existing bounded valid snapshot;
 explicit upstream user revocation/expiry removes eligibility.
 The durable access denial is separate from refresh state: rename, credential
 rotation or a later network/authentication failure cannot revive a revoked cache.
+
+Conditional HTTP validators are encrypted for the active snapshot and source
+revision. A quarantined candidate cannot attach its validators to the previous
+working snapshot. Manual promotion and legacy validators force one full fetch.
 Only a newly accepted verified snapshot can restore it. Cache TTL/provider expiry
 remain visible even when the most recent refresh failed. Source recipient
 changes require both share and receive authority; device-fetched data is personal.

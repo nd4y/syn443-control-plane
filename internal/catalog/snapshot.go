@@ -47,6 +47,28 @@ func verifyProfileIDs(source string, salt []byte, profiles []subscriptions.Profi
 	return nil
 }
 
+func (s *Store) activeFetchCache(protected []byte, source Source) (subscriptions.Cache, error) {
+	var cache subscriptions.Cache
+	if len(protected) == 0 || source.ActiveSnapshot == "" || source.AccessState != "allowed" {
+		return cache, nil
+	}
+	raw, err := s.open(protected, aad("active-fetch-cache", source.ID+"/"+source.ActiveSnapshot, source.Revision))
+	if err != nil {
+		// Legacy validators were sealed only to the source revision. They
+		// may belong to a quarantined candidate, so force an unconditional read.
+		if legacy, legacyErr := s.open(protected, aad("fetch-cache", source.ID, source.Revision)); legacyErr == nil {
+			clear(legacy)
+			return cache, nil
+		}
+		return cache, ErrUnavailable
+	}
+	defer clear(raw)
+	if json.Unmarshal(raw, &cache) != nil {
+		return subscriptions.Cache{}, ErrUnavailable
+	}
+	return cache, nil
+}
+
 // SyncCache exposes protected working data only to the isolated source worker.
 // It is not an inventory/export endpoint and does not extend its lease.
 func (s *Store) SyncCache(ctx context.Context, job Job, now time.Time) (subscriptions.Cache, Snapshot, []subscriptions.Profile, error) {
@@ -73,11 +95,8 @@ func (s *Store) SyncCache(ctx context.Context, job Job, now time.Time) (subscrip
 	if e = tx.QueryRowContext(ctx, `SELECT fetch_cache FROM catalog_sources WHERE id=$1`, source.ID).Scan(&protected); e != nil {
 		return cache, Snapshot{}, nil, ErrUnavailable
 	}
-	if len(protected) > 0 {
-		raw, e := s.open(protected, aad("fetch-cache", source.ID, source.Revision))
-		if e != nil || json.Unmarshal(raw, &cache) != nil {
-			return cache, Snapshot{}, nil, ErrUnavailable
-		}
+	if cache, e = s.activeFetchCache(protected, source); e != nil {
+		return cache, Snapshot{}, nil, e
 	}
 	var previous Snapshot
 	var profiles []subscriptions.Profile
@@ -114,7 +133,8 @@ func (s *Store) Complete(ctx context.Context, job Job, profiles []subscriptions.
 		return Snapshot{}, e
 	}
 	cacheRaw, _ := json.Marshal(cache)
-	protectedCache, e := s.seal(cacheRaw, aad("fetch-cache", source.ID, source.Revision))
+	protectedCache, e := s.seal(cacheRaw, aad("active-fetch-cache", source.ID+"/"+result.ID, source.Revision))
+	clear(cacheRaw)
 	if e != nil {
 		return Snapshot{}, e
 	}
@@ -211,7 +231,9 @@ func (s *Store) Complete(ctx context.Context, job Job, profiles []subscriptions.
 	if active != "" {
 		activeValue = active
 	}
-	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET active_snapshot=$2,candidate_snapshot=$3,state=$4,last_sync=$5,next_sync=$6,fetch_cache=$7,last_resource_revision=$8,access_state=$9 WHERE id=$1`, source.ID, activeValue, result.ID, state, now.Unix(), nextSourceSync(source, now.Unix()), protectedCache, job.ResourceRevision, access)
+	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET active_snapshot=$2,candidate_snapshot=$3,state=$4,last_sync=$5,next_sync=$6,
+ fetch_cache=CASE WHEN $4='active' THEN $7 WHEN $4='quota_exhausted' THEN NULL ELSE fetch_cache END,
+ last_resource_revision=$8,access_state=$9 WHERE id=$1`, source.ID, activeValue, result.ID, state, now.Unix(), nextSourceSync(source, now.Unix()), protectedCache, job.ResourceRevision, access)
 	if e != nil {
 		return Snapshot{}, ErrUnavailable
 	}

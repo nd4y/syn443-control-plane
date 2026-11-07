@@ -247,7 +247,7 @@ func (s *Store) ReviewSnapshot(ctx context.Context, actor Actor, review Review, 
 				return Snapshot{}, ErrUnavailable
 			}
 		}
-		if _, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET active_snapshot=$2,candidate_snapshot=NULL,state='active',access_state='allowed' WHERE id=$1`, source.ID, candidate.ID); e != nil {
+		if _, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET active_snapshot=$2,candidate_snapshot=NULL,state='active',access_state='allowed',fetch_cache=NULL WHERE id=$1`, source.ID, candidate.ID); e != nil {
 			return Snapshot{}, ErrUnavailable
 		}
 		state = "active"
