@@ -117,9 +117,10 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	isOverlay := a.OverlayServiceID != "" && (path == "/v1/device/overlay/fetch" || path == "/v1/device/overlay/consume")
 	isCapabilities := path == "/v1/device/capabilities" || path == "/v1/devices/capabilities"
+	isActivation := path == activationStatusPath && r.Method == "POST"
 	isInvite := path == "/v1/invitations/time" || path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
 	allowed := isCapabilities && (r.Method == "GET" || r.Method == "POST") || isOverlay && r.Method == "POST" || isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
-	if !allowed {
+	if !allowed && !isActivation {
 		http.NotFound(w, r)
 		return
 	}
@@ -263,6 +264,18 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if (!binding.Active && path != "/v1/device/revoke") || binding.Jkt != proof.Thumbprint {
 		failure(w, ErrDenied)
+		return
+	}
+	if isActivation {
+		if r.Header.Get("Origin") != "" {
+			failure(w, identity.ErrInvalid)
+			return
+		}
+		if e = a.Store.RecordActivation(ctx, binding, token, proof, raw, a.Roots, now); e != nil {
+			failure(w, e)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if path == "/v1/device/capabilities" {

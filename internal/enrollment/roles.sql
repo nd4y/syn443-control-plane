@@ -15,3 +15,6 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON identity_challenges,identity_sessions,ident
  identity_replays,identity_requests,identity_revocations,identity_owner_revocations TO syn443_identity_api;
 -- Publisher cannot mint or inspect device session hashes, challenges or idempotent replies.
 REVOKE ALL ON FUNCTION identity_device_invariants() FROM PUBLIC;
+GRANT SELECT,INSERT,UPDATE(policy_revision,envelope_hash,activation_generation,outcome,active_policy_revision,received_at_ms)
+ ON identity_policy_activation TO syn443_identity_api;
+REVOKE ALL ON FUNCTION identity_activation_invariants() FROM PUBLIC;

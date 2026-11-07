@@ -71,3 +71,25 @@ CREATE INDEX IF NOT EXISTS identity_owner_revocation_expiry ON identity_owner_re
 
 -- Capture the exact owner grant that independently authorized this publication.
 ALTER TABLE identity_devices ADD COLUMN IF NOT EXISTS publication_grant_hash text NOT NULL DEFAULT '';
+
+-- One bounded, device-reported outcome per identity. Publication is independent.
+CREATE TABLE IF NOT EXISTS identity_policy_activation (
+ device text PRIMARY KEY REFERENCES identity_devices(id),
+ policy_revision bigint NOT NULL CHECK(policy_revision BETWEEN 1 AND 9007199254740991),
+ envelope_hash text NOT NULL CHECK(length(envelope_hash)=43),
+ activation_generation bigint NOT NULL CHECK(activation_generation BETWEEN 1 AND 9007199254740991),
+ outcome text NOT NULL CHECK(outcome IN ('committed','degraded','rolled_back')),
+ active_policy_revision bigint NOT NULL,
+ received_at_ms bigint NOT NULL CHECK(received_at_ms>0),
+ CHECK ((outcome='rolled_back' AND active_policy_revision>=0 AND active_policy_revision<policy_revision)
+   OR (outcome IN ('committed','degraded') AND active_policy_revision=policy_revision))
+);
+CREATE OR REPLACE FUNCTION identity_activation_invariants() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.device<>OLD.device OR NEW.policy_revision<=OLD.policy_revision OR NEW.received_at_ms<OLD.received_at_ms THEN
+  RAISE EXCEPTION 'stale activation report';
+ END IF;
+ RETURN NEW;
+END; $$;
+DROP TRIGGER IF EXISTS identity_policy_activation_guard ON identity_policy_activation;
+CREATE TRIGGER identity_policy_activation_guard BEFORE UPDATE ON identity_policy_activation FOR EACH ROW EXECUTE FUNCTION identity_activation_invariants();
