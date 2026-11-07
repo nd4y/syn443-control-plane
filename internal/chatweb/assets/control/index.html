@@ -52,7 +52,13 @@
 <label for="route-check-target">Адрес проверки</label><input id="route-check-target" type="text" maxlength="2048" autocomplete="off" placeholder="host:port или https://…">
 <button id="route-check-add" type="button">Добавить проверку</button><ul id="route-check-list"></ul>
 <label><input id="route-reserve-cooldown" type="checkbox" disabled> Откладывать фоновые проверки резервов после подтверждённых сбоев</label>
-<p>Настройка доступна для внутреннего маршрута по Wi-Fi. Перед публикацией сервер проверит поддержку у всех выбранных устройств.</p>
+<p>Настройка доступна для внутреннего маршрута по Wi-Fi. Без указания доли она действует для всех выбранных устройств, если все её поддерживают.</p>
+<div id="route-cooldown-rollout" hidden>
+<label for="route-rollout-id">Идентификатор раскатки</label><input id="route-rollout-id" autocomplete="off" maxlength="48">
+<label for="route-rollout-share">Доля совместимых устройств, %</label><input id="route-rollout-share" type="number" min="0" max="100" step="0.01">
+<button id="route-rollout-save" type="button">Применить долю к черновику</button>
+<p>Сохраняйте идентификатор при изменении доли, чтобы не менять состав группы. 0% возвращает прежнее поведение после публикации новой версии.</p>
+</div>
 </fieldset>
 <p>Профили задаются ссылками sourceId/profileId. Ключи, пароли и состояние NetBird сюда не переносятся.</p><button id="save-draft" disabled>Сохранить черновик</button></form>
 <div id="pending" hidden><p>Изменение не подтверждено. Повтор использует ту же операцию.</p><button id="retry-save">Повторить операцию</button><button id="discard-save">Отменить повтор и проверить версию на сервере</button></div>

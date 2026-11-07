@@ -137,9 +137,16 @@ test('reserve probe cooldown requires explicit draft opt in and never publishes'
  await input.fill(JSON.stringify(fixture,null,2));await expect(box).toBeEnabled();await expect(box).not.toBeChecked();
  await box.check();
  expect(JSON.parse(await input.inputValue()).network.routeFailover.probeCooldown).toBe(true);
+ const rolloutId=page.locator('#route-rollout-id'),share=page.locator('#route-rollout-share');
+ await rolloutId.fill('fixture-canary');await share.fill('12.34');await page.locator('#route-rollout-save').click();
+ expect(JSON.parse(await input.inputValue()).network.routeFailover.probeCooldownRollout).toEqual({id:'fixture-canary',basisPoints:1234});
  await page.locator('#save-draft').click();await expect(page.locator('#draft-version')).toContainText('Версия черновика: 1');
  await input.fill('{}');await page.locator('#open-draft').click();await expect(box).toBeChecked();
- await box.uncheck();expect(JSON.parse(await input.inputValue()).network.routeFailover.probeCooldown).toBeUndefined();
+ await expect(rolloutId).toHaveValue('fixture-canary');await expect(share).toHaveValue('12.34');
+ await share.fill('0');await page.locator('#route-rollout-save').click();
+ expect(JSON.parse(await input.inputValue()).network.routeFailover.probeCooldownRollout.basisPoints).toBe(0);
+ await box.uncheck();const removed=JSON.parse(await input.inputValue()).network.routeFailover;
+ expect(removed.probeCooldown).toBeUndefined();expect(removed.probeCooldownRollout).toBeUndefined();
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });

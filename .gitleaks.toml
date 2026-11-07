@@ -14,6 +14,7 @@ regexTarget = "line"
 regexes = [
   '''^\s*"policy-payload\.schema\.json": "5b637dc08abe9463e5d58ff111785eccafdb071144103570a456b88dcae547a2",?\s*$''',
   '''^\s*"control-openapi\.json": "f85d000d2fb9ee5dbadf6e1e68ca13b94ebddbb9e1abf0bad5b0545fcf631235",?\s*$''',
+  '''^\s*"control-openapi\.json": "bd404f7eb482ce09508e0d252017f2c53174e7695a25a51971ada21ba074e4d7",?\s*$''',
 ]
 
 [[rules.allowlists]]

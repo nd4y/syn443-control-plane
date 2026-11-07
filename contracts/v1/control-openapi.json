@@ -2016,7 +2016,17 @@
               "selector": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
               "networkMode": {"const": "wifi"},
               "intent": {"const": "INTERNAL"},
-              "probeCooldown": {"type": "boolean"}
+              "probeCooldown": {"type": "boolean"},
+              "probeCooldownRollout": {
+                "type": "object", "additionalProperties": false, "required": ["id", "basisPoints"],
+                "properties": {
+                  "id": {"type": "string", "minLength": 1, "maxLength": 48, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+                  "basisPoints": {"type": "integer", "minimum": 0, "maximum": 10000}
+                }
+              }
+            },
+            "dependentSchemas": {
+              "probeCooldownRollout": {"required": ["probeCooldown"], "properties": {"probeCooldown": {"const": true}}}
             }
           },
           "rules": {

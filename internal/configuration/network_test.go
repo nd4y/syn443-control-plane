@@ -107,6 +107,14 @@ func TestInternalWifiFailoverRequiresComparableConcreteAuthorizedPaths(t *testin
 		func(v *NetworkSettings) { v.Rules = nil },
 		func(v *NetworkSettings) { v.RouteChecks[1].Checks[0].Target = "different.example.invalid:22" },
 		func(v *NetworkSettings) { v.RouteChecks[1].Required = true },
+		func(v *NetworkSettings) {
+			rate := 500
+			v.RouteFailover.ProbeCooldownRollout = &ProbeCooldownRollout{ID: "fixture", BasisPoints: &rate}
+		},
+		func(v *NetworkSettings) {
+			v.RouteFailover.ProbeCooldown = true
+			v.RouteFailover.ProbeCooldownRollout = &ProbeCooldownRollout{ID: "fixture"}
+		},
 	} {
 		bad := cloneNetwork(t, settings)
 		change(&bad)

@@ -1209,8 +1209,8 @@
       "evidence": [
         "docs/control-catalog.md#reserve-probe-cooldown"
       ],
-      "implementationScope": "Reviewed device or group configuration can explicitly opt in to a fixed built-in route feature, with capability checks for every recipient before publication.",
-      "remainingScope": "Named rollout stages and stable percentage assignment, independent decision bundles, metric gates and operational rollback UI."
+      "implementationScope": "Reviewed device/group configuration can explicitly opt in to a fixed route feature or assign a stable percentage of eligible devices. Others keep the legacy behavior; a new reviewed revision can set the share to zero.",
+      "remainingScope": "General rollout stages, independent decision bundles, metric gates, automated progression and operational rollout status/rollback UI."
     },
     {
       "id": "RLP-06",

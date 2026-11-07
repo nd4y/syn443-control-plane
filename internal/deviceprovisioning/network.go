@@ -76,9 +76,13 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	if plan.Network.RouteFailover != nil && (approved.Mode != "wifi" || !slices.Contains(target.Capabilities, "route.failover.v1")) {
 		return nil, enrollment.ErrDenied
 	}
-	if plan.Network.RouteFailover != nil && plan.Network.RouteFailover.ProbeCooldown &&
-		!slices.Contains(target.Capabilities, policy.ReserveProbeCooldown) {
-		return nil, enrollment.ErrDenied
+	rolloutEnabled := false
+	if failover := plan.Network.RouteFailover; failover != nil && failover.ProbeCooldown {
+		supported := slices.Contains(target.Capabilities, policy.ReserveProbeCooldown)
+		if failover.ProbeCooldownRollout == nil && !supported {
+			return nil, enrollment.ErrDenied
+		}
+		rolloutEnabled = supported && (failover.ProbeCooldownRollout == nil || failover.ProbeCooldownRollout.Includes(target.Device))
 	}
 	// Duplicate graph aliases may address one immutable source profile. Sort
 	// and deduplicate before SQL selection to keep lock acquisition stable.
@@ -126,7 +130,7 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	}
 	if plan.Network.RouteFailover != nil {
 		required = append(required, "route.failover.v1")
-		if plan.Network.RouteFailover.ProbeCooldown {
+		if rolloutEnabled {
 			required = append(required, policy.ReserveProbeCooldown)
 		}
 	}

@@ -65,10 +65,11 @@ type OutboundCheckPlan struct {
 // Initial failover is explicit and scoped to an internal destination rule.
 // Public exit classes require independent exit evidence before adoption.
 type RouteFailoverPlan struct {
-	Selector      string `json:"selector"`
-	NetworkMode   string `json:"networkMode"`
-	Intent        string `json:"intent"`
-	ProbeCooldown bool   `json:"probeCooldown,omitempty"`
+	Selector             string                `json:"selector"`
+	NetworkMode          string                `json:"networkMode"`
+	Intent               string                `json:"intent"`
+	ProbeCooldown        bool                  `json:"probeCooldown,omitempty"`
+	ProbeCooldownRollout *ProbeCooldownRollout `json:"probeCooldownRollout,omitempty"`
 }
 type NetworkSettings struct {
 	SchemaVersion    int                  `json:"schemaVersion"`
@@ -380,6 +381,9 @@ func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]an
 	plan := settings.RouteFailover
 	if plan == nil {
 		return nil, nil
+	}
+	if plan.ProbeCooldownRollout != nil && (!plan.ProbeCooldown || !plan.ProbeCooldownRollout.valid()) {
+		return nil, ErrInvalid
 	}
 	if plan.NetworkMode != "wifi" || plan.Intent != "INTERNAL" || plan.Selector == graph.Final || !failoverTag.MatchString(plan.Selector) {
 		return nil, ErrInvalid
