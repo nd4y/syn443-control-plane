@@ -21,19 +21,23 @@ local Stop, hard limits, ownership fences or authorization checks.
 ## M2 - identity and provisioning (pilot implemented, milestone open)
 OIDC/PKCE/DPoP, Keystore identity, SQL device sessions, separate API/publisher,
 signed assignments, cache/lease/refresh/revoke and transactional rollback have
-pilot code and tests. Remaining work includes release QR/manual invitations,
-managed overlay credential namespaces/retirement, signed route-check activation,
-rotation and full end-user/operational acceptance.
+pilot code and tests. Manual invitations use independent approval and the
+normal device session. The control plane can build a static HTTPS landing page
+and sign an installation profile offline. The managed overlay broker and the
+signed activation report have scoped SQL acceptance. Full physical enrollment,
+public-domain association, root rotation and live managed overlay acceptance
+remain open.
 
 ## M3 - engines, sources and administration (partial foundation)
 Embedded engine adapters exist. The scoped [Remnawave reader](remnawave-resource.md)
 now has a [persistent catalog/API and independent source worker](control-catalog.md),
 multi-format normalization, recipient CAS and quarantine review. A bounded
 [layer/rebase component](layered-configuration.md) preserves field ownership.
-Device fetch, dependency compilation/publication, complete protocol/chain
-acceptance, mobile edit/publish and the full responsive
-administrative frontend remain open. The existing support-chat web service is not
-the full panel. Multiple Remnawave/x-ui/3x-ui are extension contracts only.
+The publisher compiles approved network layers, binds the signed issuance to
+the desired revision and displays the device report separately. Source jobs
+have bounded expiry processing and staggered retries. Device fetch, full
+settings coverage, complete protocol/chain acceptance, native editing and full
+administration remain open. Multiple Remnawave/x-ui/3x-ui remain extension contracts.
 
 ## M4 - autonomous routing and support (partial)
 Reference ranking and bounded per-target checks exist. Basic SQL user/admin chat,

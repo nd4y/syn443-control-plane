@@ -2198,8 +2198,12 @@
     {
       "id": "BOOT-12",
       "text": "Origin сервера допускается только из доверенного списка установки либо из bootstrap manifest с подписью уже доверенного ключа. Сам QR не становится новым корнем доверия. Обычная TLS-валидация обязательна; redirects с переносом кода на другой origin запрещены. До подтверждения пользователь видит сервис и факт привязки; deep link не выполняет произвольные команды или admin-публикации.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/bootstrap-trust.md#installation-profile-for-first-launch",
+        "cmd/enrollment-admin/bootstrap_profile_test.go",
+        "internal/bootstrap/trust_test.go"
+      ]
     },
     {
       "id": "BOOT-13",

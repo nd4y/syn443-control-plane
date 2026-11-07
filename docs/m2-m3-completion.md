@@ -60,23 +60,23 @@ and cannot label planned behavior operational.
 
 [Portable managed NetBird](portable-netbird.md) connects typed layer configuration
 to direct/VLESS underlays and internal DNS, with independent broker publication.
-Its exact CI and affected physical acceptance remain separate; it does not close
-the full settings or administration rows above.
+The new typed path still requires physical acceptance alongside the broader
+settings and administration work.
 
 The bounded normalization and pure quarantine components are described in
 [the import matrix](subscription-import.md). The SQL catalog now also contains
 resource definitions, impact-bound sensitive changes, resource-version job fences,
 manual/HTTPS/Remnawave worker orchestration, scoped recipient CAS and explicit
-quarantine review. HTTP service integration,
-device fetch, retention, compiler, administration and identity/overlay completion are
-still pending. The catalog Actions gate runs actual role-restricted PostgreSQL,
+quarantine review. The control API serves this catalog and source workers retire
+expired inputs in bounded batches. Device fetch, broader history retention and
+full administration remain open. The catalog Actions gate runs role-restricted PostgreSQL,
 TLS provider fixtures, cancellation and atomic rollback checks with an80% floor.
 Remaining paths must each add positive, negative, concurrency
 and boundary checks before the corresponding milestone can be accepted. All builds
 and compiled tests execute in GitHub Actions. Private device/operator artifacts
 never become public test fixtures or upload payloads.
 
-## Approved network composition (2026-11-02, acceptance pending)
+## Approved network composition
 
 `deviceprovisioning.NetworkAuthority` composes an independent approved-layer
 reader, the bounded portable compiler and the publisher's role-restricted source
@@ -100,3 +100,14 @@ Actual PostgreSQL and 31 browser cases passed with the downloadable runtime
 archive at [Actions 42344723080](https://github.com/nd4y/syn443-control-plane/actions/runs/42344723080).
 Native editor parity, full settings, and physical application/reporting acceptance
 remain open.
+
+## Installation and queue evidence
+
+The static invitation fallback and offline profile signer passed the public
+artifact gates. The same build validates subscription deadline cleanup under
+row contention, retry timing, the authorization and signed-publication paths,
+and 31 browser outcomes. [Control Plane Actions 42347071539](https://github.com/nd4y/syn443-control-plane/actions/runs/42347071539)
+
+The signed installation profile and App Links need configured public endpoints
+and an accepted signed APK for release use. Physical association, camera
+capture and managed activation reporting remain separate gates.
