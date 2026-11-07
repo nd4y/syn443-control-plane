@@ -38,6 +38,19 @@ func TestSourceModelAndSecretOperations(t *testing.T) {
 	if r.Validate(now) != nil {
 		t.Fatal("resource binding")
 	}
+	d := base
+	d.Mode = "device"
+	if d.Validate(now) == nil {
+		t.Fatal("device source without a target")
+	}
+	d.FetchDeviceID = "bound-device"
+	if d.Validate(now) != nil {
+		t.Fatal("device binding")
+	}
+	d.Mode = "manual"
+	if d.Validate(now) == nil {
+		t.Fatal("unexpected device target on a manual source")
+	}
 	old := []byte(`"synthetic-protected-value"`)
 	kept, e := (SecretPatch{Operation: "keep"}).Apply(old)
 	if e != nil || !bytes.Equal(kept, old) {

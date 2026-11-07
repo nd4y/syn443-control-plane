@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS catalog_jobs(
  reason text NOT NULL DEFAULT '',payload bytea,created_at bigint NOT NULL,updated_at bigint NOT NULL,
  UNIQUE(actor,request_id)
 );
+ALTER TABLE catalog_jobs ADD COLUMN IF NOT EXISTS device_attempts integer NOT NULL DEFAULT 0 CHECK(device_attempts BETWEEN 0 AND 8);
+ALTER TABLE catalog_jobs ADD COLUMN IF NOT EXISTS device_result_hash text NOT NULL DEFAULT '';
 CREATE UNIQUE INDEX IF NOT EXISTS catalog_one_source_job ON catalog_jobs(source_id) WHERE phase IN('queued','running');
 CREATE INDEX IF NOT EXISTS catalog_due_jobs ON catalog_jobs(not_before,created_at) WHERE phase IN('queued','running');
 CREATE INDEX IF NOT EXISTS catalog_active_job_deadlines ON catalog_jobs(deadline,id) WHERE phase IN('queued','running');
@@ -124,10 +126,13 @@ BEGIN
 END$$;
 DROP TRIGGER IF EXISTS catalog_audit_guard ON catalog_audit;
 CREATE TRIGGER catalog_audit_guard BEFORE INSERT ON catalog_audit FOR EACH ROW EXECUTE FUNCTION catalog_audit_actor_guard();
+ALTER TABLE catalog_sources ADD COLUMN IF NOT EXISTS fetch_device_id text NOT NULL DEFAULT ''
+ CHECK (fetch_device_id='' OR mode='device' AND fetch_device_id ~ '^[A-Za-z0-9_-]{1,128}$');
 CREATE OR REPLACE FUNCTION catalog_source_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.id<>OLD.id OR NEW.owner<>OLD.owner OR NEW.mode<>OLD.mode OR NEW.salt<>OLD.salt
- OR NEW.resource_id IS DISTINCT FROM OLD.resource_id OR NEW.revision<OLD.revision THEN
+ OR NEW.resource_id IS DISTINCT FROM OLD.resource_id OR NEW.revision<OLD.revision
+ OR (OLD.fetch_device_id<>'' AND NEW.fetch_device_id<>OLD.fetch_device_id) THEN
   RAISE EXCEPTION 'immutable catalog source identity';
  END IF;
  RETURN NEW;

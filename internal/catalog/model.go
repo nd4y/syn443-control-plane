@@ -30,6 +30,7 @@ type Source struct {
 	Format               string   `json:"format"`
 	ResourceID           string   `json:"resourceId,omitempty"`
 	ExternalUserID       string   `json:"externalUserId,omitempty"`
+	FetchDeviceID        string   `json:"fetchDeviceId,omitempty"`
 	Enabled              bool     `json:"enabled"`
 	Revision             int64    `json:"revision"`
 	ValidUntil           int64    `json:"validUntil"`
@@ -51,6 +52,9 @@ func (s Source) Validate(now time.Time) error {
 		return ErrInvalid
 	}
 	if s.Mode != "server" && s.Mode != "device" && s.Mode != "manual" && s.Mode != "resource" {
+		return ErrInvalid
+	}
+	if s.Mode == "device" && !identifier.MatchString(s.FetchDeviceID) || s.Mode != "device" && s.FetchDeviceID != "" {
 		return ErrInvalid
 	}
 	if s.Format != "uri" && s.Format != "base64" && s.Format != "singbox" && s.Format != "xray" && s.Format != "mihomo" {

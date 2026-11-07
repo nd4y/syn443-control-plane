@@ -188,7 +188,8 @@ func (s *Store) Claim(ctx context.Context, now time.Time) (Job, error) {
 	// Bound expiry work under the shared claim lock and skip rows already
 	// locked by a concurrent source update.
 	if _, e = tx.ExecContext(ctx, `WITH expired AS (
-	  SELECT id FROM catalog_jobs WHERE phase IN('queued','running') AND (deadline<=$1 OR attempts>=8 AND lease_until<=$1)
+	  SELECT id FROM catalog_jobs WHERE phase IN('queued','running') AND (deadline<=$1 OR attempts>=8 AND lease_until<=$1
+	    OR kind='device' AND payload IS NULL AND device_attempts>=8 AND lease_until<=$1)
 	  ORDER BY deadline,id LIMIT 32 FOR UPDATE SKIP LOCKED
 	 ) UPDATE catalog_jobs j SET phase='dead_letter',reason='deadline_or_retry_limit',updated_at=$1 FROM expired e WHERE j.id=e.id`, now.Unix()); e != nil {
 		return job, ErrUnavailable
@@ -200,7 +201,7 @@ func (s *Store) Claim(ctx context.Context, now time.Time) (Job, error) {
 	if running >= 8 {
 		return job, tx.Commit()
 	}
-	e = tx.QueryRowContext(ctx, `SELECT id,source_id,source_revision,kind,phase,attempts,deadline,COALESCE(base_snapshot,''),resource_revision FROM catalog_jobs WHERE (phase='queued' OR phase='running' AND lease_until<=$1) AND not_before<=$1 AND deadline>$1 AND attempts<8 ORDER BY not_before,created_at,id LIMIT 1 FOR UPDATE SKIP LOCKED`, now.Unix()).Scan(&job.ID, &job.SourceID, &job.SourceRevision, &job.Kind, &job.Phase, &job.Attempts, &job.Deadline, &job.BaseSnapshot, &job.ResourceRevision)
+	e = tx.QueryRowContext(ctx, `SELECT id,source_id,source_revision,kind,phase,attempts,deadline,COALESCE(base_snapshot,''),resource_revision FROM catalog_jobs WHERE (phase='queued' OR phase='running' AND lease_until<=$1) AND (kind<>'device' OR payload IS NOT NULL) AND not_before<=$1 AND deadline>$1 AND attempts<8 ORDER BY not_before,created_at,id LIMIT 1 FOR UPDATE SKIP LOCKED`, now.Unix()).Scan(&job.ID, &job.SourceID, &job.SourceRevision, &job.Kind, &job.Phase, &job.Attempts, &job.Deadline, &job.BaseSnapshot, &job.ResourceRevision)
 	if e == sql.ErrNoRows {
 		return Job{}, tx.Commit()
 	}

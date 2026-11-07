@@ -267,6 +267,7 @@
         "docs/control-console.md#source-management-extension-acceptance-pending",
         "internal/chatweb/control_test.go",
         "docs/control-catalog.md",
+        "internal/catalog/device_sync_postgres_test.go",
         "internal/catalog/worker.go",
         "internal/catalog/store_postgres_test.go",
         "internal/catalog/resource_postgres_test.go",

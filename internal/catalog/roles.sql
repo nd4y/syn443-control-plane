@@ -38,7 +38,7 @@ END$$;
 DO $$BEGIN
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='syn443_identity_publisher') THEN
   GRANT USAGE ON SCHEMA public TO syn443_identity_publisher;
-  GRANT SELECT(id,owner,revision,spec,salt,mode,resource_id,enabled,valid_until,refresh_seconds,max_stale_seconds,active_snapshot,candidate_snapshot,state,access_state,last_sync,next_sync,last_resource_revision) ON catalog_sources TO syn443_identity_publisher;
+  GRANT SELECT(id,owner,revision,spec,salt,mode,resource_id,enabled,valid_until,refresh_seconds,max_stale_seconds,active_snapshot,candidate_snapshot,state,access_state,last_sync,next_sync,last_resource_revision,fetch_device_id) ON catalog_sources TO syn443_identity_publisher;
   GRANT SELECT(id,revision,enabled) ON catalog_resources TO syn443_identity_publisher;
   GRANT SELECT ON catalog_snapshots,catalog_source_grants,catalog_share_heads TO syn443_identity_publisher;
   GRANT UPDATE(selection_guard) ON catalog_sources,catalog_resources TO syn443_identity_publisher;

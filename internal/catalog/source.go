@@ -13,14 +13,14 @@ func (s *Store) readSource(ctx context.Context, tx *sql.Tx, id string, lock bool
 	var raw []byte
 	var revision int64
 	var active, candidate, resource sql.NullString
-	var state, owner, mode, access string
+	var state, owner, mode, access, fetchDevice string
 	var enabled bool
 	var last, next, valid, refresh, stale, lastResource int64
-	query := `SELECT spec,revision,active_snapshot,candidate_snapshot,state,last_sync,next_sync,owner,mode,resource_id,enabled,valid_until,refresh_seconds,max_stale_seconds,last_resource_revision,access_state FROM catalog_sources WHERE id=$1`
+	query := `SELECT spec,revision,active_snapshot,candidate_snapshot,state,last_sync,next_sync,owner,mode,resource_id,enabled,valid_until,refresh_seconds,max_stale_seconds,last_resource_revision,access_state,fetch_device_id FROM catalog_sources WHERE id=$1`
 	if lock {
 		query += " FOR UPDATE"
 	}
-	e := tx.QueryRowContext(ctx, query, id).Scan(&raw, &revision, &active, &candidate, &state, &last, &next, &owner, &mode, &resource, &enabled, &valid, &refresh, &stale, &lastResource, &access)
+	e := tx.QueryRowContext(ctx, query, id).Scan(&raw, &revision, &active, &candidate, &state, &last, &next, &owner, &mode, &resource, &enabled, &valid, &refresh, &stale, &lastResource, &access, &fetchDevice)
 	if e == sql.ErrNoRows {
 		return source, ErrDenied
 	}
@@ -28,7 +28,7 @@ func (s *Store) readSource(ctx context.Context, tx *sql.Tx, id string, lock bool
 		return source, ErrUnavailable
 	}
 	raw, e = s.open(raw, aad("source", id, revision))
-	if e != nil || json.Unmarshal(raw, &source) != nil || source.ID != id || source.Revision != revision || source.Owner != owner || source.Mode != mode || source.ResourceID != resource.String || source.Enabled != enabled || source.ValidUntil != valid || source.RefreshSeconds != refresh || source.MaxStaleSeconds != stale {
+	if e != nil || json.Unmarshal(raw, &source) != nil || source.ID != id || source.Revision != revision || source.Owner != owner || source.Mode != mode || source.ResourceID != resource.String || source.Enabled != enabled || source.ValidUntil != valid || source.RefreshSeconds != refresh || source.MaxStaleSeconds != stale || source.FetchDeviceID != fetchDevice {
 		return Source{}, ErrUnavailable
 	}
 	source.ActiveSnapshot = active.String
@@ -119,6 +119,11 @@ func (s *Store) PutSource(ctx context.Context, actor Actor, source Source, secre
 	if e = authorize(ctx, tx, actor, "sources.write", "user", source.Owner, now.Unix(), secret.Operation != "keep"); e != nil {
 		return Source{}, e
 	}
+	if source.Mode == "device" {
+		if e = authorize(ctx, tx, actor, "sources.receive", "device", source.FetchDeviceID, now.Unix(), false); e != nil {
+			return Source{}, e
+		}
+	}
 	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, "catalog-owner/"+source.Owner); e != nil {
 		return Source{}, ErrUnavailable
 	}
@@ -144,7 +149,7 @@ func (s *Store) PutSource(ctx context.Context, actor Actor, source Source, secre
 	}
 	var previousSecret, sourceSalt []byte
 	if exists {
-		if old.Owner != source.Owner || old.Mode != source.Mode || old.ResourceID != source.ResourceID || old.ExternalUserID != source.ExternalUserID || old.Revision != source.Revision {
+		if old.Owner != source.Owner || old.Mode != source.Mode || old.ResourceID != source.ResourceID || old.ExternalUserID != source.ExternalUserID || old.Revision != source.Revision || old.FetchDeviceID != "" && old.FetchDeviceID != source.FetchDeviceID {
 			return Source{}, ErrConflict
 		}
 		if (source.ValidUntil > old.ValidUntil || source.MaxStaleSeconds > old.MaxStaleSeconds) && actor.MFAUntil <= now.Unix() {
@@ -207,6 +212,9 @@ func (s *Store) PutSource(ctx context.Context, actor Actor, source Source, secre
 	source.Revision++
 	source.State = "pending"
 	source.ActiveSnapshot = old.ActiveSnapshot
+	if source.Mode == "device" && old.FetchDeviceID == "" {
+		source.ActiveSnapshot = ""
+	}
 	source.NextSync = now.Unix()
 	source.LastSync = old.LastSync
 	source.LastResourceRevision = old.LastResourceRevision
@@ -230,12 +238,12 @@ func (s *Store) PutSource(ctx context.Context, actor Actor, source Source, secre
 		resource = source.ResourceID
 	}
 	if exists {
-		_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET revision=$2,spec=$3,secrets=$4,enabled=$5,valid_until=$6,refresh_seconds=$7,max_stale_seconds=$8,candidate_snapshot=NULL,fetch_cache=NULL,state=$9,next_sync=$10 WHERE id=$1`, source.ID, source.Revision, protected, protectedSecret, source.Enabled, source.ValidUntil, source.RefreshSeconds, source.MaxStaleSeconds, source.State, source.NextSync)
+		_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET revision=$2,spec=$3,secrets=$4,enabled=$5,valid_until=$6,refresh_seconds=$7,max_stale_seconds=$8,candidate_snapshot=NULL,fetch_cache=NULL,state=$9,next_sync=$10,fetch_device_id=$11,active_snapshot=NULLIF($12,'') WHERE id=$1`, source.ID, source.Revision, protected, protectedSecret, source.Enabled, source.ValidUntil, source.RefreshSeconds, source.MaxStaleSeconds, source.State, source.NextSync, source.FetchDeviceID, source.ActiveSnapshot)
 		if e == nil {
 			_, e = tx.ExecContext(ctx, `UPDATE catalog_jobs SET phase='cancelled',reason='source_changed',updated_at=$2 WHERE source_id=$1 AND phase IN('queued','running')`, source.ID, now.Unix())
 		}
 	} else {
-		_, e = tx.ExecContext(ctx, `INSERT INTO catalog_sources(id,owner,revision,spec,secrets,salt,mode,resource_id,enabled,valid_until,refresh_seconds,max_stale_seconds,state,next_sync) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, source.ID, source.Owner, source.Revision, protected, protectedSecret, sourceSalt, source.Mode, resource, source.Enabled, source.ValidUntil, source.RefreshSeconds, source.MaxStaleSeconds, source.State, source.NextSync)
+		_, e = tx.ExecContext(ctx, `INSERT INTO catalog_sources(id,owner,revision,spec,secrets,salt,mode,resource_id,enabled,valid_until,refresh_seconds,max_stale_seconds,state,next_sync,fetch_device_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`, source.ID, source.Owner, source.Revision, protected, protectedSecret, sourceSalt, source.Mode, resource, source.Enabled, source.ValidUntil, source.RefreshSeconds, source.MaxStaleSeconds, source.State, source.NextSync, source.FetchDeviceID)
 	}
 	if e != nil {
 		return Source{}, ErrUnavailable

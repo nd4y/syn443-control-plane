@@ -292,6 +292,7 @@ func TestSQLSourceSelectionResourceRotationAndDeviceSourceCannotWidenRecipients(
 	device := sourceExample(now)
 	device.ID = "device-source"
 	device.Mode = "device"
+	device.FetchDeviceID = "selection-device"
 	device, e = api.PutSource(ctx, actor, device, SecretPatch{Operation: "replace", Value: []byte(`{"url":"https://subscription.example.invalid"}`)}, "selection-device-source", now)
 	if e != nil {
 		t.Fatal(e)

@@ -37,6 +37,17 @@ changes require both share and receive authority; device-fetched data is persona
 Large removals are quarantined until an exact hash/head/revision-bound decision.
 Review cannot approve expired/quota-exhausted access or dangling profile references.
 
+Device fetch sources carry an immutable `fetchDeviceId` in addition to the owner.
+The API requires scope over both objects when saving the source. The compiler
+rejects every other device, including another device of the same owner. Binding
+an older unaddressed source drops its active snapshot pointer.
+
+The SQL catalog can lease one pending fetch to the addressed device and accept
+its bounded, encrypted input. The regular worker starts normalization only after
+upload. The lease, source revision and snapshot head fence expired work and
+lost responses. Public device claim/upload endpoints and the Android fetch loop
+are still needed before this path can be enabled for users.
+
 Runtime files use `SYN443_CONTROL_CONFIG` / `SYN443_SOURCE_CONFIG`. Their schema is
 the closed `catalog.RuntimeConfig`; verified remote PostgreSQL TLS is mandatory.
 API listeners are loopback-bound and serve HTTPS behind an owner-configured ingress.

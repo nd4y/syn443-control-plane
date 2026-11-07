@@ -59,6 +59,7 @@ func TestSQLScopedSharesCASAndDeviceSourceIsolation(t *testing.T) {
 	device := sourceExample(now)
 	device.ID = "personal-device-source"
 	device.Mode = "device"
+	device.FetchDeviceID = "personal-device"
 	device, e = api.PutSource(ctx, actor, device, SecretPatch{Operation: "replace", Value: []byte(`{"url":"https://subscription.example.invalid"}`)}, "create-device-source", now)
 	if e != nil {
 		t.Fatal(e)

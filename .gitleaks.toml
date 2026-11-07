@@ -7,6 +7,13 @@ useDefault = true
 [[rules]]
 id = "generic-api-key"
 [[rules.allowlists]]
+description = "Reviewed SHA-256 of the public device source binding contract"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "6912315373be7d324ae8ceea8bb6d39021a263950a2c7791ce3299149519d39f",?\s*$''']
+
+[[rules.allowlists]]
 description = "Reviewed SHA-256 of the public device control panel enrollment contract"
 condition = "AND"
 paths = ['''^contracts/lock\.json$''']

@@ -101,7 +101,7 @@ func (s *Store) selectionSource(ctx context.Context, tx *sql.Tx, target Selectio
 	if e != nil {
 		return SelectionDependency{}, e
 	}
-	if source.Mode == "device" && source.Owner != target.Owner {
+	if source.Mode == "device" && (source.Owner != target.Owner || source.FetchDeviceID != target.Device) {
 		return SelectionDependency{}, ErrDenied
 	}
 	if source.Owner != target.Owner {
