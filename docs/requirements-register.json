@@ -172,7 +172,8 @@
       "evidence": [
         "docs/enrollment-pilot.md",
         "docs/identity-lifecycle.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "internal/enrollment/approved_request_postgres_test.go"
       ]
     },
     {
@@ -247,56 +248,129 @@
     {
       "id": "SUB-03",
       "text": "Для каждой внешней подписки хранятся владелец, тип провайдера, защищённый URL/авторизация, способ загрузки, получатели, срок действия, метаданные квоты, разрешённые режимы, статус последнего обновления и последняя рабочая версия. Поддерживаются персональные источники одного пользователя и явно назначенные общие источники. Область назначения по умолчанию закрыта. API-ресурс панели и URL-источник подписки - разные сущности: источник может ссылаться на resourceId, но не выдаётся за самостоятельный экземпляр панели.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-console.md#source-management-extension-acceptance-pending",
+        "web-tests/control.spec.js",
+        "docs/control-catalog.md",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ]
     },
     {
       "id": "SUB-04",
       "text": "Способы загрузки: сервером; самим устройством для подписок с привязкой к устройству/IP; ручной импорт администратором. Выбор фиксируется на источнике. Нельзя обходить лимит устройств подменой HWID или выдавать серверную загрузку за работу пользовательского устройства. Собственные ссылки пользователя, если добавление разрешено, по умолчанию доступны только ему.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-console.md#source-management-extension-acceptance-pending",
+        "internal/chatweb/control_test.go",
+        "docs/control-catalog.md",
+        "internal/catalog/device_sync_postgres_test.go",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ]
     },
     {
       "id": "SUB-05",
       "text": "В первой версии импортеры принимают поддерживаемое подмножество URI/base64, sing-box JSON, Xray JSON и Mihomo YAML. Матрица поддерживаемых полей обязательна. Неподдерживаемый протокол или поле показывается явно; неизвестные параметры нельзя молча отбрасывать.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/subscription-import.md",
+        "internal/subscriptions/import.go",
+        "internal/subscriptions/import_test.go",
+        "internal/subscriptions/quarantine.go",
+        "internal/subscriptions/quarantine_test.go"
+      ],
+      "implementationScope": "Bounded all-or-nothing URI/base64/sing-box/Xray/Mihomo profile normalization with explicit field matrix, private source-scoped HMAC IDs and pure candidate-removal quarantine assessment; Actions acceptance pending.",
+      "remainingScope": "Persistent source/grant/snapshot management, fetch modes, sync/reconciliation, exact candidate review, compiler/publication and administrative/device flows remain required for full M3."
     },
     {
       "id": "SUB-06",
       "text": "Чужой полный конфиг разбирается как недоверенный источник профилей. Его маршруты, DNS, локальные listeners, external controllers, ссылки на файлы, скрипты и удалённые rule sets не получают автоматического приоритета над нашей политикой. Импорт маршрутов возможен только отдельным проверенным действием администратора.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/subscription-import.md",
+        "internal/subscriptions/import.go",
+        "internal/subscriptions/import_test.go",
+        "internal/subscriptions/quarantine.go",
+        "internal/subscriptions/quarantine_test.go"
+      ],
+      "implementationScope": "Bounded all-or-nothing URI/base64/sing-box/Xray/Mihomo profile normalization with explicit field matrix, private source-scoped HMAC IDs and pure candidate-removal quarantine assessment; Actions acceptance pending.",
+      "remainingScope": "Persistent source/grant/snapshot management, fetch modes, sync/reconciliation, exact candidate review, compiler/publication and administrative/device flows remain required for full M3."
     },
     {
       "id": "SUB-07",
       "text": "Профиль имеет стабильный ID в пространстве своего источника. Дедупликация не склеивает учётные данные разных пользователей и источников. Переименование и перестановка строк не должны терять ручные назначения. При отсутствии внешнего ID используется документированное сопоставление; неоднозначность показывается оператору.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/subscription-import.md",
+        "internal/subscriptions/import.go",
+        "internal/subscriptions/import_test.go",
+        "internal/subscriptions/quarantine.go",
+        "internal/subscriptions/quarantine_test.go"
+      ],
+      "implementationScope": "Bounded all-or-nothing URI/base64/sing-box/Xray/Mihomo profile normalization with explicit field matrix, private source-scoped HMAC IDs and pure candidate-removal quarantine assessment; Actions acceptance pending.",
+      "remainingScope": "Persistent source/grant/snapshot management, fetch modes, sync/reconciliation, exact candidate review, compiler/publication and administrative/device flows remain required for full M3."
     },
     {
       "id": "SUB-08",
       "text": "Загрузка идемпотентна, использует ETag/Last-Modified, ограничения размера и времени, backoff и изоляцию источников. Начальные лимиты: 10 MiB распакованного ответа, 5000 профилей на источник, 30 секунд загрузки. YAML не исполняет пользовательские теги. Защита от SSRF проверяет DNS, redirects и фактический адрес соединения; внутренние адреса разрешаются только для явно доверенных источников.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ]
     },
     {
       "id": "SUB-09",
       "text": "Пустой ответ, HTML вместо подписки, ошибка авторизации или резкое исчезновение профилей не удаляют последнюю рабочую выдачу автоматически. Кандидат помещается в карантин. Начальный порог проверки - исчезновение более 20% профилей или любого профиля, на который ссылается маршрут/цепочка. Явный отзыв доступа или подтверждённое истечение не подменяются бесконечным кэшем.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/subscription-import.md",
+        "internal/subscriptions/import.go",
+        "internal/subscriptions/import_test.go",
+        "internal/subscriptions/quarantine.go",
+        "internal/subscriptions/quarantine_test.go",
+        "docs/control-catalog.md",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ],
+      "implementationScope": "Bounded all-or-nothing URI/base64/sing-box/Xray/Mihomo profile normalization with explicit field matrix, private source-scoped HMAC IDs and pure candidate-removal quarantine assessment; Actions acceptance pending.",
+      "remainingScope": "Persistent source/grant/snapshot management, fetch modes, sync/reconciliation, exact candidate review, compiler/publication and administrative/device flows remain required for full M3."
     },
     {
       "id": "SUB-10",
       "text": "Обновление запускается по политике источника, по допустимому webhook и вручную. Типовое значение - раз в час с jitter, с учётом ограничений провайдера. Отказ одного источника не блокирует остальные.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/jobs.go",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ]
     },
     {
       "id": "SUB-11",
       "text": "Лимиты и сроки источника показываются с временем обновления. Клиентский расход является оценкой и не заменяет учёт провайдера. Трафик транзитных цепочек не суммируется повторно как пользовательский расход. Стоимость и остаток квоты могут участвовать в выборе выхода, но только при известных и достаточно свежих данных.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/worker.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/catalog/review_postgres_test.go"
+      ]
     },
     {
       "id": "SUB-12",
@@ -431,20 +505,43 @@
     {
       "id": "CFG-01",
       "text": "Полная конфигурация включает профили, источники, цепочки, селекторы, маршруты, DNS, правила приложений, сетевые режимы, домашние сети, проверки, поведение отказов, телеметрию, логи, UI-права, обновления и разрешённые локальные переопределения. Обязательны также route graph/templates, профили проверки отдельных маршрутов, decision policy, условия circuit breaker/истории, бюджеты поиска и назначения версий алгоритма по cohort.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/layered-configuration.md",
+        "internal/configuration/network.go",
+        "internal/configuration/network_test.go",
+        "internal/configuration/plan.go",
+        "internal/configuration/plan_test.go",
+        "internal/catalog/network_draft.go",
+        "internal/catalog/network_draft_test.go",
+        "internal/catalog/network_draft_postgres_test.go",
+        "internal/deviceprovisioning/network.go",
+        "internal/deviceprovisioning/network_postgres_test.go",
+        "docs/layered-configuration.md#shared-layer-and-recipient-authority",
+        "internal/deviceprovisioning/layer_catalog_postgres_test.go"
+      ],
+      "implementationScope": "Bounded portable layers/graph/DNS/routing/activation, private SQL drafts and independent source-to-publisher composition. Current composition Actions acceptance pending; persistent approvals/assignments, full settings and UI remain open.",
+      "remainingScope": "Full supported application settings, persistent layer assignments, independently approved publication and web/mobile editors."
     },
     {
       "id": "CFG-02",
       "text": "Системные разрешения, приватный ключ идентичности NetBird, ключ устройства, счётчики, кэши и живые результаты проверок являются локальным состоянием, а не переносимым конфигом. Панель задаёт политику их использования и показывает соответствие, но не выдаёт разрешение Android от имени пользователя.",
       "status": "planned",
-      "evidence": []
+      "evidence": [
+        "docs/layered-configuration.md#shared-layer-and-recipient-authority",
+        "internal/deviceprovisioning/layer_catalog_postgres_test.go"
+      ]
     },
     {
       "id": "CFG-03",
       "text": "Слои: базовый шаблон сервиса, назначения групп, пользовательская политика, политика устройства, разрешённые локальные значения. Для групп задаётся явный приоритет. Коллизия одинакового приоритета или конфликт взаимоисключающих маршрутов блокирует публикацию. Наследование прав может сужать, но не обходить запрет вышестоящей политики. Для каждого итогового поля панель объясняет источник.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/layered-configuration.md",
+        "internal/configuration/layers.go",
+        "internal/configuration/layers_test.go",
+        "internal/configuration/rebase_test.go"
+      ]
     },
     {
       "id": "CFG-04",
@@ -452,7 +549,11 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/layered-configuration.md",
+        "internal/configuration/layers.go",
+        "internal/configuration/layers_test.go",
+        "internal/configuration/rebase_test.go"
       ]
     },
     {
@@ -461,14 +562,30 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/layered-configuration.md",
+        "internal/enrollment/configuration_authority.go",
+        "internal/enrollment/configuration_authority_test.go",
+        "internal/enrollment/configuration_authority_postgres_test.go"
       ]
     },
     {
       "id": "CFG-06",
       "text": "Публикуется неизменяемая ревизия эффективного конфига для устройства. Она не содержит чужих профилей и URL исходных подписок, если устройству не требуется собственная загрузка. Собственный конфиг клиента не зависит от формата выдачи Remnawave и версии её API.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/layered-configuration.md",
+        "internal/configuration/network.go",
+        "internal/configuration/network_test.go",
+        "internal/enrollment/configuration_authority.go",
+        "internal/enrollment/configuration_authority_test.go",
+        "internal/enrollment/configuration_authority_postgres_test.go",
+        "internal/deviceprovisioning/network.go",
+        "internal/deviceprovisioning/network_postgres_test.go",
+        "internal/deviceprovisioning/layer_inventory_postgres_test.go",
+        "docs/device-activation-report.md"
+      ],
+      "implementationScope": "Bounded portable network layers, private SQL drafts, persistent approvals and independent source-to-publisher composition. The signed issuance is atomically linked to the exact approved desired revision. Full settings and final device acceptance remain open."
     },
     {
       "id": "PROV-01",
@@ -485,7 +602,9 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/layered-configuration.md#internal-configuration-work-admission",
+        "internal/deviceprovisioning/layer_work_postgres_test.go"
       ]
     },
     {
@@ -494,7 +613,16 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/enrollment-pilot.md",
+        "internal/enrollment/approved_request_postgres_test.go",
+        "docs/layered-configuration.md#internal-configuration-work-admission",
+        "internal/deviceprovisioning/layer_work_postgres_test.go",
+        "docs/layered-configuration.md#shared-layer-and-recipient-authority",
+        "internal/deviceprovisioning/layer_catalog_postgres_test.go",
+        "internal/deviceprovisioning/layer_inventory_postgres_test.go",
+        "internal/enrollment/activation_status_postgres_test.go",
+        "docs/device-activation-report.md"
       ]
     },
     {
@@ -565,39 +693,67 @@
       "text": "В обычной сети используются прямые management/signal и P2P пути. Relay разрешён только после неудачи прямого соединения или потери пути; начальный direct ICE timeout - 8 секунд, настраиваемый в проверяемом диапазоне. После relay сохраняются ограниченные попытки вернуться к P2P. Такое предпочтение соответствует модели NetBird. [Как работает NetBird](https://docs.netbird.io/about-netbird/how-netbird-works).",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/netbird-resource.md",
+        "internal/netbirdapi/client.go",
+        "internal/netbirdapi/client_test.go",
+        "docs/overlay-broker.md",
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go"
       ],
-      "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
-      "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
+      "implementationScope": "Addressed overlay credentials/namespace delivery plus bounded NetBird single-account management API adapter; initial adapter Actions41449596701 all8 PASS; newer disable/readback extension pending.",
+      "remainingScope": "Durable setup-key broker/revocation jobs, managed resource/UI wiring, interrupted-registration keyless recovery, provider reconciliation and real Cloud/device acceptance."
     },
     {
       "id": "NB-02",
       "text": "В ограниченной сети при разрешённой автоматике включается отдельный проверенный вариант NetBird через VLESS. Внешние соединения этого варианта должны идти через выбранный VLESS путь без скрытого direct bootstrap; неподдержанные UDP-пути не обходят прокси. В UI явно различаются direct/through VLESS и P2P/relay. Это разные свойства соединения.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/netbird-resource.md",
+        "internal/netbirdapi/client.go",
+        "internal/netbirdapi/client_test.go",
+        "docs/overlay-broker.md",
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go"
       ],
-      "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
-      "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
+      "implementationScope": "Addressed credential/namespace delivery and account-bound management adapter accepted; durable broker/SQL-role/independent wrapping implementation pending Actions and runtime integration.",
+      "remainingScope": "Configured resource/policy/scheduler/API/UI integration, controlled renewal/retention and actual Cloud/final restored-device acceptance; full M2/M3 remain incomplete."
     },
     {
       "id": "NB-03",
       "text": "Первоначальная выдача NetBird выполняется через однократное зачисление устройства или отдельную OIDC-интеграцию NetBird. Успешный вход в наш Keycloak не назначает пользователю доступ ко всем NetBird peers. Управляющий backend хранит служебный доступ к NetBird только на сервере. NetBird - первый реализуемый overlay-провайдер общего контракта OVL; его API/идентичность и формат peer не являются универсальными правилами для будущих систем.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go",
+        "internal/deviceprovisioning/network_overlay_postgres_test.go"
+      ]
     },
     {
       "id": "NB-04",
       "text": "Для автоматического зачисления предлагаются одноразовые setup keys с минимальными группами и сроком жизни. Они передаются только конкретному устройству и удаляются после использования. Обновление политики, перезапуск и смена сети не создают нового peer. [NetBird setup keys](https://docs.netbird.io/manage/peers/register-machines-using-setup-keys).",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go",
+        "internal/deviceprovisioning/network_overlay_postgres_test.go"
+      ]
     },
     {
       "id": "NB-05",
       "text": "Ключ идентичности создаётся и хранится локально, не попадает в телеметрию, бандлы и обычный экспорт. Смена direct/VLESS сохраняет peer ID. Ключи и peer отзываются отдельно при удалении устройства.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/overlay-broker.md",
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go"
       ],
       "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
       "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
@@ -617,7 +773,10 @@
       "text": "Маршруты и DNS выдаются по фактическим назначениям NetBird и нашей политике. Широкий mesh CIDR не угадывается. Внутренние DNS-запросы не уходят публичному резолверу при сбое overlay. Конфликт маршрута NetBird с домашней сетью выявляется до активации.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go",
+        "internal/enrollment/netbird_configuration_postgres_test.go"
       ],
       "implementationScope": "Direct-first SDK/strict VLESS detour, local identity and bounded roster/probes.",
       "remainingScope": "Managed peer credentials/retirement, DNS conflicts and full cellular matrix."
@@ -626,7 +785,9 @@
       "id": "OVL-01",
       "text": "NetBird реализуется первым провайдером общей модели OverlayConnection: overlayId, providerType, resourceId, networkId, identityRef, engineRef, providerConfig, route/DNS policy, transportPolicy и capability requirements. Параметры NetBird хранятся в типизированном providerConfig, а не в обязательных полях всех будущих провайдеров.",
       "status": "planned",
-      "evidence": []
+      "evidence": [
+        "docs/overlay-broker.md"
+      ]
     },
     {
       "id": "OVL-02",
@@ -655,8 +816,16 @@
     {
       "id": "OVL-06",
       "text": "Идентичности, токены, state directory и секреты разделяются по overlayId/provider/resource. Публикация политики не конвертирует идентичность одной сети в другую. Реализация 1.0 не объединяет автоматически peers, DNS-зоны или маршруты нескольких overlay-провайдеров.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-overlay.md",
+        "contracts/v1/overlay-namespace-vectors.json",
+        "internal/overlay/identity.go",
+        "internal/overlay/identity_test.go",
+        "docs/overlay-delivery-design.md",
+        "internal/enrollment/overlay.go",
+        "internal/enrollment/overlay_postgres_test.go"
+      ]
     },
     {
       "id": "OVL-07",
@@ -1156,7 +1325,8 @@
       "text": "Для каждого routing rule/traffic class, конкретного пути, chain template и overlay resource назначается один или несколько HealthCheckProfile. Домашний узел, 2ip.ru и gstatic - только примеры. Проверочные hosts/URL/IP, методы и условия не зашиты в тип RU/NON_RU или в приложение. Поддерживается любая валидная композиция реализованных методов, допустимых целей и правил; новый сетевой primitive требует новой capability evaluator/движка.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/control-catalog.md"
       ],
       "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
       "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
@@ -1270,14 +1440,22 @@
     {
       "id": "TEL-01",
       "text": "Техническая телеметрия является обязательной возможностью клиента и включена в базовый сервисный профиль с понятным уведомлением. Собираются структурированные события, агрегаты и метрики с отдельной политикой подробности; расширенные сырые материалы требуют отдельного пользовательского действия.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Optional authenticated intake for bounded technical events.",
+      "remainingScope": "Base service-profile and detail policy, aggregate metrics and end-to-end acceptance."
     },
     {
       "id": "TEL-02",
       "text": "Общие поля: eventId, schemaVersion, время UTC и monotonic time, pseudonymous deviceId, sessionId, app/core/build версии, policyRevision, networkEpoch, pathId, eventType, severity, duration, result, errorCode. Backend добавляет время приёма и обрабатывает расхождение часов. Дополнительно фиксируются algorithm/evaluator revision, cohortId, health profile revision и decisionId; эти поля не требуют раскрытия пользовательского назначения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Closed envelope, authenticated device scope and receipt timestamp.",
+      "remainingScope": "Full build/core/algorithm/policy/cohort/decision metadata and clock-skew analysis."
     },
     {
       "id": "TEL-03",
@@ -1308,8 +1486,12 @@
     {
       "id": "TEL-07",
       "text": "Пароли, auth/enrollment tokens, подписочные URL-capabilities и приватные ключи запрещены при любом уровне телеметрии и удалённой диагностики. История сайтов, полный DNS-журнал, пользовательские payload/пакеты, IMSI/IMEI, точная геолокация и сырые SSID/BSSID не входят в стандартный сбор. Расширенные категории требуют отдельного согласия SEC-09; домены/IP назначенных diagnostic targets могут быть в контролируемом результате. Входящий IP виден transport уровню сервера, поэтому access logs также ограничены.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Schema rejects free-form data and device is derived from verified session.",
+      "remainingScope": "Broader server log/diagnostics access controls and expanded privacy acceptance."
     },
     {
       "id": "TEL-08",
@@ -1320,14 +1502,22 @@
     {
       "id": "TEL-09",
       "text": "Очередь локальная, ограниченная, с шифрованием на диске и приоритетом crash/config/network-change событий. Начальные значения: 32 MiB или 7 суток; вытеснение сначала низкоприоритетных записей; счётчик потерь обязателен. Успешный HTTP upload без подтверждения event IDs не считается доставкой.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Transactional receipt of exact event IDs after persistence.",
+      "remainingScope": "Priority, loss counters, product retention limits and full queue failure acceptance."
     },
     {
       "id": "TEL-10",
       "text": "Передача сжимается пакетами; возможны повторы, сервер дедуплицирует eventId/batchId. Retry ограничен, с backoff/jitter. Начальные бюджеты telemetry плюс routine probes: 2MiB/сутки metered, 10MiB/сутки unmetered; отдельно ограниченный recovery reserve 512KiB и 2MiB соответственно. Явная глубокая диагностика имеет свой показанный пользователю бюджет. При исчерпании routine бюджета фоновые пробы откладываются, passive evidence сохраняется. Reserve применяется только для восстановления полезного пути с отдельным учётом и rate limit, без бесконечных retries. Exhausted budget даёт stale/search incomplete, а не proxy failure.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Per-device deduplication, intake limits and explicit overload response.",
+      "remainingScope": "Compression, jitter, shared metered/unmetered probe budgets and recovery reserve."
     },
     {
       "id": "TEL-11",
@@ -1338,8 +1528,12 @@
     {
       "id": "TEL-12",
       "text": "Серверная политика хранения для согласования: детальные события 14 суток, очищенные crash/бандлы 30 суток, агрегаты 180 суток, аудит административных действий 365 суток. Предусматриваются удаление данных устройства, контроль доступа к support материалам и журнал скачиваний. TTL распространяется на копии и резервное хранение по документированной процедуре.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Separate analysis and retention roles, bounded hourly summaries without identifiers, 14-day detail and 180-day summary pruning.",
+      "remainingScope": "Scheduled operations acceptance, full dashboards, bundles, audit, copies and device erasure."
     },
     {
       "id": "LOG-01",
@@ -1410,20 +1604,48 @@
     {
       "id": "EDIT-01",
       "text": "У администратора на телефоне есть полноценный редактор управляемой конфигурации: профили, источники и назначения, DNS, маршруты, цепочки, балансеры, четыре режима, автоматика, проверки, логи/телеметрия, параметры встроенных движков и разрешённые UI-настройки. Он покрывает ту же модель и валидацию, что и веб-панель.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-console.md",
+        "internal/chatweb/control.go",
+        "internal/chatweb/control_test.go",
+        "internal/chatweb/assets/control/app.js",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
+      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
     },
     {
       "id": "EDIT-02",
       "text": "Редактор начинает с текущей серверной ревизии, сохраняет baseRevision и локальный черновик отдельно от active config. Для каждого поля видны значение, источник наследования, область изменения и право редактирования. Статус «есть неопубликованные правки» сохраняется после закрытия приложения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-console.md",
+        "internal/chatweb/control.go",
+        "internal/chatweb/control_test.go",
+        "internal/chatweb/assets/control/app.js",
+        "web-tests/control.spec.js",
+        "internal/deviceprovisioning/layer_inventory.go",
+        "internal/deviceprovisioning/layer_inventory_postgres_test.go",
+        "docs/layered-configuration.md",
+        "docs/private-draft-inventory.md"
+      ],
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
+      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required. Explicit actor-private discard now has CAS/tombstone/replay fences and browser confirmation source; exact new CI is pending."
     },
     {
       "id": "EDIT-03",
       "text": "Есть три разные команды: «Сохранить черновик», «Проверить и применить на этом телефоне», «Опубликовать на сервер». Локальный тест не меняет сервер и чужие устройства. Предварительный локальный тест рекомендуется, но не обязателен для загрузки серверного черновика.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-console.md",
+        "internal/chatweb/control.go",
+        "internal/chatweb/control_test.go",
+        "internal/chatweb/assets/control/app.js",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
+      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
     },
     {
       "id": "EDIT-04",
@@ -1434,14 +1656,26 @@
     {
       "id": "EDIT-05",
       "text": "По источнику поля сервер формирует правку соответствующего слоя политики. Нельзя загрузить плоский effective config поверх всех шаблонов: это уничтожило бы наследование. Когда требуется повысить локальную правку до шаблона, администратор явно выбирает переносимые поля; локальные счётчики, identity files и права конкретного устройства не переносятся.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/layered-configuration.md",
+        "internal/configuration/layers.go",
+        "internal/configuration/layers_test.go",
+        "internal/configuration/rebase_test.go",
+        "internal/deviceprovisioning/layer_inventory.go",
+        "internal/deviceprovisioning/layer_inventory_postgres_test.go"
+      ]
     },
     {
       "id": "EDIT-06",
       "text": "Перед записью сервер повторно проверяет полномочия, expectedRevision, ссылки, capabilities и актуальность исходных snapshot подписок. Изменившаяся серверная версия возвращает конфликт с тройным сравнением base/local/server. Можно перебазировать независимые изменения; конфликт одного поля требует выбора, скрытого last-write-wins нет.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/layered-configuration.md",
+        "internal/configuration/layers.go",
+        "internal/configuration/layers_test.go",
+        "internal/configuration/rebase_test.go"
+      ]
     },
     {
       "id": "EDIT-07",
@@ -1518,8 +1752,13 @@
     {
       "id": "MOB-01",
       "text": "У пользователя с административными правами есть заметная кнопка «Администрирование» на главном экране и в меню. Обычному пользователю она не показывается; прямое открытие admin URL/API всё равно проверяется сервером. Одно приложение совмещает клиентский и административный режимы.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-console.md#android-navigation",
+        "internal/enrollment/control_panel_postgres_test.go"
+      ],
+      "implementationScope": "Live catalog navigation grant, bounded DPoP eligibility and independent control-audience authorization.",
+      "remainingScope": "Menu entry, native administration and physical acceptance with the configured control plane."
     },
     {
       "id": "MOB-02",
@@ -1536,8 +1775,12 @@
     {
       "id": "MOB-04",
       "text": "Native admin API имеет отдельные audience/scopes и проверяет роль на сервере. Обычные scoped правки не требуют повторного входа на каждом экране. Изменение доверия/ролей/integration credentials, широкая публикация, ослабление security ограничений и раскрытие секретов требуют свежей admin re-auth с MFA по SEC-10. Device VPN session и QR enrollment административных полномочий не дают.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/identity/crypto_test.go",
+        "internal/catalog/http_postgres_test.go"
+      ]
     },
     {
       "id": "MOB-05",
@@ -1770,20 +2013,43 @@
     {
       "id": "SVC-01",
       "text": "SYN443 control plane поставляется как приложение с независимо развёртываемыми сервисами api, worker, frontend и telemetry-ingest. Общие библиотеки, контракты и monorepo допустимы; отдельные процессы/контейнеры и независимое масштабирование обязательны. Разделение до отдельного микросервиса на каждую таблицу не требуется. Привилегированная signer role изолируется от обычных worker pools по SEC-07; для неё не требуется отдельный продукт/репозиторий или обязательный HSM.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-02",
       "text": "API обслуживает auth/RBAC, устройства, ресурсы, preview/validation, черновики, публикации, выдачу готовых config/policy артефактов и состояния jobs. Длительные provider fetch, тяжёлая компиляция/симуляция и обработка бандла не держат клиентский HTTP запрос: возвращается jobId и status endpoint.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go",
+        "docs/overlay-broker.md",
+        "docs/private-draft-inventory.md"
+      ]
     },
     {
       "id": "SVC-03",
       "text": "Worker pools выполняют provider fetch/parse, синхронизацию поддержанного API-ресурса, compilation/materialization, simulation/replay, бандлы/retention и rollout aggregates. Подпись изолирована в signer role по SEC-07: недоверенные fetch/parser/diagnostic workers не имеют signing authority. Пулы и очереди исключают взаимную блокировку provider IO, compilation и diagnostics.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-04",
@@ -1800,26 +2066,59 @@
     {
       "id": "SVC-06",
       "text": "Scheduler создаёт периодические jobs через выбранную очередь, работает как отдельная роль worker с lease/leader control. Несколько replicas не создают неконтролируемые дубли. Для нескольких систем Remnawave это пока только контракт; работающая синхронизация множества API-панелей остаётся отложенной.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go",
+        "docs/overlay-broker.md"
+      ]
     },
     {
       "id": "SVC-07",
       "text": "Очередь долговечная, с idempotency keys, at-least-once delivery, retry/backoff/jitter, deadline/cancel, bounded payload, dead-letter и наблюдаемой backlog. Metadata update и enqueue согласуются transactional outbox либо равнозначным механизмом. Повтор provider write без его idempotency требует reconciliation; timeout не означает безопасный повтор изменения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/jobs.go",
+        "internal/catalog/job_retention_postgres_test.go",
+        "internal/catalog/http_postgres_test.go",
+        "internal/catalog/inventory.go",
+        "web-tests/control.spec.js",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-08",
       "text": "Service API/events/jobs имеют schema/version, correlation ID, actor/scope и совместимость rolling upgrade. Внутренний вызов не обходит RBAC и field ownership. Worker/ingest используют отдельные минимальные service identities; доступ к signing key и секретам ограничен назначенными задачами. Signer проверяет отдельное разрешённое publication job, scope/revision/audience и не принимает произвольный документ на подпись от parser worker.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-09",
       "text": "Для пилота допустимы общий PostgreSQL с явным владением таблицами/схемами и S3-совместимое хранилище. Микросервисы не требуют отдельной БД на каждый сервис; произвольная запись в чужие таблицы запрещена контрактом. Queue abstraction может начинаться с PostgreSQL-backed jobs/outbox; отдельный broker добавляется при обоснованной нагрузке. Миграции и restore согласуются между версиями сервисов. Provisioning, provider jobs, telemetry и bundles имеют отдельные bounded DB pools/queue quotas/disk budgets. Telemetry overload включает backpressure до насыщения общей БД; durable ack выдаётся только после commit, при отказе клиенту возвращается retryable result.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/catalog/schema.sql",
+        "internal/catalog/roles.sql",
+        "internal/catalog/http_postgres_test.go",
+        "cmd/source-worker/main.go",
+        "cmd/control-api/main.go"
+      ]
     },
     {
       "id": "SVC-10",
@@ -1936,8 +2235,12 @@
     {
       "id": "BOOT-12",
       "text": "Origin сервера допускается только из доверенного списка установки либо из bootstrap manifest с подписью уже доверенного ключа. Сам QR не становится новым корнем доверия. Обычная TLS-валидация обязательна; redirects с переносом кода на другой origin запрещены. До подтверждения пользователь видит сервис и факт привязки; deep link не выполняет произвольные команды или admin-публикации.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/bootstrap-trust.md#installation-profile-for-first-launch",
+        "cmd/enrollment-admin/bootstrap_profile_test.go",
+        "internal/bootstrap/trust_test.go"
+      ]
     },
     {
       "id": "BOOT-13",
@@ -1948,8 +2251,12 @@
     {
       "id": "BOOT-14",
       "text": "Custom URI может открыть и другое Android-приложение с той же схемой, поэтому эксклюзивное владение схемой не предполагается. Для распространения через браузер дополнительно поддерживается verified HTTPS App Link доверенного домена. Без установленного клиента HTTPS-страница предлагает установить APK и затем повторно открыть ссылку; скрытого переноса кода через store не требуется. [Android deep links](https://developer.android.com/training/app-links/create-deeplinks).",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/bootstrap-trust.md#https-invitation-landing-page",
+        "tools/build_enrollment_site.py",
+        "tools/test_enrollment_site.py"
+      ]
     },
     {
       "id": "BOOT-15",
@@ -2004,8 +2311,13 @@
     {
       "id": "NFR-08",
       "text": "Сервер ставится контейнерами с health/readiness, миграциями, резервным копированием и документированным восстановлением. Первому пилоту достаточно одной установки с проверенным restore; это не high availability. Предлагаемые RPO24h/RTO4h согласуются отдельно.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/database-recovery.md",
+        "internal/enrollment/restore_postgres_test.go"
+      ],
+      "implementationScope": "Isolated PostgreSQL backup/restore drill and recovery procedure with application and authorization checks.",
+      "remainingScope": "Recovery of a complete deployed instance, external identity/provider state, key and role recovery, and observed RPO/RTO."
     },
     {
       "id": "SEC-01",
@@ -2032,7 +2344,12 @@
       "evidence": [
         "docs/enrollment-pilot.md",
         "docs/identity-lifecycle.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "internal/enrollment/approved_request_postgres_test.go",
+        "docs/layered-configuration.md#internal-configuration-work-admission",
+        "internal/deviceprovisioning/layer_work_postgres_test.go",
+        "docs/layered-configuration.md#shared-layer-and-recipient-authority",
+        "internal/deviceprovisioning/layer_catalog_postgres_test.go"
       ]
     },
     {
@@ -2078,8 +2395,12 @@
     {
       "id": "SEC-10",
       "text": "Обычная scoped admin правка работает в действующей сессии. Роли/корни доверия/integration credentials, широкая публикация, снижение security constraints и раскрытие секретов требуют server-verified fresh admin re-auth с MFA не старше10минут и явного diff/scope. VPN/device token и UI-флаг этого не заменяют. Проверка относится к административному клиенту SYN443 и не является разрешением менять текущий Keycloak master realm вне проекта.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md",
+        "internal/identity/crypto_test.go",
+        "internal/catalog/http_postgres_test.go"
+      ]
     },
     {
       "id": "SEC-11",
@@ -2304,8 +2625,13 @@
     {
       "id": "AC24",
       "specRow": " Обновление APK/схемы, восстановление сервера из backup | Конфиг/identity сохранены при разрешённой миграции, rollback/restore действительно проверены |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/database-recovery.md",
+        "internal/enrollment/restore_postgres_test.go"
+      ],
+      "implementationScope": "Device session and signed policy are checked through the restricted API against a restored SQL snapshot.",
+      "remainingScope": "Deployed server recovery and the complete APK, state migration and rollback matrix."
     },
     {
       "id": "AC25",
@@ -2836,6 +3162,7 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
+        "internal/enrollment/restore_postgres_test.go",
         "web-tests/chat.spec.js",
         "docs/implementation-status.md"
       ],

@@ -80,7 +80,10 @@
           "netbird.direct",
           "netbird.vless",
           "tun.lease.v1",
-          "policy.keybound.v2"
+          "policy.keybound.v2",
+          "overlay.credentials.v1",
+          "route.health.v1",
+          "route.failover.v1"
         ]
       },
       "allOf": [

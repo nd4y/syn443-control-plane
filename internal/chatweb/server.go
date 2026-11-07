@@ -4,6 +4,7 @@
 package chatweb
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -37,6 +38,7 @@ type Config struct {
 	Certificate    string `json:"certificate"`
 	CertificateKey string `json:"certificateKey"`
 	FixtureHTTP    bool   `json:"fixtureHttp"`
+	ControlConsole bool   `json:"controlConsole,omitempty"`
 }
 type verifier interface {
 	Verify(context.Context, string, time.Time) (identity.Principal, error)
@@ -56,14 +58,15 @@ type session struct {
 	cancel                 context.CancelFunc
 }
 type Server struct {
-	config   Config
-	verifier verifier
-	client   *http.Client
-	mu       sync.Mutex
-	pending  map[string]pending
-	sessions map[string]*session
-	clock    func() time.Time
-	slots    chan struct{}
+	config        Config
+	verifier      verifier
+	client        *http.Client
+	mu            sync.Mutex
+	pending       map[string]pending
+	sessions      map[string]*session
+	clock         func() time.Time
+	slots         chan struct{}
+	sourceImports chan struct{}
 }
 
 func validURL(raw string, origin, fixture bool) bool {
@@ -85,7 +88,7 @@ func newServer(c Config, p verifier, transport http.RoundTripper) *Server {
 	if transport == nil {
 		transport = &http.Transport{Proxy: nil, ResponseHeaderTimeout: 5 * time.Second, MaxIdleConns: 4, IdleConnTimeout: 30 * time.Second}
 	}
-	return &Server{config: c, verifier: p, client: &http.Client{Transport: transport, Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, pending: map[string]pending{}, sessions: map[string]*session{}, clock: time.Now, slots: make(chan struct{}, 4)}
+	return &Server{config: c, verifier: p, client: &http.Client{Transport: transport, Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, pending: map[string]pending{}, sessions: map[string]*session{}, clock: time.Now, slots: make(chan struct{}, 4), sourceImports: make(chan struct{}, 1)}
 }
 func random() string {
 	b := make([]byte, 32)
@@ -96,6 +99,9 @@ func random() string {
 }
 func (s *Server) cookieName(login bool) string {
 	name := "syn443-admin"
+	if s.config.ControlConsole {
+		name = "syn443-control"
+	}
 	if login {
 		name += "-login"
 	}
@@ -144,17 +150,21 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400)
 		return
 	}
-	if r.Method == "GET" && (r.URL.Path == "/" || r.URL.Path == "/app.js" || r.URL.Path == "/style.css") {
+	if r.Method == "GET" && (r.URL.Path == "/" || r.URL.Path == "/app.js" || r.URL.Path == "/style.css" || r.URL.Path == "/layer-merge.js") {
 		name := strings.TrimPrefix(r.URL.Path, "/")
 		if name == "" {
 			name = "index.html"
 		}
-		b, e := assets.ReadFile("assets/" + name)
+		prefix := "assets/"
+		if s.config.ControlConsole {
+			prefix += "control/"
+		}
+		b, e := assets.ReadFile(prefix + name)
 		if e != nil {
 			fail(w, 404)
 			return
 		}
-		kind := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8"}
+		kind := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "layer-merge.js": "text/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8"}
 		w.Header().Set("Content-Type", kind[name])
 		_, _ = w.Write(b)
 		return
@@ -207,7 +217,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	action := strings.TrimPrefix(r.URL.Path, "/chat/")
 	allowed := map[string]bool{"self": true, "inbox": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
-	if !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action] {
+	sourceImport := s.config.ControlConsole && r.URL.Path == "/control/source/import"
+	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport)
+	if !control && (s.config.ControlConsole || !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action]) {
 		fail(w, 404)
 		return
 	}
@@ -215,9 +227,30 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if action == "uploads/part" {
 		limit = 352 * 1024
 	}
+	if control {
+		limit = consoleActionLimit
+	}
+	if sourceImport {
+		limit = consoleImportLimit
+		select {
+		case s.sourceImports <- struct{}{}:
+			defer func() { <-s.sourceImports }()
+		default:
+			fail(w, 503)
+			return
+		}
+	}
+	if r.ContentLength > limit {
+		fail(w, 413)
+		return
+	}
 	raw, e := io.ReadAll(io.LimitReader(r.Body, limit+1))
 	if e != nil || int64(len(raw)) > limit {
 		fail(w, 413)
+		return
+	}
+	if control && !validConsoleAction(raw, sourceImport) {
+		fail(w, 400)
 		return
 	}
 	select {
@@ -242,13 +275,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	uri := s.config.APIOrigin + "/v1/admin/chat/" + action
+	if control {
+		if !v.principal.HasScope("syn443.control") {
+			fail(w, 403)
+			return
+		}
+		uri = s.config.APIOrigin + "/v1/control/action"
+	}
 	for attempt := 0; attempt < 2; attempt++ {
 		proof, e := sign(v.key, "POST", uri, v.access, v.nonce, raw, s.clock())
 		if e != nil {
 			fail(w, 503)
 			return
 		}
-		req, e := http.NewRequestWithContext(ctx, "POST", uri, strings.NewReader(string(raw)))
+		req, e := http.NewRequestWithContext(ctx, "POST", uri, bytes.NewReader(raw))
 		if e != nil {
 			fail(w, 503)
 			return
@@ -336,6 +376,9 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	// Access-token identity is verified by the pinned API audience, issuer, client
 	// and DPoP key. We request OAuth authorization, never use an unverified ID token.
 	q := url.Values{"client_id": {s.config.ClientID}, "response_type": {"code"}, "redirect_uri": {s.config.Origin + "/callback"}, "state": {state}, "code_challenge": {identity.Hash([]byte(p.verifier))}, "code_challenge_method": {"S256"}, "dpop_jkt": {thumb}}
+	if s.config.ControlConsole {
+		q.Set("scope", "openid syn443.control")
+	}
 	s.cookie(w, true, p.cookie, 300)
 	reply(w, map[string]string{"url": s.config.Issuer + "/protocol/openid-connect/auth?" + q.Encode()})
 }
@@ -444,7 +487,7 @@ func (s *Server) token(ctx context.Context, v *session, form url.Values) error {
 			return invalid
 		}
 		thumb, _ := identity.PublicJWK(&v.key.PublicKey).Thumbprint()
-		if p.Thumbprint != thumb || (v.principal.Subject != "" && p != v.principal) {
+		if p.Thumbprint != thumb || s.config.ControlConsole && !p.HasScope("syn443.control") || (v.principal.Subject != "" && (p.Issuer != v.principal.Issuer || p.Subject != v.principal.Subject || p.Thumbprint != v.principal.Thumbprint)) {
 			return invalid
 		}
 		v.access = token.Access

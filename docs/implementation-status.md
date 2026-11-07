@@ -1,8 +1,23 @@
 # Implementation and acceptance snapshot
 
-Snapshot: 2026-11-01. Specification0.9 contains292 requirements and98 acceptance
+Snapshot: 2026-11-07. Specification0.9 contains292 requirements and98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
+
+## Current development branches
+
+- [Android PR34](https://github.com/nd4y/syn443-android/pull/34):
+  [version 51 Actions](https://github.com/nd4y/syn443-android/actions/runs/42386332197)
+  passed the native/JVM/three-API matrix for the managed Wi-Fi candidate.
+  Device receipts and device state are tracked privately. The telemetry and
+  route cooldown update has a [separate Android 52 run](https://github.com/nd4y/syn443-android/actions/runs/42393024638).
+- [Control plane PR17](https://github.com/nd4y/syn443-control-plane/pull/17):
+  conditional device subscriptions, managed route checks and internal Wi-Fi
+  failover are followed by [exact telemetry and SQL restore CI](https://github.com/nd4y/syn443-control-plane/actions/runs/42392058600).
+  The restore test verifies device-policy delivery and chat attachment access
+  through the restricted API against an isolated restored database.
+
+These branches are drafts and do not establish release or production acceptance.
 
 ## Accepted source and integration
 
@@ -29,8 +44,7 @@ and original system/mobile-data settings were preserved/restored; main APK was
 retained, test APK removed, Wi-Fi validated and VPN Off at final device readback.
 Full status readiness after Wi-Fi return took73.12s including the probe interval;
 this is not packet-outage latency. Device records/screenshots/configuration stay
-private. The installed snapshot is the accepted implementation above, not a claim
-that every later metadata-only merge APK was physically installed.
+private. This historical receipt covers the version installed at that test.
 
 Control-plane acceptance includes Go/race, PostgreSQL process/role/transaction,
 temporary Keycloak and browser support-chat checks. Prior isolated synthetic
@@ -44,9 +58,9 @@ and physical browser download persistence are not implied by browser CI.
 | --- | --- | --- |
 | M0 | Shared bounded Go/Kotlin reference ranking, coordinator and contracts | Foundation only; not full route exploration |
 | M1 | Real TUN/native host, durable intent, bounded recovery, direct/two-hop/NetBird paths, per-outbound evidence and reproducible Android lifecycle | LTE/restricted LTE, natural Doze, unplugged battery and endurance; full OS/routing predicate matrix |
-| M2 | Keycloak/OIDC/PKCE/DPoP pilot, Keystore identities, SQL device sessions, signed assignments, refresh/cache/lease/revoke, transactional activation and rollback | Release invitations/QR/manual binding; full enrollment acceptance, credential namespaces for managed overlays, signed route-check activation handoff, rotation |
-| M3 | Embedded engines, separate enrollment API/publisher/support-web processes, and a read-only Remnawave 3.4 adapter with protected owner CLI | Persistent resource/account management, subscription normalization and publication, full protocol acceptance matrix, mobile edit/publish and full administration frontend |
-| M4 | Reference comparator, bounded target checks, partial diagnostics and basic SQL support chat | Autonomous four-mode graph exploration/quarantine, cohort policy rollout, central telemetry/incident pipeline and full retention controls |
+| M2 | Keycloak/OIDC/PKCE/DPoP pilot, Keystore identities, SQL device sessions, signed assignments, refresh/cache/lease/revoke, transactional activation and rollback | Release invitations/QR/manual binding and live acceptance for full enrollment, managed overlays and root rotation |
+| M3 | Embedded engines, a scoped Remnawave API resource, subscription normalization and addressed Wi-Fi fetch, separate API/worker/web processes | Live provider and complete protocol acceptance, native mobile edit/publish, all managed settings and administration workflows |
+| M4 | Reference comparator, bounded graph planner, managed target checks, partial diagnostics, internal Wi-Fi failover candidate, [bounded technical telemetry ingestion](telemetry-ingest.md) and basic SQL support chat | Runtime graph exploration/quarantine across all four modes, cohort policy rollout, full telemetry/incident pipeline and retention controls |
 | M5 | Reproducible CI and scoped physical evidence | Complete version1.0 security/reliability/update/migration/restore and production acceptance |
 
 HTTP/SOCKS/VLESS/SSH/selector/url-test and NetBird are accepted configuration

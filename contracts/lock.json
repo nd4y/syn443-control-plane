@@ -6,11 +6,17 @@
     "decision-vectors.json": "2993d7ba0f312b475d34a5142759e7dbc5c605594558e1663b54f48859039d47",
     "decision-result.schema.json": "3239654e14d1ce99b30c0309c7c6519f8fec5f72bf8c04d136eb704da088ffc5",
     "openapi.json": "9a6327cdc04b5d1b91b85a3c600ffa90fe4ece339179230793190f5bdf650359",
-    "policy-payload.schema.json": "fb5eced8d11fc38489e5e17493f23a087663f7fa1f409013cad5034f678ad60f",
+    "policy-payload.schema.json": "1469551248c3b9616a9fec40f69d7c4116a0dd2b0abe12ea81fb17589faad2e8",
     "policy-vectors.json": "a4a5381e5bb39b91abe71149f47c7e2ec62790ba9afa0a68e41c58ef6af1b788",
     "policy-openapi.json": "11a4f22cf7ce3a8391499e7fcdbd8ff6ab7e1b5743167377ee236b13d9470c28",
-    "enrollment-openapi.json": "2b2c5cd3b2491c8c81985f27cf999e78a1fe71984837778f2e48f4fcff3c9056",
+    "enrollment-openapi.json": "e990e90b1e803c4936ea7de99a389a6de106992b663a05128ac828fb3340d001",
     "policy-device-signature.json": "08d74647c816787c85ddd00a9089e3efdaa278b48848723f51a71e26ce5bf15e",
-    "chat-openapi.json": "505800fd34c456c86c31345ec18b20be5009e233b1e69f4d637c6688b9b5e3ed"
+    "chat-openapi.json": "505800fd34c456c86c31345ec18b20be5009e233b1e69f4d637c6688b9b5e3ed",
+    "control-openapi.json": "d61d0ec2ce489b02386ade55bb0ce73f687cc4f567b20a09b0bd42160fd5c1ad",
+    "bootstrap.schema.json": "57a45444510439dc01bc7717cff1dcce1ac3f31a463d7320601d873d9171f051",
+    "bootstrap-wire-vectors.json": "e7ed68b385ba61d0788b74680f3b8d41117f5acc960150a651a5eb2c30f9af19",
+    "invitation-openapi.json": "0aaf6cf59826265613ce522c7789ea14ec4a00d0392b42a34728911394cf9d2f",
+    "overlay-namespace-vectors.json": "f8fea5472818e3438b600a0d6e51cb9e1e4bc7957bdf150d75e27241a44aebac",
+    "overlay-credential.schema.json": "4228df5c2b78542393f9b22b4576b9243c221708226510442a7315507c14e44d"
   }
 }

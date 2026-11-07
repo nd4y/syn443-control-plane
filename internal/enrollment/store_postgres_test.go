@@ -24,11 +24,14 @@ import (
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/policy"
+	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 )
 
 var fixtureOwner *sql.DB
 var fixtureAPI, fixturePublisher *sql.DB
-var fixtureAPIDSN, fixturePublisherDSN string
+var fixtureBroker *sql.DB
+var fixtureAnalysis, fixtureTelemetryRetention *sql.DB
+var fixtureAPIDSN, fixturePublisherDSN, fixtureBrokerDSN string
 var b64 = base64.RawURLEncoding
 
 func TestMain(m *testing.M) {
@@ -50,7 +53,8 @@ func TestMain(m *testing.M) {
 	for _, item := range []struct {
 		name   string
 		target **sql.DB
-	}{{"syn443_identity_api", &fixtureAPI}, {"syn443_identity_publisher", &fixturePublisher}} {
+	}{{"syn443_identity_api", &fixtureAPI}, {"syn443_identity_publisher", &fixturePublisher}, {"syn443_overlay_worker", &fixtureBroker},
+		{"syn443_telemetry_analysis", &fixtureAnalysis}, {"syn443_telemetry_retention", &fixtureTelemetryRetention}} {
 		password := random()
 		var statement string
 		if e = fixtureOwner.QueryRow(`SELECT format('CREATE ROLE %I LOGIN NOINHERIT NOBYPASSRLS PASSWORD %L',$1::text,$2::text)`, item.name, password).Scan(&statement); e != nil {
@@ -63,8 +67,10 @@ func TestMain(m *testing.M) {
 		copy.User = url.UserPassword(item.name, password)
 		if item.name == "syn443_identity_api" {
 			fixtureAPIDSN = copy.String()
-		} else {
+		} else if item.name == "syn443_identity_publisher" {
 			fixturePublisherDSN = copy.String()
+		} else if item.name == "syn443_overlay_worker" {
+			fixtureBrokerDSN = copy.String()
 		}
 		*item.target, e = sql.Open("pgx", copy.String())
 		if e != nil {
@@ -75,9 +81,15 @@ func TestMain(m *testing.M) {
 	if _, e = fixtureOwner.Exec(Roles); e != nil {
 		panic(e)
 	}
+	if _, e = fixtureOwner.Exec(telemetry.AnalysisRoles + "\n" + telemetry.RetentionRoles); e != nil {
+		panic(e)
+	}
 	code := m.Run()
 	fixtureAPI.Close()
 	fixturePublisher.Close()
+	fixtureBroker.Close()
+	fixtureAnalysis.Close()
+	fixtureTelemetryRetention.Close()
 	fixtureOwner.Close()
 	os.Exit(code)
 }
@@ -111,7 +123,7 @@ type fixture struct {
 func newFixture(t *testing.T, limit int) *fixture {
 	t.Helper()
 	ctx := context.Background()
-	_, e := fixtureOwner.Exec(`TRUNCATE identity_accounts,identity_devices,identity_challenges,identity_sessions,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations CASCADE;UPDATE identity_clock SET second=0`)
+	_, e := fixtureOwner.Exec(`TRUNCATE identity_overlay_resource_versions,identity_accounts,identity_devices,identity_challenges,identity_sessions,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations CASCADE;UPDATE identity_clock SET second=0;UPDATE identity_overlay_broker_clock SET second=0`)
 	if e != nil {
 		t.Fatal(e)
 	}

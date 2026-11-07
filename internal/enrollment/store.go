@@ -11,7 +11,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 
@@ -24,10 +26,40 @@ var identitySchema string
 
 //go:embed roles.sql
 var identityRoles string
-var Schema = identitySchema + "\n" + supportchat.Schema
-var Roles = identityRoles + "\n" + supportchat.Roles
+
+//go:embed overlay_schema.sql
+var overlaySchema string
+
+//go:embed overlay_roles.sql
+var overlayRoles string
+
+//go:embed broker_schema.sql
+var brokerSchema string
+
+//go:embed broker_roles.sql
+var brokerRoles string
+
+//go:embed broker_resource_schema.sql
+var brokerResourceSchema string
+
+//go:embed broker_resource_roles.sql
+var brokerResourceRoles string
+
+//go:embed capability_schema.sql
+var capabilitySchema string
+
+//go:embed capability_roles.sql
+var capabilityRoles string
+
+var Schema = identitySchema + "\n" + supportchat.Schema + "\n" + overlaySchema + "\n" + brokerSchema + "\n" + brokerResourceSchema + "\n" + capabilitySchema
+var Roles = identityRoles + "\n" + supportchat.Roles + "\n" + overlayRoles + "\n" + brokerRoles + "\n" + brokerResourceRoles + "\n" + capabilityRoles
 var ErrDenied = errors.New("access_denied")
+
+// Identity admission may complete before an initial desired configuration is
+// assigned. It remains an authorization denial for ordinary policy issuance.
+var ErrConfigurationUnassigned = fmt.Errorf("configuration_unassigned: %w", ErrDenied)
 var ErrConflict = errors.New("idempotency_conflict")
+var ErrCapabilitiesUpdate = fmt.Errorf("capabilities_update_required: %w", ErrConflict)
 var ErrReplay = errors.New("proof_replayed")
 var ErrReuse = errors.New("session_reuse")
 var ErrPending = errors.New("provisioning_pending")
@@ -46,10 +78,12 @@ type Request struct {
 	Capabilities []string     `json:"capabilities"`
 }
 type Receipt struct {
-	Token      string `json:"token"`
-	Proof      string `json:"proof"`
-	URI        string `json:"uri"`
-	AcceptedAt int64  `json:"acceptedAt"`
+	Kind         string `json:"kind,omitempty"`
+	InvitationID string `json:"invitationId,omitempty"`
+	Token        string `json:"token"`
+	Proof        string `json:"proof"`
+	URI          string `json:"uri"`
+	AcceptedAt   int64  `json:"acceptedAt"`
 }
 type Session struct {
 	DeviceID       string `json:"deviceId"`
@@ -60,9 +94,15 @@ type Session struct {
 	Generation     int64  `json:"generation"`
 	Nonce          string `json:"nonce"`
 }
+type ReservationCounter func(context.Context, *sql.Tx, string, time.Time) (int, error)
+
 type Store struct {
-	DB  *sql.DB
-	box cipher.AEAD
+	// Opt in only with the independently configured durable broker. Absent or
+	// foreign grants retain the ordinary denial; this never authorizes delivery.
+	OverlayBrokerPending bool
+	Reservations         ReservationCounter
+	DB                   *sql.DB
+	box                  cipher.AEAD
 }
 
 func NewStore(db *sql.DB, key []byte) (*Store, error) {
@@ -77,7 +117,7 @@ func NewStore(db *sql.DB, key []byte) (*Store, error) {
 	if e != nil {
 		return nil, e
 	}
-	return &Store{db, box}, nil
+	return &Store{DB: db, box: box}, nil
 }
 func (s *Store) Now(ctx context.Context, wall time.Time) (time.Time, error) {
 	var n int64
@@ -179,15 +219,8 @@ func (s *Store) Register(ctx context.Context, principal identity.Principal, proo
 	if identity.Decode(raw, &req, true) != nil || !idPattern.MatchString(req.RequestID) || len(req.Capabilities) < 3 || len(req.Capabilities) > 16 {
 		return result, identity.ErrInvalid
 	}
-	caps := map[string]bool{}
-	for _, v := range req.Capabilities {
-		if len(v) < 1 || len(v) > 64 || caps[v] {
-			return result, identity.ErrInvalid
-		}
-		caps[v] = true
-	}
-	if !caps["engine-config.v1"] || !caps["tun.lease.v1"] || !caps["policy.keybound.v2"] {
-		return result, identity.ErrInvalid
+	if _, _, e := canonicalCapabilities(req.Capabilities); e != nil {
+		return result, e
 	}
 	thumb, e := req.Key.Thumbprint()
 	if e != nil || thumb != principal.Thumbprint || thumb != proof.Thumbprint || proof.Claims.RequestHash != identity.Hash(raw) {
@@ -226,12 +259,20 @@ func (s *Store) Register(ctx context.Context, principal identity.Principal, proo
 		return result, tx.Commit()
 	}
 	var device, actualOwner string
-	var active bool
-	e = tx.QueryRowContext(ctx, `SELECT id,owner,active FROM identity_devices WHERE jkt=$1 FOR UPDATE`, thumb).Scan(&device, &actualOwner, &active)
+	var active, approved bool
+	var original []byte
+	e = tx.QueryRowContext(ctx, `SELECT id,owner,active,approved,request_body FROM identity_devices WHERE jkt=$1 FOR UPDATE`, thumb).Scan(&device, &actualOwner, &active, &approved, &original)
 	if errors.Is(e, sql.ErrNoRows) {
 		var count int
 		if e = tx.QueryRowContext(ctx, `SELECT count(*) FROM identity_devices WHERE owner=$1 AND active`, owner).Scan(&count); e != nil {
 			return result, e
+		}
+		if s.Reservations != nil {
+			pending, err := s.Reservations(ctx, tx, owner, now)
+			if err != nil {
+				return result, err
+			}
+			count += pending
 		}
 		if count >= a.Limit {
 			return result, ErrDenied
@@ -244,9 +285,28 @@ func (s *Store) Register(ctx context.Context, principal identity.Principal, proo
 		if actualOwner != owner || !active {
 			return result, ErrDenied
 		}
-		// Refreshing an authenticated registration never creates another device or revives a revoked key.
-		data, _ := json.Marshal(receipt)
-		_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET request_body=$2,receipt=$3,retry_after=0 WHERE id=$1`, device, raw, s.Seal(data, "receipt/v1/"+device))
+		// A new authenticated session does not replace independently approved
+		// enrollment evidence. Capabilities need their own approval/migration;
+		// an API-writeable receipt is never an upgrade authority.
+		if approved {
+			var prior Request
+			if identity.Decode(original, &prior, true) != nil {
+				return result, ErrDenied
+			}
+			available, err := EffectiveCapabilities(ctx, tx, device, prior.Capabilities)
+			if err != nil {
+				return result, err
+			}
+			before, after := available.Capabilities, append([]string(nil), req.Capabilities...)
+			slices.Sort(after)
+			if !slices.Equal(before, after) {
+				return result, ErrCapabilitiesUpdate
+			}
+			_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET retry_after=0 WHERE id=$1`, device)
+		} else {
+			data, _ := json.Marshal(receipt)
+			_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET request_body=$2,receipt=$3,retry_after=0 WHERE id=$1`, device, raw, s.Seal(data, "receipt/v1/"+device))
+		}
 	}
 	if e != nil {
 		return result, e
@@ -255,21 +315,76 @@ func (s *Store) Register(ctx context.Context, principal identity.Principal, proo
 	if e != nil {
 		return result, e
 	}
+	sid, value, e := s.mintSession(ctx, tx, device, a.Until, n)
+	if e != nil {
+		return result, e
+	}
+	if e = s.cache(ctx, tx, owner, thumb, "enroll", req.RequestID, identity.Hash(raw), sid, value, n); e != nil {
+		return result, e
+	}
+	return value, tx.Commit()
+}
+
+func (s *Store) mintSession(ctx context.Context, tx *sql.Tx, device string, accountUntil, now int64) (string, Session, error) {
 	sid := random()
-	until := min(n+86400, a.Until)
-	result = Session{device, random(), random(), min(n+600, a.Until) * 1000, until * 1000, 0, random()}
-	_, e = tx.ExecContext(ctx, `INSERT INTO identity_sessions(id,device,access_hash,refresh_hash,access_until,refresh_until,generation,nonce) VALUES($1,$2,$3,$4,$5,$6,0,$7)`, sid, device, identity.Hash([]byte(result.AccessToken)), identity.Hash([]byte(result.RefreshToken)), result.AccessUntilMs/1000, until, result.Nonce)
+	until := min(now+86400, accountUntil)
+	value := Session{device, random(), random(), min(now+600, accountUntil) * 1000, until * 1000, 0, random()}
+	_, e := tx.ExecContext(ctx, `INSERT INTO identity_sessions(id,device,access_hash,refresh_hash,access_until,refresh_until,generation,nonce) VALUES($1,$2,$3,$4,$5,$6,0,$7)`, sid, device, identity.Hash([]byte(value.AccessToken)), identity.Hash([]byte(value.RefreshToken)), value.AccessUntilMs/1000, until, value.Nonce)
 	if e != nil {
-		return result, e
+		return "", Session{}, e
 	}
-	_, e = tx.ExecContext(ctx, `INSERT INTO identity_refresh_history(hash,session,expires) VALUES($1,$2,$3)`, identity.Hash([]byte(result.RefreshToken)), sid, until)
+	_, e = tx.ExecContext(ctx, `INSERT INTO identity_refresh_history(hash,session,expires) VALUES($1,$2,$3)`, identity.Hash([]byte(value.RefreshToken)), sid, until)
 	if e != nil {
-		return result, e
+		return "", Session{}, e
 	}
-	if e = s.cache(ctx, tx, owner, thumb, "enroll", req.RequestID, identity.Hash(raw), sid, result, n); e != nil {
-		return result, e
+	return sid, value, nil
+}
+
+// InvitedSession joins the normal session/replay cache after invitation approval.
+// The caller holds account then invitation; this function locks the exact device.
+// It never enrolls, revives or approves a device and must share the transaction
+// with the invitation's immutable final-session receipt.
+func (s *Store) InvitedSession(ctx context.Context, tx *sql.Tx, owner, jkt, device, id, hash string, now time.Time) (Session, string, error) {
+	if !idPattern.MatchString(owner) || !idPattern.MatchString(jkt) || !idPattern.MatchString(device) || !idPattern.MatchString(id) || !idPattern.MatchString(hash) {
+		return Session{}, "", ErrDenied
 	}
-	return result, tx.Commit()
+	a, e := lockAccount(ctx, tx, owner, now.Unix())
+	if e != nil {
+		return Session{}, "", e
+	}
+	var actualOwner, actualKey string
+	var active, approved bool
+	var offline int64
+	if e = tx.QueryRowContext(ctx, `SELECT owner,jkt,active,approved,offline_until FROM identity_devices WHERE id=$1 FOR UPDATE`, device).Scan(&actualOwner, &actualKey, &active, &approved, &offline); e != nil {
+		return Session{}, "", e
+	}
+	if actualOwner != owner || actualKey != jkt || !active || !approved || offline <= now.Unix() {
+		return Session{}, "", ErrDenied
+	}
+	value, found, e := s.cached(ctx, tx, owner, jkt, "invite", id, hash, now.Unix())
+	if e != nil {
+		return Session{}, "", e
+	}
+	if found {
+		var sid string
+		e = tx.QueryRowContext(ctx, `SELECT session FROM identity_requests WHERE owner=$1 AND jkt=$2 AND kind='invite' AND request_id=$3`, owner, jkt, id).Scan(&sid)
+		return value, sid, e
+	}
+	var count int
+	if e = tx.QueryRowContext(ctx, `SELECT count(*) FROM identity_sessions WHERE device=$1 AND active`, device).Scan(&count); e != nil {
+		return Session{}, "", e
+	}
+	if count != 0 {
+		return Session{}, "", ErrConflict
+	}
+	sid, value, e := s.mintSession(ctx, tx, device, a.Until, now.Unix())
+	if e != nil {
+		return Session{}, "", e
+	}
+	if e = s.cache(ctx, tx, owner, jkt, "invite", id, hash, sid, value, now.Unix()); e != nil {
+		return Session{}, "", e
+	}
+	return value, sid, nil
 }
 
 type Binding struct {
@@ -310,11 +425,11 @@ func (s *Store) lockSession(ctx context.Context, tx *sql.Tx, b Binding, proof id
 	if !active || owner != b.Owner || jkt != proof.Thumbprint {
 		return a, b, ErrDenied
 	}
-	e = tx.QueryRowContext(ctx, `SELECT nonce,access_until,refresh_until,generation,active FROM identity_sessions WHERE id=$1 FOR UPDATE`, b.Session).Scan(&b.Nonce, &b.AccessUntil, &b.RefreshUntil, &b.Generation, &b.Active)
+	e = tx.QueryRowContext(ctx, `SELECT nonce,access_until,refresh_until,generation,active,device FROM identity_sessions WHERE id=$1 FOR UPDATE`, b.Session).Scan(&b.Nonce, &b.AccessUntil, &b.RefreshUntil, &b.Generation, &b.Active, &owner)
 	if e != nil {
 		return a, b, e
 	}
-	if !b.Active || b.RefreshUntil <= now || !refresh && b.AccessUntil <= now {
+	if owner != b.Device || b.Jkt != jkt || !b.Active || b.RefreshUntil <= now || !refresh && b.AccessUntil <= now {
 		return a, b, ErrDenied
 	}
 	if proof.Claims.Nonce != b.Nonce {

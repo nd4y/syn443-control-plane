@@ -34,6 +34,29 @@ class PublicDataTest(unittest.TestCase):
         self.assertIn("credential-url", findings(("https://" + "synthetic:placeholder@" + "example.invalid").encode()))
         self.assertFalse(findings(b"https://example.invalid:443/path"))
 
+    def test_url_userinfo_cannot_cross_a_binary_control_separator(self):
+        # C0/DEL are not URL userinfo. Go constants separated by these bytes do
+        # not become a credential URI just because another constant has an @.
+        for delimiter in (bytes([0]),bytes([1]),bytes([31]),bytes([127])):
+            broken=b"https://"+b"synthetic"+delimiter+b"unrelated:constant@"+b"example.invalid"
+            self.assertNotIn("credential-url",findings(bytes([127])+b"ELF"+broken))
+            real=b"https://"+b"synthetic:placeholder@"+b"example.invalid"
+            self.assertIn("credential-url",findings(bytes([127])+b"ELF"+delimiter+real+delimiter))
+        encoded=b"https://"+b"synthetic%00:placeholder@"+b"example.invalid"
+        self.assertIn("credential-url",findings(encoded))
+
+    def test_only_exact_public_pgx_elf_regexp_is_not_a_credential_uri(self):
+        symbol=b"github.com/jackc/pgx/v5/pgconn.redactURLPassword"
+        regexp=b":"+b"[^@]+"+b"@"
+        joined=b"formatconstant://a=,b=%s%s,c=%v"+regexp
+        elf=bytes([127])+b"ELF"+bytes([0])+symbol+bytes([0])
+        self.assertNotIn("credential-url",findings(elf+joined))
+        self.assertIn("credential-url",findings(joined))
+        self.assertIn("credential-url",findings(bytes([127])+b"ELF"+joined))
+        self.assertIn("credential-url",findings(elf+joined.replace(regexp,b":"+b"[^@]*"+b"@")))
+        real=b"https://"+b"synthetic:placeholder@"+b"example.invalid"
+        self.assertIn("credential-url",findings(elf+joined+bytes([0])+real))
+
     def test_only_exact_go_elf_symbols_are_not_mistaken_for_domains(self):
         fields = b"crypto/x509." + b"local string; crypto/x509.domain string"
         symbol = b"\x00time." + b"Local\x00"
@@ -41,3 +64,26 @@ class PublicDataTest(unittest.TestCase):
         self.assertIn("private-domain", findings(fields + symbol))
         for value in (b"time." + b"local", b"other." + b"local", b"x509." + b"local"):
             self.assertIn("private-domain", findings(b"\x7fELF\x00" + value + b"\x00"))
+
+    def test_only_exact_public_go_rodata_userinfo_is_exempt(self):
+        metadata = (
+            b"\x7fELF\x00go1.27.3\x00"
+            b"dep\tgithub.com/jackc/pgx/v5\tv5.11.0\tchecksum\n"
+            b"dep\tgithub.com/santhosh-tekuri/jsonschema/v6\tv6.0.3\tchecksum\n"
+        )
+        prefix = b"bad inst" + b"https://"
+        suffix = (
+            b"passworddatabasepassfilePGSSLKEYPGSSLSNItimezoneDEK-Inforoot.crt"
+            + b":xxxxxx@"
+        )
+        real = b"https://" + b"synthetic:placeholder@" + b"example.invalid"
+        for middle in (b"Location", b"audienceownerTagdeviceIdprovider"):
+            public = prefix + middle + suffix
+            with self.subTest(middle=middle):
+                self.assertNotIn("credential-url", findings(metadata + public))
+                self.assertIn("credential-url", findings(public))
+                self.assertIn("credential-url", findings(metadata.replace(b"go1.27.3", b"go1.27.4") + public))
+                self.assertIn("credential-url", findings(metadata + public.replace(b"root.crt", b"root.key")))
+                self.assertIn("credential-url", findings(metadata + public + b"\x00" + real))
+                self.assertIn("credential-url", findings(metadata + public + b"extra@"))
+        self.assertIn("credential-url", findings(metadata + prefix + b"audienceownerTagdeviceIdaudience" + suffix))

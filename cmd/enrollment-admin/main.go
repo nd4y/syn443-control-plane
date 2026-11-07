@@ -2,15 +2,31 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
-	"github.com/nd4y/syn443-control-plane/internal/enrollment"
-	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"os"
 	"time"
+
+	"github.com/nd4y/syn443-control-plane/internal/deviceprovisioning"
+	"github.com/nd4y/syn443-control-plane/internal/enrollment"
+	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
 
 func run() error {
+	if len(os.Args) != 2 {
+		return identity.ErrInvalid
+	}
+	if os.Args[1] == "bootstrap-profile" {
+		return runBootstrapProfile()
+	}
+	if os.Args[1] == "telemetry-prune" {
+		return runTelemetryPrune()
+	}
+	if os.Args[1] == "telemetry-aggregate" {
+		return runTelemetryAggregate(os.Args[2:])
+	}
 	c, e := enrollment.ReadConfig(os.Getenv("SYN443_ENROLLMENT_CONFIG"))
 	if e != nil {
 		return e
@@ -22,10 +38,50 @@ func run() error {
 	defer store.DB.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	if len(os.Args) != 2 {
-		return identity.ErrInvalid
-	}
 	switch os.Args[1] {
+	case "overlay-resource-put":
+		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_OVERLAY_RESOURCE"), 98304)
+		if e != nil {
+			return e
+		}
+		var input struct {
+			EncryptionKey    string                    `json:"encryptionKey"`
+			PreviousRevision int64                     `json:"previousRevision"`
+			Resource         enrollment.BrokerResource `json:"resource"`
+		}
+		if identity.DecodeOperatorDocument(raw, &input) != nil || input.EncryptionKey == c.EncryptionKey {
+			return identity.ErrInvalid
+		}
+		key, e := base64.StdEncoding.Strict().DecodeString(input.EncryptionKey)
+		identityKey, identityError := base64.StdEncoding.Strict().DecodeString(c.EncryptionKey)
+		if e != nil || len(key) != 32 || base64.StdEncoding.EncodeToString(key) != input.EncryptionKey || identityError != nil || bytes.Equal(key, identityKey) {
+			return identity.ErrInvalid
+		}
+		catalog, e := enrollment.NewBrokerResourceCatalog(store.DB, key, false)
+		if e != nil {
+			return e
+		}
+		return catalog.Put(ctx, input.Resource, input.PreviousRevision, time.Now())
+	case "overlay-resource-retire":
+		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_OVERLAY_RESOURCE"), 4096)
+		if e != nil {
+			return e
+		}
+		var input struct {
+			ResourceID   string `json:"resourceId"`
+			Revision     int64  `json:"revision"`
+			ExpectedHead int64  `json:"expectedHeadRevision"`
+		}
+		if identity.DecodeOperatorDocument(raw, &input) != nil {
+			return identity.ErrInvalid
+		}
+		return enrollment.RetireBrokerResourceVersion(ctx, store.DB, input.ResourceID, input.Revision, input.ExpectedHead, time.Now())
+	case "configuration-migrate":
+		_, e = store.DB.ExecContext(ctx, deviceprovisioning.ConfigurationSchema)
+		return e
+	case "configuration-roles":
+		_, e = store.DB.ExecContext(ctx, deviceprovisioning.ConfigurationRoles)
+		return e
 	case "chat-admin":
 		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_CHAT_ADMIN_GRANT"), 8192)
 		if e != nil {
