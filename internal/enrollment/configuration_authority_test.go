@@ -120,6 +120,36 @@ func TestSharedGrantCannotEnableADeviceRolloutWithoutItsApprovedConfiguration(t 
 	}
 }
 
+func TestPreparedDecisionRevisionRequiresNegotiatedApprovedConfiguration(t *testing.T) {
+	prepared, payload, now := configuredPreparation(t)
+	prepared.EngineConfig = json.RawMessage(`{"outbounds":[{"type":"direct","tag":"direct"}],"route":{"final":"direct"},"route_failover":{}}`)
+	prepared.AlgorithmRevision = policy.ConfirmedFailoverAlgorithm
+	prepared.RequiredCapabilities = []string{"route.health.v1", "route.failover.v1", policy.RouteDecision}
+	available := append(append([]string(nil), payload.RequiredCapabilities...), prepared.RequiredCapabilities...)
+	old := payload
+	if err := applyPreparedConfiguration(&old, prepared, available[:len(available)-1], now); !errors.Is(err, ErrDenied) {
+		t.Fatal("old device could receive an unsupported algorithm", err)
+	}
+	candidate := payload
+	if err := applyPreparedConfiguration(&candidate, prepared, available, now); err != nil ||
+		candidate.AlgorithmRevision != policy.ConfirmedFailoverAlgorithm || candidate.Validate(now) != nil {
+		t.Fatal("per-device approval did not bind the algorithm to the payload", err)
+	}
+	candidate.KeyThumbprint = ""
+	grant := Grant{Issuer: "https://identity.example.invalid/realms/test", Subject: "synthetic-user",
+		DeviceLimit: 2, Until: now.Add(time.Hour).Unix(), Template: candidate}
+	if err := grant.Validate(now); !errors.Is(err, identity.ErrInvalid) {
+		t.Fatal("shared account grant bypassed per-device selection", err)
+	}
+	for _, variant := range []string{"", "external-program"} {
+		bad := payload
+		prepared.AlgorithmRevision = variant
+		if err := applyPreparedConfiguration(&bad, prepared, available, now); err == nil {
+			t.Fatal("an invalid revision and capability pair escaped preparation")
+		}
+	}
+}
+
 func TestPreparedConfigurationRejectsUnfencedUnsupportedAndNativeAuthorityInputs(t *testing.T) {
 	for index, change := range []func(*PreparedConfiguration){
 		func(p *PreparedConfiguration) { p.Fence = nil }, func(p *PreparedConfiguration) { p.UntilMs = 0 }, func(p *PreparedConfiguration) { p.EngineConfig = nil }, func(p *PreparedConfiguration) { p.EngineConfig = json.RawMessage(strings.Repeat("x", 262145)) },

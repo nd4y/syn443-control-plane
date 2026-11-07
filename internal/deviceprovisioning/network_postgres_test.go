@@ -299,6 +299,32 @@ func TestSQLInternalFailoverCannotUseProfilesApprovedForAnotherMode(t *testing.T
 	if err != nil || all == nil || !slices.Contains(all.RequiredCapabilities, policy.ReserveProbeCooldown) {
 		t.Fatal("eligible device did not enter full rollout", err)
 	}
+	changes[2].Value = bytes.Replace(explicit, []byte(`"probeCooldown":true`),
+		[]byte(`"decisionRevision":"m4-confirmed-v1"`), 1)
+	if _, err = n.authority.Prepare(ctx, old, n.f.now); !errors.Is(err, enrollment.ErrDenied) {
+		t.Fatal("old device entered explicit algorithm assignment", err)
+	}
+	target.Capabilities = append(target.Capabilities, policy.RouteDecision)
+	selected, err := n.authority.Prepare(ctx, target, n.f.now)
+	if err != nil || selected == nil || selected.AlgorithmRevision != policy.ConfirmedFailoverAlgorithm ||
+		!slices.Contains(selected.RequiredCapabilities, policy.RouteDecision) ||
+		!bytes.Equal(selected.EngineConfig, prepared.EngineConfig) {
+		t.Fatal("supported device did not receive the algorithm with the original graph", err)
+	}
+	explicitDecision := bytes.Clone(changes[2].Value)
+	for _, point := range []string{"0", "10000"} {
+		changes[2].Value = bytes.Replace(explicitDecision, []byte(`"decisionRevision":"m4-confirmed-v1"`),
+			[]byte(`"decisionRevision":"m4-confirmed-v1","decisionRollout":{"id":"synthetic-algorithm","basisPoints":`+point+`}`), 1)
+		for _, device := range []enrollment.ConfigurationTarget{target, old} {
+			wanted := point == "10000" && slices.Contains(device.Capabilities, policy.RouteDecision)
+			result, err := n.authority.Prepare(ctx, device, n.f.now)
+			if err != nil || result == nil || (result.AlgorithmRevision == policy.ConfirmedFailoverAlgorithm) != wanted ||
+				slices.Contains(result.RequiredCapabilities, policy.RouteDecision) != wanted ||
+				!bytes.Equal(result.EngineConfig, prepared.EngineConfig) {
+				t.Fatal("algorithm rollout changed the graph or selected an ineligible device", err)
+			}
+		}
+	}
 }
 
 func TestSQLNetworkAuthorityRejectsForeignUnapprovedAndUnavailableInputs(t *testing.T) {

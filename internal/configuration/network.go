@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/policy"
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
 )
 
@@ -66,11 +67,13 @@ type OutboundCheckPlan struct {
 // Initial failover is explicit and scoped to an internal destination rule.
 // Public exit classes require independent exit evidence before adoption.
 type RouteFailoverPlan struct {
-	Selector             string                `json:"selector"`
-	NetworkMode          string                `json:"networkMode"`
-	Intent               string                `json:"intent"`
-	ProbeCooldown        bool                  `json:"probeCooldown,omitempty"`
-	ProbeCooldownRollout *ProbeCooldownRollout `json:"probeCooldownRollout,omitempty"`
+	Selector             string         `json:"selector"`
+	NetworkMode          string         `json:"networkMode"`
+	Intent               string         `json:"intent"`
+	ProbeCooldown        bool           `json:"probeCooldown,omitempty"`
+	ProbeCooldownRollout *DeviceRollout `json:"probeCooldownRollout,omitempty"`
+	DecisionRevision     string         `json:"decisionRevision,omitempty"`
+	DecisionRollout      *DeviceRollout `json:"decisionRollout,omitempty"`
 }
 type NetworkSettings struct {
 	SchemaVersion    int                  `json:"schemaVersion"`
@@ -392,6 +395,10 @@ func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]an
 		return nil, nil
 	}
 	if plan.ProbeCooldownRollout != nil && (!plan.ProbeCooldown || !plan.ProbeCooldownRollout.valid()) {
+		return nil, ErrInvalid
+	}
+	if plan.DecisionRevision != "" && plan.DecisionRevision != policy.ConfirmedFailoverAlgorithm ||
+		plan.DecisionRollout != nil && (plan.DecisionRevision == "" || !plan.DecisionRollout.valid()) {
 		return nil, ErrInvalid
 	}
 	if plan.NetworkMode != "wifi" || plan.Intent != "INTERNAL" || plan.Selector == graph.Final || !failoverTag.MatchString(plan.Selector) {

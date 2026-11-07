@@ -13,6 +13,7 @@ let sourceShares=null;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message){$('status').textContent=message;}
+const confirmedDecision='m4-confirmed-v1';
 const routeCheckMethods={tcp:'TCP',tls:'TLS',https_204:'HTTPS 204',ssh_banner:'SSH banner',https_exit_ip:'IP выхода по HTTPS'};
 function routeDraft(){
  const value=JSON.parse($('plan').value),graph=value.graph,network=value.network;
@@ -30,7 +31,10 @@ function drawRouteChecks(){
  $('route-check-exit').hidden=$('route-check-method').value!=='https_exit_ip';
  const cooldown=$('route-reserve-cooldown');cooldown.checked=false;cooldown.disabled=true;
  const rollout=$('route-cooldown-rollout');rollout.hidden=true;
- $('route-rollout-id').value='';$('route-rollout-share').value='';
+ drawDeviceRollout('route-rollout',null);
+ const decision=$('route-decision');decision.value='';decision.disabled=true;
+ $('route-decision-rollout').hidden=true;
+ drawDeviceRollout('route-decision',null);
  const prior=select.value;select.replaceChildren();list.replaceChildren();editor.disabled=true;
  if(!authenticated)return;
  let state;
@@ -39,13 +43,14 @@ function drawRouteChecks(){
  if(state.tags.has(prior))select.value=prior;
  $('route-check-required').checked=state.checks.some(row=>row.outbound===select.value&&row.required===true);
  editor.disabled=busy||!!pending||!state.tags.size;
- const failover=reserveCooldownPlan(state);
+ const failover=internalFailoverPlan(state);
  if(failover){
   cooldown.disabled=editor.disabled;cooldown.checked=failover.probeCooldown===true;rollout.hidden=!cooldown.checked;
-  const existing=failover.probeCooldownRollout;
-  if(existing&&typeof existing.id==='string'&&Number.isSafeInteger(existing.basisPoints)&&existing.basisPoints>=0&&existing.basisPoints<=10000){
-   $('route-rollout-id').value=existing.id;$('route-rollout-share').value=String(existing.basisPoints/100);
-  }
+  drawDeviceRollout('route-rollout',failover.probeCooldownRollout);
+  decision.disabled=editor.disabled;
+  decision.value=failover.decisionRevision===confirmedDecision?confirmedDecision:'';
+  $('route-decision-rollout').hidden=!decision.value;
+  if(decision.value)drawDeviceRollout('route-decision',failover.decisionRollout);
  }
  for(const row of state.checks){
   for(const item of row.checks){
@@ -67,7 +72,17 @@ function drawRouteChecks(){
   }
  }
 }
-function reserveCooldownPlan(state){
+function drawDeviceRollout(prefix,existing){
+ const valid=typeof existing?.id==='string'&&Number.isSafeInteger(existing.basisPoints)&&existing.basisPoints>=0&&existing.basisPoints<=10000;
+ $(prefix+'-id').value=valid?existing.id:'';
+ $(prefix+'-share').value=valid?String(existing.basisPoints/100):'';
+}
+function readDeviceRollout(id,share){
+ if(!id&&!share)return null;
+ if(!/^[a-z0-9][a-z0-9._-]{0,47}$/.test(id)||!/^\d{1,3}(\.\d{1,2})?$/.test(share)||Number(share)>100)throw Error('invalid');
+ return {id,basisPoints:Math.round(Number(share)*100)};
+}
+function internalFailoverPlan(state){
  const failover=state.network.routeFailover;
  return failover?.networkMode==='wifi'&&failover.intent==='INTERNAL'&&state.tags.has(failover.selector)?failover:null;
 }
@@ -409,7 +424,7 @@ $('plan').oninput=drawRouteChecks;
 $('route-reserve-cooldown').onchange=()=>{
  const enabled=$('route-reserve-cooldown').checked;
  work(async()=>{
-  const state=routeDraft(),failover=reserveCooldownPlan(state);
+  const state=routeDraft(),failover=internalFailoverPlan(state);
   if(!failover)throw Error('invalid');
   if(enabled)failover.probeCooldown=true;else{delete failover.probeCooldown;delete failover.probeCooldownRollout;}
   applyRouteChecks(state);
@@ -418,11 +433,30 @@ $('route-reserve-cooldown').onchange=()=>{
 $('route-rollout-save').onclick=()=>{
  const id=$('route-rollout-id').value.trim(),share=$('route-rollout-share').value;
  work(async()=>{
-  const state=routeDraft(),failover=reserveCooldownPlan(state);
+  const state=routeDraft(),failover=internalFailoverPlan(state);
   if(failover?.probeCooldown!==true)throw Error('invalid');
-  if(!id&&!share){delete failover.probeCooldownRollout;applyRouteChecks(state);return;}
-  if(!/^[a-z0-9][a-z0-9._-]{0,47}$/.test(id)||!/^\d{1,3}(\.\d{1,2})?$/.test(share)||Number(share)>100)throw Error('invalid');
-  failover.probeCooldownRollout={id,basisPoints:Math.round(Number(share)*100)};
+  const value=readDeviceRollout(id,share);
+  if(value)failover.probeCooldownRollout=value;else delete failover.probeCooldownRollout;
+  applyRouteChecks(state);
+ });
+};
+$('route-decision').onchange=()=>{
+ const selected=$('route-decision').value;
+ work(async()=>{
+  const state=routeDraft(),failover=internalFailoverPlan(state);
+  if(!failover)throw Error('invalid');
+  if(selected===confirmedDecision)failover.decisionRevision=selected;
+  else{delete failover.decisionRevision;delete failover.decisionRollout;}
+  applyRouteChecks(state);
+ });
+};
+$('route-decision-save').onclick=()=>{
+ const id=$('route-decision-id').value.trim(),share=$('route-decision-share').value;
+ work(async()=>{
+  const state=routeDraft(),failover=internalFailoverPlan(state);
+  if(failover?.decisionRevision!==confirmedDecision)throw Error('invalid');
+  const value=readDeviceRollout(id,share);
+  if(value)failover.decisionRollout=value;else delete failover.decisionRollout;
   applyRouteChecks(state);
  });
 };

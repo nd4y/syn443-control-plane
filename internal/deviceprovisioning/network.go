@@ -82,7 +82,17 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 		if failover.ProbeCooldownRollout == nil && !supported {
 			return nil, enrollment.ErrDenied
 		}
-		rolloutEnabled = supported && (failover.ProbeCooldownRollout == nil || failover.ProbeCooldownRollout.Includes(target.Device))
+		rolloutEnabled = supported && (failover.ProbeCooldownRollout == nil || failover.ProbeCooldownRollout.IncludesProbeCooldown(target.Device))
+	}
+	algorithmRevision := ""
+	if failover := plan.Network.RouteFailover; failover != nil && failover.DecisionRevision != "" {
+		supported := slices.Contains(target.Capabilities, policy.RouteDecision)
+		if failover.DecisionRollout == nil && !supported {
+			return nil, enrollment.ErrDenied
+		}
+		if supported && (failover.DecisionRollout == nil || failover.DecisionRollout.IncludesDecision(target.Device)) {
+			algorithmRevision = failover.DecisionRevision
+		}
 	}
 	// Duplicate graph aliases may address one immutable source profile. Sort
 	// and deduplicate before SQL selection to keep lock acquisition stable.
@@ -144,6 +154,9 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 			required = append(required, policy.ReserveProbeCooldown)
 		}
 	}
+	if algorithmRevision != "" {
+		required = append(required, policy.RouteDecision)
+	}
 	if plan.Graph.NetBird != nil {
 		if !slices.Contains(target.Capabilities, "overlay.credentials.v1") {
 			return nil, enrollment.ErrDenied
@@ -151,7 +164,7 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 		required = append(required, "overlay.credentials.v1")
 	}
 	return &enrollment.PreparedConfiguration{EngineConfig: compiled.EngineConfig, Activation: compiled.Activation,
-		RequiredCapabilities: required, UntilMs: until, Source: approved.Source,
+		RequiredCapabilities: required, AlgorithmRevision: algorithmRevision, UntilMs: until, Source: approved.Source,
 		Fence: &networkFence{layers: approved.Fence, sources: selection, untilMs: until}}, nil
 }
 

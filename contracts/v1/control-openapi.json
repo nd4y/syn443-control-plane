@@ -2016,6 +2016,14 @@
               "selector": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
               "networkMode": {"const": "wifi"},
               "intent": {"const": "INTERNAL"},
+              "decisionRevision": {"const": "m4-confirmed-v1"},
+              "decisionRollout": {
+                "type": "object", "additionalProperties": false, "required": ["id", "basisPoints"],
+                "properties": {
+                  "id": {"type": "string", "minLength": 1, "maxLength": 48, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+                  "basisPoints": {"type": "integer", "minimum": 0, "maximum": 10000}
+                }
+              },
               "probeCooldown": {"type": "boolean"},
               "probeCooldownRollout": {
                 "type": "object", "additionalProperties": false, "required": ["id", "basisPoints"],
@@ -2026,6 +2034,7 @@
               }
             },
             "dependentSchemas": {
+              "decisionRollout": {"required": ["decisionRevision"]},
               "probeCooldownRollout": {"required": ["probeCooldown"], "properties": {"probeCooldown": {"const": true}}}
             }
           },
