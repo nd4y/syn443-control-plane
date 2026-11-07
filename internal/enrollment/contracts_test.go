@@ -59,6 +59,14 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 			t.Fatal("unknown member accepted", name)
 		}
 		delete(object, "unexpected")
+		if name == "DeviceSourceLease" {
+			original := object["validators"]
+			object["validators"] = map[string]any{"unexpected": true}
+			if schema.Validate(object) == nil {
+				t.Fatal("unknown conditional validator accepted")
+			}
+			object["validators"] = original
+		}
 		for field := range object {
 			changed := map[string]any{}
 			for k, v := range object {
@@ -66,13 +74,20 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 					changed[k] = v
 				}
 			}
-			if schema.Validate(changed) == nil {
+			valid := schema.Validate(changed) == nil
+			if name == "DeviceSourceLease" && field == "validators" {
+				if !valid {
+					t.Fatal("legacy lease is no longer accepted by the shared schema")
+				}
+				continue
+			}
+			if valid {
 				t.Fatal("missing required field accepted", name, field)
 			}
 		}
 	}
 	paths := doc["paths"].(map[string]any)
-	expected := map[string]bool{"/v1/devices/enroll": true, "/v1/identity/devices/revoke": true, "/v1/device/session/refresh": true, "/v1/device/revoke": true, "/v1/device/policy": true, "/v1/device/control-panel": true, "/v1/device/overlay/fetch": true, "/v1/device/overlay/consume": true, "/v1/device/capabilities": true, "/v1/devices/capabilities": true, deviceFetchClaimPath: true, deviceFetchResultPath: true}
+	expected := map[string]bool{"/v1/devices/enroll": true, "/v1/identity/devices/revoke": true, "/v1/device/session/refresh": true, "/v1/device/revoke": true, "/v1/device/policy": true, "/v1/device/control-panel": true, "/v1/device/overlay/fetch": true, "/v1/device/overlay/consume": true, "/v1/device/capabilities": true, "/v1/devices/capabilities": true, deviceFetchClaimPath: true, deviceFetchResultPath: true, deviceFetchV2ClaimPath: true, deviceFetchV2ResultPath: true}
 	if len(paths) != len(expected) {
 		t.Fatal("unexpected API scope")
 	}
@@ -105,7 +120,7 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 			continue
 		}
 		method := "post"
-		if path == "/v1/device/policy" || path == controlPanelPath || path == deviceFetchClaimPath {
+		if path == "/v1/device/policy" || path == controlPanelPath || path == deviceFetchClaimPath || path == deviceFetchV2ClaimPath {
 			method = "get"
 		}
 		if len(methods) != 1 {
