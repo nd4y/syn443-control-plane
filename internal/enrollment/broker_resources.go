@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
 
@@ -58,7 +60,7 @@ func (c *BrokerResourceCatalog) Put(ctx context.Context, resource BrokerResource
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	tx, e := c.store.DB.BeginTx(ctx, nil)
+	tx, e := c.store.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if e != nil {
 		return ErrUnavailable
 	}
@@ -70,9 +72,10 @@ func (c *BrokerResourceCatalog) Put(ctx context.Context, resource BrokerResource
 		return ErrUnavailable
 	}
 	var saved string
-	e = tx.QueryRowContext(ctx, `SELECT body_hash FROM identity_overlay_resource_versions WHERE resource=$1 AND revision=$2`, resource.ResourceID, resource.Revision).Scan(&saved)
+	var retired int64
+	e = tx.QueryRowContext(ctx, `SELECT body_hash,retired_ms FROM identity_overlay_resource_versions WHERE resource=$1 AND revision=$2`, resource.ResourceID, resource.Revision).Scan(&saved, &retired)
 	if e == nil {
-		if saved != identity.Hash(raw) {
+		if saved != identity.Hash(raw) || retired != 0 {
 			return ErrConflict
 		}
 		if tx.Commit() != nil {
@@ -93,6 +96,68 @@ func (c *BrokerResourceCatalog) Put(ctx context.Context, resource BrokerResource
 	protected := c.store.Seal(raw, brokerResourceAAD(resource.ResourceID, resource.Revision))
 	if _, e = tx.ExecContext(ctx, `INSERT INTO identity_overlay_resource_versions(resource,revision,body_hash,body,created_ms) VALUES($1,$2,$3,$4,$5)`, resource.ResourceID, resource.Revision, identity.Hash(raw), protected, now.UnixMilli()); e != nil {
 		return ErrUnavailable
+	}
+	if tx.Commit() != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+// RetireBrokerResourceVersion removes an obsolete ciphertext while retaining its
+// immutable identity and retirement timestamp. The database also fences every
+// new reservation against the retirement, regardless of publisher version.
+func RetireBrokerResourceVersion(ctx context.Context, db *sql.DB, resource string, revision, expectedHead int64, now time.Time) error {
+	if ctx == nil || db == nil || !brokerIdentifier.MatchString(resource) || revision < 1 || expectedHead <= revision || expectedHead > 9007199254740991 || now.UnixMilli() <= 0 {
+		return identity.ErrInvalid
+	}
+	if e := ctx.Err(); e != nil {
+		return e
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	tx, e := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if e != nil {
+		return ErrUnavailable
+	}
+	defer tx.Rollback()
+	if e = brokerResourceOwner(ctx, tx); e != nil {
+		return e
+	}
+	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, "overlay-resource/"+resource); e != nil {
+		return ErrUnavailable
+	}
+	var created, retired int64
+	e = tx.QueryRowContext(ctx, `SELECT created_ms,retired_ms FROM identity_overlay_resource_versions WHERE resource=$1 AND revision=$2`, resource, revision).Scan(&created, &retired)
+	if e == sql.ErrNoRows {
+		return ErrDenied
+	}
+	if e != nil {
+		return ErrUnavailable
+	}
+	if retired != 0 {
+		// A lost reply can be reconciled even after a later rotation.
+		if tx.Commit() != nil {
+			return ErrUnavailable
+		}
+		return nil
+	}
+	var head int64
+	if e = tx.QueryRowContext(ctx, `SELECT max(revision) FROM identity_overlay_resource_versions WHERE resource=$1`, resource).Scan(&head); e != nil {
+		return ErrUnavailable
+	}
+	if head != expectedHead || now.UnixMilli() <= created {
+		return ErrConflict
+	}
+	result, e := tx.ExecContext(ctx, `UPDATE identity_overlay_resource_versions SET body=NULL,retired_ms=$3 WHERE resource=$1 AND revision=$2 AND retired_ms=0`, resource, revision, now.UnixMilli())
+	if e != nil {
+		var constraint *pgconn.PgError
+		if errors.As(e, &constraint) && constraint.Code == "23514" {
+			return ErrConflict
+		}
+		return ErrUnavailable
+	}
+	if n, e := result.RowsAffected(); e != nil || n != 1 {
+		return ErrConflict
 	}
 	if tx.Commit() != nil {
 		return ErrUnavailable
@@ -126,7 +191,7 @@ func (c *BrokerResourceCatalog) Resolve(ctx context.Context, scope BrokerScope) 
 	}
 	var hash string
 	var protected []byte
-	e := c.store.DB.QueryRowContext(ctx, `SELECT body_hash,body FROM identity_overlay_resource_versions WHERE resource=$1 AND revision=$2`, scope.Binding.Address.ResourceID, scope.ResourceRevision).Scan(&hash, &protected)
+	e := c.store.DB.QueryRowContext(ctx, `SELECT body_hash,body FROM identity_overlay_resource_versions WHERE resource=$1 AND revision=$2 AND retired_ms=0`, scope.Binding.Address.ResourceID, scope.ResourceRevision).Scan(&hash, &protected)
 	if e == sql.ErrNoRows {
 		return nil, nil, ErrDenied
 	}

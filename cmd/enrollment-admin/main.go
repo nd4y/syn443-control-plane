@@ -6,11 +6,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/nd4y/syn443-control-plane/internal/deviceprovisioning"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
-	"os"
-	"time"
 )
 
 func run() error {
@@ -52,6 +53,20 @@ func run() error {
 			return e
 		}
 		return catalog.Put(ctx, input.Resource, input.PreviousRevision, time.Now())
+	case "overlay-resource-retire":
+		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_OVERLAY_RESOURCE"), 4096)
+		if e != nil {
+			return e
+		}
+		var input struct {
+			ResourceID   string `json:"resourceId"`
+			Revision     int64  `json:"revision"`
+			ExpectedHead int64  `json:"expectedHeadRevision"`
+		}
+		if identity.DecodeOperatorDocument(raw, &input) != nil {
+			return identity.ErrInvalid
+		}
+		return enrollment.RetireBrokerResourceVersion(ctx, store.DB, input.ResourceID, input.Revision, input.ExpectedHead, time.Now())
 	case "configuration-migrate":
 		_, e = store.DB.ExecContext(ctx, deviceprovisioning.ConfigurationSchema)
 		return e

@@ -40,8 +40,8 @@ This example is a shape, not a usable configuration or credential. Input is
 bounded and closed; the CLI emits no resource/PAT body. Initial revision is1;
 later inserts require the exact previous highest revision. An identical retry
 of an existing version succeeds, including after later versions were inserted.
-Changing that version or skipping the head conflicts. SQL rejects updates and
-deletes, including no-op updates. The CLI requires the table-owning session.
+Changing that version or skipping the head conflicts. SQL rejects arbitrary
+updates and deletes. The CLI requires the table-owning session.
 
 In the worker's private configuration set `resourceCatalog:true`, omit
 `resources`, and supply `resourceEncryptionKey`. Database and the existing
@@ -54,7 +54,38 @@ version for inspection, compensation and verified peer/key retirement. Merely
 inserting a new resource does not create a Cloud key, alter a group, assign a
 policy, revoke a PAT or switch an existing device. Keep prior management access
 usable until its operations are retired; the catalog does not rotate external
-Cloud tokens itself. Historical resource credentials are retained at this stage.
+Cloud tokens itself.
+
+## Retire a superseded credential
+
+The owner can run `enrollment-admin overlay-resource-retire` with the same
+owner connection and a private `SYN443_OVERLAY_RESOURCE` document containing
+`resourceId`, `revision` and `expectedHeadRevision`. The expected head must be
+a newer revision. For example, `{"resourceId":"example-overlay","revision":1,"expectedHeadRevision":2}`
+addresses revision 1 after revision 2 has been imported. This operation requires
+the updated owner schema and no provider token in its input.
+
+The transaction checks the exact current head and refuses erasure while any
+broker operation still pins the old version. The broker must reach its terminal
+`retired` state with its credential removed. An uncertain, blocked, established
+or merely key-cleared operation still pins the version. A database fence orders
+new reservations against retirement. An earlier reservation prevents erasure,
+and a later reservation of the retired revision fails before its transaction
+can commit. Neither the publisher nor API can read the credential catalog.
+
+Retirement removes the ciphertext from the current row and retains its resource
+ID, revision, hash and creation and retirement timestamps. A repeated retirement
+of the same version returns its existing outcome. Importing that revision again
+cannot revive it. If a retired version is needed later, import a new authorized
+version and publish its scope through the normal workflow. PostgreSQL storage
+history, WAL and backups follow their own retention policy. This operation also
+leaves the provider's external PAT lifecycle with the operator.
+
+The PostgreSQL checks cover owner-only execution, current-head protection,
+pending pin protection, terminal retirement, preserved audit metadata, rejected
+reimport, stale new reservations and the shared lock held by the publisher.
+Scheduling retirement and granting it through the administration API remain
+separate requirements.
 
 SQL tests add immutable revision/CAS/replay, old-version resolution after a
 replacement, ciphertext, wrong key/scope, restricted roles, cancellation and

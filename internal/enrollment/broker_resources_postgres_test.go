@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func resourceCatalogFixture(t *testing.T) (*fixture, *BrokerResourceCatalog, *BrokerResourceCatalog) {
@@ -26,6 +28,149 @@ func resourceCatalogFixture(t *testing.T) (*fixture, *BrokerResourceCatalog, *Br
 		t.Fatal(e)
 	}
 	return f, owner, worker
+}
+
+func putPinnedResourceVersions(t *testing.T, f *brokerFixture) (BrokerResource, BrokerResource, *BrokerResourceCatalog, *BrokerResourceCatalog) {
+	t.Helper()
+	ctx := context.Background()
+	key := bytes.Repeat([]byte{61}, 32)
+	owner, e := NewBrokerResourceCatalog(fixtureOwner, key, false)
+	if e != nil {
+		t.Fatal(e)
+	}
+	worker, e := NewBrokerResourceCatalog(fixtureBroker, key, false)
+	if e != nil {
+		t.Fatal(e)
+	}
+	first := brokerResourceExample()
+	first.ResourceID = f.scope.Binding.Address.ResourceID
+	first.ManagementOrigin = f.scope.Binding.Address.ManagementURL
+	first.NetworkID = f.scope.Binding.Address.NetworkID
+	first.AccountID = f.scope.Account
+	first.Groups = append([]string(nil), f.scope.Groups...)
+	if e = owner.Put(ctx, first, 0, f.now); e != nil {
+		t.Fatal(e)
+	}
+	next := first
+	next.Revision = 2
+	next.Token = "synthetic-replacement-management-token"
+	if e = owner.Put(ctx, next, 1, f.now.Add(time.Second)); e != nil {
+		t.Fatal(e)
+	}
+	return first, next, owner, worker
+}
+
+func TestBrokerResourceRetirementWaitsForTerminalPinsAndPreservesHistory(t *testing.T) {
+	f := newBrokerFixture(t)
+	ctx := context.Background()
+	first, next, owner, worker := putPinnedResourceVersions(t, f)
+	at := f.now.Add(time.Minute)
+	for _, db := range []*sql.DB{fixtureAPI, fixturePublisher, fixtureBroker} {
+		if e := RetireBrokerResourceVersion(ctx, db, first.ResourceID, 1, 2, at); !errors.Is(e, ErrDenied) {
+			t.Fatal("runtime role acquired retirement", e)
+		}
+	}
+	if e := RetireBrokerResourceVersion(ctx, fixtureOwner, first.ResourceID, 2, 3, at); !errors.Is(e, ErrConflict) {
+		t.Fatal("retired the current head", e)
+	}
+	if e := RetireBrokerResourceVersion(ctx, fixtureOwner, first.ResourceID, 1, 3, at); !errors.Is(e, ErrConflict) {
+		t.Fatal("unexpected head authorized retirement", e)
+	}
+	var hash string
+	var created int64
+	if e := fixtureOwner.QueryRow(`SELECT body_hash,created_ms FROM identity_overlay_resource_versions WHERE resource=$1 AND revision=1`, first.ResourceID).Scan(&hash, &created); e != nil {
+		t.Fatal(e)
+	}
+	f.reserve(t)
+	if e := RetireBrokerResourceVersion(ctx, fixtureOwner, first.ResourceID, 1, 2, at); !errors.Is(e, ErrConflict) {
+		t.Fatal("erased a credential with a live broker pin", e)
+	}
+	_, close, e := worker.Resolve(ctx, f.scope)
+	if e != nil {
+		t.Fatal("pinned credential unavailable", e)
+	}
+	close()
+	if _, e = fixturePublisher.Exec(`UPDATE identity_overlay_broker SET retire=true WHERE device=$1`, f.session.DeviceID); e != nil {
+		t.Fatal(e)
+	}
+	f.run(t)
+	if f.state(t) != "retired" {
+		t.Fatal("broker pin did not become terminal")
+	}
+	if e = RetireBrokerResourceVersion(ctx, fixtureOwner, first.ResourceID, 1, 2, at); e != nil {
+		t.Fatal("terminal pin prevented erasure", e)
+	}
+	if e = RetireBrokerResourceVersion(ctx, fixtureOwner, first.ResourceID, 1, 2, at.Add(time.Second)); e != nil {
+		t.Fatal("retirement readback not idempotent", e)
+	}
+	var absent bool
+	var retired, gotCreated int64
+	var gotHash string
+	if e = fixtureOwner.QueryRow(`SELECT body IS NULL,retired_ms,body_hash,created_ms FROM identity_overlay_resource_versions WHERE resource=$1 AND revision=1`, first.ResourceID).Scan(&absent, &retired, &gotHash, &gotCreated); e != nil || !absent || retired != at.UnixMilli() || gotHash != hash || gotCreated != created {
+		t.Fatal("retirement did not retain immutable history", e)
+	}
+	if _, _, e = worker.Resolve(ctx, f.scope); !errors.Is(e, ErrDenied) {
+		t.Fatal("retired credential remained usable", e)
+	}
+	_, close, e = worker.Resolve(ctx, resourceScopeExample(next))
+	if e != nil {
+		t.Fatal("new credential changed", e)
+	}
+	close()
+	if e = owner.Put(ctx, first, 0, at); !errors.Is(e, ErrConflict) {
+		t.Fatal("late import reactivated a retired credential", e)
+	}
+	if _, e = fixtureOwner.Exec(`UPDATE identity_overlay_resource_versions SET retired_ms=0 WHERE resource=$1 AND revision=1`, first.ResourceID); e == nil {
+		t.Fatal("retirement marker could be reverted")
+	}
+}
+
+func TestBrokerResourceRetirementBlocksNewReservationAndSharesTheWriteFence(t *testing.T) {
+	f := newBrokerFixture(t)
+	ctx := context.Background()
+	first, _, _, _ := putPinnedResourceVersions(t, f)
+	if e := RetireBrokerResourceVersion(ctx, fixtureOwner, first.ResourceID, 1, 2, f.now.Add(time.Minute)); e != nil {
+		t.Fatal(e)
+	}
+	tx, e := fixturePublisher.BeginTx(ctx, nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tx.Rollback()
+	e = f.overlayFixture.worker.ReserveOverlayBroker(ctx, tx, f.scope, &fixtureConfigurationFence{}, f.clock)
+	var constraint *pgconn.PgError
+	if !errors.As(e, &constraint) || constraint.Code != "23514" || constraint.Message != "overlay resource retired" {
+		t.Fatal("retired resource accepted a new broker reservation", e)
+	}
+	if e = tx.Rollback(); e != nil {
+		t.Fatal(e)
+	}
+	var reservations int
+	if e = fixtureOwner.QueryRow(`SELECT count(*) FROM identity_overlay_broker`).Scan(&reservations); e != nil || reservations != 0 {
+		t.Fatal("rejected reservation leaked durable state", e)
+	}
+	current, e := fixturePublisher.BeginTx(ctx, nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer current.Rollback()
+	scope := f.scope
+	scope.ResourceRevision = 2
+	if e = f.overlayFixture.worker.ReserveOverlayBroker(ctx, current, scope, &fixtureConfigurationFence{}, f.clock); e != nil {
+		t.Fatal("current resource rejected", e)
+	}
+	probe, e := fixtureOwner.BeginTx(ctx, nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer probe.Rollback()
+	var exclusive bool
+	if e = probe.QueryRow(`SELECT pg_try_advisory_xact_lock(hashtextextended($1,0))`, "overlay-resource/"+first.ResourceID).Scan(&exclusive); e != nil || exclusive {
+		t.Fatal("open reservation did not hold the resource retirement fence", e)
+	}
+	if e = current.Commit(); e != nil {
+		t.Fatal(e)
+	}
 }
 
 func TestBrokerResourceCatalogImmutableRotationAndPinnedCleanupAuthority(t *testing.T) {
