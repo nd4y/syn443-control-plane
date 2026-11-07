@@ -43,6 +43,7 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 	values["ControlPanelHint"] = ControlPanelHint{SchemaVersion: 1, UntilMs: 1800000060000}
 	values["TelemetryBatch"] = telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 51, AlgorithmRevision: 1,
 		Events: []telemetry.Event{{ID: random(), AtMS: 1800000000000, Kind: "vpn", Code: "online", Mode: "wifi"}}}
+	values["TelemetryReceipt"] = telemetry.Receipt{SchemaVersion: 1, EventIDs: []string{random()}}
 	values["DeviceSourceLease"] = catalog.DeviceFetchLease{JobID: random(), Lease: random(), Until: 1800000060,
 		NetworkModes: []string{"wifi"}, Credential: catalog.FetchCredential{URL: "https://subscription.example.invalid"},
 		Validators: &catalog.DeviceFetchValidators{ETag: `"snapshot"`}}

@@ -1440,14 +1440,22 @@
     {
       "id": "TEL-01",
       "text": "Техническая телеметрия является обязательной возможностью клиента и включена в базовый сервисный профиль с понятным уведомлением. Собираются структурированные события, агрегаты и метрики с отдельной политикой подробности; расширенные сырые материалы требуют отдельного пользовательского действия.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Optional authenticated intake for bounded technical events.",
+      "remainingScope": "Base service-profile and detail policy, aggregate metrics and end-to-end acceptance."
     },
     {
       "id": "TEL-02",
       "text": "Общие поля: eventId, schemaVersion, время UTC и monotonic time, pseudonymous deviceId, sessionId, app/core/build версии, policyRevision, networkEpoch, pathId, eventType, severity, duration, result, errorCode. Backend добавляет время приёма и обрабатывает расхождение часов. Дополнительно фиксируются algorithm/evaluator revision, cohortId, health profile revision и decisionId; эти поля не требуют раскрытия пользовательского назначения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Closed envelope, authenticated device scope and receipt timestamp.",
+      "remainingScope": "Full build/core/algorithm/policy/cohort/decision metadata and clock-skew analysis."
     },
     {
       "id": "TEL-03",
@@ -1478,8 +1486,12 @@
     {
       "id": "TEL-07",
       "text": "Пароли, auth/enrollment tokens, подписочные URL-capabilities и приватные ключи запрещены при любом уровне телеметрии и удалённой диагностики. История сайтов, полный DNS-журнал, пользовательские payload/пакеты, IMSI/IMEI, точная геолокация и сырые SSID/BSSID не входят в стандартный сбор. Расширенные категории требуют отдельного согласия SEC-09; домены/IP назначенных diagnostic targets могут быть в контролируемом результате. Входящий IP виден transport уровню сервера, поэтому access logs также ограничены.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Schema rejects free-form data and device is derived from verified session.",
+      "remainingScope": "Broader server log/diagnostics access controls and expanded privacy acceptance."
     },
     {
       "id": "TEL-08",
@@ -1490,14 +1502,22 @@
     {
       "id": "TEL-09",
       "text": "Очередь локальная, ограниченная, с шифрованием на диске и приоритетом crash/config/network-change событий. Начальные значения: 32 MiB или 7 суток; вытеснение сначала низкоприоритетных записей; счётчик потерь обязателен. Успешный HTTP upload без подтверждения event IDs не считается доставкой.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Transactional receipt of exact event IDs after persistence.",
+      "remainingScope": "Priority, loss counters, product retention limits and full queue failure acceptance."
     },
     {
       "id": "TEL-10",
       "text": "Передача сжимается пакетами; возможны повторы, сервер дедуплицирует eventId/batchId. Retry ограничен, с backoff/jitter. Начальные бюджеты telemetry плюс routine probes: 2MiB/сутки metered, 10MiB/сутки unmetered; отдельно ограниченный recovery reserve 512KiB и 2MiB соответственно. Явная глубокая диагностика имеет свой показанный пользователю бюджет. При исчерпании routine бюджета фоновые пробы откладываются, passive evidence сохраняется. Reserve применяется только для восстановления полезного пути с отдельным учётом и rate limit, без бесконечных retries. Exhausted budget даёт stale/search incomplete, а не proxy failure.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Per-device deduplication, intake limits and explicit overload response.",
+      "remainingScope": "Compression, jitter, shared metered/unmetered probe budgets and recovery reserve."
     },
     {
       "id": "TEL-11",
@@ -1508,8 +1528,12 @@
     {
       "id": "TEL-12",
       "text": "Серверная политика хранения для согласования: детальные события 14 суток, очищенные crash/бандлы 30 суток, агрегаты 180 суток, аудит административных действий 365 суток. Предусматриваются удаление данных устройства, контроль доступа к support материалам и журнал скачиваний. TTL распространяется на копии и резервное хранение по документированной процедуре.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Distinct SQL retention role and bounded deletion of detail events past 14 days.",
+      "remainingScope": "Scheduled operations acceptance, aggregates, bundles, audit, copies and device erasure."
     },
     {
       "id": "LOG-01",
@@ -1729,7 +1753,10 @@
       "id": "MOB-01",
       "text": "У пользователя с административными правами есть заметная кнопка «Администрирование» на главном экране и в меню. Обычному пользователю она не показывается; прямое открытие admin URL/API всё равно проверяется сервером. Одно приложение совмещает клиентский и административный режимы.",
       "status": "partial",
-      "evidence": ["docs/control-console.md#android-navigation", "internal/enrollment/control_panel_postgres_test.go"],
+      "evidence": [
+        "docs/control-console.md#android-navigation",
+        "internal/enrollment/control_panel_postgres_test.go"
+      ],
       "implementationScope": "Live catalog navigation grant, bounded DPoP eligibility and independent control-audience authorization.",
       "remainingScope": "Menu entry, native administration and physical acceptance with the configured control plane."
     },

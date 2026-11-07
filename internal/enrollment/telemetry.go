@@ -11,10 +11,10 @@ import (
 
 const telemetryPath = "/v1/device/telemetry"
 
-func (a *API) receiveTelemetry(ctx context.Context, binding Binding, token string, proof identity.Proof, raw []byte, now time.Time) error {
+func (a *API) receiveTelemetry(ctx context.Context, binding Binding, token string, proof identity.Proof, raw []byte, now time.Time) (telemetry.Receipt, error) {
 	batch, err := telemetry.Decode(raw, now)
 	if err != nil {
-		return identity.ErrInvalid
+		return telemetry.Receipt{}, identity.ErrInvalid
 	}
 	_, err = a.Store.WithDeviceSession(ctx, binding, token, proof, now, func(ctx context.Context, tx *sql.Tx, authority DeviceAuthority) (DeviceResult, error) {
 		if err := telemetry.InsertBound(ctx, tx, authority.Binding.Device, batch, now); err != nil {
@@ -23,5 +23,8 @@ func (a *API) receiveTelemetry(ctx context.Context, binding Binding, token strin
 		deadline := min(authority.AccountUntilMs, authority.Binding.AccessUntil*1000, now.Add(time.Minute).UnixMilli())
 		return DeviceResult{Value: true, UntilMs: deadline}, nil
 	})
-	return err
+	if err != nil {
+		return telemetry.Receipt{}, err
+	}
+	return batch.Receipt(), nil
 }

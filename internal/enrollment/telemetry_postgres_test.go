@@ -28,15 +28,22 @@ func TestDeviceTelemetryIsBoundedDeduplicatedAndScopedToItsSession(t *testing.T)
 	body, _ := json.Marshal(batch)
 	expect(t, f.call(t, deviceKey, "POST", telemetryPath, first.AccessToken, first.Nonce, body), http.StatusNotFound)
 	f.api.TelemetryEnabled = true
-	expect(t, f.call(t, deviceKey, "POST", telemetryPath, first.AccessToken, first.Nonce, body), http.StatusNoContent)
-	expect(t, f.call(t, deviceKey, "POST", telemetryPath, first.AccessToken, first.Nonce, body), http.StatusNoContent)
+	for range 2 {
+		response := f.call(t, deviceKey, "POST", telemetryPath, first.AccessToken, first.Nonce, body)
+		expect(t, response, http.StatusOK)
+		var receipt telemetry.Receipt
+		if err := json.Unmarshal(response.Body.Bytes(), &receipt); err != nil || receipt.SchemaVersion != 1 ||
+			len(receipt.EventIDs) != 1 || receipt.EventIDs[0] != batch.Events[0].ID {
+			t.Fatal("missing or invalid committed event receipt", err)
+		}
+	}
 	wrongScope := f.call(t, otherKey, "POST", telemetryPath, first.AccessToken, first.Nonce, body)
 	if wrongScope.Code != http.StatusUnauthorized && wrongScope.Code != http.StatusForbidden {
 		t.Fatal("another device used the session to submit telemetry", wrongScope.Code)
 	}
 	private := bytes.Replace(body, []byte(`"mode":"wifi"`), []byte(`"mode":"wifi","address":"node.example.invalid"`), 1)
 	expect(t, f.call(t, deviceKey, "POST", telemetryPath, first.AccessToken, first.Nonce, private), http.StatusUnauthorized)
-	expect(t, f.call(t, otherKey, "POST", telemetryPath, second.AccessToken, second.Nonce, body), http.StatusNoContent)
+	expect(t, f.call(t, otherKey, "POST", telemetryPath, second.AccessToken, second.Nonce, body), http.StatusOK)
 	var stored int
 	if err := fixtureOwner.QueryRow(`SELECT count(*) FROM identity_telemetry_events WHERE event_id=$1 AND device IN ($2,$3)`,
 		batch.Events[0].ID, first.DeviceID, second.DeviceID).Scan(&stored); err != nil || stored != 2 {

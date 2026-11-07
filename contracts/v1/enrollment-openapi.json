@@ -358,7 +358,10 @@
           "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TelemetryBatch"}}}
         },
         "responses": {
-          "204": {"description": "Scoped events accepted; existing event IDs remain immutable."},
+          "200": {
+            "description": "Exact scoped event IDs in request order, returned after SQL commit. Existing event IDs remain immutable.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TelemetryReceipt"}}}
+          },
           "401": {"description": "Invalid proof or closed telemetry envelope."},
           "403": {"description": "Device session denied."},
           "404": {"description": "Ingestion disabled."},
@@ -1041,6 +1044,15 @@
       }
     },
     "schemas": {
+      "TelemetryReceipt": {
+        "type": "object", "additionalProperties": false,
+        "required": ["schemaVersion", "eventIds"],
+        "properties": {
+          "schemaVersion": {"const": 1},
+          "eventIds": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"}}
+        }
+      },
       "TelemetryBatch": {
         "type": "object", "additionalProperties": false,
         "required": ["schemaVersion", "session", "build", "policyRevision", "algorithmRevision", "events"],

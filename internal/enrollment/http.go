@@ -306,7 +306,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			failure(w, identity.ErrInvalid)
 			return
 		}
-		err := a.receiveTelemetry(ctx, binding, token, proof, raw, now)
+		receipt, err := a.receiveTelemetry(ctx, binding, token, proof, raw, now)
 		if errors.Is(err, telemetry.ErrBudget) {
 			w.Header().Set("Retry-After", "300")
 			http.Error(w, "telemetry_budget_exhausted", http.StatusTooManyRequests)
@@ -316,7 +316,8 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			failure(w, err)
 			return
 		}
-		w.WriteHeader(http.StatusNoContent)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(receipt)
 		return
 	}
 	if isFetchClaim || isFetchResult {

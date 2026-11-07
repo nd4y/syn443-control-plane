@@ -10,6 +10,9 @@ addresses, headers, raw errors, credentials and log attachments have no fields.
 The SQL intake is insert-only for events. The primary key deduplicates event
 IDs per device, and a separate counter limits ingestion to 256 events per
 device per hour, including retry attempts. The API cannot read event bodies.
+The response acknowledges exactly the submitted event IDs in order, and is
+sent only after the transaction commits. A retry after response loss receives
+the same acknowledgement within the ingestion budget.
 
 The separate retention role in `internal/telemetry/retention-roles.sql` is
 allowed to read only keys and timestamps and delete expired telemetry. Run
@@ -18,6 +21,6 @@ allowed to read only keys and timestamps and delete expired telemetry. Run
 detailed events past 14 days and 1,024 budget rows past 48 hours. Operators
 schedule pruning before enabling intake and monitor whether it catches up.
 
-The initial API does not turn on Android uploads. Consent, a bounded durable
-device queue, delivery scheduling, aggregation, operator views and retention
-for backups and other telemetry categories require their own acceptance.
+Enabling ingestion does not turn on Android uploads without device consent.
+End-to-end delivery, aggregation, operator views and retention for backups
+and other telemetry categories require their own acceptance.

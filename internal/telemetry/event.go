@@ -49,6 +49,22 @@ func (Batch) GoString() string { return "TelemetryBatch([redacted])" }
 func (Event) String() string   { return "TelemetryEvent([redacted])" }
 func (Event) GoString() string { return "TelemetryEvent([redacted])" }
 
+type Receipt struct {
+	SchemaVersion int      `json:"schemaVersion"`
+	EventIDs      []string `json:"eventIds"`
+}
+
+func (Receipt) String() string   { return "TelemetryReceipt([redacted])" }
+func (Receipt) GoString() string { return "TelemetryReceipt([redacted])" }
+
+func (b Batch) Receipt() Receipt {
+	out := Receipt{SchemaVersion: 1, EventIDs: make([]string, len(b.Events))}
+	for i, event := range b.Events {
+		out.EventIDs[i] = event.ID
+	}
+	return out
+}
+
 var codes = map[string]map[string]bool{
 	"network": {"available": true, "lost": true, "changed": true, "not_validated": true, "captive": true},
 	"vpn":     {"online": true, "degraded": true, "recovering": true, "off": true, "permission_revoked": true},
