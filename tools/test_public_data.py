@@ -64,3 +64,26 @@ class PublicDataTest(unittest.TestCase):
         self.assertIn("private-domain", findings(fields + symbol))
         for value in (b"time." + b"local", b"other." + b"local", b"x509." + b"local"):
             self.assertIn("private-domain", findings(b"\x7fELF\x00" + value + b"\x00"))
+
+    def test_only_exact_public_go_rodata_userinfo_is_exempt(self):
+        metadata = (
+            b"\x7fELF\x00go1.27.3\x00"
+            b"dep\tgithub.com/jackc/pgx/v5\tv5.11.0\tchecksum\n"
+            b"dep\tgithub.com/santhosh-tekuri/jsonschema/v6\tv6.0.3\tchecksum\n"
+        )
+        prefix = b"bad inst" + b"https://"
+        suffix = (
+            b"passworddatabasepassfilePGSSLKEYPGSSLSNItimezoneDEK-Inforoot.crt"
+            + b":xxxxxx@"
+        )
+        real = b"https://" + b"synthetic:placeholder@" + b"example.invalid"
+        for middle in (b"Location", b"audienceownerTagdeviceIdprovider"):
+            public = prefix + middle + suffix
+            with self.subTest(middle=middle):
+                self.assertNotIn("credential-url", findings(metadata + public))
+                self.assertIn("credential-url", findings(public))
+                self.assertIn("credential-url", findings(metadata.replace(b"go1.27.3", b"go1.27.4") + public))
+                self.assertIn("credential-url", findings(metadata + public.replace(b"root.crt", b"root.key")))
+                self.assertIn("credential-url", findings(metadata + public + b"\x00" + real))
+                self.assertIn("credential-url", findings(metadata + public + b"extra@"))
+        self.assertIn("credential-url", findings(metadata + prefix + b"audienceownerTagdeviceIdaudience" + suffix))

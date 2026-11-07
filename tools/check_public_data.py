@@ -22,11 +22,38 @@ TEST_NETS = tuple(ipaddress.ip_network(n) for n in ("192.0.2.0/24", "198.51.100.
 # Exact CIDR tokens only; individual private addresses are still forbidden.
 PUBLIC_ALLOCATION_TOKENS = {"100.64.0.0/10", "192.0.0.0/24", "198.18.0.0/15", "240.0.0.0/4", "10.0.0.0/8"}
 FORBIDDEN = re.compile(r"(?:^|/)(?:\.env(?:\..*)?|local\.properties|[^/]*\.(?:jks|keystore|pem|key)|(?:bugreport|logcat|backup|diagnostic-bundle)[^/]*)$", re.I)
+GO_RODATA_BUILD_MARKERS = (
+    b"go1.27.3",
+    b"dep\tgithub.com/jackc/pgx/v5\tv5.11.0\t",
+    b"dep\tgithub.com/santhosh-tekuri/jsonschema/v6\tv6.0.3\t",
+)
+GO_RODATA_USERINFO_PREFIX = "bad inst" + "https://"
+GO_RODATA_USERINFO_SUFFIX = "".join((
+    "password", "database", "passfile", "PGSSLKEY", "PGSSLSNI", "timezone",
+    "DEK-Info", "root.crt", ":xxxxxx@",
+))
+OVERLAY_IDENTITY_FIELDS = {"audience", "ownerTag", "deviceId", "provider"}
+
+
+def is_public_go_rodata_userinfo(text, match):
+    # The regexp begins at "inst", after the space in the first source literal.
+    start = match.start() - len("bad ")
+    if start < 0 or not text.startswith(GO_RODATA_USERINFO_PREFIX, start):
+        return False
+    end = match.end() - len(GO_RODATA_USERINFO_SUFFIX)
+    if not text.startswith(GO_RODATA_USERINFO_SUFFIX, end, match.end()):
+        return False
+    middle = text[start + len(GO_RODATA_USERINFO_PREFIX):end]
+    if middle == "Location":
+        return True
+    # Every one of the four exact eight-byte public field names must occur once.
+    return len(middle) == 32 and {middle[i:i + 8] for i in range(0, 32, 8)} == OVERLAY_IDENTITY_FIELDS
 
 
 def findings(data):
     text = data.decode("utf-8", errors="replace")
-    if data.startswith(b"\x7fELF"):
+    is_elf = data.startswith(b"\x7fELF")
+    if is_elf:
         # Exact Go standard-library type/symbol encodings, not hostnames.
         # Keep textual source/configuration and all other .local names scanned.
         text = text.replace("crypto/x509." + "local string; crypto/x509.domain string", "[go-x509-mailbox-fields]")
@@ -38,7 +65,14 @@ def findings(data):
         if b"github.com/jackc/pgx/v5/pgconn.redactURLPassword" in data:
             text = text.replace(":" + "[^@]+" + "@", "[pgx-userinfo-redaction-regexp]")
 
-    result = {name for name, pattern in PATTERNS.items() if pattern.search(text)}
+    public_go_rodata = is_elf and all(marker in data for marker in GO_RODATA_BUILD_MARKERS)
+    result = set()
+    for name, pattern in PATTERNS.items():
+        if name == "credential-url" and public_go_rodata:
+            if any(not is_public_go_rodata_userinfo(text, match) for match in pattern.finditer(text)):
+                result.add(name)
+        elif pattern.search(text):
+            result.add(name)
     for match in IPV4.finditer(text):
         suffix = re.match(r"/\d+(?![\w./])", text[match.end():])
         if suffix and match[0] + suffix[0] in PUBLIC_ALLOCATION_TOKENS:
