@@ -126,6 +126,15 @@ func ConfigurationRuntimeRole(ctx context.Context, db *sql.DB, publisher bool) e
 			return enrollment.ErrDenied
 		}
 	}
+	var reportMetadata, unsafeReportAccess bool
+	if e := db.QueryRowContext(ctx, `SELECT has_column_privilege(current_user,'identity_policy_activation','outcome','SELECT'),
+	 has_column_privilege(current_user,'identity_policy_activation','envelope_hash','SELECT') OR
+	 has_any_column_privilege(current_user,'identity_policy_activation','INSERT') OR
+	 has_any_column_privilege(current_user,'identity_policy_activation','UPDATE') OR
+	 has_table_privilege(current_user,'identity_policy_activation','DELETE') OR
+	 has_table_privilege(current_user,'identity_policy_activation','TRUNCATE')`).Scan(&reportMetadata, &unsafeReportAccess); e != nil || reportMetadata == publisher || unsafeReportAccess {
+		return enrollment.ErrDenied
+	}
 	return nil
 }
 

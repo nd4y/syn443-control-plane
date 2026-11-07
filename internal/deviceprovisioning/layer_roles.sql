@@ -15,6 +15,7 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON managed_configuration_assignments TO syn443
 GRANT SELECT ON managed_configuration_layer_versions,managed_configuration_layer_heads,managed_configuration_assignments TO syn443_control_api;
 GRANT SELECT,UPDATE(lock_guard) ON identity_accounts TO syn443_control_api;
 GRANT SELECT,UPDATE(configuration_guard) ON identity_devices TO syn443_control_api;
+GRANT SELECT(device,policy_revision,outcome,active_policy_revision,received_at_ms) ON identity_policy_activation TO syn443_control_api;
 GRANT SELECT,INSERT,UPDATE,DELETE ON managed_configuration_drafts TO syn443_control_api;
 GRANT SELECT,INSERT,DELETE ON managed_configuration_draft_ops TO syn443_control_api;
 REVOKE ALL ON FUNCTION managed_configuration_draft_invariants() FROM PUBLIC;

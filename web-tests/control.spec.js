@@ -57,6 +57,7 @@ test('desired device view keeps revision provenance and hostile content separate
  await page.locator('#inventory-device').fill('device-a');await page.locator('#load-inventory').click();
  await expect(page.locator('#inventory-view')).toBeVisible();await expect(page.locator('#inventory-state')).toContainText('Назначена');
  await expect(page.locator('#inventory-meta')).toContainText('Желаемая версия7');await expect(page.locator('#inventory-meta')).toContainText('Версия выданной политики23');
+ await expect(page.locator('#inventory-meta')).toContainText('Откат · политика 23');await expect(page.locator('#inventory-meta')).toContainText('Версия по отчёту21');
  await expect(page.locator('#inventory-meta')).toContainText('a'.repeat(64));
  await expect(page.locator('#inventory-layers')).toContainText('template-a');await expect(page.locator('#inventory-fields')).toContainText('/network/dnsStrategy');await expect(page.locator('#inventory-fields')).toContainText('template-a');
  await expect(page.locator('#inventory-restrictions')).toContainText('choice');await expect(page.locator('#inventory-effective')).toContainText('<img src=x');
@@ -69,7 +70,9 @@ test('desired device view keeps revision provenance and hostile content separate
 test('desired device view distinguishes unassigned expired and mismatched responses',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#load-inventory')).toBeEnabled();
  await page.locator('#inventory-device').fill('device-unassigned');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-state')).toContainText('Не назначена');await expect(page.locator('#inventory-effective')).toHaveText('Нет действующих настроек.');
+ await expect(page.locator('#inventory-meta')).toContainText('Ожидаем результат применения');
  await page.locator('#inventory-device').fill('device-expired');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-state')).toContainText('Истекла');
+ await expect(page.locator('#inventory-meta')).toContainText('Откат · политика 22 · предыдущая или истёкшая выдача');
  await page.locator('#inventory-device').fill('device-mismatch');await page.locator('#load-inventory').click();await expect(page.locator('#status')).toContainText('Проверьте поля');await expect(page.locator('#inventory-view')).toBeHidden();
  await page.locator('#inventory-device').fill('device-a');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-view')).toBeVisible();
  await request.post(origin+'/fixture/revoke',{data:{}});await page.locator('#load-inventory').click();await expect(page.locator('#inventory-view')).toBeHidden();await expect(page.locator('#inventory-meta')).toHaveText('');

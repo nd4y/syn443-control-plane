@@ -25,5 +25,12 @@ and does not attest to traffic independently of the device.
 PostgreSQL tests cover a real signed delivery, valid device proof, proof replay,
 changed body, wrong key and nonce, unpublished and superseded revisions,
 idempotency, conflicting outcomes and rollback without a publication rewrite.
-Android reporting and the administration view still require integration and
-their own acceptance.
+The current device inventory shows the desired configuration, issued policy and
+device report as separate fields. A report for an older issuance, an expired
+lease or an earlier grant stays historical. History views omit current reports.
+The control API reads only outcome metadata under the existing live device and
+layer authorization. It cannot read the envelope hash or write a report.
+Apply the owner enrollment schema and roles before configuration roles.
+
+The web tests exercise reported rollback, pending reports and historical
+rendering. Android-to-panel acceptance on a physical device remains separate.

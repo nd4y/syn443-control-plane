@@ -68,6 +68,39 @@ func TestConfigurationInventoryShowsOnlySelectedDeviceAndFieldProvenance(t *test
 	}
 }
 
+func TestConfigurationInventorySeparatesCurrentAndHistoricalDeviceReports(t *testing.T) {
+	n, c, _, _ := layerPublisherFixture(t)
+	view, e := inventoryCall(t, n, c, n.target.Device, "activation inventory pending")
+	if e != nil || view.Activation == nil || view.Activation.State != "awaiting_report" || view.PolicyRevision != 1 {
+		t.Fatal("issued policy appeared activated without a report", e)
+	}
+	if _, e = fixtureOwner.Exec(`UPDATE identity_devices SET offline_until=$2,publication_grant_hash=$3 WHERE id=$1`, n.target.Device, n.f.now.Add(time.Hour).Unix(), n.target.GrantHash); e != nil {
+		t.Fatal(e)
+	}
+	hash := identity.Hash([]byte("synthetic activation envelope"))
+	if _, e = fixtureOwner.Exec(`INSERT INTO identity_policy_activation VALUES($1,1,$2,1,'committed',1,$3)`, n.target.Device, hash, n.f.now.UnixMilli()); e != nil {
+		t.Fatal(e)
+	}
+	view, e = inventoryCall(t, n, c, n.target.Device, "current activation inventory")
+	if e != nil || view.Activation == nil || view.Activation.State != "reported" || view.Activation.Outcome != "committed" || view.Activation.ActivePolicyRevision != 1 || view.Revision != 0 {
+		t.Fatal("report was conflated with desired configuration", e)
+	}
+	raw, e := json.Marshal(view)
+	if e != nil || strings.Contains(string(raw), hash) {
+		t.Fatal("control response exposed envelope digest", e)
+	}
+	if _, e = fixtureOwner.Exec(`UPDATE identity_devices SET revision=2 WHERE id=$1`, n.target.Device); e != nil {
+		t.Fatal(e)
+	}
+	view, e = inventoryCall(t, n, c, n.target.Device, "historical activation inventory")
+	if e != nil || view.Activation == nil || view.Activation.State != "historical" || view.Activation.PolicyRevision != 1 || view.PolicyRevision != 2 {
+		t.Fatal("old observation was relabelled for a newer issuance", e)
+	}
+	if _, e = fixtureControl.Exec(`UPDATE identity_policy_activation SET outcome='degraded'`); e == nil {
+		t.Fatal("control reader gained activation mutation authority")
+	}
+}
+
 func TestConfigurationInventoryRequiresLiveDeviceParentACLAndCipherIntegrity(t *testing.T) {
 	for _, kind := range []string{"parent-read", "account", "device", "cipher", "cancelled", "expired-session"} {
 		t.Run(kind, func(t *testing.T) {

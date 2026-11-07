@@ -69,10 +69,11 @@ const server=http.createServer(async(req,res)=>{
  }
  case 'configuration.request.get':{const job=configurationJobs.get(p.id);send(job?200:403,job||{});break;}
  case 'configuration.inventory.get':{
-  if(p.id==='device-unassigned'){send(200,{device:p.id,owner:'synthetic-user',state:'unassigned',revision:0,hash:'',policyRevision:3,mode:'',approvalUntilMs:0,layers:[]});break;}
+  if(p.id==='device-unassigned'){send(200,{device:p.id,owner:'synthetic-user',state:'unassigned',revision:0,hash:'',policyRevision:3,mode:'',approvalUntilMs:0,layers:[],activation:{state:'awaiting_report',activePolicyRevision:0}});break;}
   if(!['device-a','device-expired','device-mismatch'].includes(p.id)){send(403,{});break;}
   const origin={kind:'template',layerId:'template-a',revision:2};
   send(200,{device:p.id==='device-mismatch'?'other-device':p.id,owner:'synthetic-user',state:p.id==='device-expired'?'expired':'assigned',revision:7,hash:'a'.repeat(64),policyRevision:23,mode:'wifi',approvalUntilMs:1800003600000,
+   activation:{state:p.id==='device-expired'?'historical':'reported',policyRevision:p.id==='device-expired'?22:23,outcome:'rolled_back',activePolicyRevision:21,receivedAtMs:1800000000000},
    ...(options.remoteChanged?{revision:8,hash:'d'.repeat(64)}:{}),
    layers:[{id:'template-a',kind:'template',priority:0,revision:2,changes:[],permissions:null},...(options.remoteChanged?[{id:p.id,kind:'device',priority:0,revision:1,changes:[{path:'/network/dnsStrategy',operation:'set',value:'ipv6_only'}],permissions:[]}]:[])],
    effective:{document:{note:'<img src=x onerror="window.injected=true">'},fields:{'/network/dnsStrategy':origin},restrictions:[{permission:{path:'/network/dnsStrategy',mode:'choice',choices:['prefer_ipv4','ipv4_only']},origin}]}});break;

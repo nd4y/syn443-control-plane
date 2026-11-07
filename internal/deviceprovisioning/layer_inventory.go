@@ -27,6 +27,15 @@ type ConfigurationInventory struct {
 	Effective       *configuration.Effective `json:"effective,omitempty"`
 	CurrentRevision int64                    `json:"currentRevision"`
 	Historical      bool                     `json:"historical,omitempty"`
+	Activation      *ConfigurationActivation `json:"activation,omitempty"`
+}
+
+type ConfigurationActivation struct {
+	State                string `json:"state"`
+	PolicyRevision       int64  `json:"policyRevision,omitempty"`
+	Outcome              string `json:"outcome,omitempty"`
+	ActivePolicyRevision int64  `json:"activePolicyRevision"`
+	ReceivedAtMs         int64  `json:"receivedAtMs,omitempty"`
 }
 
 func (ConfigurationInventory) String() string   { return "ConfigurationInventory([redacted])" }
@@ -55,10 +64,12 @@ func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device st
 	var grant string
 	var active, approved, enabled bool
 	var accountUntil int64
+	var publicationUntil int64
+	var publicationGrant string
 	var jkt string
 	// Lock the live authorization rows. The API has only a non-authoritative
 	// guard-column UPDATE grant needed by PostgreSQL for SELECT FOR SHARE.
-	e = tx.QueryRowContext(ctx, `SELECT d.owner,d.jkt,d.active,d.approved,d.revision,a.enabled,a.valid_until,a.grant_hash FROM identity_devices d JOIN identity_accounts a ON a.owner=d.owner WHERE d.id=$1 FOR SHARE OF a,d`, device).Scan(&r.Owner, &jkt, &active, &approved, &r.PolicyRevision, &enabled, &accountUntil, &grant)
+	e = tx.QueryRowContext(ctx, `SELECT d.owner,d.jkt,d.active,d.approved,d.revision,a.enabled,a.valid_until,a.grant_hash,d.offline_until,d.publication_grant_hash FROM identity_devices d JOIN identity_accounts a ON a.owner=d.owner WHERE d.id=$1 FOR SHARE OF a,d`, device).Scan(&r.Owner, &jkt, &active, &approved, &r.PolicyRevision, &enabled, &accountUntil, &grant, &publicationUntil, &publicationGrant)
 	if e != nil || !active || !approved || !enabled || accountUntil <= current().Unix() {
 		return r, enrollment.ErrDenied
 	}
@@ -113,6 +124,23 @@ func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device st
 	}
 	if current().Unix() >= min(authorityUntil, accountUntil) {
 		return r, enrollment.ErrDenied
+	}
+	if !r.Historical {
+		observation := ConfigurationActivation{State: "awaiting_report"}
+		if r.PolicyRevision == 0 {
+			observation.State = "not_issued"
+		}
+		e = tx.QueryRowContext(ctx, `SELECT policy_revision,outcome,active_policy_revision,received_at_ms FROM identity_policy_activation WHERE device=$1`, device).Scan(
+			&observation.PolicyRevision, &observation.Outcome, &observation.ActivePolicyRevision, &observation.ReceivedAtMs)
+		if e == nil {
+			observation.State = "historical"
+			if observation.PolicyRevision == r.PolicyRevision && publicationGrant == grant && publicationUntil > current().Unix() {
+				observation.State = "reported"
+			}
+		} else if e != sql.ErrNoRows {
+			return r, enrollment.ErrUnavailable
+		}
+		r.Activation = &observation
 	}
 	if e = layerACL(ctx, tx, actor, "configuration.drafts.read", "device", device, current().Unix()); e != nil {
 		return r, e

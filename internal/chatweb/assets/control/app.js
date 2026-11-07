@@ -50,6 +50,18 @@ function showInventory(view){
  inventoryPair(meta,'Устройство',device);inventoryPair(meta,'Владелец',owner);
  inventoryPair(meta,'Желаемая версия',String(revision));inventoryPair(meta,'Хэш желаемой конфигурации',hash||'-');
  inventoryPair(meta,'Версия выданной политики',String(policyRevision));
+ const report=view.activation;
+ if(report){
+  if(!['not_issued','awaiting_report','reported','historical'].includes(report.state))throw Error('invalid');
+  if(['reported','historical'].includes(report.state)){
+   const outcomes={committed:'Применена',degraded:'Применена с ограничениями',rolled_back:'Откат'};
+   if(!Object.hasOwn(outcomes,report.outcome)||!Number.isSafeInteger(report.policyRevision)||report.policyRevision<1||!Number.isSafeInteger(report.activePolicyRevision)||report.activePolicyRevision<0||!Number.isSafeInteger(report.receivedAtMs)||report.receivedAtMs<1)throw Error('invalid');
+   const historical=report.state==='historical'?' · предыдущая или истёкшая выдача':'';
+   inventoryPair(meta,'Отчёт устройства',`${outcomes[report.outcome]} · политика ${report.policyRevision}${historical}`);
+   inventoryPair(meta,'Версия по отчёту',report.activePolicyRevision?String(report.activePolicyRevision):'Нет');
+   inventoryPair(meta,'Получен',inventoryDate(report.receivedAtMs));
+  }else inventoryPair(meta,'Отчёт устройства',report.state==='not_issued'?'Политика ещё не выдана':'Ожидаем результат применения');
+ }
  if(assigned){inventoryPair(meta,'Режим сети',view.mode);if(view.approvalUntilMs>0)inventoryPair(meta,'Подтверждение действительно до',inventoryDate(view.approvalUntilMs));}
  const layerList=$('inventory-layers');layerList.replaceChildren();
  for(const layer of layers){
@@ -92,7 +104,7 @@ async function loadInventory(){
  if(view.device!==device)throw Error('invalid');
  showInventory(view);
  layerInventory=structuredClone(view);
- status('Желаемая конфигурация загружена. Это не проверка связи и не подтверждение активации Android.');
+ status('Конфигурация загружена. Отчёт устройства и версия выдачи показаны отдельно.');
 }
 function showDraft(draft){
  if(!Number.isSafeInteger(draft.revision)||draft.revision<1)throw Error('invalid');
