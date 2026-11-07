@@ -51,3 +51,14 @@ link again. It runs no script and does not recover the invitation.
 Use the same public host in the Android Actions build. Certificate fingerprints
 must match the distributed APK. Real association and physical opening still
 require a deployed HTTPS host and a signed APK. [Android App Links verification](https://developer.android.com/training/app-links/verify-applinks)
+
+## Installation profile for first launch
+
+The offline `enrollment-admin bootstrap-profile` command reads the owner document
+at `SYN443_BOOTSTRAP_PROFILE_SPEC` and the P-256 root key file at
+`SYN443_BOOTSTRAP_ROOT_KEY`. The document contains `anchor` and `service`
+objects matching the public trust anchor and service descriptor. The command
+uses no database or provider connection. It writes one base64url installation
+profile containing the public anchor and signed descriptor. Keep the offline
+private key on its own trusted host. Only explicitly public endpoints and
+public keys can be used in a distributed profile.

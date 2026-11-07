@@ -15,6 +15,12 @@ import (
 )
 
 func run() error {
+	if len(os.Args) != 2 {
+		return identity.ErrInvalid
+	}
+	if os.Args[1] == "bootstrap-profile" {
+		return runBootstrapProfile()
+	}
 	c, e := enrollment.ReadConfig(os.Getenv("SYN443_ENROLLMENT_CONFIG"))
 	if e != nil {
 		return e
@@ -26,9 +32,6 @@ func run() error {
 	defer store.DB.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	if len(os.Args) != 2 {
-		return identity.ErrInvalid
-	}
 	switch os.Args[1] {
 	case "overlay-resource-put":
 		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_OVERLAY_RESOURCE"), 98304)
