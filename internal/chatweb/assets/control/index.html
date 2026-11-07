@@ -45,6 +45,13 @@
 <p id="draft-version">Новый черновик</p><label for="base-revision">Исходная версия конфигурации</label><input id="base-revision" type="number" min="0" max="9007199254740991" value="0" required>
 <label for="base-hash">SHA-256 исходной версии (для версии 0 оставьте пустым)</label><input id="base-hash" autocomplete="off" maxlength="64">
 <label for="plan">План сети, JSON</label><textarea id="plan" rows="22" maxlength="262144" spellcheck="false" autocomplete="off" required></textarea>
+<fieldset id="route-check-editor" disabled><legend>Проверки маршрутов</legend>
+<label for="route-check-path">Выход</label><select id="route-check-path"></select>
+<label><input id="route-check-required" type="checkbox"> Обязательная проверка при применении</label>
+<label for="route-check-method">Способ проверки</label><select id="route-check-method"><option value="tcp">TCP</option><option value="tls">TLS</option><option value="https_204">HTTPS 204</option><option value="ssh_banner">SSH banner</option></select>
+<label for="route-check-target">Адрес проверки</label><input id="route-check-target" type="text" maxlength="2048" autocomplete="off" placeholder="host:port или https://…">
+<button id="route-check-add" type="button">Добавить проверку</button><ul id="route-check-list"></ul>
+</fieldset>
 <p>Профили задаются ссылками sourceId/profileId. Ключи, пароли и состояние NetBird сюда не переносятся.</p><button id="save-draft" disabled>Сохранить черновик</button></form>
 <div id="pending" hidden><p>Изменение не подтверждено. Повтор использует ту же операцию.</p><button id="retry-save">Повторить операцию</button><button id="discard-save">Отменить повтор и проверить версию на сервере</button></div>
 </section><section class="wide" aria-labelledby="inventory-title"><h2 id="inventory-title">Конфигурация устройства (только чтение)</h2>

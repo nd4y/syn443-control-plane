@@ -42,6 +42,13 @@ the provider body only on success. The worker accepts 304 only against the
 leased working snapshot and updates quota without transferring profiles again.
 Provider error responses carry a status only. The original endpoints still
 accept and return the previous wire format.
+
+A portable network plan can set `network.routeChecks` with a separate list of
+TCP, TLS, HTTPS 204 or SSH banner checks for each configured outbound. Up to
+16 outbounds and four checks per outbound are accepted. Invalid or unsupported
+targets and incompatible paths are rejected in preview. Required checks
+participate in activation on a client advertising `route.health.v1`. The
+publisher rejects plans with these checks for clients that lack that capability.
 Only a newly accepted verified snapshot can restore it. Cache TTL/provider expiry
 remain visible even when the most recent refresh failed. Source recipient
 changes require both share and receive authority; device-fetched data is personal.

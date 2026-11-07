@@ -110,6 +110,12 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 		return nil, e
 	}
 	required := []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}
+	if len(plan.Network.RouteChecks) > 0 {
+		if !slices.Contains(target.Capabilities, "route.health.v1") {
+			return nil, enrollment.ErrDenied
+		}
+		required = append(required, "route.health.v1")
+	}
 	if plan.Graph.NetBird != nil {
 		if !slices.Contains(target.Capabilities, "overlay.credentials.v1") {
 			return nil, enrollment.ErrDenied

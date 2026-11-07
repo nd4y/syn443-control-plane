@@ -65,6 +65,35 @@ test('source recipient edits require confirmation and retry the same scoped muta
  await expect(list).toHaveText('');await expect(page.locator('#source-shares-save')).toBeDisabled();
 });
 async function draft(page){await page.locator('#draft-id').fill('draft-a');await page.locator('#target-id').fill('device-a');await page.locator('#plan').fill(JSON.stringify(plan,null,2));}
+test('route checks editor changes only its private draft and restores saved checks',async({page,request})=>{
+ await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();
+ await expect(page.locator('#route-check-add')).toBeDisabled();
+ await draft(page);
+ const target=page.locator('#route-check-target'),method=page.locator('#route-check-method');
+ const list=page.locator('#route-check-list'),add=page.locator('#route-check-add');
+ await expect(page.locator('#route-check-path')).toHaveValue('proxy');
+ await page.locator('#route-check-required').check();
+ await target.fill('home.example.invalid:22');await add.click();
+ await expect(list).toContainText('home.example.invalid:22 · обязательная');
+ await method.selectOption('https_204');await target.fill('https://health.example.invalid/204');await add.click();
+ await expect(list.locator('li')).toHaveCount(2);
+ let state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(0);
+ const current=JSON.parse(await page.locator('#plan').inputValue());
+ expect(current.network.routeChecks).toEqual([{outbound:'proxy',required:true,checks:[
+  {method:'tcp',target:'home.example.invalid:22'},{method:'https_204',target:'https://health.example.invalid/204'},
+ ]}]);
+ expect(current.graph).toEqual(plan.graph);
+ await page.locator('#save-draft').click();await expect(page.locator('#draft-version')).toContainText('Версия черновика: 1');
+ await page.locator('#plan').fill('{}');await page.locator('#open-draft').click();
+ await expect(list.locator('li')).toHaveCount(2);
+ await list.locator('li').first().getByRole('button',{name:'Удалить проверку'}).click();
+ await expect(list.locator('li')).toHaveCount(1);
+ await target.fill('unsaved.example.invalid:443');await page.locator('#logout').click();
+ await expect(target).toHaveValue('');await expect(list).toHaveText('');
+ state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
+});
 test('console safely renders source metadata and saves/reopens its private draft',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();
  await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();

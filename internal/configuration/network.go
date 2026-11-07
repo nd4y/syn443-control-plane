@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/netip"
+	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
@@ -50,6 +51,15 @@ type DNSRule struct {
 	QueryTypes []string `json:"queryTypes,omitempty"`
 	Server     string   `json:"server"`
 }
+type OutboundCheck struct {
+	Method string `json:"method"`
+	Target string `json:"target"`
+}
+type OutboundCheckPlan struct {
+	Outbound string          `json:"outbound"`
+	Required bool            `json:"required"`
+	Checks   []OutboundCheck `json:"checks"`
+}
 type NetworkSettings struct {
 	SchemaVersion    int                  `json:"schemaVersion"`
 	RequiredNetworks []string             `json:"requiredNetworks"`
@@ -58,16 +68,21 @@ type NetworkSettings struct {
 	DNSRules         []DNSRule            `json:"dnsRules,omitempty"`
 	DNSFinal         string               `json:"dnsFinal"`
 	DNSStrategy      string               `json:"dnsStrategy"`
+	RouteChecks      []OutboundCheckPlan  `json:"routeChecks,omitempty"`
 }
 
-func (NetworkSettings) String() string   { return "NetworkSettings([redacted])" }
-func (NetworkSettings) GoString() string { return "NetworkSettings([redacted])" }
-func (RouteRule) String() string         { return "RouteRule([redacted])" }
-func (RouteRule) GoString() string       { return "RouteRule([redacted])" }
-func (DNSServer) String() string         { return "DNSServer([redacted])" }
-func (DNSServer) GoString() string       { return "DNSServer([redacted])" }
-func (DNSRule) String() string           { return "DNSRule([redacted])" }
-func (DNSRule) GoString() string         { return "DNSRule([redacted])" }
+func (NetworkSettings) String() string     { return "NetworkSettings([redacted])" }
+func (NetworkSettings) GoString() string   { return "NetworkSettings([redacted])" }
+func (RouteRule) String() string           { return "RouteRule([redacted])" }
+func (RouteRule) GoString() string         { return "RouteRule([redacted])" }
+func (DNSServer) String() string           { return "DNSServer([redacted])" }
+func (DNSServer) GoString() string         { return "DNSServer([redacted])" }
+func (DNSRule) String() string             { return "DNSRule([redacted])" }
+func (DNSRule) GoString() string           { return "DNSRule([redacted])" }
+func (OutboundCheck) String() string       { return "OutboundCheck([redacted])" }
+func (OutboundCheck) GoString() string     { return "OutboundCheck([redacted])" }
+func (OutboundCheckPlan) String() string   { return "OutboundCheckPlan([redacted])" }
+func (OutboundCheckPlan) GoString() string { return "OutboundCheckPlan([redacted])" }
 
 func DecodeNetworkSettings(raw []byte) (NetworkSettings, error) {
 	var value NetworkSettings
@@ -283,6 +298,63 @@ func emitDNSServer(tag string, server DNSServer, graph CompiledGraph) (map[strin
 
 // CompileNetwork produces the narrow engine network document. It neither
 // flattens source-layer provenance nor exports subscription URLs or SDK keys.
+func outboundCheckHost(host string) bool {
+	ip, err := netip.ParseAddr(host)
+	return err == nil && ip.Zone() == "" || networkHost(host, false)
+}
+
+func outboundCheckPort(port string) bool {
+	n, err := strconv.Atoi(port)
+	return err == nil && n > 0 && n <= 65535 && len(port) <= 5 &&
+		strings.IndexFunc(port, func(r rune) bool { return r < '0' || r > '9' }) < 0
+}
+
+func outboundCheckTarget(check OutboundCheck) bool {
+	raw := check.Target
+	if len(raw) < 1 || len(raw) > 2048 || strings.IndexFunc(raw, func(r rune) bool { return r <= 32 || r > 126 }) >= 0 {
+		return false
+	}
+	switch check.Method {
+	case "tcp", "ssh_banner":
+		host, port, err := net.SplitHostPort(raw)
+		return err == nil && outboundCheckHost(host) && outboundCheckPort(port)
+	case "tls", "https_204":
+		target, err := url.Parse(raw)
+		return err == nil && target.Scheme == "https" && target.User == nil && target.Opaque == "" &&
+			!strings.Contains(raw, "#") && !strings.HasSuffix(target.Host, ":") && outboundCheckHost(target.Hostname()) &&
+			(target.Port() == "" || outboundCheckPort(target.Port()))
+	default:
+		return false
+	}
+}
+
+func routeChecks(graph CompiledGraph, plans []OutboundCheckPlan) (json.RawMessage, error) {
+	if len(plans) == 0 {
+		return nil, nil
+	}
+	if len(plans) > 16 {
+		return nil, ErrInvalid
+	}
+	seen := make(map[string]bool, len(plans))
+	for _, plan := range plans {
+		path, ok := graph.Capabilities[plan.Outbound]
+		if !ok || !path.TCP || seen[plan.Outbound] || len(plan.Checks) < 1 || len(plan.Checks) > 4 {
+			return nil, ErrInvalid
+		}
+		seen[plan.Outbound] = true
+		for _, check := range plan.Checks {
+			if !outboundCheckTarget(check) {
+				return nil, ErrInvalid
+			}
+		}
+	}
+	encoded, err := json.Marshal(plans)
+	if err != nil || len(encoded) > 24000 {
+		return nil, ErrInvalid
+	}
+	return encoded, nil
+}
+
 func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMessage, error) {
 	if settings.SchemaVersion != 1 || len(graph.Outbounds) < 1 || len(graph.Outbounds) > 64 || len(settings.Rules) > 128 || len(settings.DNSServers) > 16 || len(settings.DNSRules) > 64 {
 		return nil, ErrInvalid
@@ -352,7 +424,15 @@ func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMess
 		node["action"], node["server"] = "route", dnsTag(rule.Server)
 		dnsRules = append(dnsRules, node)
 	}
-	result, err := json.Marshal(map[string]any{"outbounds": graph.Outbounds, "route": map[string]any{"rules": rules, "final": graph.Final}, "dns": map[string]any{"servers": dnsServers, "rules": dnsRules, "final": dnsTag(settings.DNSFinal), "strategy": settings.DNSStrategy}})
+	metadata, err := routeChecks(graph, settings.RouteChecks)
+	if err != nil {
+		return nil, err
+	}
+	output := map[string]any{"outbounds": graph.Outbounds, "route": map[string]any{"rules": rules, "final": graph.Final}, "dns": map[string]any{"servers": dnsServers, "rules": dnsRules, "final": dnsTag(settings.DNSFinal), "strategy": settings.DNSStrategy}}
+	if metadata != nil {
+		output["route_checks"] = metadata
+	}
+	result, err := json.Marshal(output)
 	if err != nil || len(result) > 262144 {
 		return nil, ErrInvalid
 	}

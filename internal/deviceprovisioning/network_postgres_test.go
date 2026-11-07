@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -179,6 +180,36 @@ func TestSQLNetworkAuthorityCompilesApprovedLayersAuthorizedSnapshotsAndSignsAct
 	defer tx.Rollback()
 	if e = direct.Fence.Lock(context.Background(), tx, n.f.now); e != nil {
 		t.Fatal(e)
+	}
+}
+
+func TestSQLManagedRouteHealthRequiresAdvertisedDeviceCapability(t *testing.T) {
+	n := newNetworkFixture(t)
+	n.approved.Layers[0].Changes[2].Value = json.RawMessage(`{
+ "schemaVersion":1,"requiredNetworks":["tcp"],"dnsFinal":"system","dnsStrategy":"prefer_ipv4",
+ "routeChecks":[{"outbound":"proxy","required":true,"checks":[{"method":"tcp","target":"home.example.invalid:22"}]}]}`)
+	n.authority.Layers = networkLayersFunc(func(_ context.Context, received enrollment.ConfigurationTarget, _ time.Time) (*ApprovedNetworkLayers, error) {
+		approved := *n.approved
+		approved.Target = received
+		return &approved, nil
+	})
+	ctx := context.Background()
+	if _, err := n.authority.Prepare(ctx, n.target, n.f.now); !errors.Is(err, enrollment.ErrDenied) {
+		t.Fatal("checks published to a client without declared support", err)
+	}
+	target := n.target
+	target.Capabilities = append(append([]string{}, target.Capabilities...), "route.health.v1")
+	prepared, err := n.authority.Prepare(ctx, target, n.f.now)
+	if err != nil || prepared == nil || !slices.Contains(prepared.RequiredCapabilities, "route.health.v1") {
+		t.Fatal("route checks or capability missing from prepared policy", err)
+	}
+	var engine struct {
+		Checks []configuration.OutboundCheckPlan `json:"route_checks"`
+	}
+	if err := json.Unmarshal(prepared.EngineConfig, &engine); err != nil || len(engine.Checks) != 1 ||
+		engine.Checks[0].Outbound != "proxy" || !engine.Checks[0].Required ||
+		len(engine.Checks[0].Checks) != 1 || engine.Checks[0].Checks[0].Target != "home.example.invalid:22" {
+		t.Fatal("per-outbound health checks were changed before signing", err)
 	}
 }
 

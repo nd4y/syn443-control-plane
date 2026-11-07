@@ -40,6 +40,48 @@ func cloneNetwork(t *testing.T, s NetworkSettings) NetworkSettings {
 	return copy
 }
 
+func TestNetworkPlanEmitsScopedPerOutboundHealthChecks(t *testing.T) {
+	graph := networkGraph(t)
+	settings := networkBase()
+	settings.RouteChecks = []OutboundCheckPlan{
+		{Outbound: "entry", Required: true, Checks: []OutboundCheck{{"ssh_banner", "home.example.invalid:22"}, {"tcp", "[2001:db8::5]:443"}}},
+		{Outbound: "tunnel", Checks: []OutboundCheck{{"https_204", "https://health.example.invalid/generate_204"}, {"tls", "https://health.example.invalid:443/"}}},
+	}
+	raw, err := CompileNetwork(graph, cloneNetwork(t, settings))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out struct {
+		Health []OutboundCheckPlan `json:"route_checks"`
+	}
+	if json.Unmarshal(raw, &out) != nil || !reflect.DeepEqual(out.Health, settings.RouteChecks) {
+		t.Fatal("signed engine config lost per-outbound checks")
+	}
+	cases := []OutboundCheck{
+		{"icmp", "node.example.invalid"},
+		{"tcp", "node.example.invalid:65536"},
+		{"ssh_banner", "user@node.example.invalid:22"},
+		{"https_204", "http://health.example.invalid/"},
+		{"https_204", "https://user@health.example.invalid/"},
+		{"tls", "https://health.example.invalid/#"},
+	}
+	for _, item := range cases {
+		bad := networkBase()
+		bad.RouteChecks = []OutboundCheckPlan{{Outbound: "entry", Checks: []OutboundCheck{item}}}
+		if _, err := CompileNetwork(graph, bad); err == nil {
+			t.Fatal("unsupported or invalid check compiled", item.Method)
+		}
+	}
+	settings.RouteChecks[0].Outbound = "missing"
+	if _, err := CompileNetwork(graph, settings); err == nil {
+		t.Fatal("probe can target an unassigned outbound")
+	}
+	settings.RouteChecks[0].Outbound = "tunnel"
+	if _, err := CompileNetwork(graph, settings); err == nil {
+		t.Fatal("duplicate outbound plan accepted")
+	}
+}
+
 func TestNetworkCompilerEmitsTypedDNSRoutingAndApplicationRulesDeterministically(t *testing.T) {
 	graph := networkGraph(t)
 	settings := networkBase()

@@ -81,7 +81,8 @@
           "netbird.vless",
           "tun.lease.v1",
           "policy.keybound.v2",
-          "overlay.credentials.v1"
+          "overlay.credentials.v1",
+          "route.health.v1"
         ]
       },
       "allOf": [

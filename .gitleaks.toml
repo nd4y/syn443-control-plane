@@ -7,6 +7,16 @@ useDefault = true
 [[rules]]
 id = "generic-api-key"
 [[rules.allowlists]]
+description = "Reviewed SHA-256 of public managed route check contracts"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"control-openapi\.json": "69bfcda814f60739ab27c3e1cb3d84d8c4b22968752f6a723d7912fa60d5afdf",?\s*$''',
+  '''^\s*"policy-payload\.schema\.json": "4ed312601682e569e00fac5eb45c4058470b0fef17bdafbbd478aeb1bb9769a8",?\s*$''',
+]
+
+[[rules.allowlists]]
 description = "Reviewed SHA-256 of the public conditional device subscription contract"
 condition = "AND"
 paths = ['''^contracts/lock\.json$''']
