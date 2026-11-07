@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net"
@@ -20,6 +21,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
+	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 )
 
 func run() error {
@@ -59,6 +61,16 @@ func run() error {
 	api, e := catalog.NewAPI(store, providers, c.Origin, c.AssuranceACR, c.FixtureHTTP)
 	if e != nil {
 		return e
+	}
+	if path := os.Getenv("SYN443_TELEMETRY_READER_DSN_FILE"); path != "" {
+		db, err := telemetryReader(ctx, path)
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+		api.TelemetrySummary = func(ctx context.Context, hour, now time.Time) (telemetry.HourReport, error) {
+			return telemetry.ReportHour(ctx, db, hour, now)
+		}
 	}
 	if path := os.Getenv("SYN443_CONFIGURATION_CONFIG"); path != "" {
 		cc, err := deviceprovisioning.ReadConfigurationRuntime(path)
@@ -131,6 +143,31 @@ func run() error {
 	}
 	return e
 }
+
+func telemetryReader(ctx context.Context, path string) (*sql.DB, error) {
+	raw, err := enrollment.PrivateFile(path, 8192)
+	if err != nil {
+		return nil, identity.ErrInvalid
+	}
+	defer clear(raw)
+	dsn := strings.TrimSpace(string(raw))
+	if dsn == "" {
+		return nil, identity.ErrInvalid
+	}
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return nil, telemetry.ErrUnavailable
+	}
+	db.SetMaxOpenConns(2)
+	check, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err = telemetry.CheckReportRole(check, db); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
 func main() {
 	if run() != nil {
 		fmt.Fprintln(os.Stderr, "control_api_failed")

@@ -64,6 +64,10 @@ func TestConsoleUsesSeparateCookieAudienceAndOnlyClosedControlActions(t *testing
 	if w := webCall(s, "/control/action", history, cookie); w.Code != 200 {
 		t.Fatal("scoped job history did not reach the control API", w.Code)
 	}
+	report := `{"version":1,"action":"telemetry.summary.get","requestId":"synthetic-report-request","payload":{"hour":"2026-01-02T01:00Z"}}`
+	if w := webCall(s, "/control/action", report, cookie); w.Code != 200 {
+		t.Fatal("scoped telemetry report did not reach the control API", w.Code)
+	}
 	shares := `{"version":1,"action":"source.shares.put","requestId":"synthetic-share-request","payload":{"id":"source-a","revision":1,"shares":{"revision":0,"recipients":[]}}}`
 	if w := webCall(s, "/control/action", shares, cookie); w.Code != 200 {
 		t.Fatal("source recipient mutation did not reach the control API", w.Code)

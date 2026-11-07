@@ -3,6 +3,38 @@ const origin='http://127.0.0.1:17851';
 const plan={schemaVersion:1,graph:{profiles:{proxy:{sourceId:'source-a',profileId:'profile-a'}},chains:{},balancers:{},final:'proxy'},network:{schemaVersion:1,requiredNetworks:['tcp'],dnsFinal:'system',dnsStrategy:'prefer_ipv4'},activation:{timeoutSeconds:30,checks:[{id:'internet',type:'https_204',target:'https://health.example.invalid/generate_204',required:true}]}};
 async function reset(request,body={}){await request.post(origin+'/fixture/reset',{data:body});}
 
+test('hourly telemetry distinguishes data empty and mismatched reports and clears on expiry',async({page,request})=>{
+ await reset(request);await page.goto(origin);
+ const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows'),status=page.locator('#telemetry-status');
+ await expect(button).toBeEnabled();
+ await hour.fill('2026-01-02T01:00');await button.click();
+ await expect(status).toHaveText('Сводка за 2026-01-02T01:00Z');
+ await expect(rows.locator('td')).toHaveText(['probe','ok','wifi','3','26 мс']);
+ await hour.fill('2026-01-02T02:00');await button.click();
+ await expect(status).toContainText('нет готовой сводки');await expect(rows).toHaveText('');
+ await hour.fill('2026-01-02T03:00');await button.click();
+ await expect(status).toContainText('Не удалось загрузить');await expect(rows).toHaveText('');
+ await hour.fill('2026-01-02T01:00');await button.click();
+ await expect(rows.locator('tr')).toHaveCount(1);
+ await request.post(origin+'/fixture/expire',{data:{}});
+ await button.click();await expect(button).toBeDisabled();await expect(rows).toHaveText('');
+ await expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
+});
+
+test('scoped telemetry denial preserves an unrelated unsaved draft',async({page,request})=>{
+ await reset(request,{telemetryDenied:true});await page.goto(origin);
+ await expect(page.locator('#load-telemetry')).toBeEnabled();
+ await draft(page);
+ await page.locator('#load-telemetry').click();
+ await expect(page.locator('#telemetry-status')).toContainText('Нет доступа');
+ await expect(page.locator('#plan')).toHaveValue(JSON.stringify(plan,null,2));
+ await expect(page.locator('#logout')).toBeEnabled();
+ await request.post(origin+'/fixture/revoke',{data:{}});
+ await page.locator('#load-telemetry').click();
+ await expect(page.locator('#plan')).toHaveValue('');
+ await expect(page.locator('#logout')).toBeDisabled();
+});
+
 test('source job history shows bounded retries and clears scoped results on logout',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#load-sources')).toBeEnabled();
  await expect(page.locator('#source-history')).toBeDisabled();

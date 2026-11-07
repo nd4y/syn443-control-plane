@@ -32,8 +32,8 @@ Aggregates contain no device, session or route identifiers. Counters
 include event count, measured count and total measured duration per group.
 An hour needs at least one hour to settle and must still be inside the
 detail retention window. A run exceeding 100,000 events or 256 groups
-leaves the previous summary intact. Do not expose these SQL roles through
-the control panel or the enrollment API.
+leaves the previous summary intact. Keep the analysis and retention SQL roles
+out of the control panel and the enrollment API.
 
 For offline analysis, `enrollment-admin telemetry-summary <UTC-hour>`
 returns versioned JSON for one selected hour. The reader uses the separate
@@ -42,6 +42,28 @@ and `SYN443_TELEMETRY_READER_DSN_FILE`. This role can read only the
 aggregate table. An hour without aggregate rows reports
 `available: false`; it does not claim that no events were received.
 
+The administrative web console can request the same aggregate for one UTC hour
+via `telemetry.summary.get`. Set `SYN443_TELEMETRY_READER_DSN_FILE` for
+`control-api` to a private file containing a DSN for the dedicated reader. The
+API validates the dedicated non-inheriting reader role and its privileges on
+startup and uses a separate pool. With
+no setting the action is disabled. Only a live, explicit catalog ACL for
+`telemetry.summary.get / telemetry / global` grants access; a wildcard grant,
+a support chat session or a device session is insufficient. The read audit
+records the actor, hour and request ID before the result is returned. No raw
+events, identifiers, route tags or targets are returned.
+
+The optional view is hidden with HTTP 404 when disabled or when a valid
+console administrator has no telemetry grant. A rejected console identity or
+revoked console access still uses the existing session or authorization
+failure. The browser clears administrative state in that case.
+
+The UI distinguishes an unavailable hour from an available aggregate and shows
+the mean duration only for timed events. It keeps the result in page memory and
+clears it when the selected hour changes, on logout and on session expiry.
+The console is a read-only operational view.
+
 Enabling ingestion does not turn on Android uploads without device consent.
-End-to-end delivery, scheduled analysis, operator views and retention for
-backups and other telemetry categories require their own acceptance.
+End-to-end delivery, scheduled analysis, cohort comparisons, incident analysis,
+device erasure and retention for backups and other categories require their
+own acceptance.

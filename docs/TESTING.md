@@ -27,3 +27,8 @@ M2 identity/enrollment pilot: see [scope and evidence](enrollment-pilot.md). Act
 
 The enrollment job includes the [isolated PostgreSQL restore drill](database-recovery.md).
 Its dump is temporary and must not be uploaded.
+
+The telemetry web console requires PostgreSQL tests for exact grant, wildcard
+denial, revocation and read audit, a BFF scope test, and Playwright tests for
+populated/empty/mismatched reports, session expiry and preservation of unrelated
+drafts on a scoped denial. The browser fixture contains only synthetic counts.

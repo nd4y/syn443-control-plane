@@ -14,6 +14,7 @@ import (
 
 	"github.com/nd4y/syn443-control-plane/contracts"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -52,6 +53,7 @@ type ExternalAction func(context.Context, string, string, []byte, time.Time) (an
 type API struct {
 	Invitations          ExternalAction
 	Configurations       ExternalAction
+	TelemetrySummary     func(context.Context, time.Time, time.Time) (telemetry.HourReport, error)
 	Store                *Store
 	Verifier             Verifier
 	Origin, AssuranceACR string
@@ -142,6 +144,8 @@ func apiFailure(w http.ResponseWriter, e error) {
 	switch {
 	case errors.Is(e, ErrDenied), errors.Is(e, identity.ErrInvalid):
 		status, code = 403, "catalog_denied"
+	case errors.Is(e, errTelemetrySummaryHidden):
+		status, code = 404, "telemetry_summary_hidden"
 	case errors.Is(e, ErrInvalid):
 		status, code = 400, "catalog_invalid"
 	case errors.Is(e, ErrConflict), errors.Is(e, ErrStale):
@@ -260,6 +264,18 @@ func (a *API) dispatch(ctx context.Context, actor Actor, action Action, now time
 		return nil
 	}
 	switch action.Action {
+	case telemetrySummaryAction:
+		var r struct {
+			Hour string `json:"hour"`
+		}
+		if decode(&r) != nil {
+			return nil, ErrInvalid
+		}
+		hour, e := telemetry.ParseHour(r.Hour)
+		if e != nil {
+			return nil, ErrInvalid
+		}
+		return a.readTelemetrySummary(ctx, actor, hour, now, action.RequestID)
 	case "configuration.draft.get":
 		var r struct {
 			ID string `json:"id"`

@@ -7,6 +7,16 @@ useDefault = true
 [[rules]]
 id = "generic-api-key"
 [[rules.allowlists]]
+description = "Reviewed SHA-256 of the public telemetry console contract"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"control-openapi\.json": "36b9fadadedb103c30d3ced9abb6e195d62d4f76c8c7235262a2d165a4bc26a9",?\s*$''',
+  '''^\s*"control-openapi\.json": "939d211dffd2376ed9b0bc1611f970d9aaae365444c141ee15b8e24fdba13248",?\s*$''',
+]
+
+[[rules.allowlists]]
 description = "Reviewed SHA-256 of the public telemetry enrollment contract"
 condition = "AND"
 paths = ['''^contracts/lock\.json$''']
