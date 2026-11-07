@@ -278,6 +278,41 @@
         }
       }
     },
+    "/v1/device/sources/claim": {
+      "get": {
+        "operationId": "claimDeviceSourceFetch",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "responses": {
+          "200": {"description": "One addressed device fetch lease. The response must not be cached or logged.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DeviceSourceLease"}}}},
+          "204": {"description": "No compatible pending job for this device."},
+          "401": {"description": "Invalid or replayed proof."},
+          "403": {"description": "Device session denied."},
+          "404": {"description": "Device fetch disabled."},
+          "503": {"description": "Catalog or device capacity unavailable."}
+        }
+      }
+    },
+    "/v1/device/sources/result": {
+      "post": {
+        "operationId": "submitDeviceSourceFetch",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "requestBody": {
+          "required": true,
+          "description": "43-byte job ID, LF, 43-byte lease ID, LF and 1 to 10485760 provider bytes. The proof binds the complete frame.",
+          "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary", "minLength": 89, "maxLength": 10485848}}}
+        },
+        "responses": {
+          "204": {"description": "Encrypted input accepted for source worker normalization or the exact result already accepted."},
+          "401": {"description": "Invalid or replayed proof, or malformed frame."},
+          "403": {"description": "Device session or job scope denied."},
+          "404": {"description": "Device fetch disabled."},
+          "409": {"description": "Lease expired, result changed or source revision superseded."},
+          "503": {"description": "Catalog or device capacity unavailable."}
+        }
+      }
+    },
     "/v1/device/policy": {
       "get": {
         "operationId": "policy",
@@ -952,6 +987,28 @@
       }
     },
     "schemas": {
+      "DeviceSourceLease": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["jobId", "lease", "until", "networkModes", "credential"],
+        "properties": {
+          "jobId": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+          "lease": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+          "until": {"type": "integer", "minimum": 1, "maximum": 9007199254740},
+          "networkModes": {"type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true,
+            "items": {"enum": ["home_wifi", "wifi", "cellular_restricted", "cellular"]}},
+          "credential": {
+            "type": "object", "additionalProperties": false, "required": ["url"],
+            "properties": {
+              "url": {"type": "string", "minLength": 1, "maxLength": 8192},
+              "headers": {"type": "object", "maxProperties": 4, "additionalProperties": {"type": "string", "maxLength": 4096}},
+              "redirectOrigins": {"type": "array", "maxItems": 3, "items": {"type": "string", "maxLength": 8192}},
+              "allowedNetworks": {"type": "array", "maxItems": 8, "items": {"type": "string", "maxLength": 50}},
+              "rootCa": {"type": "string", "maxLength": 32768}
+            }
+          }
+        }
+      },
       "ControlPanelHint": {
         "type": "object",
         "additionalProperties": false,

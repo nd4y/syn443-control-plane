@@ -25,6 +25,7 @@ type RuntimeConfig struct {
 	CertificateKey  string   `json:"certificateKey,omitempty"`
 	FixtureHTTP     bool     `json:"fixtureHttp,omitempty"`
 	FixtureLoopback bool     `json:"fixtureLoopback,omitempty"`
+	DeviceFetchEnabled bool  `json:"deviceFetchEnabled,omitempty"`
 }
 
 func (RuntimeConfig) String() string   { return "CatalogRuntimeConfig([redacted])" }
@@ -63,6 +64,8 @@ func OpenStore(c RuntimeConfig) (*Store, error) {
 	s, e := NewStore(db, key)
 	if e != nil {
 		db.Close()
+	} else {
+		s.DeviceFetchEnabled = c.DeviceFetchEnabled
 	}
 	return s, e
 }

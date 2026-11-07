@@ -103,6 +103,24 @@ test('source editor saves metadata without exposing prior secrets and tracks syn
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();expect(state.sources.find(s=>s.id===id).name).toBe('Provider subscription');expect(state.operations).toBe(2);expect(state.calls).not.toContain('configuration.publish');
  await page.locator('#load-sources').click();await page.locator('#sources li').filter({hasText:'Provider subscription'}).getByRole('button',{name:'Настроить источник'}).click();await expect(page.locator('#source-secret')).toHaveValue('');await expect(page.locator('#source-id')).toBeDisabled();
 });
+test('device subscription saves an immutable Wi-Fi binding without retaining the credential',async({page,request})=>{
+ await reset(request);await page.goto(origin);await expect(page.locator('#new-source')).toBeEnabled();
+ await newSource(page);const id=await page.locator('#source-id').inputValue(),binding=page.locator('#source-device');
+ await expect(binding).toBeHidden();
+ await page.locator('#source-mode').selectOption('device');await expect(binding).toBeEnabled();
+ await binding.fill('device-a');await page.locator('#source-modes').selectOption('cellular');
+ await page.locator('#save-source').click();await expect(page.locator('#status')).toContainText('Проверьте');
+ await page.locator('#source-modes').selectOption('wifi');await page.locator('#save-source').click();
+ await expect(page.locator('#source-version')).toContainText('Версия источника: 1');
+ await expect(binding).toHaveValue('device-a');await expect(binding).toBeDisabled();
+ await expect(page.locator('#source-mode')).toBeDisabled();await expect(page.locator('#source-secret')).toHaveValue('');
+ await page.locator('#sync-source').click();await expect(page.locator('#job-status')).toContainText('queued');
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.sources.find(s=>s.id===id)).toMatchObject({mode:'device',fetchDeviceId:'device-a',networkModes:['wifi']});
+ expect(state.calls.filter(call=>call==='source.put')).toHaveLength(1);
+ expect(state.calls).not.toContain('configuration.publish');
+ await page.locator('#logout').click();await expect(binding).toHaveValue('');await expect(binding).toBeHidden();
+});
 test('source mutation lost acknowledgment retries the same request and clears new secret on success',async({page,request})=>{
  await reset(request,{failSave:true});await page.goto(origin);await expect(page.locator('#new-source')).toBeEnabled();await newSource(page);await page.locator('#save-source').click();await expect(page.locator('#pending')).toBeVisible();await expect(page.locator('#source-secret')).toBeDisabled();
  await page.locator('#retry-save').click();await expect(page.locator('#pending')).toBeHidden();await expect(page.locator('#source-version')).toContainText('Версия источника: 1');await expect(page.locator('#source-secret')).toHaveValue('');

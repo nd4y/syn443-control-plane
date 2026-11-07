@@ -237,13 +237,14 @@ func (s *Store) PutSource(ctx context.Context, actor Actor, source Source, secre
 	if source.ResourceID != "" {
 		resource = source.ResourceID
 	}
+	fetchModes, _ := json.Marshal(source.NetworkModes)
 	if exists {
-		_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET revision=$2,spec=$3,secrets=$4,enabled=$5,valid_until=$6,refresh_seconds=$7,max_stale_seconds=$8,candidate_snapshot=NULL,fetch_cache=NULL,state=$9,next_sync=$10,fetch_device_id=$11,active_snapshot=NULLIF($12,'') WHERE id=$1`, source.ID, source.Revision, protected, protectedSecret, source.Enabled, source.ValidUntil, source.RefreshSeconds, source.MaxStaleSeconds, source.State, source.NextSync, source.FetchDeviceID, source.ActiveSnapshot)
+		_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET revision=$2,spec=$3,secrets=$4,enabled=$5,valid_until=$6,refresh_seconds=$7,max_stale_seconds=$8,candidate_snapshot=NULL,fetch_cache=NULL,state=$9,next_sync=$10,fetch_device_id=$11,active_snapshot=NULLIF($12,''),fetch_modes=$13::jsonb WHERE id=$1`, source.ID, source.Revision, protected, protectedSecret, source.Enabled, source.ValidUntil, source.RefreshSeconds, source.MaxStaleSeconds, source.State, source.NextSync, source.FetchDeviceID, source.ActiveSnapshot, string(fetchModes))
 		if e == nil {
 			_, e = tx.ExecContext(ctx, `UPDATE catalog_jobs SET phase='cancelled',reason='source_changed',updated_at=$2 WHERE source_id=$1 AND phase IN('queued','running')`, source.ID, now.Unix())
 		}
 	} else {
-		_, e = tx.ExecContext(ctx, `INSERT INTO catalog_sources(id,owner,revision,spec,secrets,salt,mode,resource_id,enabled,valid_until,refresh_seconds,max_stale_seconds,state,next_sync,fetch_device_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`, source.ID, source.Owner, source.Revision, protected, protectedSecret, sourceSalt, source.Mode, resource, source.Enabled, source.ValidUntil, source.RefreshSeconds, source.MaxStaleSeconds, source.State, source.NextSync, source.FetchDeviceID)
+		_, e = tx.ExecContext(ctx, `INSERT INTO catalog_sources(id,owner,revision,spec,secrets,salt,mode,resource_id,enabled,valid_until,refresh_seconds,max_stale_seconds,state,next_sync,fetch_device_id,fetch_modes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb)`, source.ID, source.Owner, source.Revision, protected, protectedSecret, sourceSalt, source.Mode, resource, source.Enabled, source.ValidUntil, source.RefreshSeconds, source.MaxStaleSeconds, source.State, source.NextSync, source.FetchDeviceID, string(fetchModes))
 	}
 	if e != nil {
 		return Source{}, ErrUnavailable

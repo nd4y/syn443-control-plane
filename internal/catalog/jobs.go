@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/binary"
+	"slices"
 	"strconv"
 	"time"
 )
@@ -50,10 +51,10 @@ func (s *Store) Queue(ctx context.Context, actor Actor, id string, expectedRevis
 	if source.Mode == "manual" && len(raw) == 0 || source.Mode != "manual" && len(raw) != 0 {
 		return result, ErrInvalid
 	}
-	if source.Mode == "device" {
+	if source.Mode == "device" && (!s.DeviceFetchEnabled || source.FetchDeviceID == "" || !slices.Contains(source.NetworkModes, "wifi")) {
 		return result, ErrDenied
 	}
-	hash := s.hash(append([]byte(id+"\x00"+strconv.FormatInt(expectedRevision, 10)+"\x00"), raw...))
+	hash := s.hash([]byte(id+"\x00"+strconv.FormatInt(expectedRevision, 10)+"\x00"), raw)
 	var previousHash, phase, kind string
 	var previousRevision int64
 	e = tx.QueryRowContext(ctx, `SELECT id,body_hash,phase,kind,source_revision FROM catalog_jobs WHERE actor=$1 AND request_id=$2`, actor.ID, request).Scan(&result.ID, &previousHash, &phase, &kind, &previousRevision)
@@ -130,7 +131,11 @@ func (s *Store) Schedule(ctx context.Context, now time.Time) (int, error) {
 		return 0, ErrUnavailable
 	}
 	defer tx.Rollback()
-	rows, e := tx.QueryContext(ctx, `SELECT id FROM catalog_sources s WHERE enabled AND valid_until>$1 AND mode IN('server','resource') AND (mode='server' AND next_sync<=$1 OR mode='resource' AND EXISTS(SELECT 1 FROM catalog_resources r WHERE r.id=s.resource_id AND r.enabled AND (s.next_sync<=$1 OR s.last_resource_revision<>r.revision))) AND NOT EXISTS(SELECT 1 FROM catalog_jobs j WHERE j.source_id=s.id AND j.phase IN('queued','running')) ORDER BY next_sync,id LIMIT 16 FOR UPDATE OF s SKIP LOCKED`, now.Unix())
+	rows, e := tx.QueryContext(ctx, `SELECT id FROM catalog_sources s WHERE enabled AND valid_until>$1
+ AND (mode='server' AND next_sync<=$1 OR mode='device' AND $2 AND fetch_device_id<>'' AND fetch_modes ? 'wifi' AND next_sync<=$1
+ OR mode='resource' AND EXISTS(SELECT 1 FROM catalog_resources r WHERE r.id=s.resource_id AND r.enabled AND (s.next_sync<=$1 OR s.last_resource_revision<>r.revision)))
+ AND NOT EXISTS(SELECT 1 FROM catalog_jobs j WHERE j.source_id=s.id AND j.phase IN('queued','running'))
+ ORDER BY next_sync,id LIMIT 16 FOR UPDATE OF s SKIP LOCKED`, now.Unix(), s.DeviceFetchEnabled)
 	if e != nil {
 		return 0, ErrUnavailable
 	}
@@ -251,7 +256,7 @@ func (s *Store) JobInput(ctx context.Context, job Job, now time.Time) (Source, [
 		return Source{}, nil, nil, nil, e
 	}
 	var salt, secret, payload []byte
-	if e = tx.QueryRowContext(ctx, `SELECT salt,secrets FROM catalog_sources WHERE id=$1`, source.ID).Scan(&salt, &secret); e != nil {
+	if e = tx.QueryRowContext(ctx, `SELECT salt,CASE WHEN mode='device' THEN NULL ELSE secrets END FROM catalog_sources WHERE id=$1`, source.ID).Scan(&salt, &secret); e != nil {
 		return Source{}, nil, nil, nil, ErrUnavailable
 	}
 	if len(secret) > 0 {

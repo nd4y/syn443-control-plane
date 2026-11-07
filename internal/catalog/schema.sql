@@ -128,6 +128,8 @@ DROP TRIGGER IF EXISTS catalog_audit_guard ON catalog_audit;
 CREATE TRIGGER catalog_audit_guard BEFORE INSERT ON catalog_audit FOR EACH ROW EXECUTE FUNCTION catalog_audit_actor_guard();
 ALTER TABLE catalog_sources ADD COLUMN IF NOT EXISTS fetch_device_id text NOT NULL DEFAULT ''
  CHECK (fetch_device_id='' OR mode='device' AND fetch_device_id ~ '^[A-Za-z0-9_-]{1,128}$');
+ALTER TABLE catalog_sources ADD COLUMN IF NOT EXISTS fetch_modes jsonb NOT NULL DEFAULT '[]'::jsonb
+ CHECK (jsonb_typeof(fetch_modes)='array' AND jsonb_array_length(fetch_modes)<=4);
 CREATE OR REPLACE FUNCTION catalog_source_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.id<>OLD.id OR NEW.owner<>OLD.owner OR NEW.mode<>OLD.mode OR NEW.salt<>OLD.salt
@@ -144,6 +146,15 @@ CREATE TRIGGER catalog_source_guard BEFORE UPDATE ON catalog_sources FOR EACH RO
 -- row locks without UPDATE privilege on any actual source/resource field.
 ALTER TABLE catalog_sources ADD COLUMN IF NOT EXISTS selection_guard integer NOT NULL DEFAULT 0;
 ALTER TABLE catalog_resources ADD COLUMN IF NOT EXISTS selection_guard integer NOT NULL DEFAULT 0;
+
+CREATE OR REPLACE VIEW catalog_device_fetch_sources WITH (security_barrier=true) AS
+ SELECT id,owner,fetch_device_id,mode,enabled,revision,valid_until,active_snapshot,spec,secrets,selection_guard,fetch_modes
+ FROM catalog_sources WHERE mode='device' AND fetch_device_id<>'' WITH LOCAL CHECK OPTION;
+CREATE OR REPLACE VIEW catalog_device_fetch_jobs WITH (security_barrier=true) AS
+ SELECT id,source_id,source_revision,kind,phase,lease,lease_until,deadline,not_before,created_at,updated_at,
+        payload,device_attempts,device_result_hash,base_snapshot
+ FROM catalog_jobs WHERE kind='device' WITH LOCAL CHECK OPTION;
+REVOKE ALL ON catalog_device_fetch_sources,catalog_device_fetch_jobs FROM PUBLIC;
 
 -- Mutable drafts are separate from every source/active/publication head. Only
 -- independently approved immutable layers may later feed the signer.

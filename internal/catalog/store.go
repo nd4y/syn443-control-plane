@@ -25,6 +25,7 @@ type Store struct {
 	DB     *sql.DB
 	box    cipher.AEAD
 	macKey []byte
+	DeviceFetchEnabled bool
 }
 
 func (*Store) String() string   { return "CatalogStore([redacted])" }
@@ -70,9 +71,11 @@ func random() (string, error) {
 	}
 	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
-func (s *Store) hash(raw []byte) string {
+func (s *Store) hash(parts ...[]byte) string {
 	h := hmac.New(sha256.New, s.macKey)
-	h.Write(raw)
+	for _, part := range parts {
+		h.Write(part)
+	}
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
 func (s *Store) Now(ctx context.Context, now time.Time) (time.Time, error) {

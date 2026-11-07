@@ -10,13 +10,17 @@ let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJo
 let layerComparison=null;
 let layerDraftInventory=null;
 let sourceShares=null;
-const sourceFields=['source-id','source-owner','source-name','source-mode','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
+const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message){$('status').textContent=message;}
 function controls(){
  $('login').disabled=busy||authenticated;$('logout').disabled=busy||!authenticated;
  for(const id of ['load-sources','load-inventory','open-draft','save-draft','new-draft','new-source','save-source'])$(id).disabled=busy||!authenticated||!!pending;
- for(const id of sourceFields)$(id).disabled=busy||!authenticated||!!pending||sourceIdentity&&['source-id','source-owner'].includes(id);
+ for(const id of sourceFields)$(id).disabled=busy||!authenticated||!!pending||sourceIdentity&&['source-id','source-owner','source-mode'].includes(id);
+ const deviceSource=$('source-mode').value==='device';
+ $('source-device-settings').hidden=!deviceSource;
+ $('source-device').disabled=$('source-device').disabled||!deviceSource||!!sourceIdentity?.fetchDeviceId;
+ $('source-device').required=deviceSource;
  $('sync-source').disabled=busy||!authenticated||!!pending||!sourceIdentity;$('source-job').disabled=busy||!authenticated||!!pending||!sourceJob;
  $('source-history').disabled=busy||!authenticated||!!pending||!sourceIdentity;
  $('source-history-more').disabled=$('source-history').disabled||!sourceHistoryNext;
@@ -33,7 +37,7 @@ function controls(){
  if(pending&&['layer-preview','layer-publish','layer-discard'].includes(pendingKind))$('discard-save').disabled=true;
  for(const button of $('sources').querySelectorAll('button'))button.disabled=busy||!authenticated||!!pending;
  $('source-secret').disabled=busy||!authenticated||!!pending||$('source-secret-operation').value!=='replace';
- if(!['server','resource'].includes($('source-mode').value))$('sync-source').disabled=true;
+ if(!['server','resource','device'].includes($('source-mode').value)||deviceSource&&!sourceIdentity?.fetchDeviceId)$('sync-source').disabled=true;
  layerControls();
 }
 function erase(){clearLayers();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details','inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions'])$(id).replaceChildren();$('inventory-state').textContent='';$('inventory-view').hidden=true;}
@@ -189,9 +193,9 @@ async function retry(){
  }
  pending=null;
 }
-function clearSource(){sourceRevision=0;sourceIdentity=null;sourceJob='';clearSourceHistory();clearSourceShares();for(const id of ['source-id','source-owner','source-name','source-resource','source-external','source-until','source-secret','source-import-file'])$(id).value='';$('source-mode').value='server';$('source-format').value='uri';$('source-refresh').value='3600';$('source-stale').value='86400';$('source-enabled').checked=true;$('source-secret-operation').value='keep';for(const option of $('source-modes').options)option.selected=option.value==='wifi';$('source-version').textContent='Источник не выбран';$('job-status').replaceChildren();}
+function clearSource(){sourceRevision=0;sourceIdentity=null;sourceJob='';clearSourceHistory();clearSourceShares();for(const id of ['source-id','source-owner','source-name','source-device','source-resource','source-external','source-until','source-secret','source-import-file'])$(id).value='';$('source-mode').value='server';$('source-format').value='uri';$('source-refresh').value='3600';$('source-stale').value='86400';$('source-enabled').checked=true;$('source-secret-operation').value='keep';for(const option of $('source-modes').options)option.selected=option.value==='wifi';$('source-version').textContent='Источник не выбран';$('job-status').replaceChildren();}
 function localDate(seconds){const d=new Date(seconds*1000);if(!Number.isFinite(d.getTime()))throw Error('invalid');return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-function showSource(s){if(!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');sourceIdentity={id:s.id,owner:s.owner,mode:s.mode};sourceRevision=s.revision;sourceJob='';clearSourceHistory();clearSourceShares();$('source-import-file').value='';$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
+function showSource(s){if(!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');sourceIdentity={id:s.id,owner:s.owner,mode:s.mode,fetchDeviceId:s.fetchDeviceId||''};sourceRevision=s.revision;sourceJob='';clearSourceHistory();clearSourceShares();$('source-import-file').value='';$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-device').value=sourceIdentity.fetchDeviceId;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
 async function importSource(){
  const field=$('source-import-file'),file=field.files[0];
  if(pending||sourceIdentity?.mode!=='manual'||!file||file.size<1)throw Error('invalid');
@@ -284,9 +288,14 @@ async function sourceHistory(more=false){
 }
 async function saveSource(){
  if(pending)throw Error('invalid');const mode=$('source-mode').value,id=$('source-id').value.trim(),owner=$('source-owner').value.trim();
- if(sourceIdentity&&(id!==sourceIdentity.id||owner!==sourceIdentity.owner))throw Error('invalid');
+ if(sourceIdentity&&(id!==sourceIdentity.id||owner!==sourceIdentity.owner||mode!==sourceIdentity.mode))throw Error('invalid');
  const source={id,owner,name:$('source-name').value.trim(),mode,format:$('source-format').value,resourceId:mode==='resource'?$('source-resource').value.trim():'',externalUserId:mode==='resource'?$('source-external').value.trim():'',enabled:$('source-enabled').checked,revision:sourceRevision,validUntil:Math.floor(new Date($('source-until').value).getTime()/1000),refreshSeconds:Number($('source-refresh').value),maxStaleSeconds:Number($('source-stale').value),networkModes:[...$('source-modes').selectedOptions].map(o=>o.value)};
- if(!id||!owner||!source.name||!['server','manual','resource'].includes(mode)||!Number.isSafeInteger(source.validUntil)||!source.networkModes.length)throw Error('invalid');
+ if(!id||!owner||!source.name||!['server','device','manual','resource'].includes(mode)||!Number.isSafeInteger(source.validUntil)||!source.networkModes.length)throw Error('invalid');
+ if(mode==='device'){
+  const bound=$('source-device').value.trim();
+  if(!bound||sourceIdentity?.fetchDeviceId&&sourceIdentity.fetchDeviceId!==bound||!source.networkModes.includes('wifi'))throw Error('invalid');
+  source.fetchDeviceId=bound;
+ }
  const operation=$('source-secret-operation').value;let secret=JSON.stringify({operation});
  if(operation==='replace'){try{JSON.parse($('source-secret').value);}catch{throw Error('invalid');}secret='{"operation":"replace","value":'+$('source-secret').value+'}';}
  pendingKind='source';pending=JSON.stringify({version:1,action:'source.put',requestId:crypto.randomUUID()}).slice(0,-1)+',"payload":{"source":'+JSON.stringify(source)+',"secret":'+secret+'}}';await retry();

@@ -28,8 +28,14 @@ REVOKE ALL ON FUNCTION catalog_terminal_input_erasure() FROM PUBLIC;
 DO $$BEGIN
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='syn443_identity_api') THEN
   GRANT EXECUTE ON FUNCTION catalog_control_panel_expiry(text,bigint) TO syn443_identity_api;
+  GRANT SELECT ON catalog_device_fetch_sources,catalog_device_fetch_jobs TO syn443_identity_api;
+  GRANT UPDATE(selection_guard) ON catalog_device_fetch_sources TO syn443_identity_api;
+  GRANT UPDATE(lease,lease_until,device_attempts,payload,device_result_hash,updated_at) ON catalog_device_fetch_jobs TO syn443_identity_api;
  END IF;
 END$$;
+GRANT SELECT ON catalog_device_fetch_sources,catalog_device_fetch_jobs TO syn443_source_worker;
+GRANT UPDATE(selection_guard) ON catalog_device_fetch_sources TO syn443_source_worker;
+GRANT UPDATE(lease,lease_until,device_attempts,payload,device_result_hash,updated_at) ON catalog_device_fetch_jobs TO syn443_source_worker;
 -- Neither source worker nor control API receives device session, signing key or
 -- authority to approve identity publication. Additional signer grants are explicit.
 

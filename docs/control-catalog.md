@@ -45,8 +45,17 @@ an older unaddressed source drops its active snapshot pointer.
 The SQL catalog can lease one pending fetch to the addressed device and accept
 its bounded, encrypted input. The regular worker starts normalization only after
 upload. The lease, source revision and snapshot head fence expired work and
-lost responses. Public device claim/upload endpoints and the Android fetch loop
-are still needed before this path can be enabled for users.
+lost responses. The device API accepts proof-bound claim and result requests
+only from a live session for that owner and device. Enable `deviceFetchEnabled`
+on the catalog API and worker and configure `SYN443_DEVICE_FETCH_KEY_FILE` on
+enrollment API with the owner-only catalog encryption key file. It is distinct
+from the identity encryption key. Apply the scoped view grants before enabling.
+
+This runtime path schedules sources permitted in the generic Wi-Fi context.
+The Android supervisor fetches on validated physical Wi-Fi while the VPN is On.
+Conditional provider refresh, separate home/cellular classification and actual
+provider/device acceptance remain open. A failed fetch leaves the existing
+authorized snapshot subject to its original expiry.
 
 Runtime files use `SYN443_CONTROL_CONFIG` / `SYN443_SOURCE_CONFIG`. Their schema is
 the closed `catalog.RuntimeConfig`; verified remote PostgreSQL TLS is mandatory.

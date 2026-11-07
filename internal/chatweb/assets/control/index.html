@@ -9,7 +9,8 @@
 <form id="source-form"><label for="source-id">ID источника</label><input id="source-id" autocomplete="off" maxlength="48" required>
 <label for="source-owner">ID владельца</label><input id="source-owner" autocomplete="off" maxlength="128" required>
 <label for="source-name">Название</label><input id="source-name" autocomplete="off" maxlength="256" required>
-<label for="source-mode">Получение профилей</label><select id="source-mode"><option value="server">HTTPS на сервере</option><option value="manual">Ручной импорт</option><option value="resource">Remnawave API</option></select>
+<label for="source-mode">Получение профилей</label><select id="source-mode"><option value="server">HTTPS на сервере</option><option value="device">HTTPS на устройстве по Wi-Fi</option><option value="manual">Ручной импорт</option><option value="resource">Remnawave API</option></select>
+<div id="source-device-settings" hidden><label for="source-device">ID устройства для загрузки</label><input id="source-device" autocomplete="off" maxlength="128"><p>После привязки изменить устройство нельзя. Для загрузки устройство должно быть онлайн по Wi-Fi и запустить SYN443.</p></div>
 <label for="source-format">Формат</label><select id="source-format"><option value="uri">URI</option><option value="base64">Base64</option><option value="singbox">sing-box</option><option value="xray">Xray</option><option value="mihomo">Mihomo</option></select>
 <label for="source-resource">Ресурс (для Remnawave API)</label><input id="source-resource" autocomplete="off" maxlength="48">
 <label for="source-external">ID пользователя в Remnawave</label><input id="source-external" autocomplete="off" maxlength="15">

@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/policy"
 )
@@ -27,6 +28,7 @@ type InvitationActions interface {
 type API struct {
 	Invitations           InvitationActions
 	ControlPanelDiscovery bool
+	DeviceFetch           *catalog.Store
 	// Empty disables addressed credential delivery. Set only from owner configuration.
 	OverlayServiceID string
 	Store            *Store
@@ -38,6 +40,7 @@ type API struct {
 	buckets          map[string]bucket
 	slots            chan struct{}
 	chatSlots        chan struct{}
+	deviceFetchSlots chan struct{}
 	ChatEnabled      bool
 	ChatVerifier     Verifier
 	ChatWebOrigin    string
@@ -52,7 +55,7 @@ func NewAPI(store *Store, verifier Verifier, origin string, roots map[string]*ec
 	if e != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.ForceQuery || u.Host == "" || u.Scheme != "https" && !(fixture && u.Scheme == "http" && u.Hostname() == "127.0.0.1" && u.Port() != "") || len(roots) == 0 || len(roots) > 4 {
 		return nil, identity.ErrInvalid
 	}
-	return &API{Store: store, Verifier: verifier, Origin: origin, Roots: roots, Clock: time.Now, buckets: map[string]bucket{}, slots: make(chan struct{}, 16), chatSlots: make(chan struct{}, 2)}, nil
+	return &API{Store: store, Verifier: verifier, Origin: origin, Roots: roots, Clock: time.Now, buckets: map[string]bucket{}, slots: make(chan struct{}, 16), chatSlots: make(chan struct{}, 2), deviceFetchSlots: make(chan struct{}, 2)}, nil
 }
 func (a *API) admit(ip string, now time.Time) bool {
 	a.mu.Lock()
@@ -120,9 +123,11 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	isCapabilities := path == "/v1/device/capabilities" || path == "/v1/devices/capabilities"
 	isActivation := path == activationStatusPath && r.Method == "POST"
 	isControlPanel := a.ControlPanelDiscovery && path == controlPanelPath && r.Method == "GET"
+	isFetchClaim := a.DeviceFetch != nil && path == deviceFetchClaimPath && r.Method == "GET"
+	isFetchResult := a.DeviceFetch != nil && path == deviceFetchResultPath && r.Method == "POST"
 	isInvite := path == "/v1/invitations/time" || path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
 	allowed := isCapabilities && (r.Method == "GET" || r.Method == "POST") || isOverlay && r.Method == "POST" || isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
-	if !allowed && !isActivation && !isControlPanel {
+	if !allowed && !isActivation && !isControlPanel && !isFetchClaim && !isFetchResult {
 		http.NotFound(w, r)
 		return
 	}
@@ -199,12 +204,30 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(w, identity.ErrInvalid)
 		return
 	}
-	raw, e := io.ReadAll(io.LimitReader(r.Body, 8193))
-	if e != nil || len(raw) > 8192 || r.Method == "GET" && len(raw) != 0 {
+	maxBody := int64(8192)
+	if isFetchResult {
+		if r.Header.Get("Origin") != "" || r.Header.Get("Content-Type") != "application/octet-stream" {
+			failure(w, identity.ErrInvalid)
+			return
+		}
+		select {
+		case a.deviceFetchSlots <- struct{}{}:
+			defer func() { <-a.deviceFetchSlots }()
+		default:
+			http.Error(w, "capacity_unavailable", 503)
+			return
+		}
+		maxBody = catalog.MaxDeviceFetchBytes + deviceFetchFrameSize
+	}
+	raw, e := io.ReadAll(io.LimitReader(r.Body, maxBody+1))
+	if isFetchResult {
+		defer func() { clear(raw) }()
+	}
+	if e != nil || int64(len(raw)) > maxBody || r.Method == "GET" && len(raw) != 0 {
 		failure(w, identity.ErrInvalid)
 		return
 	}
-	if r.Method == "POST" && r.Header.Get("Content-Type") != "application/json" {
+	if r.Method == "POST" && !isFetchResult && r.Header.Get("Content-Type") != "application/json" {
 		failure(w, identity.ErrInvalid)
 		return
 	}
@@ -266,6 +289,24 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if (!binding.Active && path != "/v1/device/revoke") || binding.Jkt != proof.Thumbprint {
 		failure(w, ErrDenied)
+		return
+	}
+	if isFetchClaim || isFetchResult {
+		if r.Header.Get("Origin") != "" {
+			failure(w, identity.ErrInvalid)
+			return
+		}
+		lease, err := a.deviceFetch(ctx, binding, token, proof, raw, isFetchResult, now)
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		if lease.JobID == "" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(lease)
 		return
 	}
 	if isControlPanel {
@@ -360,6 +401,9 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("ETag", `"`+identity.Hash([]byte(bundle))+`"`)
+	if a.DeviceFetch != nil {
+		w.Header().Set("X-SYN443-Device-Source-Fetch", "1")
+	}
 	w.Header().Set("Content-Type", "application/jose")
 	_, _ = w.Write([]byte(bundle))
 }

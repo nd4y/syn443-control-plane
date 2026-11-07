@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/bootstrap"
+	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
@@ -89,6 +91,29 @@ func run() error {
 		}
 	}
 	api.ControlPanelDiscovery = c.ControlPanelDiscovery
+	if path := os.Getenv("SYN443_DEVICE_FETCH_KEY_FILE"); path != "" {
+		raw, err := enrollment.PrivateFile(path, 128)
+		if err != nil {
+			return err
+		}
+		encoded := strings.TrimSpace(string(raw))
+		clear(raw)
+		key, err := base64.StdEncoding.Strict().DecodeString(encoded)
+		if err != nil || len(key) != 32 || base64.StdEncoding.EncodeToString(key) != encoded || encoded == c.EncryptionKey {
+			return identity.ErrInvalid
+		}
+		api.DeviceFetch, err = catalog.NewStore(store.DB, key)
+		clear(key)
+		if err != nil {
+			return err
+		}
+		check, cancel := context.WithTimeout(ctx, 5*time.Second)
+		err = api.DeviceFetch.DeviceFetchRole(check)
+		cancel()
+		if err != nil {
+			return err
+		}
+	}
 	api.ChatEnabled = c.ChatEnabled
 	api.ChatWebOrigin = c.ChatWebOrigin
 	if c.ChatWebOrigin != "" {
