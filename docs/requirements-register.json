@@ -348,6 +348,7 @@
       "status": "partial",
       "evidence": [
         "docs/control-catalog.md",
+        "internal/catalog/jobs.go",
         "internal/catalog/worker.go",
         "internal/catalog/store_postgres_test.go",
         "internal/catalog/resource_postgres_test.go",
@@ -575,9 +576,11 @@
         "internal/enrollment/configuration_authority_test.go",
         "internal/enrollment/configuration_authority_postgres_test.go",
         "internal/deviceprovisioning/network.go",
-        "internal/deviceprovisioning/network_postgres_test.go"
+        "internal/deviceprovisioning/network_postgres_test.go",
+        "internal/deviceprovisioning/layer_inventory_postgres_test.go",
+        "docs/device-activation-report.md"
       ],
-      "implementationScope": "Bounded portable layers/graph/DNS/routing/activation, private SQL drafts and independent source-to-publisher composition. Current composition Actions acceptance pending; persistent approvals/assignments, full settings and UI remain open."
+      "implementationScope": "Bounded portable network layers, private SQL drafts, persistent approvals and independent source-to-publisher composition. The signed issuance is atomically linked to the exact approved desired revision. Full settings and final device acceptance remain open."
     },
     {
       "id": "PROV-01",
@@ -611,7 +614,10 @@
         "docs/layered-configuration.md#internal-configuration-work-admission",
         "internal/deviceprovisioning/layer_work_postgres_test.go",
         "docs/layered-configuration.md#shared-layer-and-recipient-authority",
-        "internal/deviceprovisioning/layer_catalog_postgres_test.go"
+        "internal/deviceprovisioning/layer_catalog_postgres_test.go",
+        "internal/deviceprovisioning/layer_inventory_postgres_test.go",
+        "internal/enrollment/activation_status_postgres_test.go",
+        "docs/device-activation-report.md"
       ]
     },
     {
@@ -2044,6 +2050,8 @@
         "docs/control-catalog.md",
         "internal/catalog/schema.sql",
         "internal/catalog/roles.sql",
+        "internal/catalog/jobs.go",
+        "internal/catalog/job_retention_postgres_test.go",
         "internal/catalog/http_postgres_test.go",
         "cmd/source-worker/main.go",
         "cmd/control-api/main.go"

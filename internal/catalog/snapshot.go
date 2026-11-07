@@ -211,7 +211,7 @@ func (s *Store) Complete(ctx context.Context, job Job, profiles []subscriptions.
 	if active != "" {
 		activeValue = active
 	}
-	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET active_snapshot=$2,candidate_snapshot=$3,state=$4,last_sync=$5,next_sync=$6,fetch_cache=$7,last_resource_revision=$8,access_state=$9 WHERE id=$1`, source.ID, activeValue, result.ID, state, now.Unix(), now.Unix()+source.RefreshSeconds, protectedCache, job.ResourceRevision, access)
+	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET active_snapshot=$2,candidate_snapshot=$3,state=$4,last_sync=$5,next_sync=$6,fetch_cache=$7,last_resource_revision=$8,access_state=$9 WHERE id=$1`, source.ID, activeValue, result.ID, state, now.Unix(), nextSourceSync(source, now.Unix()), protectedCache, job.ResourceRevision, access)
 	if e != nil {
 		return Snapshot{}, ErrUnavailable
 	}

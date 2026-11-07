@@ -165,3 +165,52 @@ func TestSQLLegacyTerminalInputCleanupIsBoundedAndDoesNotTouchQueuedInput(t *tes
 		t.Fatal("legacy cleanup incomplete", remaining, e)
 	}
 }
+
+func TestSQLClaimBoundsDeadlineCleanupAndSkipsLockedExpiredJobs(t *testing.T) {
+	api, worker, actor, now := databaseFixture(t)
+	ctx := context.Background()
+	raw := []byte("http://proxy.example.invalid:443")
+	queue := func(id string, at time.Time) Job {
+		t.Helper()
+		source := sourceExample(at)
+		source.ID = id
+		source = mustSource(t, api, actor, source, id+"-create", at)
+		job, e := api.Queue(ctx, actor, source.ID, source.Revision, id+"-queue", raw, at)
+		if e != nil {
+			t.Fatal(e)
+		}
+		return job
+	}
+	locked := queue("expired-locked", now)
+	for i := 0; i < 32; i++ {
+		queue(fmt.Sprintf("expired-%02d", i), now)
+	}
+	later := now.Add(901 * time.Second)
+	eligible := queue("eligible", later)
+	tx, e := fixtureOwner.Begin()
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tx.Rollback()
+	var id string
+	if e = tx.QueryRow(`SELECT id FROM catalog_jobs WHERE id=$1 FOR UPDATE`, locked.ID).Scan(&id); e != nil {
+		t.Fatal(e)
+	}
+	claimContext, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	job, e := worker.Claim(claimContext, later)
+	if e != nil || job.ID != eligible.ID {
+		t.Fatal("expired backlog blocked eligible work", e)
+	}
+	var count int
+	if e = fixtureOwner.QueryRow(`SELECT count(*) FROM catalog_jobs WHERE phase='dead_letter' AND payload IS NULL`).Scan(&count); e != nil || count != 32 {
+		t.Fatal("first deadline sweep was not bounded", count, e)
+	}
+	if e = tx.Rollback(); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = worker.Claim(ctx, later); e != nil {
+		t.Fatal(e)
+	}
+	assertRetiredInput(t, locked.ID, "dead_letter")
+}

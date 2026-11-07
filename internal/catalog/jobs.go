@@ -2,10 +2,28 @@ package catalog
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/binary"
 	"strconv"
 	"time"
 )
+
+// A stable per-source offset spreads periodic refreshes after replica restarts.
+// Both offsets only add time, preserving the provider's configured minimum.
+func syncOffset(key string, upper int64) int64 {
+	sum := sha256.Sum256([]byte(key))
+	return int64(binary.BigEndian.Uint32(sum[:4])) % (upper + 1)
+}
+
+func nextSourceSync(source Source, now int64) int64 {
+	return min(source.ValidUntil, now+source.RefreshSeconds+syncOffset(source.ID, source.RefreshSeconds/10))
+}
+
+func jobRetryDelay(job Job) int64 {
+	base := int64(5) << (job.Attempts - 1)
+	return min(3600, base+syncOffset(job.ID, base/5))
+}
 
 // Queue returns the same job after a lost reply. Updating source definitions
 // cancels older jobs; a new request cannot revive their stale lease.
@@ -142,7 +160,7 @@ func (s *Store) Schedule(ctx context.Context, now time.Time) (int, error) {
 		if _, e = s.enqueue(ctx, tx, source, "source-scheduler", request, "scheduled", nil, now.Unix()); e != nil {
 			return 0, e
 		}
-		if _, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET next_sync=$2 WHERE id=$1`, id, now.Unix()+source.RefreshSeconds); e != nil {
+		if _, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET next_sync=$2 WHERE id=$1`, id, nextSourceSync(source, now.Unix())); e != nil {
 			return 0, ErrUnavailable
 		}
 	}
@@ -167,8 +185,12 @@ func (s *Store) Claim(ctx context.Context, now time.Time) (Job, error) {
 	if _, e = tx.ExecContext(ctx, `WITH retired AS (SELECT id FROM catalog_jobs WHERE payload IS NOT NULL AND phase IN('succeeded','failed','cancelled','dead_letter') ORDER BY updated_at,id LIMIT 32 FOR UPDATE SKIP LOCKED) UPDATE catalog_jobs j SET payload=NULL,lease='',lease_until=0 FROM retired r WHERE j.id=r.id`); e != nil {
 		return job, ErrUnavailable
 	}
-	// Crash/expiry transitions remain durable and visible rather than vanishing.
-	if _, e = tx.ExecContext(ctx, `UPDATE catalog_jobs SET phase='dead_letter',reason='deadline_or_retry_limit',updated_at=$1 WHERE phase IN('queued','running') AND (deadline<=$1 OR attempts>=8 AND lease_until<=$1)`, now.Unix()); e != nil {
+	// Bound expiry work under the shared claim lock and skip rows already
+	// locked by a concurrent source update.
+	if _, e = tx.ExecContext(ctx, `WITH expired AS (
+	  SELECT id FROM catalog_jobs WHERE phase IN('queued','running') AND (deadline<=$1 OR attempts>=8 AND lease_until<=$1)
+	  ORDER BY deadline,id LIMIT 32 FOR UPDATE SKIP LOCKED
+	 ) UPDATE catalog_jobs j SET phase='dead_letter',reason='deadline_or_retry_limit',updated_at=$1 FROM expired e WHERE j.id=e.id`, now.Unix()); e != nil {
 		return job, ErrUnavailable
 	}
 	var running int
@@ -301,10 +323,7 @@ func (s *Store) Fail(ctx context.Context, job Job, reason string, permanent bool
 		return e
 	}
 	phase := "queued"
-	delay := int64(5) << min(job.Attempts-1, 8)
-	if delay > 3600 {
-		delay = 3600
-	}
+	delay := jobRetryDelay(job)
 	if permanent {
 		phase = "failed"
 	}
@@ -325,7 +344,7 @@ func (s *Store) Fail(ctx context.Context, job Job, reason string, permanent bool
 	if e != nil {
 		return ErrUnavailable
 	}
-	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET state=$2,last_sync=$3,next_sync=$4,last_resource_revision=$5,access_state=$6 WHERE id=$1`, source.ID, state, now.Unix(), now.Unix()+source.RefreshSeconds, job.ResourceRevision, access)
+	_, e = tx.ExecContext(ctx, `UPDATE catalog_sources SET state=$2,last_sync=$3,next_sync=$4,last_resource_revision=$5,access_state=$6 WHERE id=$1`, source.ID, state, now.Unix(), nextSourceSync(source, now.Unix()), job.ResourceRevision, access)
 	if e != nil {
 		return ErrUnavailable
 	}

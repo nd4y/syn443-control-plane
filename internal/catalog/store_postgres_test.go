@@ -413,6 +413,11 @@ func TestSQLProtectedCacheAndSourceCredentialsRemainScoped(t *testing.T) {
 	if _, e = worker.Schedule(ctx, now); e != nil {
 		t.Fatal(e)
 	}
+	var nextSync int64
+	if e = fixtureOwner.QueryRow(`SELECT next_sync FROM catalog_sources WHERE id=$1`, server.ID).Scan(&nextSync); e != nil ||
+		nextSync < now.Unix()+server.RefreshSeconds || nextSync > now.Unix()+server.RefreshSeconds+server.RefreshSeconds/10 {
+		t.Fatal("scheduled refresh violated configured interval or jitter bounds", e)
+	}
 	job, e = worker.Claim(ctx, now)
 	if e != nil || job.SourceID != server.ID {
 		t.Fatal("server source claim")
@@ -423,6 +428,11 @@ func TestSQLProtectedCacheAndSourceCredentialsRemainScoped(t *testing.T) {
 	}
 	if e = worker.Fail(ctx, job, "subscription_fetch_unavailable", false, now); e != nil {
 		t.Fatal(e)
+	}
+	var retryAt int64
+	if e = fixtureOwner.QueryRow(`SELECT not_before FROM catalog_jobs WHERE id=$1`, job.ID).Scan(&retryAt); e != nil ||
+		retryAt < now.Unix()+5 || retryAt > now.Unix()+6 {
+		t.Fatal("retry violated configured backoff or jitter bounds", e)
 	}
 	if j, e := worker.Claim(ctx, now); e != nil || j.ID != "" {
 		t.Fatal("retry ignored backoff")

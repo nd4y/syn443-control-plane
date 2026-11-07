@@ -109,3 +109,10 @@ delete snapshots, receipts or audit, change a live job or acquire additional SQL
 privileges. PostgreSQL tests exercise each terminal path, replay, late leases,
 attempted reintroduction, retry preservation and bounded legacy cleanup.
 Broader snapshot/history/outbox retention remains a separate open requirement.
+
+Deadline and exhausted-retry cleanup also runs in batches of at most 32 jobs
+and skips rows locked by concurrent work. The worker can claim eligible work
+in the same transaction. The periodic schedule adds a stable per-source offset
+of up to 10 percent to the configured interval and never schedules past source
+expiry. Transient retries add up to 20 percent to the existing exponential delay.
+Offsets do not move a provider request earlier.

@@ -90,6 +90,13 @@ configurations still require the same authority and publication role.
 
 Actions runs actual SQL/source-worker/invitation/publisher composition, key-bound
 ES256 output, duplicate profile aliases, foreign/expired/malformed/locked inputs,
-role isolation, revocation, share-head changes and cancellation. This adapter is
-not a persistent approved-layer store: assignments, independent preview/approval
-protocol, administration UI and full settings support remain required for M3.
+role isolation, revocation, share-head changes and cancellation.
+
+The persistent approved-layer store and independent preview/publish protocol
+provide the inputs to that adapter. The publisher now commits the exact approved
+configuration revision and digest with the signed policy. The inventory compares
+that source to the authorized desired head and shows the device report separately.
+Actual PostgreSQL and 31 browser cases passed with the downloadable runtime
+archive at [Actions 42344723080](https://github.com/nd4y/syn443-control-plane/actions/runs/42344723080).
+Native editor parity, full settings, and physical application/reporting acceptance
+remain open.
