@@ -254,3 +254,10 @@ condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"control-openapi\.json": "ad02a58d44da29e0038e743b37ce29fa90c37061989779688f2e31a3c7670e34",?\s*$''']
+
+[[allowlists]]
+description = "Pinned public control-openapi contract digest"
+condition = "AND"
+paths = ['^contracts/lock\.json$']
+regexTarget = "line"
+regexes = ['\b649b72b4bf691f92eba5fa21d32f1fa081c481dba4fffedba533d4272e5df4b0\b']

@@ -60,6 +60,13 @@
 <button id="route-rollout-save" type="button">Применить долю к черновику</button>
 <p>Сохраняйте идентификатор при изменении доли, чтобы не менять состав группы. 0% возвращает прежнее поведение после публикации новой версии.</p>
 </div>
+<label for="route-decision">Алгоритм переключения</label>
+<select id="route-decision" disabled><option value="">Базовый (2 подтверждения, интервал 30 с)</option><option value="m4-confirmed-v1">Консервативный (3 подтверждения, интервал 60 с)</option></select>
+<div id="route-decision-rollout" hidden>
+<label for="route-decision-id">Идентификатор раскатки алгоритма</label><input id="route-decision-id" autocomplete="off" maxlength="48">
+<label for="route-decision-share">Доля совместимых устройств для алгоритма, %</label><input id="route-decision-share" type="number" min="0" max="100" step="0.01">
+<button id="route-decision-save" type="button">Применить долю для алгоритма к черновику</button>
+</div>
 </fieldset>
 <p>Профили задаются ссылками sourceId/profileId. Ключи, пароли и состояние NetBird сюда не переносятся.</p><button id="save-draft" disabled>Сохранить черновик</button></form>
 <div id="pending" hidden><p>Изменение не подтверждено. Повтор использует ту же операцию.</p><button id="retry-save">Повторить операцию</button><button id="discard-save">Отменить повтор и проверить версию на сервере</button></div>

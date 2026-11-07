@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/nd4y/syn443-control-plane/internal/policy"
 )
 
 func networkGraph(t *testing.T) CompiledGraph {
@@ -105,7 +107,25 @@ func TestInternalWifiFailoverRequiresComparableConcreteAuthorizedPaths(t *testin
 	if err != nil || networkValue(t, raw)["route_failover"] == nil {
 		t.Fatal("scoped internal failover was not emitted", err)
 	}
+	configured := cloneNetwork(t, settings)
+	configured.RouteFailover.DecisionRevision = policy.ConfirmedFailoverAlgorithm
+	rate := 1250
+	configured.RouteFailover.DecisionRollout = &DeviceRollout{ID: "synthetic-variant", BasisPoints: &rate}
+	configuredRaw, err := CompileNetwork(graph, configured)
+	if err != nil || string(raw) != string(configuredRaw) {
+		t.Fatal("algorithm rollout modified the engine configuration", err)
+	}
 	for _, change := range []func(*NetworkSettings){
+		func(v *NetworkSettings) { v.RouteFailover.DecisionRevision = "untrusted-program" },
+		func(v *NetworkSettings) {
+			rate := 1250
+			v.RouteFailover.DecisionRollout = &DeviceRollout{ID: "synthetic-variant", BasisPoints: &rate}
+		},
+		func(v *NetworkSettings) {
+			rate := 10001
+			v.RouteFailover.DecisionRevision = policy.ConfirmedFailoverAlgorithm
+			v.RouteFailover.DecisionRollout = &DeviceRollout{ID: "synthetic-variant", BasisPoints: &rate}
+		},
 		func(v *NetworkSettings) { v.RouteFailover.NetworkMode = "cellular" },
 		func(v *NetworkSettings) { v.RouteFailover.Intent = "NON_RU" },
 		func(v *NetworkSettings) { v.Rules = nil },
@@ -113,11 +133,11 @@ func TestInternalWifiFailoverRequiresComparableConcreteAuthorizedPaths(t *testin
 		func(v *NetworkSettings) { v.RouteChecks[1].Required = true },
 		func(v *NetworkSettings) {
 			rate := 500
-			v.RouteFailover.ProbeCooldownRollout = &ProbeCooldownRollout{ID: "fixture", BasisPoints: &rate}
+			v.RouteFailover.ProbeCooldownRollout = &DeviceRollout{ID: "fixture", BasisPoints: &rate}
 		},
 		func(v *NetworkSettings) {
 			v.RouteFailover.ProbeCooldown = true
-			v.RouteFailover.ProbeCooldownRollout = &ProbeCooldownRollout{ID: "fixture"}
+			v.RouteFailover.ProbeCooldownRollout = &DeviceRollout{ID: "fixture"}
 		},
 	} {
 		bad := cloneNetwork(t, settings)

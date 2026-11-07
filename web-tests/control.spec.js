@@ -154,6 +154,28 @@ test('reserve probe cooldown requires explicit draft opt in and never publishes'
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });
+test('conservative failover and its cohort stay in the editable draft',async({page,request})=>{
+ await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ const selection=page.locator('#route-decision'),input=page.locator('#plan');
+ await expect(selection).toBeDisabled();
+ const fixture=structuredClone(plan);
+ fixture.graph.profiles.reserve={sourceId:'source-a',profileId:'profile-b'};
+ fixture.graph.balancers['internal']={type:'selector',members:['proxy','reserve'],default:'proxy',interruptExisting:false};
+ fixture.network.routeFailover={selector:'internal',networkMode:'wifi',intent:'INTERNAL'};
+ await input.fill(JSON.stringify(fixture));await expect(selection).toBeEnabled();
+ await selection.selectOption('m4-confirmed-v1');
+ const id=page.locator('#route-decision-id'),share=page.locator('#route-decision-share');
+ await id.fill('synthetic-algorithm');await share.fill('25.05');await page.locator('#route-decision-save').click();
+ await page.locator('#save-draft').click();await expect(page.locator('#draft-version')).toContainText('Версия черновика: 1');
+ await input.fill('{}');await page.locator('#open-draft').click();await expect(selection).toHaveValue('m4-confirmed-v1');
+ await expect(id).toHaveValue('synthetic-algorithm');await expect(share).toHaveValue('25.05');
+ expect(JSON.parse(await input.inputValue()).network.routeFailover.decisionRollout).toEqual({id:'synthetic-algorithm',basisPoints:2505});
+ await selection.selectOption('');
+ const saved=JSON.parse(await input.inputValue()).network.routeFailover;
+ expect(saved.decisionRevision).toBeUndefined();expect(saved.decisionRollout).toBeUndefined();
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
+});
 test('console safely renders source metadata and saves/reopens its private draft',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();
  await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();

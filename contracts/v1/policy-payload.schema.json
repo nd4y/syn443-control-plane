@@ -84,6 +84,7 @@
           "overlay.credentials.v1",
           "route.health.v1",
           "route.failover.v1",
+          "route.decision.v1",
           "route.reserve-cooldown.v1",
           "route.exit-ip.v1"
         ]
@@ -102,7 +103,7 @@
       ]
     },
     "algorithmRevision": {
-      "const": "m1-local-v1"
+      "enum": ["m1-local-v1", "m4-confirmed-v1"]
     },
     "engineConfigB64": {
       "type": "string",
@@ -197,6 +198,19 @@
     }
   },
   "allOf": [
+    {
+      "if": {"properties": {"algorithmRevision": {"const": "m4-confirmed-v1"}}},
+      "then": {"properties": {
+        "schemaVersion": {"const": 2},
+        "operation": {"const": "configure"},
+        "requiredCapabilities": {"allOf": [
+          {"contains": {"const": "route.decision.v1"}},
+          {"contains": {"const": "route.health.v1"}},
+          {"contains": {"const": "route.failover.v1"}}
+        ]}
+      }},
+      "else": {"properties": {"requiredCapabilities": {"not": {"contains": {"const": "route.decision.v1"}}}}}
+    },
     {
       "if": {"properties": {"requiredCapabilities": {"contains": {"const": "route.exit-ip.v1"}}}},
       "then": {"properties": {

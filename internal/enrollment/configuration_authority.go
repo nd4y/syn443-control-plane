@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ type PreparedConfiguration struct {
 	EngineConfig         json.RawMessage
 	Activation           policy.Gate
 	RequiredCapabilities []string
+	AlgorithmRevision    string
 	UntilMs              int64
 	Fence                ApprovalFence
 	Source               ConfigurationSource
@@ -57,8 +59,8 @@ type ConfigurationAuthority interface {
 	Prepare(context.Context, ConfigurationTarget, time.Time) (*PreparedConfiguration, error)
 }
 
-// No setting may change the audience/device/key/revision/algorithm or grant
-// lifetime. A missing/invalid authority result never falls back to a template.
+// No setting may change the audience, device, key, revision or grant lifetime.
+// The only algorithm change is an approved, locally supported preset.
 func applyPreparedConfiguration(payload *policy.Payload, prepared *PreparedConfiguration, capabilities []string, now time.Time) error {
 	if prepared == nil || prepared.Fence == nil || prepared.UntilMs <= now.UnixMilli() || len(prepared.EngineConfig) < 1 || len(prepared.EngineConfig) > 262144 || len(prepared.RequiredCapabilities) > 16 || !prepared.Source.valid() {
 		return ErrDenied
@@ -66,6 +68,12 @@ func applyPreparedConfiguration(payload *policy.Payload, prepared *PreparedConfi
 	raw := append([]byte(nil), prepared.EngineConfig...)
 	if validatePreparedNetwork(raw) != nil {
 		return identity.ErrInvalid
+	}
+	if prepared.AlgorithmRevision != "" {
+		if prepared.AlgorithmRevision != policy.ConfirmedFailoverAlgorithm || !slices.Contains(prepared.RequiredCapabilities, policy.RouteDecision) {
+			return ErrDenied
+		}
+		payload.AlgorithmRevision = prepared.AlgorithmRevision
 	}
 	payload.EngineConfigB64 = base64.RawURLEncoding.EncodeToString(raw)
 	sum := sha256.Sum256(raw)

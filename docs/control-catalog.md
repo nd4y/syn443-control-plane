@@ -191,3 +191,15 @@ outside the share receive the legacy behavior with the same proxy graph.
 A new approved publication with share 0 stops this rollout. No hashes or
 recipient IDs are added to policy diagnostics. Independent decision
 bundles, measurement gates and automated progression remain separate.
+
+## Conservative failover algorithm
+
+For an internal Wi-Fi selector, set `decisionRevision: "m4-confirmed-v1"`
+to require three independent failure confirmations and 60 seconds between
+switches. Omit it for the baseline (two confirmations, 30 seconds).
+`decisionRollout: {"id":"synthetic-algorithm","basisPoints":2500}` selects 25%
+of compatible devices already approved for the plan. An unchanged ID keeps
+the cohort stable as the percentage grows. Set zero basis points to return
+the cohort to baseline. The selection is independent of the reserve probe
+cooldown cohort and changes neither routes nor access. With no percentage,
+every targeted device must advertise `route.decision.v1` before publication.
