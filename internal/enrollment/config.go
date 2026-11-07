@@ -20,23 +20,24 @@ import (
 )
 
 type Config struct {
-	OverlayBrokerEnabled bool              `json:"overlayBrokerEnabled"`
-	OverlayServiceID     string            `json:"overlayServiceId"`
-	Listen               string            `json:"listen"`
-	Origin               string            `json:"origin"`
-	Issuer               string            `json:"issuer"`
-	Audience             string            `json:"audience"`
-	ClientID             string            `json:"clientId"`
-	Database             string            `json:"database"`
-	EncryptionKey        string            `json:"encryptionKey"`
-	Roots                map[string]string `json:"roots"`
-	Certificate          string            `json:"certificate"`
-	CertificateKey       string            `json:"certificateKey"`
-	FixtureHTTP          bool              `json:"fixtureHttp"`
-	ChatEnabled          bool              `json:"chatEnabled"`
-	ChatWebOrigin        string            `json:"chatWebOrigin"`
-	ChatWebClientID      string            `json:"chatWebClientId"`
-	ChatWebAudience      string            `json:"chatWebAudience"`
+	ControlPanelDiscovery bool              `json:"controlPanelDiscovery"`
+	OverlayBrokerEnabled  bool              `json:"overlayBrokerEnabled"`
+	OverlayServiceID      string            `json:"overlayServiceId"`
+	Listen                string            `json:"listen"`
+	Origin                string            `json:"origin"`
+	Issuer                string            `json:"issuer"`
+	Audience              string            `json:"audience"`
+	ClientID              string            `json:"clientId"`
+	Database              string            `json:"database"`
+	EncryptionKey         string            `json:"encryptionKey"`
+	Roots                 map[string]string `json:"roots"`
+	Certificate           string            `json:"certificate"`
+	CertificateKey        string            `json:"certificateKey"`
+	FixtureHTTP           bool              `json:"fixtureHttp"`
+	ChatEnabled           bool              `json:"chatEnabled"`
+	ChatWebOrigin         string            `json:"chatWebOrigin"`
+	ChatWebClientID       string            `json:"chatWebClientId"`
+	ChatWebAudience       string            `json:"chatWebAudience"`
 }
 
 func PrivateFile(path string, max int64) ([]byte, error) {

@@ -1,5 +1,19 @@
 # Control console - source metadata and private drafts
 
+## Android navigation
+
+After applying the catalog schema and roles, set `controlPanelDiscovery` in the
+enrollment API configuration to enable `GET /v1/device/control-panel`. The
+signed bootstrap must also contain the trusted control panel HTTPS origin.
+Grant `control.open` on `control/panel` to the intended owner identity. That
+grant enables navigation only. Keep action-specific ACLs and the separate
+Keycloak control audience for the actual browser session and requests.
+
+The endpoint requires a live device session and its DPoP key, and returns only
+an expiry capped at two minutes, the account/session deadline and the grant.
+An owner without the grant receives zero. The enrollment role can execute
+the expiry lookup but cannot read or edit the catalog ACL table.
+
 ## Source management extension (acceptance pending)
 
 The new source form creates/edits server/manual/Remnawave source definitions with

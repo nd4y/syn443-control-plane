@@ -25,7 +25,8 @@ type InvitationActions interface {
 }
 
 type API struct {
-	Invitations InvitationActions
+	Invitations           InvitationActions
+	ControlPanelDiscovery bool
 	// Empty disables addressed credential delivery. Set only from owner configuration.
 	OverlayServiceID string
 	Store            *Store
@@ -118,9 +119,10 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	isOverlay := a.OverlayServiceID != "" && (path == "/v1/device/overlay/fetch" || path == "/v1/device/overlay/consume")
 	isCapabilities := path == "/v1/device/capabilities" || path == "/v1/devices/capabilities"
 	isActivation := path == activationStatusPath && r.Method == "POST"
+	isControlPanel := a.ControlPanelDiscovery && path == controlPanelPath && r.Method == "GET"
 	isInvite := path == "/v1/invitations/time" || path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
 	allowed := isCapabilities && (r.Method == "GET" || r.Method == "POST") || isOverlay && r.Method == "POST" || isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
-	if !allowed && !isActivation {
+	if !allowed && !isActivation && !isControlPanel {
 		http.NotFound(w, r)
 		return
 	}
@@ -264,6 +266,20 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if (!binding.Active && path != "/v1/device/revoke") || binding.Jkt != proof.Thumbprint {
 		failure(w, ErrDenied)
+		return
+	}
+	if isControlPanel {
+		if r.Header.Get("Origin") != "" {
+			failure(w, identity.ErrInvalid)
+			return
+		}
+		value, err := a.Store.ControlPanel(ctx, binding, token, proof, now)
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(value)
 		return
 	}
 	if isActivation {

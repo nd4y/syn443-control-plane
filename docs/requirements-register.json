@@ -1726,8 +1726,10 @@
     {
       "id": "MOB-01",
       "text": "У пользователя с административными правами есть заметная кнопка «Администрирование» на главном экране и в меню. Обычному пользователю она не показывается; прямое открытие admin URL/API всё равно проверяется сервером. Одно приложение совмещает клиентский и административный режимы.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": ["docs/control-console.md#android-navigation", "internal/enrollment/control_panel_postgres_test.go"],
+      "implementationScope": "Live catalog navigation grant, bounded DPoP eligibility and independent control-audience authorization.",
+      "remainingScope": "Menu entry, native administration and physical acceptance with the configured control plane."
     },
     {
       "id": "MOB-02",

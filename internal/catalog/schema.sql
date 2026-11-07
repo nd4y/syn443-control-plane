@@ -6,6 +6,13 @@ CREATE TABLE IF NOT EXISTS catalog_acl(
  expires bigint NOT NULL,guard integer NOT NULL DEFAULT 0,
  PRIMARY KEY(actor,action,target_kind,target_id)
 );
+CREATE OR REPLACE FUNCTION catalog_control_panel_expiry(actor_id text, now_second bigint) RETURNS bigint
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$
+ SELECT COALESCE(max(expires),0) FROM public.catalog_acl
+ WHERE actor=actor_id AND action IN('control.open','*')
+   AND target_kind IN('control','*') AND target_id IN('panel','*') AND expires>now_second
+$$;
+REVOKE ALL ON FUNCTION catalog_control_panel_expiry(text,bigint) FROM PUBLIC;
 CREATE TABLE IF NOT EXISTS catalog_proofs(actor text NOT NULL,jkt text NOT NULL,jti text NOT NULL,expires bigint NOT NULL,PRIMARY KEY(actor,jkt,jti));
 CREATE INDEX IF NOT EXISTS catalog_proof_expiry ON catalog_proofs(expires);
 CREATE TABLE IF NOT EXISTS catalog_resources(

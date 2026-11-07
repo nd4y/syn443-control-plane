@@ -80,6 +80,15 @@ func run() error {
 		api.Invitations = &invitation.DeviceService{Store: is, Identity: store, Origin: c.Origin, ServiceID: d.ServiceID}
 	}
 	api.OverlayServiceID = c.OverlayServiceID
+	if c.ControlPanelDiscovery {
+		check, cancel := context.WithTimeout(ctx, 5*time.Second)
+		e = store.ControlPanelRole(check)
+		cancel()
+		if e != nil {
+			return e
+		}
+	}
+	api.ControlPanelDiscovery = c.ControlPanelDiscovery
 	api.ChatEnabled = c.ChatEnabled
 	api.ChatWebOrigin = c.ChatWebOrigin
 	if c.ChatWebOrigin != "" {

@@ -25,6 +25,11 @@ REVOKE ALL ON FUNCTION catalog_snapshot_immutable() FROM PUBLIC;
 REVOKE ALL ON FUNCTION catalog_audit_actor_guard() FROM PUBLIC;
 REVOKE ALL ON FUNCTION catalog_source_immutable() FROM PUBLIC;
 REVOKE ALL ON FUNCTION catalog_terminal_input_erasure() FROM PUBLIC;
+DO $$BEGIN
+ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='syn443_identity_api') THEN
+  GRANT EXECUTE ON FUNCTION catalog_control_panel_expiry(text,bigint) TO syn443_identity_api;
+ END IF;
+END$$;
 -- Neither source worker nor control API receives device session, signing key or
 -- authority to approve identity publication. Additional signer grants are explicit.
 
