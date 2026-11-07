@@ -154,8 +154,12 @@ $('telemetry-form').onsubmit=event=>{
    const rows=document.createDocumentFragment();
    for(const row of report.rows){
     if(!row||![row.kind,row.code,row.mode].every(s=>typeof s==='string'&&/^[a-z0-9_]{1,48}$/.test(s))||![row.events,row.timed,row.duration].every(Number.isSafeInteger)||row.events<=0||row.timed<0||row.timed>row.events||row.duration<0||row.duration>row.timed*600000)throw Error('network');
+    const baseline=row.baselineReselections??0,conservative=row.conservativeReselections??0;
+    if(![baseline,conservative].every(Number.isSafeInteger)||baseline<0||conservative<0||baseline>row.events||conservative>row.events-baseline||
+      ((baseline||conservative)&&(row.kind!=='route'||row.code!=='reselected')))throw Error('network');
+    const counts=(baseline||conservative)?`Базовый: ${baseline}, консервативный: ${conservative}`:'—';
     const tr=document.createElement('tr');
-    for(const value of [row.kind,row.code,row.mode,row.events,row.timed?`${Math.round(row.duration/row.timed)} мс`:'—']){
+    for(const value of [row.kind,row.code,row.mode,row.events,row.timed?`${Math.round(row.duration/row.timed)} мс`:'—',counts]){
      const cell=document.createElement('td');cell.textContent=value;tr.append(cell);
     }
     rows.append(tr);
