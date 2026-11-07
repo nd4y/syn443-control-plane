@@ -101,6 +101,62 @@ func TestConfigurationInventorySeparatesCurrentAndHistoricalDeviceReports(t *tes
 	}
 }
 
+func TestConfigurationInventoryBindsIssuedPolicyToExactApprovedRevision(t *testing.T) {
+	n, c, proposal, publisher := layerPublisherFixture(t)
+	ctx := context.Background()
+	publishDesired := func(label string) ConfigurationPreviewResult {
+		t.Helper()
+		preview := prepareLayerPreview(t, n, c, proposal, publisher, label+" preview")
+		queueLayerPublish(t, n, c, preview, label+" publish")
+		if e := publisher.RunOnce(ctx, n.f.now.Add(time.Second)); e != nil {
+			t.Fatal(e)
+		}
+		n.f.now = n.f.now.Add(2 * time.Second)
+		return preview
+	}
+	expect := func(label, source string, desired, issued int64) {
+		t.Helper()
+		view, e := inventoryCall(t, n, c, n.target.Device, label)
+		if e != nil || view.Revision != desired || view.PolicyRevision != issued || view.PublicationSource != source {
+			t.Fatalf("%s: wrong desired or issued configuration relation: %v", label, e)
+		}
+	}
+	first := publishDesired("first desired origin")
+	expect("legacy issuance", "unlinked", 1, 1)
+	n.publisher.Configurations = &NetworkAuthority{Sources: publisher.Sources,
+		Layers: &SQLNetworkLayers{Store: publisher.Store, ControlOrigin: c.Origin, Roots: publisher.Roots}}
+	if e := n.publisher.RunOnce(ctx, n.f.now); e != nil {
+		t.Fatal(e)
+	}
+	expect("first managed issuance", "matches_desired", 1, 2)
+	if _, e := fixtureControl.Exec(`UPDATE identity_devices SET publication_source_hash=$2 WHERE id=$1`, n.target.Device, strings.Repeat("a", 64)); e == nil {
+		t.Fatal("control API gained publication source write authority")
+	}
+	if _, e := fixtureSigner.Exec(`UPDATE identity_devices SET publication_source_hash=$2 WHERE id=$1`, n.target.Device, strings.Repeat("b", 64)); e == nil {
+		t.Fatal("publisher could rewrite the source of an existing envelope")
+	}
+	if _, e := fixtureSigner.Exec(`UPDATE identity_devices SET publication=$2 WHERE id=$1`, n.target.Device, []byte("synthetic changed envelope")); e == nil {
+		t.Fatal("publisher could replace an envelope without advancing its bound revision")
+	}
+	proposal.Bundles[0].BaseRevision = 1
+	proposal.Bundles[0].BaseHash = first.Preview.DraftHash
+	proposal.Bundles[0].Layers = append(proposal.Bundles[0].Layers, configuration.Layer{
+		Kind: "device", ID: n.target.Device, Revision: 1,
+		Changes: []configuration.Change{{Path: "/network/dnsStrategy", Operation: "set", Value: json.RawMessage(`"ipv4_only"`)}},
+	})
+	publishDesired("second desired origin")
+	expect("new desired awaiting issuance", "different_revision", 2, 2)
+	if e := n.publisher.RunOnce(ctx, n.f.now); e != nil {
+		t.Fatal(e)
+	}
+	expect("second managed issuance", "matches_desired", 2, 3)
+	// An older publisher only updates the envelope and its policy revision.
+	if _, e := fixtureSigner.Exec(`UPDATE identity_devices SET revision=revision+1,publication=$2 WHERE id=$1`, n.target.Device, []byte("synthetic legacy envelope")); e != nil {
+		t.Fatal(e)
+	}
+	expect("later untracked issuance", "unlinked", 2, 4)
+}
+
 func TestConfigurationInventoryRequiresLiveDeviceParentACLAndCipherIntegrity(t *testing.T) {
 	for _, kind := range []string{"parent-read", "account", "device", "cipher", "cancelled", "expired-session"} {
 		t.Run(kind, func(t *testing.T) {

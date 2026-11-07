@@ -24,6 +24,7 @@ type ApprovedNetworkLayers struct {
 	Mode    string
 	UntilMs int64
 	Fence   enrollment.ApprovalFence
+	Source  enrollment.ConfigurationSource
 }
 
 func (ApprovedNetworkLayers) String() string   { return "ApprovedNetworkLayers([redacted])" }
@@ -116,7 +117,7 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 		required = append(required, "overlay.credentials.v1")
 	}
 	return &enrollment.PreparedConfiguration{EngineConfig: compiled.EngineConfig, Activation: compiled.Activation,
-		RequiredCapabilities: required, UntilMs: until,
+		RequiredCapabilities: required, UntilMs: until, Source: approved.Source,
 		Fence: &networkFence{layers: approved.Fence, sources: selection, untilMs: until}}, nil
 }
 

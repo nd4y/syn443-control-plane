@@ -30,6 +30,15 @@ device report as separate fields. A report for an older issuance, an expired
 lease or an earlier grant stays historical. History views omit current reports.
 The control API reads only outcome metadata under the existing live device and
 layer authorization. It cannot read the envelope hash or write a report.
+
+The independent publisher commits the approved configuration revision and digest
+with the signed envelope in one transaction. The inventory compares that exact
+source to the authorized desired head. It displays whether the policy matches
+the desired revision, came from a different revision, or has no recorded
+source. Legacy and template publications can have no recorded source. A later
+publication by a legacy worker cannot inherit the source of an earlier policy.
+The inventory does not expose an older source hash or infer device activation.
+
 Apply the owner enrollment schema and roles before configuration roles.
 
 The web tests exercise reported rollback, pending reports and historical

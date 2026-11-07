@@ -14,6 +14,15 @@ CREATE TABLE IF NOT EXISTS identity_devices (
  refresh_after bigint NOT NULL DEFAULT 0, offline_until bigint NOT NULL DEFAULT 0,
  retry_after bigint NOT NULL DEFAULT 0, publication_error text NOT NULL DEFAULT ''
 );
+-- The stamp prevents an older publisher binary from attributing a later
+-- issuance to the managed configuration recorded by a newer binary.
+ALTER TABLE identity_devices ADD COLUMN IF NOT EXISTS publication_source_policy_revision bigint NOT NULL DEFAULT 0
+ CHECK(publication_source_policy_revision BETWEEN 0 AND revision);
+ALTER TABLE identity_devices ADD COLUMN IF NOT EXISTS publication_source_revision bigint NOT NULL DEFAULT 0
+ CHECK(publication_source_revision BETWEEN 0 AND 9007199254740991);
+ALTER TABLE identity_devices ADD COLUMN IF NOT EXISTS publication_source_hash text NOT NULL DEFAULT ''
+ CHECK ((publication_source_policy_revision=0 AND publication_source_revision=0 AND publication_source_hash='')
+     OR (publication_source_policy_revision>0 AND publication_source_revision>0 AND publication_source_hash ~ '^[0-9a-f]{64}$'));
 CREATE TABLE IF NOT EXISTS identity_challenges (
  owner text NOT NULL REFERENCES identity_accounts(owner), jkt text NOT NULL, nonce text NOT NULL,
  expires bigint NOT NULL, PRIMARY KEY(owner,jkt)
@@ -52,7 +61,13 @@ BEGIN
  IF NEW.id<>OLD.id OR NEW.owner<>OLD.owner OR NEW.jkt<>OLD.jkt
     OR (NOT OLD.active AND NEW.active) OR (OLD.approved AND NOT NEW.approved)
     OR (OLD.approved AND (NEW.request_body,NEW.receipt) IS DISTINCT FROM (OLD.request_body,OLD.receipt))
-    OR NEW.revision<OLD.revision THEN
+    OR NEW.revision<OLD.revision
+    OR (OLD.publication_source_policy_revision>0 AND OLD.publication_source_policy_revision=OLD.revision
+        AND NEW.revision=OLD.revision AND NEW.publication IS DISTINCT FROM OLD.publication)
+    OR ((NEW.publication_source_policy_revision,NEW.publication_source_revision,NEW.publication_source_hash)
+        IS DISTINCT FROM (OLD.publication_source_policy_revision,OLD.publication_source_revision,OLD.publication_source_hash)
+        AND (NEW.revision<=OLD.revision OR NEW.publication IS NOT DISTINCT FROM OLD.publication
+             OR (NEW.publication_source_policy_revision<>0 AND NEW.publication_source_policy_revision<>NEW.revision))) THEN
    RAISE EXCEPTION 'immutable device identity';
  END IF;
  RETURN NEW;

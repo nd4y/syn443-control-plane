@@ -246,6 +246,7 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	payload.OfflineUntilMs = min(payload.IssuedAtMs+3600000, g.Until*1000)
 	payload.RefreshAfterMs = min(payload.IssuedAtMs+300000, payload.OfflineUntilMs-1000)
 	var configurationFence ApprovalFence
+	var configurationSource ConfigurationSource
 	if p.Configurations != nil {
 		prepared, prepareErr := p.Configurations.Prepare(ctx, ConfigurationTarget{Device: id, Owner: s.Owner, Thumbprint: s.Jkt, GrantHash: s.Grant, CurrentRevision: s.Revision, Capabilities: append([]string(nil), request.Capabilities...)}, now)
 		if prepareErr != nil {
@@ -261,6 +262,7 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 			return err
 		}
 		configurationFence = prepared.Fence
+		configurationSource = prepared.Source
 	}
 	var brokerFence ApprovalFence
 	if p.Brokers != nil {
@@ -346,7 +348,13 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 		}
 	}
 	encrypted := p.Store.Seal([]byte(bundle), "publication/v1/"+id+"/"+formatInt(payload.Revision))
-	_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET approved=true,publication=$2,revision=$3,refresh_after=$4,offline_until=$5,publication_error='',retry_after=0,publication_grant_hash=$6 WHERE id=$1`, id, encrypted, payload.Revision, payload.RefreshAfterMs/1000, payload.OfflineUntilMs/1000, s.Grant)
+	var sourcePolicyRevision int64
+	if configurationSource.Revision > 0 {
+		sourcePolicyRevision = payload.Revision
+	}
+	_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET approved=true,publication=$2,revision=$3,refresh_after=$4,offline_until=$5,publication_error='',retry_after=0,publication_grant_hash=$6,publication_source_policy_revision=$7,publication_source_revision=$8,publication_source_hash=$9 WHERE id=$1`,
+		id, encrypted, payload.Revision, payload.RefreshAfterMs/1000, payload.OfflineUntilMs/1000, s.Grant,
+		sourcePolicyRevision, configurationSource.Revision, configurationSource.Hash)
 	if e != nil {
 		return e
 	}

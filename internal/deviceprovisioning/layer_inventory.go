@@ -15,19 +15,20 @@ import (
 // source credentials. Revision/hash describe desired server configuration;
 // PolicyRevision is issued policy history, not a claim of Android activation.
 type ConfigurationInventory struct {
-	Device          string                   `json:"device"`
-	Owner           string                   `json:"owner"`
-	State           string                   `json:"state"`
-	Revision        int64                    `json:"revision"`
-	Hash            string                   `json:"hash"`
-	PolicyRevision  int64                    `json:"policyRevision"`
-	Mode            string                   `json:"mode"`
-	ApprovalUntilMs int64                    `json:"approvalUntilMs"`
-	Layers          []configuration.Layer    `json:"layers"`
-	Effective       *configuration.Effective `json:"effective,omitempty"`
-	CurrentRevision int64                    `json:"currentRevision"`
-	Historical      bool                     `json:"historical,omitempty"`
-	Activation      *ConfigurationActivation `json:"activation,omitempty"`
+	Device            string                   `json:"device"`
+	Owner             string                   `json:"owner"`
+	State             string                   `json:"state"`
+	Revision          int64                    `json:"revision"`
+	Hash              string                   `json:"hash"`
+	PolicyRevision    int64                    `json:"policyRevision"`
+	PublicationSource string                   `json:"publicationSource,omitempty"`
+	Mode              string                   `json:"mode"`
+	ApprovalUntilMs   int64                    `json:"approvalUntilMs"`
+	Layers            []configuration.Layer    `json:"layers"`
+	Effective         *configuration.Effective `json:"effective,omitempty"`
+	CurrentRevision   int64                    `json:"currentRevision"`
+	Historical        bool                     `json:"historical,omitempty"`
+	Activation        *ConfigurationActivation `json:"activation,omitempty"`
 }
 
 type ConfigurationActivation struct {
@@ -66,10 +67,16 @@ func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device st
 	var accountUntil int64
 	var publicationUntil int64
 	var publicationGrant string
+	var sourcePolicyRevision, sourceRevision int64
+	var sourceHash string
 	var jkt string
 	// Lock the live authorization rows. The API has only a non-authoritative
 	// guard-column UPDATE grant needed by PostgreSQL for SELECT FOR SHARE.
-	e = tx.QueryRowContext(ctx, `SELECT d.owner,d.jkt,d.active,d.approved,d.revision,a.enabled,a.valid_until,a.grant_hash,d.offline_until,d.publication_grant_hash FROM identity_devices d JOIN identity_accounts a ON a.owner=d.owner WHERE d.id=$1 FOR SHARE OF a,d`, device).Scan(&r.Owner, &jkt, &active, &approved, &r.PolicyRevision, &enabled, &accountUntil, &grant, &publicationUntil, &publicationGrant)
+	e = tx.QueryRowContext(ctx, `SELECT d.owner,d.jkt,d.active,d.approved,d.revision,a.enabled,a.valid_until,a.grant_hash,
+	  d.offline_until,d.publication_grant_hash,d.publication_source_policy_revision,d.publication_source_revision,d.publication_source_hash
+	  FROM identity_devices d JOIN identity_accounts a ON a.owner=d.owner WHERE d.id=$1 FOR SHARE OF a,d`, device).Scan(
+		&r.Owner, &jkt, &active, &approved, &r.PolicyRevision, &enabled, &accountUntil, &grant, &publicationUntil, &publicationGrant,
+		&sourcePolicyRevision, &sourceRevision, &sourceHash)
 	if e != nil || !active || !approved || !enabled || accountUntil <= current().Unix() {
 		return r, enrollment.ErrDenied
 	}
@@ -127,8 +134,15 @@ func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device st
 	}
 	if !r.Historical {
 		observation := ConfigurationActivation{State: "awaiting_report"}
+		r.PublicationSource = "unlinked"
 		if r.PolicyRevision == 0 {
 			observation.State = "not_issued"
+			r.PublicationSource = "not_issued"
+		} else if sourcePolicyRevision == r.PolicyRevision && sourceRevision > 0 && publicationGrant == grant {
+			r.PublicationSource = "different_revision"
+			if sourceRevision == r.Revision && sourceHash == r.Hash {
+				r.PublicationSource = "matches_desired"
+			}
 		}
 		e = tx.QueryRowContext(ctx, `SELECT policy_revision,outcome,active_policy_revision,received_at_ms FROM identity_policy_activation WHERE device=$1`, device).Scan(
 			&observation.PolicyRevision, &observation.Outcome, &observation.ActivePolicyRevision, &observation.ReceivedAtMs)

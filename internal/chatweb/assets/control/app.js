@@ -50,6 +50,11 @@ function showInventory(view){
  inventoryPair(meta,'Устройство',device);inventoryPair(meta,'Владелец',owner);
  inventoryPair(meta,'Желаемая версия',String(revision));inventoryPair(meta,'Хэш желаемой конфигурации',hash||'-');
  inventoryPair(meta,'Версия выданной политики',String(policyRevision));
+ if(view.publicationSource!==undefined){
+  const labels={not_issued:'Политика ещё не выдана',unlinked:'Источник не зафиксирован',matches_desired:'Соответствует желаемой',different_revision:'Выдана из другой ревизии'};
+  if(typeof view.publicationSource!=='string'||!Object.hasOwn(labels,view.publicationSource))throw Error('invalid');
+  inventoryPair(meta,'Источник выданной политики',labels[view.publicationSource]);
+ }
  const report=view.activation;
  if(report){
   if(!['not_issued','awaiting_report','reported','historical'].includes(report.state))throw Error('invalid');

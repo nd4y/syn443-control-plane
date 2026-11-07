@@ -170,7 +170,11 @@ func (s *Store) RuntimeRole(ctx context.Context, publisher bool) error {
 		if e = s.DB.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,'identity_overlay_grants','INSERT') OR has_column_privilege(current_user,'identity_overlay_grants','owner','UPDATE') OR has_column_privilege(current_user,'identity_overlay_grants','revoked','UPDATE') OR has_table_privilege(current_user,'identity_overlay_grants','DELETE') OR has_table_privilege(current_user,'identity_overlay_deliveries','DELETE')`).Scan(&unsafe); e != nil || unsafe {
 			return ErrDenied
 		}
-		if e = s.DB.QueryRowContext(ctx, `SELECT has_column_privilege(current_user,'identity_devices','publication','UPDATE') OR has_column_privilege(current_user,'identity_devices','approved','UPDATE')`).Scan(&unsafe); e != nil || unsafe {
+		if e = s.DB.QueryRowContext(ctx, `SELECT has_column_privilege(current_user,'identity_devices','publication','UPDATE')
+		 OR has_column_privilege(current_user,'identity_devices','approved','UPDATE')
+		 OR has_column_privilege(current_user,'identity_devices','publication_source_policy_revision','UPDATE')
+		 OR has_column_privilege(current_user,'identity_devices','publication_source_revision','UPDATE')
+		 OR has_column_privilege(current_user,'identity_devices','publication_source_hash','UPDATE')`).Scan(&unsafe); e != nil || unsafe {
 			return ErrDenied
 		}
 		if e = s.DB.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,'chat_admins','INSERT') OR has_column_privilege(current_user,'chat_admins','enabled','UPDATE')`).Scan(&unsafe); e != nil || unsafe {

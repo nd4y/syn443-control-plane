@@ -9,7 +9,8 @@ GRANT SELECT,UPDATE(lock_guard) ON identity_accounts TO syn443_identity_api,syn4
 GRANT SELECT ON identity_devices TO syn443_identity_api,syn443_identity_publisher;
 GRANT INSERT(id,owner,jkt,request_body,receipt),UPDATE(active,request_body,receipt,retry_after)
  ON identity_devices TO syn443_identity_api;
-GRANT UPDATE(approved,publication,revision,refresh_after,offline_until,retry_after,publication_error,publication_grant_hash)
+GRANT UPDATE(approved,publication,revision,refresh_after,offline_until,retry_after,publication_error,publication_grant_hash,
+ publication_source_policy_revision,publication_source_revision,publication_source_hash)
  ON identity_devices TO syn443_identity_publisher;
 GRANT SELECT,INSERT,UPDATE,DELETE ON identity_challenges,identity_sessions,identity_refresh_history,
  identity_replays,identity_requests,identity_revocations,identity_owner_revocations TO syn443_identity_api;

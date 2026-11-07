@@ -135,6 +135,14 @@ func ConfigurationRuntimeRole(ctx context.Context, db *sql.DB, publisher bool) e
 	 has_table_privilege(current_user,'identity_policy_activation','TRUNCATE')`).Scan(&reportMetadata, &unsafeReportAccess); e != nil || reportMetadata == publisher || unsafeReportAccess {
 		return enrollment.ErrDenied
 	}
+	var sourceStamp, sourceRevision, sourceHash bool
+	if e := db.QueryRowContext(ctx, `SELECT
+	 has_column_privilege(current_user,'identity_devices','publication_source_policy_revision','UPDATE'),
+	 has_column_privilege(current_user,'identity_devices','publication_source_revision','UPDATE'),
+	 has_column_privilege(current_user,'identity_devices','publication_source_hash','UPDATE')`).Scan(&sourceStamp, &sourceRevision, &sourceHash); e != nil ||
+		sourceStamp != publisher || sourceRevision != publisher || sourceHash != publisher {
+		return enrollment.ErrDenied
+	}
 	return nil
 }
 
@@ -237,7 +245,8 @@ func (a *SQLNetworkLayers) PrepareLayers(ctx context.Context, target enrollment.
 	if e = tx.Commit(); e != nil {
 		return nil, enrollment.ErrUnavailable
 	}
-	return &ApprovedNetworkLayers{Target: target, Layers: selected.Layers, Mode: proposal.Mode, UntilMs: fence.until, Fence: fence}, nil
+	return &ApprovedNetworkLayers{Target: target, Layers: selected.Layers, Mode: proposal.Mode, UntilMs: fence.until,
+		Fence: fence, Source: enrollment.ConfigurationSource{Revision: r.revision, Hash: r.hash}}, nil
 }
 
 type storedLayerFence struct {

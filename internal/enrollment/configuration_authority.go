@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
@@ -26,6 +27,25 @@ type PreparedConfiguration struct {
 	RequiredCapabilities []string
 	UntilMs              int64
 	Fence                ApprovalFence
+	Source               ConfigurationSource
+}
+
+// ConfigurationSource identifies the approved desired snapshot that the
+// publisher's final fence rechecks. A zero value leaves the origin unlinked.
+type ConfigurationSource struct {
+	Revision int64
+	Hash     string
+}
+
+func (s ConfigurationSource) valid() bool {
+	if s.Revision == 0 {
+		return s.Hash == ""
+	}
+	if s.Revision < 0 || s.Revision > 9007199254740991 || len(s.Hash) != 64 || strings.ToLower(s.Hash) != s.Hash {
+		return false
+	}
+	_, err := hex.DecodeString(s.Hash)
+	return err == nil
 }
 
 func (ConfigurationTarget) String() string     { return "ConfigurationTarget([redacted])" }
@@ -40,7 +60,7 @@ type ConfigurationAuthority interface {
 // No setting may change the audience/device/key/revision/algorithm or grant
 // lifetime. A missing/invalid authority result never falls back to a template.
 func applyPreparedConfiguration(payload *policy.Payload, prepared *PreparedConfiguration, capabilities []string, now time.Time) error {
-	if prepared == nil || prepared.Fence == nil || prepared.UntilMs <= now.UnixMilli() || len(prepared.EngineConfig) < 1 || len(prepared.EngineConfig) > 262144 || len(prepared.RequiredCapabilities) > 16 {
+	if prepared == nil || prepared.Fence == nil || prepared.UntilMs <= now.UnixMilli() || len(prepared.EngineConfig) < 1 || len(prepared.EngineConfig) > 262144 || len(prepared.RequiredCapabilities) > 16 || !prepared.Source.valid() {
 		return ErrDenied
 	}
 	raw := append([]byte(nil), prepared.EngineConfig...)
