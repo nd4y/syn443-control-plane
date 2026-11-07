@@ -2311,8 +2311,13 @@
     {
       "id": "NFR-08",
       "text": "Сервер ставится контейнерами с health/readiness, миграциями, резервным копированием и документированным восстановлением. Первому пилоту достаточно одной установки с проверенным restore; это не high availability. Предлагаемые RPO24h/RTO4h согласуются отдельно.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/database-recovery.md",
+        "internal/enrollment/restore_postgres_test.go"
+      ],
+      "implementationScope": "Isolated PostgreSQL backup/restore drill and recovery procedure with application and authorization checks.",
+      "remainingScope": "Recovery of a complete deployed instance, external identity/provider state, key and role recovery, and observed RPO/RTO."
     },
     {
       "id": "SEC-01",
@@ -2620,8 +2625,13 @@
     {
       "id": "AC24",
       "specRow": " Обновление APK/схемы, восстановление сервера из backup | Конфиг/identity сохранены при разрешённой миграции, rollback/restore действительно проверены |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/database-recovery.md",
+        "internal/enrollment/restore_postgres_test.go"
+      ],
+      "implementationScope": "Device session and signed policy are checked through the restricted API against a restored SQL snapshot.",
+      "remainingScope": "Deployed server recovery and the complete APK, state migration and rollback matrix."
     },
     {
       "id": "AC25",
@@ -3152,6 +3162,7 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
+        "internal/enrollment/restore_postgres_test.go",
         "web-tests/chat.spec.js",
         "docs/implementation-status.md"
       ],

@@ -32,6 +32,7 @@ if [ -n "${SYN443_GO_IMAGE:-}" ]; then
     sh -c 'export SYN443_TEST_BINARY_DIR="$PWD/bin"; go build -o bin/enrollment-api ./cmd/enrollment-api && go build -o bin/enrollment-worker ./cmd/enrollment-worker && go build -o bin/overlay-worker ./cmd/overlay-worker && go test -p 1 -tags postgres -race -count=1 -timeout=2m -coverpkg=./internal/enrollment,./internal/supportchat -coverprofile=enrollment-coverage.out -v ./internal/enrollment ./internal/supportchat'
 else
   export SYN443_TEST_BINARY_DIR="$PWD/bin"
+  export SYN443_RESTORE_FIXTURE_CONTAINER="$container_id"
   go build -o bin/enrollment-api ./cmd/enrollment-api
   go build -o bin/enrollment-worker ./cmd/enrollment-worker
   go build -o bin/overlay-worker ./cmd/overlay-worker
