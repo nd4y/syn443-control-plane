@@ -313,6 +313,41 @@
         }
       }
     },
+    "/v1/device/sources/v2/claim": {
+      "get": {
+        "operationId": "claimConditionalDeviceSourceFetch",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "responses": {
+          "200": {"description": "Addressed lease with optional validators for the active snapshot. No logging or caching.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DeviceSourceLease"}}}},
+          "204": {"description": "No compatible pending job for this device."},
+          "401": {"description": "Invalid or replayed proof."},
+          "403": {"description": "Device session denied."},
+          "404": {"description": "Device fetch disabled."},
+          "503": {"description": "Catalog or device capacity unavailable."}
+        }
+      }
+    },
+    "/v1/device/sources/v2/result": {
+      "post": {
+        "operationId": "submitConditionalDeviceSourceFetch",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "requestBody": {
+          "required": true,
+          "description": "The original job and lease prefix, then NUL S443 0x02, a two-byte big-endian JSON length, metadata and optional provider bytes. Metadata is at most 4096 bytes. 200 and 304 allow etag, lastModified and quota; 304 has no body and requires the active snapshot. A provider error (401, 403, 404, 410, 429 or 5xx) sends only status. The proof binds the complete frame.",
+          "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary", "minLength": 110, "maxLength": 10489952}}}
+        },
+        "responses": {
+          "204": {"description": "Encrypted input accepted for worker normalization or identical result already accepted."},
+          "401": {"description": "Invalid or replayed proof, or malformed frame."},
+          "403": {"description": "Device session or job scope denied."},
+          "404": {"description": "Device fetch disabled."},
+          "409": {"description": "Lease expired, result changed or source revision superseded."},
+          "503": {"description": "Catalog or device capacity unavailable."}
+        }
+      }
+    },
     "/v1/device/policy": {
       "get": {
         "operationId": "policy",
@@ -997,6 +1032,14 @@
           "until": {"type": "integer", "minimum": 1, "maximum": 9007199254740},
           "networkModes": {"type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true,
             "items": {"enum": ["home_wifi", "wifi", "cellular_restricted", "cellular"]}},
+          "validators": {
+            "type": "object", "additionalProperties": false, "minProperties": 1,
+            "description": "Only version 2 leases may contain validators.",
+            "properties": {
+              "etag": {"type": "string", "minLength": 2, "maxLength": 512},
+              "lastModified": {"type": "string", "minLength": 1, "maxLength": 128}
+            }
+          },
           "credential": {
             "type": "object", "additionalProperties": false, "required": ["url"],
             "properties": {

@@ -35,6 +35,13 @@ rotation or a later network/authentication failure cannot revive a revoked cache
 Conditional HTTP validators are encrypted for the active snapshot and source
 revision. A quarantined candidate cannot attach its validators to the previous
 working snapshot. Manual promotion and legacy validators force one full fetch.
+
+The optional version 2 device endpoints carry the active validators in a lease.
+The device signs a bounded binary result containing status, allowed metadata and
+the provider body only on success. The worker accepts 304 only against the
+leased working snapshot and updates quota without transferring profiles again.
+Provider error responses carry a status only. The original endpoints still
+accept and return the previous wire format.
 Only a newly accepted verified snapshot can restore it. Cache TTL/provider expiry
 remain visible even when the most recent refresh failed. Source recipient
 changes require both share and receive authority; device-fetched data is personal.

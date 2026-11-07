@@ -41,7 +41,8 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 	values["CapabilityRequest"] = CapabilityRequestView{RequestID: random(), State: "queued"}
 	values["ControlPanelHint"] = ControlPanelHint{SchemaVersion: 1, UntilMs: 1800000060000}
 	values["DeviceSourceLease"] = catalog.DeviceFetchLease{JobID: random(), Lease: random(), Until: 1800000060,
-		NetworkModes: []string{"wifi"}, Credential: catalog.FetchCredential{URL: "https://subscription.example.invalid"}}
+		NetworkModes: []string{"wifi"}, Credential: catalog.FetchCredential{URL: "https://subscription.example.invalid"},
+		Validators: &catalog.DeviceFetchValidators{ETag: `"snapshot"`}}
 	for name, value := range values {
 		schema, e := compiler.Compile(base + "#/components/schemas/" + name)
 		if e != nil {

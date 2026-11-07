@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 
@@ -45,8 +46,49 @@ func (w *Worker) ProcessOne(ctx context.Context) (Job, error) {
 	var cache subscriptions.Cache
 	if e == nil {
 		switch source.Mode {
-		case "manual", "device":
+		case "manual":
 			profiles, e = subscriptions.Import(source.ID, salt, source.Format, payload)
+		case "device":
+			var result deviceProviderMetadata
+			var raw []byte
+			result, raw, e = readDeviceProviderResult(payload)
+			if e != nil {
+				break
+			}
+			switch result.Status {
+			case http.StatusUnauthorized, http.StatusForbidden:
+				e = subscriptions.ErrAccess
+			case http.StatusGone:
+				e = subscriptions.ErrRevoked
+			}
+			if e == nil && providerErrorStatus(result.Status) {
+				e = subscriptions.ErrFetch
+			}
+			if e != nil {
+				break
+			}
+			cache = result.cache()
+			quota, e = subscriptions.ParseQuota(result.Quota, now)
+			if e != nil {
+				break
+			}
+			if result.Status == http.StatusNotModified {
+				var previous Snapshot
+				var oldCache subscriptions.Cache
+				oldCache, previous, profiles, e = w.Store.SyncCache(work, job, now)
+				if e == nil && (previous.ID == "" || previous.SourceRevision != source.Revision ||
+					oldCache.ETag == "" && oldCache.LastModified == "") {
+					e = subscriptions.ErrInvalid
+				}
+				if cache.ETag == "" {
+					cache.ETag = oldCache.ETag
+				}
+				if cache.LastModified == "" {
+					cache.LastModified = oldCache.LastModified
+				}
+			} else {
+				profiles, e = subscriptions.Import(source.ID, salt, source.Format, raw)
+			}
 		case "server":
 			var previous Snapshot
 			var old []subscriptions.Profile

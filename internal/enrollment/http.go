@@ -123,8 +123,9 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	isCapabilities := path == "/v1/device/capabilities" || path == "/v1/devices/capabilities"
 	isActivation := path == activationStatusPath && r.Method == "POST"
 	isControlPanel := a.ControlPanelDiscovery && path == controlPanelPath && r.Method == "GET"
-	isFetchClaim := a.DeviceFetch != nil && path == deviceFetchClaimPath && r.Method == "GET"
-	isFetchResult := a.DeviceFetch != nil && path == deviceFetchResultPath && r.Method == "POST"
+	fetchV2 := path == deviceFetchV2ClaimPath || path == deviceFetchV2ResultPath
+	isFetchClaim := a.DeviceFetch != nil && (path == deviceFetchClaimPath || path == deviceFetchV2ClaimPath) && r.Method == "GET"
+	isFetchResult := a.DeviceFetch != nil && (path == deviceFetchResultPath || path == deviceFetchV2ResultPath) && r.Method == "POST"
 	isInvite := path == "/v1/invitations/time" || path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
 	allowed := isCapabilities && (r.Method == "GET" || r.Method == "POST") || isOverlay && r.Method == "POST" || isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
 	if !allowed && !isActivation && !isControlPanel && !isFetchClaim && !isFetchResult {
@@ -218,6 +219,9 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		maxBody = catalog.MaxDeviceFetchBytes + deviceFetchFrameSize
+		if fetchV2 {
+			maxBody = catalog.MaxDeviceFetchWireBytes + deviceFetchFrameSize
+		}
 	}
 	raw, e := io.ReadAll(io.LimitReader(r.Body, maxBody+1))
 	if isFetchResult {
@@ -296,7 +300,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			failure(w, identity.ErrInvalid)
 			return
 		}
-		lease, err := a.deviceFetch(ctx, binding, token, proof, raw, isFetchResult, now)
+		lease, err := a.deviceFetch(ctx, binding, token, proof, raw, isFetchResult, fetchV2, now)
 		if err != nil {
 			failure(w, err)
 			return
@@ -403,6 +407,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("ETag", `"`+identity.Hash([]byte(bundle))+`"`)
 	if a.DeviceFetch != nil {
 		w.Header().Set("X-SYN443-Device-Source-Fetch", "1")
+		w.Header().Set("X-SYN443-Device-Source-Validators", "1")
 	}
 	w.Header().Set("Content-Type", "application/jose")
 	_, _ = w.Write([]byte(bundle))

@@ -148,7 +148,7 @@ ALTER TABLE catalog_sources ADD COLUMN IF NOT EXISTS selection_guard integer NOT
 ALTER TABLE catalog_resources ADD COLUMN IF NOT EXISTS selection_guard integer NOT NULL DEFAULT 0;
 
 CREATE OR REPLACE VIEW catalog_device_fetch_sources WITH (security_barrier=true) AS
- SELECT id,owner,fetch_device_id,mode,enabled,revision,valid_until,active_snapshot,spec,secrets,selection_guard,fetch_modes
+ SELECT id,owner,fetch_device_id,mode,enabled,revision,valid_until,active_snapshot,spec,secrets,selection_guard,fetch_modes,access_state,fetch_cache
  FROM catalog_sources WHERE mode='device' AND fetch_device_id<>'' WITH LOCAL CHECK OPTION;
 CREATE OR REPLACE VIEW catalog_device_fetch_jobs WITH (security_barrier=true) AS
  SELECT id,source_id,source_revision,kind,phase,lease,lease_until,deadline,not_before,created_at,updated_at,

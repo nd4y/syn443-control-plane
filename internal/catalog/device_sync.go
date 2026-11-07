@@ -17,11 +17,12 @@ func (DeviceFetchScope) String() string   { return "DeviceFetchScope([redacted])
 func (DeviceFetchScope) GoString() string { return "DeviceFetchScope([redacted])" }
 
 type DeviceFetchLease struct {
-	JobID        string          `json:"jobId"`
-	Lease        string          `json:"lease"`
-	Until        int64           `json:"until"`
-	NetworkModes []string        `json:"networkModes"`
-	Credential   FetchCredential `json:"credential"`
+	JobID        string                 `json:"jobId"`
+	Lease        string                 `json:"lease"`
+	Until        int64                  `json:"until"`
+	NetworkModes []string               `json:"networkModes"`
+	Credential   FetchCredential        `json:"credential"`
+	Validators   *DeviceFetchValidators `json:"validators,omitempty"`
 }
 
 const MaxDeviceFetchBytes = 10 * 1024 * 1024
@@ -50,8 +51,9 @@ func (s *Store) readDeviceFetchSource(ctx context.Context, tx *sql.Tx, id string
 	var revision, validUntil int64
 	var enabled bool
 	var active string
-	if err := tx.QueryRowContext(ctx, `SELECT spec,revision,valid_until,enabled,COALESCE(active_snapshot,''),fetch_modes FROM catalog_device_fetch_sources
- WHERE id=$1 AND owner=$2 AND fetch_device_id=$3`, id, scope.Owner, scope.Device).Scan(&sealed, &revision, &validUntil, &enabled, &active, &encodedModes); err != nil {
+	var access string
+	if err := tx.QueryRowContext(ctx, `SELECT spec,revision,valid_until,enabled,COALESCE(active_snapshot,''),fetch_modes,access_state FROM catalog_device_fetch_sources
+ WHERE id=$1 AND owner=$2 AND fetch_device_id=$3`, id, scope.Owner, scope.Device).Scan(&sealed, &revision, &validUntil, &enabled, &active, &encodedModes, &access); err != nil {
 		return source, ErrUnavailable
 	}
 	raw, err := s.open(sealed, aad("source", id, revision))
@@ -62,10 +64,19 @@ func (s *Store) readDeviceFetchSource(ctx context.Context, tx *sql.Tx, id string
 		return Source{}, ErrUnavailable
 	}
 	source.ActiveSnapshot = active
+	source.AccessState = access
 	return source, nil
 }
 
 func (s *Store) ClaimDeviceFetch(ctx context.Context, tx *sql.Tx, scope DeviceFetchScope, now time.Time) (DeviceFetchLease, error) {
+	return s.claimDeviceFetch(ctx, tx, scope, now, false)
+}
+
+func (s *Store) ClaimDeviceFetchWithValidators(ctx context.Context, tx *sql.Tx, scope DeviceFetchScope, now time.Time) (DeviceFetchLease, error) {
+	return s.claimDeviceFetch(ctx, tx, scope, now, true)
+}
+
+func (s *Store) claimDeviceFetch(ctx context.Context, tx *sql.Tx, scope DeviceFetchScope, now time.Time, conditional bool) (DeviceFetchLease, error) {
 	var result DeviceFetchLease
 	if !identifier.MatchString(scope.Owner) || !identifier.MatchString(scope.Device) {
 		return result, ErrInvalid
@@ -115,6 +126,20 @@ func (s *Store) ClaimDeviceFetch(ctx context.Context, tx *sql.Tx, scope DeviceFe
 		return DeviceFetchLease{}, err
 	}
 	result.NetworkModes = source.NetworkModes
+	if conditional && source.ActiveSnapshot != "" {
+		var protected []byte
+		if err = tx.QueryRowContext(ctx, `SELECT fetch_cache FROM catalog_device_fetch_sources WHERE id=$1`, id).Scan(&protected); err != nil {
+			return DeviceFetchLease{}, ErrUnavailable
+		}
+		cache, err := s.activeFetchCache(protected, source)
+		if err != nil {
+			return DeviceFetchLease{}, err
+		}
+		v := DeviceFetchValidators{ETag: cache.ETag, LastModified: cache.LastModified}
+		if (v.ETag != "" || v.LastModified != "") && validDeviceValidators(v) {
+			result.Validators = &v
+		}
+	}
 	if result.Until > second {
 		return result, nil
 	}
@@ -133,8 +158,11 @@ func (s *Store) ClaimDeviceFetch(ctx context.Context, tx *sql.Tx, scope DeviceFe
 // job input. Only the source worker can normalize them into a candidate.
 func (s *Store) AcceptDeviceFetch(ctx context.Context, tx *sql.Tx, scope DeviceFetchScope, jobID, lease string, raw []byte, now time.Time) error {
 	if !identifier.MatchString(scope.Owner) || !identifier.MatchString(scope.Device) ||
-		!identifier.MatchString(jobID) || !identifier.MatchString(lease) || len(raw) == 0 || len(raw) > MaxDeviceFetchBytes {
+		!identifier.MatchString(jobID) || !identifier.MatchString(lease) || len(raw) == 0 || len(raw) > MaxDeviceFetchWireBytes {
 		return ErrInvalid
+	}
+	if _, _, err := readDeviceProviderResult(raw); err != nil {
+		return err
 	}
 	var id string
 	if err := tx.QueryRowContext(ctx, `SELECT s.id FROM catalog_device_fetch_sources s JOIN catalog_device_fetch_jobs j ON j.source_id=s.id
