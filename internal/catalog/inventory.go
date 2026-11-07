@@ -143,8 +143,8 @@ func (s *Store) ListJobs(ctx context.Context, actor Actor, sourceID, after strin
 	}
 	rows, e := tx.QueryContext(ctx, `SELECT id,source_revision,kind,phase,attempts,deadline,reason,created_at,updated_at,
 	  CASE WHEN phase='queued' AND attempts<8 AND deadline>$4 AND not_before<deadline THEN not_before ELSE 0 END
-	  FROM catalog_jobs WHERE source_id=$1 AND ($2::text='' OR (created_at,id)<($3::bigint,$2::text))
-	  ORDER BY created_at DESC,id DESC LIMIT 21`, sourceID, after, before, now.Unix())
+	  FROM catalog_jobs WHERE source_id=$1 AND ($2::text='' OR (created_at,id COLLATE "C")<($3::bigint,$2::text COLLATE "C"))
+	  ORDER BY created_at DESC,id COLLATE "C" DESC LIMIT 21`, sourceID, after, before, now.Unix())
 	if e != nil {
 		return result, ErrUnavailable
 	}

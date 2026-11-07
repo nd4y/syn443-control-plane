@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -157,6 +158,7 @@ func TestSQLAdminJobHistoryIsBoundedAndScopedToSelectedSource(t *testing.T) {
 	store := f.API.Store
 	source := mustSource(t, store, f.Actor, sourceExample(f.Now), "history-source", f.Now)
 	raw := []byte("http://proxy.example.invalid:443")
+	var historyIDs []string
 	for index := 0; index < 21; index++ {
 		request := fmt.Sprintf("history-%02d", index)
 		job, e := store.Queue(ctx, f.Actor, source.ID, source.Revision, request, raw, f.Now)
@@ -166,6 +168,7 @@ func TestSQLAdminJobHistoryIsBoundedAndScopedToSelectedSource(t *testing.T) {
 		if e = store.Cancel(ctx, f.Actor, job.ID, request+"-cancel", f.Now); e != nil {
 			t.Fatal(e)
 		}
+		historyIDs = append(historyIDs, job.ID)
 	}
 	f.Now = f.Now.Add(time.Second)
 	f.API.Clock = func() time.Time { return f.Now }
@@ -201,6 +204,13 @@ func TestSQLAdminJobHistoryIsBoundedAndScopedToSelectedSource(t *testing.T) {
 	if len(second.Jobs) != 2 || second.Next != "" || second.Jobs[0].Job.ID >= first.Next ||
 		second.Jobs[0].Job.Phase != "cancelled" || second.Jobs[0].NextAttemptAt != 0 {
 		t.Fatal("stable cursor did not resume at the exact prior boundary")
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(historyIDs)))
+	got := append(append([]JobHistoryItem{}, first.Jobs[1:]...), second.Jobs...)
+	for index, item := range got {
+		if item.Job.ID != historyIDs[index] {
+			t.Fatal("same-second jobs were not returned in portable byte order")
+		}
 	}
 	f.call(t, "job.list", map[string]string{"sourceId": source.ID, "after": foreign.ID}, 403)
 	f.call(t, "job.list", map[string]string{"sourceId": source.ID, "after": "invalid/path"}, 400)
