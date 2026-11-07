@@ -170,10 +170,11 @@ func TestSQLClaimBoundsDeadlineCleanupAndSkipsLockedExpiredJobs(t *testing.T) {
 	api, worker, actor, now := databaseFixture(t)
 	ctx := context.Background()
 	raw := []byte("http://proxy.example.invalid:443")
-	queue := func(id string, at time.Time) Job {
+	queue := func(id, owner string, at time.Time) Job {
 		t.Helper()
 		source := sourceExample(at)
 		source.ID = id
+		source.Owner = owner
 		source = mustSource(t, api, actor, source, id+"-create", at)
 		job, e := api.Queue(ctx, actor, source.ID, source.Revision, id+"-queue", raw, at)
 		if e != nil {
@@ -181,12 +182,12 @@ func TestSQLClaimBoundsDeadlineCleanupAndSkipsLockedExpiredJobs(t *testing.T) {
 		}
 		return job
 	}
-	locked := queue("expired-locked", now)
+	locked := queue("expired-locked", "synthetic-locked-owner", now)
 	for i := 0; i < 32; i++ {
-		queue(fmt.Sprintf("expired-%02d", i), now)
+		queue(fmt.Sprintf("expired-%02d", i), fmt.Sprintf("synthetic-owner-%d", i/8), now)
 	}
 	later := now.Add(901 * time.Second)
-	eligible := queue("eligible", later)
+	eligible := queue("eligible", "synthetic-eligible-owner", later)
 	tx, e := fixtureOwner.Begin()
 	if e != nil {
 		t.Fatal(e)

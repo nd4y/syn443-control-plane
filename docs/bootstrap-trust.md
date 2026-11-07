@@ -32,3 +32,22 @@ revision/root replay, dual authority, malformed links and redaction tests plus
 fuzzing and an85% package gate. This is the Go trust component. Shared wire vectors,
 Android persistence/scanning, the one-time SQL invitation service, admin approval
 and final phone acceptance remain required before the M2 flow is complete.
+
+## HTTPS invitation landing page
+
+An installation can publish a public invitation host and bind it to its signed
+Android APK. Use `https://HOST/syn443/enroll#` followed by the full
+`syn443://enroll/v1` invitation. The QR still uses the direct invitation.
+The browser omits the fragment from the landing request.
+
+`tools/build_enrollment_site.py` writes two static files to a new directory.
+Pass the HTTPS download URL for the signed APK and one `--sha256` per allowed
+app-signing certificate. Serve `.well-known/assetlinks.json` as
+`/.well-known/assetlinks.json` over HTTPS with HTTP 200 and
+`Content-Type: application/json`. Serve `enroll.html` at `/syn443/enroll`.
+The landing page offers installation and asks the user to open the original
+link again. It runs no script and does not recover the invitation.
+
+Use the same public host in the Android Actions build. Certificate fingerprints
+must match the distributed APK. Real association and physical opening still
+require a deployed HTTPS host and a signed APK. [Android App Links verification](https://developer.android.com/training/app-links/verify-applinks)

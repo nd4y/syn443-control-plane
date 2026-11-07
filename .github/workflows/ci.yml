@@ -35,6 +35,7 @@ jobs:
           persist-credentials: false
       - run: python3 tools/check_documents.py
       - run: python3 tools/check_contracts.py
+      - run: python3 -m unittest discover -s tools -p 'test_enrollment_site.py'
   go:
     needs: public-data
     runs-on: ubuntu-24.04
