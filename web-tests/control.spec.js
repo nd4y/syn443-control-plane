@@ -29,6 +29,10 @@ test('scoped telemetry denial preserves an unrelated unsaved draft',async({page,
  await expect(page.locator('#telemetry-status')).toContainText('Нет доступа');
  await expect(page.locator('#plan')).toHaveValue(JSON.stringify(plan,null,2));
  await expect(page.locator('#logout')).toBeEnabled();
+ await request.post(origin+'/fixture/revoke',{data:{}});
+ await page.locator('#load-telemetry').click();
+ await expect(page.locator('#plan')).toHaveValue('');
+ await expect(page.locator('#logout')).toBeDisabled();
 });
 
 test('source job history shows bounded retries and clears scoped results on logout',async({page,request})=>{

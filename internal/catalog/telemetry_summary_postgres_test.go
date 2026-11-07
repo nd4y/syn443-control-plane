@@ -15,7 +15,7 @@ func TestSQLTelemetrySummaryRequiresExplicitACLAndAuditsReads(t *testing.T) {
 	f := adminHTTPFixture(t)
 	hour := f.Now.Truncate(time.Hour).Add(-2 * time.Hour)
 	payload := map[string]string{"hour": hour.Format(telemetry.HourLayout)}
-	f.call(t, telemetrySummaryAction, payload, 403)
+	f.call(t, telemetrySummaryAction, payload, 404)
 	var reads int
 	f.API.TelemetrySummary = func(_ context.Context, got, now time.Time) (telemetry.HourReport, error) {
 		reads++
@@ -24,7 +24,7 @@ func TestSQLTelemetrySummaryRequiresExplicitACLAndAuditsReads(t *testing.T) {
 		}
 		return telemetry.HourReport{SchemaVersion: 1, HourStartMS: got.UnixMilli()}, nil
 	}
-	f.call(t, telemetrySummaryAction, payload, 403) // The fixture has only a wildcard grant.
+	f.call(t, telemetrySummaryAction, payload, 404) // The fixture has only a wildcard grant.
 	if reads != 0 {
 		t.Fatal("the aggregate reader was reached without its exact grant")
 	}
@@ -53,6 +53,10 @@ func TestSQLTelemetrySummaryRequiresExplicitACLAndAuditsReads(t *testing.T) {
 	f.call(t, telemetrySummaryAction, payload, 503)
 	if _, err := fixtureOwner.Exec(`UPDATE catalog_acl SET expires=$1 WHERE actor=$2 AND action=$3`,
 		f.Now.Unix(), f.Actor.ID, telemetrySummaryAction); err != nil {
+		t.Fatal(err)
+	}
+	f.call(t, telemetrySummaryAction, payload, 404)
+	if _, err := fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, f.Actor.ID); err != nil {
 		t.Fatal(err)
 	}
 	f.call(t, telemetrySummaryAction, payload, 403)

@@ -31,7 +31,7 @@ const server=http.createServer(async(req,res)=>{
  switch(body.action){
  case 'telemetry.summary.get':{
   if(Object.keys(p).length!==1||!/^\d{4}-\d{2}-\d{2}T\d{2}:00Z$/.test(p.hour)){send(400,{});break;}
-  if(options.telemetryDenied){send(403,{});break;}
+  if(options.telemetryDenied){send(404,{});break;}
   const empty=p.hour.endsWith('T02:00Z');
   send(200,{schemaVersion:1,hourStartMs:Date.parse(p.hour)+(p.hour.endsWith('T03:00Z')?3600000:0),available:!empty,
    rows:empty?[]:[{kind:'probe',code:'ok',mode:'wifi',events:3,timed:2,duration:51,ignored:'synthetic-untrusted-data'}]});break;

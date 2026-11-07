@@ -92,13 +92,13 @@ function controls(){
  drawRouteChecks();
 }
 function erase(){clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details','inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions'])$(id).replaceChildren();$('inventory-state').textContent='';$('inventory-view').hidden=true;}
-async function request(path,body,scopedDenial=false){
+async function request(path,body){
  const raw=typeof body==='string'?body:JSON.stringify(body);
  if(path===sourceImportPath?raw.length>14*1024*1024+65536:new TextEncoder().encode(raw).length>278528)throw Error('size');
  const response=await fetch(path,{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:{'Content-Type':'application/json','X-Syn443-CSRF':'1'},body:raw});
- if(response.status===401||response.status===403){if(response.status===401||!scopedDenial){authenticated=false;erase();}throw Error(response.status===401?'login':'denied');}
+ if(response.status===401||response.status===403){authenticated=false;erase();throw Error(response.status===401?'login':'denied');}
  if(response.status===413)throw Error(path===sourceImportPath?'importSize':'size');
- if(!response.ok)throw Error(response.status===409?'conflict':response.status===400?'invalid':'network');
+ if(!response.ok)throw Error(response.status===409?'conflict':response.status===400?'invalid':response.status===404?'not_found':'network');
  return response.json();
 }
 const envelope=(action,payload)=>JSON.stringify({version:1,action,requestId:crypto.randomUUID(),payload});
@@ -116,7 +116,7 @@ $('telemetry-form').onsubmit=event=>{
  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:00Z$/.test(hour)){$('telemetry-status').textContent='Укажите начало часа без минут.';return;}
  void work(async()=>{
   try{
-   const report=await request('/control/action',envelope('telemetry.summary.get',{hour}),true);
+   const report=await action('telemetry.summary.get',{hour});
    if(report?.schemaVersion!==1||report.hourStartMs!==Date.parse(hour)||!Array.isArray(report.rows)||report.rows.length>256||report.available!==(report.rows.length>0))throw Error('network');
    if(!report.available){$('telemetry-status').textContent='За этот час нет готовой сводки.';return;}
    const rows=document.createDocumentFragment();
@@ -131,7 +131,7 @@ $('telemetry-form').onsubmit=event=>{
    $('telemetry-rows').append(rows);$('telemetry-view').hidden=false;
    $('telemetry-status').textContent='Сводка за '+hour;
   }catch(error){
-   $('telemetry-status').textContent=({denied:'Нет доступа к сводкам или просмотр выключен.',login:'Сессия завершена. Войдите снова.',invalid:'Час недоступен. Выберите завершившийся час за последние 180 суток.'})[error.message]||'Не удалось загрузить сводку.';
+   $('telemetry-status').textContent=({not_found:'Нет доступа к сводкам или просмотр выключен.',denied:'Доступ к панели отозван или недостаточно прав.',login:'Сессия завершена. Войдите снова.',invalid:'Час недоступен. Выберите завершившийся час за последние 180 суток.'})[error.message]||'Не удалось загрузить сводку.';
   }
  });
 };

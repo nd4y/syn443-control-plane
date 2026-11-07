@@ -34,6 +34,9 @@
           "403": {
             "description": "Identity, replay or live authority denied"
           },
+          "404": {
+            "description": "Optional telemetry summary is unavailable to this valid console session"
+          },
           "409": {
             "description": "Revision, request identity or impact conflict"
           },

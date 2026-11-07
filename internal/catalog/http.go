@@ -144,6 +144,8 @@ func apiFailure(w http.ResponseWriter, e error) {
 	switch {
 	case errors.Is(e, ErrDenied), errors.Is(e, identity.ErrInvalid):
 		status, code = 403, "catalog_denied"
+	case errors.Is(e, errTelemetrySummaryHidden):
+		status, code = 404, "telemetry_summary_hidden"
 	case errors.Is(e, ErrInvalid):
 		status, code = 400, "catalog_invalid"
 	case errors.Is(e, ErrConflict), errors.Is(e, ErrStale):

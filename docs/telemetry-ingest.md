@@ -53,6 +53,11 @@ a support chat session or a device session is insufficient. The read audit
 records the actor, hour and request ID before the result is returned. No raw
 events, identifiers, route tags or targets are returned.
 
+The optional view is hidden with HTTP 404 when disabled or when a valid
+console administrator has no telemetry grant. A rejected console identity or
+revoked console access still uses the existing session or authorization
+failure. The browser clears administrative state in that case.
+
 The UI distinguishes an unavailable hour from an available aggregate and shows
 the mean duration only for timed events. It keeps the result in page memory and
 clears it when the selected hour changes, on logout and on session expiry.

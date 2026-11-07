@@ -11,9 +11,14 @@ import (
 
 const telemetrySummaryAction = "telemetry.summary.get"
 
+var errTelemetrySummaryHidden = errors.New("telemetry_summary_hidden")
+
 func (a *API) readTelemetrySummary(ctx context.Context, actor Actor, hour, now time.Time, requestID string) (telemetry.HourReport, error) {
-	if a.TelemetrySummary == nil || actor.SessionUntil <= now.Unix() {
+	if actor.SessionUntil <= now.Unix() {
 		return telemetry.HourReport{}, ErrDenied
+	}
+	if a.TelemetrySummary == nil {
+		return telemetry.HourReport{}, errTelemetrySummaryHidden
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -28,7 +33,7 @@ func (a *API) readTelemetrySummary(ctx context.Context, actor Actor, hour, now t
  WHERE actor=$1 AND action=$2 AND target_kind='telemetry' AND target_id='global' AND expires>$3
  FOR SHARE`, actor.ID, telemetrySummaryAction, now.Unix()).Scan(&target)
 	if errors.Is(err, sql.ErrNoRows) {
-		return telemetry.HourReport{}, ErrDenied
+		return telemetry.HourReport{}, errTelemetrySummaryHidden
 	}
 	if err != nil {
 		return telemetry.HourReport{}, ErrUnavailable
