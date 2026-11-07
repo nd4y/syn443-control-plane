@@ -178,8 +178,9 @@ the preview requires every selected recipient to have negotiated
 `route.reserve-cooldown.v1`.
 Existing approval, source checks and independent publication still apply.
 The publisher signs the capability alongside the unchanged proxy graph,
-with a device-key-bound policy. Turning off the option leaves the legacy
-behavior in the next reviewed policy revision.
+with a device-key-bound policy. Shared account grant templates cannot
+opt into the rollout. Turning off the option leaves the legacy behavior
+in the next reviewed policy revision.
 
 Saving the option in a private draft does not activate it. To publish to a
 fraction of an approved group, set `probeCooldownRollout` to a stable
