@@ -83,7 +83,8 @@
           "policy.keybound.v2",
           "overlay.credentials.v1",
           "route.health.v1",
-          "route.failover.v1"
+          "route.failover.v1",
+          "route.reserve-cooldown.v1"
         ]
       },
       "allOf": [
@@ -195,6 +196,27 @@
     }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": {
+          "requiredCapabilities": {
+            "contains": {"const": "route.reserve-cooldown.v1"}
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "schemaVersion": {"const": 2},
+          "operation": {"const": "configure"},
+          "requiredCapabilities": {
+            "allOf": [
+              {"contains": {"const": "route.health.v1"}},
+              {"contains": {"const": "route.failover.v1"}}
+            ]
+          }
+        }
+      }
+    },
     {
       "if": {
         "properties": {

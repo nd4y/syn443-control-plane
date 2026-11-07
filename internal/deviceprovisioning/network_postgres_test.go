@@ -247,6 +247,43 @@ func TestSQLInternalFailoverCannotUseProfilesApprovedForAnotherMode(t *testing.T
 	if err != nil || prepared == nil || !slices.Contains(prepared.RequiredCapabilities, "route.failover.v1") {
 		t.Fatal("matching mode failed to prepare", err)
 	}
+	if slices.Contains(prepared.RequiredCapabilities, policy.ReserveProbeCooldown) {
+		t.Fatal("existing approved configuration unexpectedly opted in")
+	}
+	changes[2].Value = bytes.Replace(changes[2].Value, []byte(`"intent":"INTERNAL"`),
+		[]byte(`"intent":"INTERNAL","probeCooldown":true`), 1)
+	if _, err = n.authority.Prepare(ctx, target, n.f.now); !errors.Is(err, enrollment.ErrDenied) {
+		t.Fatal("an old client could enter the explicit rollout", err)
+	}
+	target.Capabilities = append(target.Capabilities, policy.ReserveProbeCooldown)
+	candidate, err := n.authority.Prepare(ctx, target, n.f.now)
+	if err != nil || candidate == nil || !slices.Contains(candidate.RequiredCapabilities, policy.ReserveProbeCooldown) ||
+		!bytes.Equal(candidate.EngineConfig, prepared.EngineConfig) {
+		t.Fatal("the signed opt-in must not change the proxy graph", err)
+	}
+	replaceRollout := func(points string) {
+		changes[2].Value = bytes.Replace(changes[2].Value, []byte(`"probeCooldown":true`),
+			[]byte(`"probeCooldown":true,"probeCooldownRollout":{"id":"fixture-rollout","basisPoints":`+points+`}`), 1)
+	}
+	explicit := bytes.Clone(changes[2].Value)
+	replaceRollout("0")
+	stopped, err := n.authority.Prepare(ctx, target, n.f.now)
+	if err != nil || stopped == nil || slices.Contains(stopped.RequiredCapabilities, policy.ReserveProbeCooldown) ||
+		!bytes.Equal(stopped.EngineConfig, candidate.EngineConfig) {
+		t.Fatal("zero-percent rollout must prepare the same graph without opt-in", err)
+	}
+	changes[2].Value = explicit
+	replaceRollout("10000")
+	old := target
+	old.Capabilities = append([]string(nil), target.Capabilities[:len(target.Capabilities)-1]...)
+	control, err := n.authority.Prepare(ctx, old, n.f.now)
+	if err != nil || control == nil || slices.Contains(control.RequiredCapabilities, policy.ReserveProbeCooldown) {
+		t.Fatal("incompatible device did not retain the baseline in percentage rollout", err)
+	}
+	all, err := n.authority.Prepare(ctx, target, n.f.now)
+	if err != nil || all == nil || !slices.Contains(all.RequiredCapabilities, policy.ReserveProbeCooldown) {
+		t.Fatal("eligible device did not enter full rollout", err)
+	}
 }
 
 func TestSQLNetworkAuthorityRejectsForeignUnapprovedAndUnavailableInputs(t *testing.T) {

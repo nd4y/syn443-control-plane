@@ -126,6 +126,30 @@ test('route checks editor changes only its private draft and restores saved chec
  state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });
+test('reserve probe cooldown requires explicit draft opt in and never publishes',async({page,request})=>{
+ await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ const box=page.locator('#route-reserve-cooldown'),input=page.locator('#plan');
+ await expect(box).toBeDisabled();
+ const fixture=structuredClone(plan);
+ fixture.graph.profiles.reserve={sourceId:'source-a',profileId:'profile-b'};
+ fixture.graph.balancers['internal']={type:'selector',members:['proxy','reserve'],default:'proxy',interruptExisting:false};
+ fixture.network.routeFailover={selector:'internal',networkMode:'wifi',intent:'INTERNAL'};
+ await input.fill(JSON.stringify(fixture,null,2));await expect(box).toBeEnabled();await expect(box).not.toBeChecked();
+ await box.check();
+ expect(JSON.parse(await input.inputValue()).network.routeFailover.probeCooldown).toBe(true);
+ const rolloutId=page.locator('#route-rollout-id'),share=page.locator('#route-rollout-share');
+ await rolloutId.fill('fixture-canary');await share.fill('12.34');await page.locator('#route-rollout-save').click();
+ expect(JSON.parse(await input.inputValue()).network.routeFailover.probeCooldownRollout).toEqual({id:'fixture-canary',basisPoints:1234});
+ await page.locator('#save-draft').click();await expect(page.locator('#draft-version')).toContainText('Версия черновика: 1');
+ await input.fill('{}');await page.locator('#open-draft').click();await expect(box).toBeChecked();
+ await expect(rolloutId).toHaveValue('fixture-canary');await expect(share).toHaveValue('12.34');
+ await share.fill('0');await page.locator('#route-rollout-save').click();
+ expect(JSON.parse(await input.inputValue()).network.routeFailover.probeCooldownRollout.basisPoints).toBe(0);
+ await box.uncheck();const removed=JSON.parse(await input.inputValue()).network.routeFailover;
+ expect(removed.probeCooldown).toBeUndefined();expect(removed.probeCooldownRollout).toBeUndefined();
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
+});
 test('console safely renders source metadata and saves/reopens its private draft',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();
  await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();

@@ -42,6 +42,12 @@ func (g Grant) Validate(now time.Time) error {
 	if g.Template.KeyThumbprint != "" || g.Template.Operation != "configure" || (g.Template.SchemaVersion != 1 && g.Template.SchemaVersion != 2) {
 		return identity.ErrInvalid
 	}
+	// A baseline account grant is shared by the device set. A rollout
+	// capability may be added only by the approved per-device configuration
+	// result; inheriting it from the grant would bypass a zero share.
+	if hasCapability(g.Template.RequiredCapabilities, policy.ReserveProbeCooldown) {
+		return identity.ErrInvalid
+	}
 	if g.Issuer == "" || g.Subject == "" || g.DeviceLimit < 1 || g.DeviceLimit > 16 || g.Until <= now.Unix() || g.Until > now.Unix()+604800 {
 		return identity.ErrInvalid
 	}

@@ -43,8 +43,9 @@ expected.update({
     'source recipient edits require confirmation and retry the same scoped mutation',
     'hourly telemetry distinguishes data empty and mismatched reports and clears on expiry',
     'scoped telemetry denial preserves an unrelated unsaved draft',
+    'reserve probe cooldown requires explicit draft opt in and never publishes',
 })
-assert len(cases) >= 36
+assert len(cases) >= 37
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

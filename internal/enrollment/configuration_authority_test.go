@@ -88,6 +88,26 @@ func TestPreparedConfigurationCannotChangeRecipientOrExtendGrantLease(t *testing
 	}
 }
 
+func TestSharedGrantCannotEnableADeviceRolloutWithoutItsApprovedConfiguration(t *testing.T) {
+	prepared, payload, now := configuredPreparation(t)
+	prepared.EngineConfig = json.RawMessage(`{"outbounds":[{"type":"direct","tag":"direct"}],"route":{"final":"direct"},"route_failover":{}}`)
+	prepared.RequiredCapabilities = []string{"route.health.v1", "route.failover.v1", policy.ReserveProbeCooldown}
+	available := append(append([]string(nil), payload.RequiredCapabilities...), prepared.RequiredCapabilities...)
+	if err := applyPreparedConfiguration(&payload, prepared, available, now); err != nil {
+		t.Fatal("approved device configuration could not add negotiated rollout capability", err)
+	}
+	payload.KeyThumbprint = ""
+	grant := Grant{Issuer: "https://identity.example.invalid/realms/test", Subject: "synthetic-user",
+		DeviceLimit: 2, Until: now.Add(time.Hour).Unix(), Template: payload}
+	if err := grant.Validate(now); !errors.Is(err, identity.ErrInvalid) {
+		t.Fatal("a shared template bypassed per-device rollout selection", err)
+	}
+	grant.Template.RequiredCapabilities = available[:len(available)-1]
+	if err := grant.Validate(now); err != nil {
+		t.Fatal("legacy grant with route checks was rejected", err)
+	}
+}
+
 func TestPreparedConfigurationRejectsUnfencedUnsupportedAndNativeAuthorityInputs(t *testing.T) {
 	for index, change := range []func(*PreparedConfiguration){
 		func(p *PreparedConfiguration) { p.Fence = nil }, func(p *PreparedConfiguration) { p.UntilMs = 0 }, func(p *PreparedConfiguration) { p.EngineConfig = nil }, func(p *PreparedConfiguration) { p.EngineConfig = json.RawMessage(strings.Repeat("x", 262145)) },

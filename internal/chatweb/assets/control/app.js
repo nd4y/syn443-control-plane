@@ -27,6 +27,9 @@ function routeDraft(){
 }
 function drawRouteChecks(){
  const editor=$('route-check-editor'),select=$('route-check-path'),list=$('route-check-list');
+ const cooldown=$('route-reserve-cooldown');cooldown.checked=false;cooldown.disabled=true;
+ const rollout=$('route-cooldown-rollout');rollout.hidden=true;
+ $('route-rollout-id').value='';$('route-rollout-share').value='';
  const prior=select.value;select.replaceChildren();list.replaceChildren();editor.disabled=true;
  if(!authenticated)return;
  let state;
@@ -35,6 +38,14 @@ function drawRouteChecks(){
  if(state.tags.has(prior))select.value=prior;
  $('route-check-required').checked=state.checks.some(row=>row.outbound===select.value&&row.required===true);
  editor.disabled=busy||!!pending||!state.tags.size;
+ const failover=reserveCooldownPlan(state);
+ if(failover){
+  cooldown.disabled=editor.disabled;cooldown.checked=failover.probeCooldown===true;rollout.hidden=!cooldown.checked;
+  const existing=failover.probeCooldownRollout;
+  if(existing&&typeof existing.id==='string'&&Number.isSafeInteger(existing.basisPoints)&&existing.basisPoints>=0&&existing.basisPoints<=10000){
+   $('route-rollout-id').value=existing.id;$('route-rollout-share').value=String(existing.basisPoints/100);
+  }
+ }
  for(const row of state.checks){
   for(const item of row.checks){
    if(!item||typeof item.method!=='string'||typeof item.target!=='string')continue;
@@ -53,6 +64,10 @@ function drawRouteChecks(){
    li.append(remove);list.append(li);
   }
  }
+}
+function reserveCooldownPlan(state){
+ const failover=state.network.routeFailover;
+ return failover?.networkMode==='wifi'&&failover.intent==='INTERNAL'&&state.tags.has(failover.selector)?failover:null;
 }
 function applyRouteChecks(state){
  if(state.checks.length)state.network.routeChecks=state.checks;
@@ -389,6 +404,26 @@ $('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
 $('plan').oninput=drawRouteChecks;
+$('route-reserve-cooldown').onchange=()=>{
+ const enabled=$('route-reserve-cooldown').checked;
+ work(async()=>{
+  const state=routeDraft(),failover=reserveCooldownPlan(state);
+  if(!failover)throw Error('invalid');
+  if(enabled)failover.probeCooldown=true;else{delete failover.probeCooldown;delete failover.probeCooldownRollout;}
+  applyRouteChecks(state);
+ });
+};
+$('route-rollout-save').onclick=()=>{
+ const id=$('route-rollout-id').value.trim(),share=$('route-rollout-share').value;
+ work(async()=>{
+  const state=routeDraft(),failover=reserveCooldownPlan(state);
+  if(failover?.probeCooldown!==true)throw Error('invalid');
+  if(!id&&!share){delete failover.probeCooldownRollout;applyRouteChecks(state);return;}
+  if(!/^[a-z0-9][a-z0-9._-]{0,47}$/.test(id)||!/^\d{1,3}(\.\d{1,2})?$/.test(share)||Number(share)>100)throw Error('invalid');
+  failover.probeCooldownRollout={id,basisPoints:Math.round(Number(share)*100)};
+  applyRouteChecks(state);
+ });
+};
 $('route-check-path').onchange=()=>{
  try{$('route-check-required').checked=routeDraft().checks.some(row=>row.outbound===$('route-check-path').value&&row.required===true);}catch{}
 };
