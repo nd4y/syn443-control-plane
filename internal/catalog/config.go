@@ -13,19 +13,19 @@ import (
 // RuntimeConfig is read only from an owner-protected process file. It is never
 // an administrative API DTO. Neither runtime role owns migrations or ACL grants.
 type RuntimeConfig struct {
-	Database        string   `json:"database"`
-	EncryptionKey   string   `json:"encryptionKey"`
-	Listen          string   `json:"listen,omitempty"`
-	Origin          string   `json:"origin,omitempty"`
-	Issuer          string   `json:"issuer,omitempty"`
-	Audience        string   `json:"audience,omitempty"`
-	ClientIDs       []string `json:"clientIds,omitempty"`
-	AssuranceACR    string   `json:"assuranceAcr,omitempty"`
-	Certificate     string   `json:"certificate,omitempty"`
-	CertificateKey  string   `json:"certificateKey,omitempty"`
-	FixtureHTTP     bool     `json:"fixtureHttp,omitempty"`
-	FixtureLoopback bool     `json:"fixtureLoopback,omitempty"`
-	DeviceFetchEnabled bool  `json:"deviceFetchEnabled,omitempty"`
+	Database           string   `json:"database"`
+	EncryptionKey      string   `json:"encryptionKey"`
+	Listen             string   `json:"listen,omitempty"`
+	Origin             string   `json:"origin,omitempty"`
+	Issuer             string   `json:"issuer,omitempty"`
+	Audience           string   `json:"audience,omitempty"`
+	ClientIDs          []string `json:"clientIds,omitempty"`
+	AssuranceACR       string   `json:"assuranceAcr,omitempty"`
+	Certificate        string   `json:"certificate,omitempty"`
+	CertificateKey     string   `json:"certificateKey,omitempty"`
+	FixtureHTTP        bool     `json:"fixtureHttp,omitempty"`
+	FixtureLoopback    bool     `json:"fixtureLoopback,omitempty"`
+	DeviceFetchEnabled bool     `json:"deviceFetchEnabled,omitempty"`
 }
 
 func (RuntimeConfig) String() string   { return "CatalogRuntimeConfig([redacted])" }

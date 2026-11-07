@@ -17,11 +17,11 @@ func (DeviceFetchScope) String() string   { return "DeviceFetchScope([redacted])
 func (DeviceFetchScope) GoString() string { return "DeviceFetchScope([redacted])" }
 
 type DeviceFetchLease struct {
-	JobID      string          `json:"jobId"`
-	Lease      string          `json:"lease"`
-	Until      int64           `json:"until"`
-	NetworkModes []string      `json:"networkModes"`
-	Credential FetchCredential `json:"credential"`
+	JobID        string          `json:"jobId"`
+	Lease        string          `json:"lease"`
+	Until        int64           `json:"until"`
+	NetworkModes []string        `json:"networkModes"`
+	Credential   FetchCredential `json:"credential"`
 }
 
 const MaxDeviceFetchBytes = 10 * 1024 * 1024

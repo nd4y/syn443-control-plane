@@ -22,9 +22,9 @@ var Schema string
 var Roles string
 
 type Store struct {
-	DB     *sql.DB
-	box    cipher.AEAD
-	macKey []byte
+	DB                 *sql.DB
+	box                cipher.AEAD
+	macKey             []byte
 	DeviceFetchEnabled bool
 }
 

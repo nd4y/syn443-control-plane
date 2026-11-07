@@ -86,6 +86,10 @@ func TestDeviceSourceFetchUsesBoundSessionAndRestrictedCatalogViews(t *testing.T
 	expect(t, post(other, foreignProof, body), http.StatusForbidden)
 	expect(t, post(session, proof, body), http.StatusNoContent)
 	expect(t, post(session, proof, body), http.StatusUnauthorized)
+	retryProof := signed(t, ownerKey, "POST", f.origin+deviceFetchResultPath, session.AccessToken, session.Nonce, body, f.now)
+	expect(t, post(session, retryProof, body), http.StatusNoContent)
+	changedProof := signed(t, ownerKey, "POST", f.origin+deviceFetchResultPath, session.AccessToken, session.Nonce, tampered, f.now)
+	expect(t, post(session, changedProof, tampered), http.StatusConflict)
 	processed, err := (&catalog.Worker{Store: catalogStore, Clock: func() time.Time { return f.now }}).ProcessOne(ctx)
 	if err != nil || processed.ID != job.ID || processed.Phase != "succeeded" {
 		t.Fatal("device upload did not reach source parser", err)
