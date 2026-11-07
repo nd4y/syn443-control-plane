@@ -21,6 +21,9 @@ func run() error {
 	if os.Args[1] == "bootstrap-profile" {
 		return runBootstrapProfile()
 	}
+	if os.Args[1] == "telemetry-prune" {
+		return runTelemetryPrune()
+	}
 	c, e := enrollment.ReadConfig(os.Getenv("SYN443_ENROLLMENT_CONFIG"))
 	if e != nil {
 		return e

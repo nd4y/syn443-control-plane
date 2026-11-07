@@ -19,6 +19,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
+	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 )
 
 func run() error {
@@ -91,6 +92,19 @@ func run() error {
 		}
 	}
 	api.ControlPanelDiscovery = c.ControlPanelDiscovery
+	switch os.Getenv("SYN443_TELEMETRY_INGEST") {
+	case "", "0":
+	case "1":
+		check, cancel := context.WithTimeout(ctx, 5*time.Second)
+		err := telemetry.CheckIngestionRole(check, store.DB)
+		cancel()
+		if err != nil {
+			return err
+		}
+		api.TelemetryEnabled = true
+	default:
+		return identity.ErrInvalid
+	}
 	if path := os.Getenv("SYN443_DEVICE_FETCH_KEY_FILE"); path != "" {
 		raw, err := enrollment.PrivateFile(path, 128)
 		if err != nil {

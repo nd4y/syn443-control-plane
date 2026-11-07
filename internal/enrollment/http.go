@@ -16,6 +16,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/policy"
+	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 )
 
 type Verifier interface {
@@ -28,6 +29,7 @@ type InvitationActions interface {
 type API struct {
 	Invitations           InvitationActions
 	ControlPanelDiscovery bool
+	TelemetryEnabled      bool
 	DeviceFetch           *catalog.Store
 	// Empty disables addressed credential delivery. Set only from owner configuration.
 	OverlayServiceID string
@@ -123,12 +125,13 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	isCapabilities := path == "/v1/device/capabilities" || path == "/v1/devices/capabilities"
 	isActivation := path == activationStatusPath && r.Method == "POST"
 	isControlPanel := a.ControlPanelDiscovery && path == controlPanelPath && r.Method == "GET"
+	isTelemetry := a.TelemetryEnabled && path == telemetryPath && r.Method == "POST"
 	fetchV2 := path == deviceFetchV2ClaimPath || path == deviceFetchV2ResultPath
 	isFetchClaim := a.DeviceFetch != nil && (path == deviceFetchClaimPath || path == deviceFetchV2ClaimPath) && r.Method == "GET"
 	isFetchResult := a.DeviceFetch != nil && (path == deviceFetchResultPath || path == deviceFetchV2ResultPath) && r.Method == "POST"
 	isInvite := path == "/v1/invitations/time" || path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
 	allowed := isCapabilities && (r.Method == "GET" || r.Method == "POST") || isOverlay && r.Method == "POST" || isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
-	if !allowed && !isActivation && !isControlPanel && !isFetchClaim && !isFetchResult {
+	if !allowed && !isActivation && !isControlPanel && !isFetchClaim && !isFetchResult && !isTelemetry {
 		http.NotFound(w, r)
 		return
 	}
@@ -223,6 +226,9 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			maxBody = catalog.MaxDeviceFetchWireBytes + deviceFetchFrameSize
 		}
 	}
+	if isTelemetry {
+		maxBody = telemetry.MaxBatchBytes
+	}
 	raw, e := io.ReadAll(io.LimitReader(r.Body, maxBody+1))
 	if isFetchResult {
 		defer func() { clear(raw) }()
@@ -293,6 +299,24 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if (!binding.Active && path != "/v1/device/revoke") || binding.Jkt != proof.Thumbprint {
 		failure(w, ErrDenied)
+		return
+	}
+	if isTelemetry {
+		if r.Header.Get("Origin") != "" {
+			failure(w, identity.ErrInvalid)
+			return
+		}
+		err := a.receiveTelemetry(ctx, binding, token, proof, raw, now)
+		if errors.Is(err, telemetry.ErrBudget) {
+			w.Header().Set("Retry-After", "300")
+			http.Error(w, "telemetry_budget_exhausted", http.StatusTooManyRequests)
+			return
+		}
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if isFetchClaim || isFetchResult {
@@ -408,6 +432,9 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if a.DeviceFetch != nil {
 		w.Header().Set("X-SYN443-Device-Source-Fetch", "1")
 		w.Header().Set("X-SYN443-Device-Source-Validators", "1")
+	}
+	if a.TelemetryEnabled {
+		w.Header().Set("X-SYN443-Telemetry", "1")
 	}
 	w.Header().Set("Content-Type", "application/jose")
 	_, _ = w.Write([]byte(bundle))

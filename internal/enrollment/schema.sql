@@ -108,3 +108,31 @@ BEGIN
 END; $$;
 DROP TRIGGER IF EXISTS identity_policy_activation_guard ON identity_policy_activation;
 CREATE TRIGGER identity_policy_activation_guard BEFORE UPDATE ON identity_policy_activation FOR EACH ROW EXECUTE FUNCTION identity_activation_invariants();
+
+CREATE TABLE IF NOT EXISTS identity_telemetry_windows (
+ device text NOT NULL REFERENCES identity_devices(id) ON DELETE CASCADE,
+ period bigint NOT NULL CHECK(period>0),
+ used integer NOT NULL CHECK(used BETWEEN 1 AND 256),
+ PRIMARY KEY(device,period)
+);
+CREATE INDEX IF NOT EXISTS identity_telemetry_window_age ON identity_telemetry_windows(period);
+CREATE TABLE IF NOT EXISTS identity_telemetry_events (
+ device text NOT NULL REFERENCES identity_devices(id) ON DELETE CASCADE,
+ event_id text NOT NULL CHECK(event_id ~ '^[A-Za-z0-9_-]{43}$'),
+ session_id text NOT NULL CHECK(session_id ~ '^[A-Za-z0-9_-]{43}$'),
+ build integer NOT NULL CHECK(build BETWEEN 1 AND 2100000000),
+ policy_revision bigint NOT NULL CHECK(policy_revision BETWEEN 0 AND 9007199254740991),
+ algorithm_revision integer NOT NULL CHECK(algorithm_revision BETWEEN 1 AND 1000000),
+ received_at_ms bigint NOT NULL CHECK(received_at_ms>0),
+ observed_at_ms bigint NOT NULL CHECK(observed_at_ms>0),
+ elapsed_ms bigint NOT NULL CHECK(elapsed_ms BETWEEN 0 AND 9007199254740991),
+ network_epoch bigint NOT NULL CHECK(network_epoch BETWEEN 0 AND 9007199254740991),
+ kind text NOT NULL CHECK(kind IN ('network','vpn','probe','route','policy','engine','overlay')),
+ code text NOT NULL CHECK(code ~ '^[a-z_]{2,32}$'),
+ mode text NOT NULL CHECK(mode IN ('unknown','home_wifi','wifi','cellular_restricted','cellular')),
+ path_id text CHECK(path_id ~ '^[A-Za-z0-9_-]{43}$'),
+ duration_ms integer CHECK(duration_ms BETWEEN 0 AND 600000),
+ PRIMARY KEY(device,event_id)
+);
+CREATE INDEX IF NOT EXISTS identity_telemetry_event_age ON identity_telemetry_events(received_at_ms);
+REVOKE ALL ON identity_telemetry_windows,identity_telemetry_events FROM PUBLIC;

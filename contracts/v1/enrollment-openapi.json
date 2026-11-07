@@ -348,6 +348,25 @@
         }
       }
     },
+    "/v1/device/telemetry": {
+      "post": {
+        "operationId": "uploadDeviceTelemetry",
+        "security": [{"deviceDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 16384}}],
+        "requestBody": {
+          "required": true, "description": "Technical events only. Complete proof-bound JSON is limited to 16 KiB. Device and owner are derived from the current session.",
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TelemetryBatch"}}}
+        },
+        "responses": {
+          "204": {"description": "Scoped events accepted; existing event IDs remain immutable."},
+          "401": {"description": "Invalid proof or closed telemetry envelope."},
+          "403": {"description": "Device session denied."},
+          "404": {"description": "Ingestion disabled."},
+          "429": {"description": "Scoped upload budget exhausted."},
+          "503": {"description": "Ingestion unavailable."}
+        }
+      }
+    },
     "/v1/device/policy": {
       "get": {
         "operationId": "policy",
@@ -1022,6 +1041,33 @@
       }
     },
     "schemas": {
+      "TelemetryBatch": {
+        "type": "object", "additionalProperties": false,
+        "required": ["schemaVersion", "session", "build", "policyRevision", "algorithmRevision", "events"],
+        "properties": {
+          "schemaVersion": {"const": 1},
+          "session": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+          "build": {"type": "integer", "minimum": 1, "maximum": 2100000000},
+          "policyRevision": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "algorithmRevision": {"type": "integer", "minimum": 1, "maximum": 1000000},
+          "events": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/components/schemas/TelemetryEvent"}}
+        }
+      },
+      "TelemetryEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "atMs", "elapsedMs", "networkEpoch", "kind", "code", "mode"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+          "atMs": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+          "elapsedMs": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "networkEpoch": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "kind": {"enum": ["network", "vpn", "probe", "route", "policy", "engine", "overlay"]},
+          "code": {"type": "string", "pattern": "^[a-z_]{2,32}$", "description": "Closed allowlist for the chosen kind; free-form details are rejected."},
+          "mode": {"enum": ["unknown", "home_wifi", "wifi", "cellular_restricted", "cellular"]},
+          "path": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+          "durationMs": {"type": "integer", "minimum": 0, "maximum": 600000}
+        }
+      },
       "DeviceSourceLease": {
         "type": "object",
         "additionalProperties": false,
