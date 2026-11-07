@@ -62,3 +62,17 @@ uses no database or provider connection. It writes one base64url installation
 profile containing the public anchor and signed descriptor. Keep the offline
 private key on its own trusted host. Only explicitly public endpoints and
 public keys can be used in a distributed profile.
+
+For a planned rotation, set `anchor` and `service.rootEpoch` to the next root
+and increment `service.revision`. Add `upgrade.previousAnchor` with the exact
+prior APK anchor and `upgrade.transition` with the adjacent `syn443-root-transition`
+payload. Use `SYN443_BOOTSTRAP_PREVIOUS_ROOT_KEY` for the previous offline key
+and `SYN443_BOOTSTRAP_ROOT_KEY` for the next offline key. The same command signs
+both proofs, checks the target anchor and emits a version 2 profile. Both keys
+stay on the offline signer. The APK build receives only the public profile.
+
+Test an upgrade and a clean install before rollout. Distribute the signed APK
+within the transition's validity window. Keep a fresh version 1 descriptor
+signed by the new root for later APK releases. An installation that missed
+the transition window needs a separate trusted recovery release. Keep the
+old deployment active until the upgrade has been accepted on the pilot devices.
