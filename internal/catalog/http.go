@@ -302,6 +302,15 @@ func (a *API) dispatch(ctx context.Context, actor Actor, action Action, now time
 			return nil, ErrInvalid
 		}
 		return a.Store.GetJob(ctx, actor, r.ID, now)
+	case "job.list":
+		var r struct {
+			SourceID string `json:"sourceId"`
+			After    string `json:"after"`
+		}
+		if decode(&r) != nil {
+			return nil, ErrInvalid
+		}
+		return a.Store.ListJobs(ctx, actor, r.SourceID, r.After, now)
 	case "source.get", "source.shares.get":
 		var r struct {
 			ID string `json:"id"`

@@ -90,6 +90,15 @@ const server=http.createServer(async(req,res)=>{
  }
  case 'source.sync':{const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}const source=sources.get(p.id);if(!source||source.revision!==p.revision){send(409,{});break;}const value={id:'job-a',phase:'queued',sourceId:p.id};jobs.set(value.id,value);operations.set(body.requestId,{raw,value});send(200,value);break;}
  case 'job.get':{const job=jobs.get(p.id);send(job?200:403,job?{...job,phase:'succeeded'}:{});break;}
+ case 'job.list':{
+  if(!sources.has(p.sourceId)||!['','job-19'].includes(p.after)){send(403,{});break;}
+  const rows=Array.from({length:p.after?1:20},(_,i)=>({job:{
+   id:p.after?'job-20':`job-${i}`,sourceId:p.sourceId,sourceRevision:1,kind:'fetch',phase:p.after?'dead_letter':i===0?'queued':'succeeded',
+   attempts:1,reason:p.after?'deadline_or_retry_limit':i===0?'subscription_fetch_unavailable':'',
+   ignored:'synthetic-untrusted-data'
+  },createdAt:1800000000,updatedAt:1800000020,nextAttemptAt:!p.after&&i===0?1800000060:0}));
+  send(200,{sourceId:p.sourceId,jobs:rows,next:p.after?'':'job-19',observedAt:1800000020});break;
+ }
  case 'source.snapshot':send(200,{snapshot:{id:'snapshot-a',observedAt:1800000000,validUntil:1800003600},profiles:[{id:'profile-a',name:'Synthetic proxy',kind:'http'}]});break;
  case 'configuration.draft.get':{const d=drafts.get(p.id);send(d?200:403,d||{});break;}
  case 'configuration.draft.put':{

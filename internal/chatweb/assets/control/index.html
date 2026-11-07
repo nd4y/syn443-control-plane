@@ -23,6 +23,9 @@
 <p>Для HTTPS: объект с полем url и при необходимости headers, rootCa, allowedNetworks. Прежние значения не отображаются. Изменение секрета требует свежей MFA. Ручной импорт и получение с устройства на этом экране пока недоступны.</p>
 <button id="save-source" disabled>Сохранить источник</button></form>
 <button id="sync-source" disabled>Обновить профили</button><button id="source-job" disabled>Проверить задание</button><pre id="job-status"></pre>
+<h3>История заданий источника</h3>
+<button id="source-history" disabled>Загрузить историю</button><button id="source-history-more" disabled>Более ранние задания</button>
+<p id="source-history-status" role="status"></p><ul id="source-history-list"></ul>
 </section><section aria-labelledby="draft-title"><h2 id="draft-title">Личный черновик конфигурации</h2>
 <p>Сохранение черновика не меняет VPN на устройствах. Для публикации нужны отдельные проверка и подтверждение.</p>
 <label for="draft-id">ID черновика</label><input id="draft-id" autocomplete="off" maxlength="128"><button id="open-draft" disabled>Открыть черновик</button><button id="new-draft" disabled>Новый черновик</button>

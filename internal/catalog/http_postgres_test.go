@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -125,7 +126,7 @@ func TestSQLAdminHTTPProofScopeMFAReplayAndClosedDTO(t *testing.T) {
 	f.Verifier.Principal.Methods = []string{"pwd"}
 	f.call(t, "source.shares.put", map[string]any{"id": source.ID, "revision": 1, "shares": Shares{Recipients: []Recipient{}}}, 403)
 	f.Verifier.Principal.Methods = []string{"otp"}
-	for _, action := range []string{"source.list", "source.snapshot", "job.get", "source.get", "source.shares.get", "source.put", "source.sync", "source.import", "source.shares.put", "source.review", "resource.get", "resource.put", "job.cancel", "unsupported"} {
+	for _, action := range []string{"source.list", "source.snapshot", "job.get", "job.list", "source.get", "source.shares.get", "source.put", "source.sync", "source.import", "source.shares.put", "source.review", "resource.get", "resource.put", "job.cancel", "unsupported"} {
 		f.call(t, action, map[string]any{"unknown": true}, 400)
 	}
 	for _, bad := range []string{`{"version":1,"version":1,"action":"source.get","payload":{}}`, `{"version":2,"action":"source.get","requestId":"x","payload":{}}`, `{"Version":1,"action":"source.get","requestId":"x","payload":{}}`} {
@@ -148,6 +149,65 @@ func TestSQLAdminHTTPProofScopeMFAReplayAndClosedDTO(t *testing.T) {
 	}
 	f.Verifier.Principal.Thumbprint, _ = identity.PublicJWK(&f.Key.PublicKey).Thumbprint()
 	f.call(t, "source.get", map[string]any{"id": source.ID}, 403)
+}
+
+func TestSQLAdminJobHistoryIsBoundedAndScopedToSelectedSource(t *testing.T) {
+	f := adminHTTPFixture(t)
+	ctx := context.Background()
+	store := f.API.Store
+	source := mustSource(t, store, f.Actor, sourceExample(f.Now), "history-source", f.Now)
+	raw := []byte("http://proxy.example.invalid:443")
+	for index := 0; index < 21; index++ {
+		request := fmt.Sprintf("history-%02d", index)
+		job, e := store.Queue(ctx, f.Actor, source.ID, source.Revision, request, raw, f.Now)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if e = store.Cancel(ctx, f.Actor, job.ID, request+"-cancel", f.Now); e != nil {
+			t.Fatal(e)
+		}
+	}
+	f.Now = f.Now.Add(time.Second)
+	f.API.Clock = func() time.Time { return f.Now }
+	current, e := store.Queue(ctx, f.Actor, source.ID, source.Revision, "history-current", raw, f.Now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	other := sourceExample(f.Now)
+	other.ID = "foreign-source"
+	other = mustSource(t, store, f.Actor, other, "other-history-source", f.Now)
+	foreign, e := store.Queue(ctx, f.Actor, other.ID, other.Revision, "other-history-current", raw, f.Now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	read := func(after string) JobHistoryPage {
+		t.Helper()
+		wire := f.call(t, "job.list", map[string]string{"sourceId": source.ID, "after": after}, 200)
+		if bytes.Contains(wire, raw) || bytes.Contains(wire, []byte(foreign.ID)) || bytes.Contains(wire, []byte("history-current")) {
+			t.Fatal("another source, request identifier or raw job input was exposed")
+		}
+		var page JobHistoryPage
+		if e := json.Unmarshal(wire, &page); e != nil || page.SourceID != source.ID || page.ObservedAt != f.Now.Unix() {
+			t.Fatal("bad scoped history page", e)
+		}
+		return page
+	}
+	first := read("")
+	if len(first.Jobs) != 20 || first.Next != first.Jobs[19].Job.ID || first.Jobs[0].Job.ID != current.ID ||
+		first.Jobs[0].Job.Phase != "queued" || first.Jobs[0].NextAttemptAt != f.Now.Unix() {
+		t.Fatal("first page, backlog state or ordering is wrong")
+	}
+	second := read(first.Next)
+	if len(second.Jobs) != 2 || second.Next != "" || second.Jobs[0].Job.ID >= first.Next ||
+		second.Jobs[0].Job.Phase != "cancelled" || second.Jobs[0].NextAttemptAt != 0 {
+		t.Fatal("stable cursor did not resume at the exact prior boundary")
+	}
+	f.call(t, "job.list", map[string]string{"sourceId": source.ID, "after": foreign.ID}, 403)
+	f.call(t, "job.list", map[string]string{"sourceId": source.ID, "after": "invalid/path"}, 400)
+	if _, e = fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, f.Actor.ID); e != nil {
+		t.Fatal(e)
+	}
+	f.call(t, "job.list", map[string]string{"sourceId": source.ID}, 403)
 }
 
 func TestControlHTTPNetworkDraftIsPrivateScopedAndNeverAnActivePublication(t *testing.T) {

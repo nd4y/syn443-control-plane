@@ -836,6 +836,48 @@
                 "const": 1
               },
               "action": {
+                "const": "job.list"
+              },
+              "requestId": {
+                "type": "string",
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]{16,128}$"
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "sourceId": {
+                    "type": "string",
+                    "maxLength": 48,
+                    "pattern": "^[a-zA-Z0-9_-]{1,48}$"
+                  },
+                  "after": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "pattern": "^[a-zA-Z0-9_-]{0,128}$"
+                  }
+                },
+                "required": [
+                  "sourceId"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
                 "const": "job.cancel"
               },
               "requestId": {

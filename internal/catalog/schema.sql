@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS catalog_jobs(
 CREATE UNIQUE INDEX IF NOT EXISTS catalog_one_source_job ON catalog_jobs(source_id) WHERE phase IN('queued','running');
 CREATE INDEX IF NOT EXISTS catalog_due_jobs ON catalog_jobs(not_before,created_at) WHERE phase IN('queued','running');
 CREATE INDEX IF NOT EXISTS catalog_active_job_deadlines ON catalog_jobs(deadline,id) WHERE phase IN('queued','running');
+CREATE INDEX IF NOT EXISTS catalog_source_job_history ON catalog_jobs(source_id,created_at DESC,id DESC);
 CREATE INDEX IF NOT EXISTS catalog_terminal_inputs ON catalog_jobs(updated_at,id) WHERE payload IS NOT NULL AND phase IN('succeeded','failed','cancelled','dead_letter');
 -- Retain replay/audit identity, never an unnecessary raw subscription after work
 -- ends. Enforce at the SQL boundary for every cancellation and failure path.

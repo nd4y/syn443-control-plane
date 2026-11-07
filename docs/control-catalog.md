@@ -116,3 +116,11 @@ in the same transaction. The periodic schedule adds a stable per-source offset
 of up to 10 percent to the configured interval and never schedules past source
 expiry. Transient retries add up to 20 percent to the existing exponential delay.
 Offsets do not move a provider request earlier.
+
+The control console reads the selected source's job history with `job.list`.
+Each page contains up to 20 jobs in reverse creation order with a stable cursor.
+The request requires the existing control session, body-bound proof and live
+source-owner read permission. Cursor lookups are scoped to the same source.
+Queue phase, attempt count, reason and the earliest retry are visible. The
+response omits request bodies, provider credentials and worker lease secrets.
+The console clears the visible history when the source or session changes.

@@ -2053,6 +2053,8 @@
         "internal/catalog/jobs.go",
         "internal/catalog/job_retention_postgres_test.go",
         "internal/catalog/http_postgres_test.go",
+        "internal/catalog/inventory.go",
+        "web-tests/control.spec.js",
         "cmd/source-worker/main.go",
         "cmd/control-api/main.go"
       ]

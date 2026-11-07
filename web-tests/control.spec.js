@@ -2,6 +2,27 @@ import {test,expect} from '@playwright/test';
 const origin='http://127.0.0.1:17851';
 const plan={schemaVersion:1,graph:{profiles:{proxy:{sourceId:'source-a',profileId:'profile-a'}},chains:{},balancers:{},final:'proxy'},network:{schemaVersion:1,requiredNetworks:['tcp'],dnsFinal:'system',dnsStrategy:'prefer_ipv4'},activation:{timeoutSeconds:30,checks:[{id:'internet',type:'https_204',target:'https://health.example.invalid/generate_204',required:true}]}};
 async function reset(request,body={}){await request.post(origin+'/fixture/reset',{data:body});}
+
+test('source job history shows bounded retries and clears scoped results on logout',async({page,request})=>{
+ await reset(request);await page.goto(origin);await expect(page.locator('#load-sources')).toBeEnabled();
+ await expect(page.locator('#source-history')).toBeDisabled();
+ await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();
+ await page.getByRole('button',{name:'Настроить источник'}).first().click();
+ await page.locator('#source-history').click();
+ const history=page.locator('#source-history-list');
+ await expect(history.locator('li')).toHaveCount(20);
+ await expect(history).toContainText('В очереди');
+ await expect(history).toContainText('не ранее');
+ await expect(history).toContainText('subscription_fetch_unavailable');
+ await expect(history).not.toContainText('synthetic-untrusted-data');
+ await page.locator('#source-history-more').click();
+ await expect(history.locator('li')).toHaveCount(21);
+ await expect(history).toContainText('Истёк срок или лимит повторов');
+ await expect(page.locator('#source-history-more')).toBeDisabled();
+ await page.locator('#logout').click();
+ await expect(history).toHaveText('');
+ await expect(page.locator('#source-history')).toBeDisabled();
+});
 async function draft(page){await page.locator('#draft-id').fill('draft-a');await page.locator('#target-id').fill('device-a');await page.locator('#plan').fill(JSON.stringify(plan,null,2));}
 test('console safely renders source metadata and saves/reopens its private draft',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();
