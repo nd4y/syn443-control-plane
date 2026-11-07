@@ -37,7 +37,7 @@ func TestTelemetrySummaryUsesScopedRolesAndKeepsLastCompleteHour(t *testing.T) {
 	duration := 93
 	batch := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 52, AlgorithmRevision: 1,
 		Events: []telemetry.Event{
-			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "probe", Code: "ok", Mode: "wifi", DurationMS: &duration},
+			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "probe", Code: "ok", Mode: "wifi", DurationMS: duration},
 			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "probe", Code: "ok", Mode: "wifi"},
 			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "vpn", Code: "online", Mode: "wifi"},
 		}}
