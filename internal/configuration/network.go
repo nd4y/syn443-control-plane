@@ -65,9 +65,10 @@ type OutboundCheckPlan struct {
 // Initial failover is explicit and scoped to an internal destination rule.
 // Public exit classes require independent exit evidence before adoption.
 type RouteFailoverPlan struct {
-	Selector    string `json:"selector"`
-	NetworkMode string `json:"networkMode"`
-	Intent      string `json:"intent"`
+	Selector      string `json:"selector"`
+	NetworkMode   string `json:"networkMode"`
+	Intent        string `json:"intent"`
+	ProbeCooldown bool   `json:"probeCooldown,omitempty"`
 }
 type NetworkSettings struct {
 	SchemaVersion    int                  `json:"schemaVersion"`

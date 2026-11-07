@@ -169,3 +169,19 @@ source-owner read permission. Cursor lookups are scoped to the same source.
 Queue phase, attempt count, reason and the earliest retry are visible. The
 response omits request bodies, provider credentials and worker lease secrets.
 The console clears the visible history when the source or session changes.
+
+## Reserve probe cooldown
+
+For a signed internal Wi-Fi failover plan, the operator can enable
+`network.routeFailover.probeCooldown` in a draft. The preview checks that
+every selected recipient has negotiated `route.reserve-cooldown.v1`.
+Existing approval, source checks and independent publication still apply.
+The publisher signs the capability alongside the unchanged proxy graph,
+with a device-key-bound policy. Turning off the option leaves the legacy
+behavior in the next reviewed policy revision.
+
+Saving the option in a private draft does not activate it. A mixed set
+with unsupported recipients fails preview rather than losing a working
+configuration. Use an explicit test device or compatible approved group.
+Percentage assignment, signed decision bundles and measurement gates are
+separate rollout requirements.

@@ -77,6 +77,52 @@ func TestSignScopeAndRawES256(t *testing.T) {
 	}
 }
 
+func TestReserveProbeCooldownRequiresSignedKeyBoundFailover(t *testing.T) {
+	_, baseline, now := sample(t)
+	p := baseline
+	engine := []byte(`{"outbounds":[{"type":"direct","tag":"direct"}],"route":{"final":"direct"},"route_failover":{}}`)
+	sum := sha256.Sum256(engine)
+	p.SchemaVersion = 2
+	p.KeyThumbprint = base64.RawURLEncoding.EncodeToString(make([]byte, 32))
+	p.EngineConfigB64, p.ContentHash = base64.RawURLEncoding.EncodeToString(engine), hex.EncodeToString(sum[:])
+	p.RequiredCapabilities = append(p.RequiredCapabilities, "policy.keybound.v2", "route.health.v1", "route.failover.v1", ReserveProbeCooldown)
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sign := func(candidate Payload) (string, error) {
+		raw, err := json.Marshal(candidate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return Sign(raw, "test-root", key, candidate.TargetDevice, candidate.Revision, now)
+	}
+	wire, err := sign(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = Verify(wire, map[string]*ecdsa.PublicKey{"test-root": &key.PublicKey}, p.TargetDevice, now); err != nil {
+		t.Fatal(err)
+	}
+	for _, change := range []func(*Payload){
+		func(x *Payload) { x.Operation = "release" },
+		func(x *Payload) {
+			x.RequiredCapabilities = append(x.RequiredCapabilities[:3:3], "route.failover.v1", ReserveProbeCooldown)
+		},
+		func(x *Payload) { x.EngineConfigB64, x.ContentHash = baseline.EngineConfigB64, baseline.ContentHash },
+		func(x *Payload) {
+			x.SchemaVersion, x.KeyThumbprint = 1, ""
+			x.RequiredCapabilities = append(x.RequiredCapabilities[:2:2], "route.health.v1", "route.failover.v1", ReserveProbeCooldown)
+		},
+	} {
+		candidate := p
+		change(&candidate)
+		if _, err := sign(candidate); err == nil {
+			t.Fatal("an invalid reserve probe rollout envelope was signed")
+		}
+	}
+}
+
 func TestVersionTwoPublicationBindsClientOwnedKey(t *testing.T) {
 	_, p, now := sample(t)
 	root, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

@@ -1205,8 +1205,12 @@
     {
       "id": "RLP-05",
       "text": "Назначение версии выполняется по стабильным группам: admin/test devices, opt-in pilot, canary, broad rollout и control. Cohort имеет список/правило назначения, долю и eligibility по версиям/возможностям устройства; random assignment стабилен и не меняется при каждом запуске.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md#reserve-probe-cooldown"
+      ],
+      "implementationScope": "Reviewed device or group configuration can explicitly opt in to a fixed built-in route feature, with capability checks for every recipient before publication.",
+      "remainingScope": "Named rollout stages and stable percentage assignment, independent decision bundles, metric gates and operational rollback UI."
     },
     {
       "id": "RLP-06",
@@ -1229,8 +1233,12 @@
     {
       "id": "RLP-09",
       "text": "Config и decision policy активируются совместимой парой. Локальный эксперимент администратора и будущая серверная публикация имеют видимые версии; повторный запуск сохраняет выбранную стабильную версию cohort. Старый клиент получает совместимый bundle либо понятный отказ с последней разрешённой версией.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md#reserve-probe-cooldown"
+      ],
+      "implementationScope": "One fixed optional algorithm behavior is signed with its approved device-key-bound route configuration and capability, separately from the legacy choice.",
+      "remainingScope": "Independent versioned decision bundles, complete cohort compatibility, and operator experiment/version UI."
     },
     {
       "id": "RLP-10",

@@ -66,6 +66,9 @@ func ascii(s string) bool {
 	}
 	return true
 }
+
+const ReserveProbeCooldown = "route.reserve-cooldown.v1"
+
 func (p Payload) Validate(now time.Time) error {
 	bad := errors.New("invalid policy")
 	keyBytes, keyError := base64.RawURLEncoding.Strict().DecodeString(p.KeyThumbprint)
@@ -83,7 +86,7 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	caps := map[string]bool{}
-	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true}
+	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true}
 	if len(p.RequiredCapabilities) < 1 || len(p.RequiredCapabilities) > 16 || p.AlgorithmRevision != "m1-local-v1" {
 		return bad
 	}
@@ -103,6 +106,15 @@ func (p Payload) Validate(now time.Time) error {
 	sum := sha256.Sum256(engine)
 	if err != nil || len(engine) < 1 || len(engine) > 262144 || !utf8.Valid(engine) || !json.Valid(engine) || hex.EncodeToString(sum[:]) != p.ContentHash {
 		return bad
+	}
+	if caps[ReserveProbeCooldown] {
+		var config struct {
+			Failover map[string]json.RawMessage `json:"route_failover"`
+		}
+		if p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"] || !caps["route.failover.v1"] ||
+			json.Unmarshal(engine, &config) != nil || config.Failover == nil {
+			return bad
+		}
 	}
 	return p.Activation.Validate()
 }

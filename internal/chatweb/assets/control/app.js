@@ -27,6 +27,7 @@ function routeDraft(){
 }
 function drawRouteChecks(){
  const editor=$('route-check-editor'),select=$('route-check-path'),list=$('route-check-list');
+ const cooldown=$('route-reserve-cooldown');cooldown.checked=false;cooldown.disabled=true;
  const prior=select.value;select.replaceChildren();list.replaceChildren();editor.disabled=true;
  if(!authenticated)return;
  let state;
@@ -35,6 +36,8 @@ function drawRouteChecks(){
  if(state.tags.has(prior))select.value=prior;
  $('route-check-required').checked=state.checks.some(row=>row.outbound===select.value&&row.required===true);
  editor.disabled=busy||!!pending||!state.tags.size;
+ const failover=reserveCooldownPlan(state);
+ if(failover){cooldown.disabled=editor.disabled;cooldown.checked=failover.probeCooldown===true;}
  for(const row of state.checks){
   for(const item of row.checks){
    if(!item||typeof item.method!=='string'||typeof item.target!=='string')continue;
@@ -53,6 +56,10 @@ function drawRouteChecks(){
    li.append(remove);list.append(li);
   }
  }
+}
+function reserveCooldownPlan(state){
+ const failover=state.network.routeFailover;
+ return failover?.networkMode==='wifi'&&failover.intent==='INTERNAL'&&state.tags.has(failover.selector)?failover:null;
 }
 function applyRouteChecks(state){
  if(state.checks.length)state.network.routeChecks=state.checks;
@@ -389,6 +396,15 @@ $('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
 $('plan').oninput=drawRouteChecks;
+$('route-reserve-cooldown').onchange=()=>{
+ const enabled=$('route-reserve-cooldown').checked;
+ work(async()=>{
+  const state=routeDraft(),failover=reserveCooldownPlan(state);
+  if(!failover)throw Error('invalid');
+  if(enabled)failover.probeCooldown=true;else delete failover.probeCooldown;
+  applyRouteChecks(state);
+ });
+};
 $('route-check-path').onchange=()=>{
  try{$('route-check-required').checked=routeDraft().checks.some(row=>row.outbound===$('route-check-path').value&&row.required===true);}catch{}
 };

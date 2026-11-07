@@ -11,6 +11,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/configuration"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
+	"github.com/nd4y/syn443-control-plane/internal/policy"
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
 )
 
@@ -75,6 +76,10 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	if plan.Network.RouteFailover != nil && (approved.Mode != "wifi" || !slices.Contains(target.Capabilities, "route.failover.v1")) {
 		return nil, enrollment.ErrDenied
 	}
+	if plan.Network.RouteFailover != nil && plan.Network.RouteFailover.ProbeCooldown &&
+		!slices.Contains(target.Capabilities, policy.ReserveProbeCooldown) {
+		return nil, enrollment.ErrDenied
+	}
 	// Duplicate graph aliases may address one immutable source profile. Sort
 	// and deduplicate before SQL selection to keep lock acquisition stable.
 	refs := []catalog.ProfileReference{}
@@ -121,6 +126,9 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	}
 	if plan.Network.RouteFailover != nil {
 		required = append(required, "route.failover.v1")
+		if plan.Network.RouteFailover.ProbeCooldown {
+			required = append(required, policy.ReserveProbeCooldown)
+		}
 	}
 	if plan.Graph.NetBird != nil {
 		if !slices.Contains(target.Capabilities, "overlay.credentials.v1") {

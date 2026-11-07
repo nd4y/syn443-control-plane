@@ -247,6 +247,20 @@ func TestSQLInternalFailoverCannotUseProfilesApprovedForAnotherMode(t *testing.T
 	if err != nil || prepared == nil || !slices.Contains(prepared.RequiredCapabilities, "route.failover.v1") {
 		t.Fatal("matching mode failed to prepare", err)
 	}
+	if slices.Contains(prepared.RequiredCapabilities, policy.ReserveProbeCooldown) {
+		t.Fatal("existing approved configuration unexpectedly opted in")
+	}
+	changes[2].Value = bytes.Replace(changes[2].Value, []byte(`"intent":"INTERNAL"`),
+		[]byte(`"intent":"INTERNAL","probeCooldown":true`), 1)
+	if _, err = n.authority.Prepare(ctx, target, n.f.now); !errors.Is(err, enrollment.ErrDenied) {
+		t.Fatal("an old client could enter the explicit rollout", err)
+	}
+	target.Capabilities = append(target.Capabilities, policy.ReserveProbeCooldown)
+	candidate, err := n.authority.Prepare(ctx, target, n.f.now)
+	if err != nil || candidate == nil || !slices.Contains(candidate.RequiredCapabilities, policy.ReserveProbeCooldown) ||
+		!bytes.Equal(candidate.EngineConfig, prepared.EngineConfig) {
+		t.Fatal("the signed opt-in must not change the proxy graph", err)
+	}
 }
 
 func TestSQLNetworkAuthorityRejectsForeignUnapprovedAndUnavailableInputs(t *testing.T) {
