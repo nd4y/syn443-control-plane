@@ -52,12 +52,11 @@ func openTelemetryDatabase(variable string) (*sql.DB, error) {
 }
 
 func parseTelemetryHour(args []string) (time.Time, error) {
-	const layout = "2006-01-02T15:00Z"
 	if len(args) != 1 {
 		return time.Time{}, identity.ErrInvalid
 	}
-	hour, err := time.Parse(layout, args[0])
-	if err != nil || hour.Format(layout) != args[0] {
+	hour, err := telemetry.ParseHour(args[0])
+	if err != nil {
 		return time.Time{}, identity.ErrInvalid
 	}
 	return hour, nil

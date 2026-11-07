@@ -14,6 +14,7 @@ import (
 
 	"github.com/nd4y/syn443-control-plane/contracts"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -52,6 +53,7 @@ type ExternalAction func(context.Context, string, string, []byte, time.Time) (an
 type API struct {
 	Invitations          ExternalAction
 	Configurations       ExternalAction
+	TelemetrySummary     func(context.Context, time.Time, time.Time) (telemetry.HourReport, error)
 	Store                *Store
 	Verifier             Verifier
 	Origin, AssuranceACR string
@@ -260,6 +262,18 @@ func (a *API) dispatch(ctx context.Context, actor Actor, action Action, now time
 		return nil
 	}
 	switch action.Action {
+	case telemetrySummaryAction:
+		var r struct {
+			Hour string `json:"hour"`
+		}
+		if decode(&r) != nil {
+			return nil, ErrInvalid
+		}
+		hour, e := telemetry.ParseHour(r.Hour)
+		if e != nil {
+			return nil, ErrInvalid
+		}
+		return a.readTelemetrySummary(ctx, actor, hour, now, action.RequestID)
 	case "configuration.draft.get":
 		var r struct {
 			ID string `json:"id"`

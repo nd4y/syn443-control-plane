@@ -1480,8 +1480,12 @@
     {
       "id": "TEL-06",
       "text": "По каждому классу доступности хранятся последний результат, freshness и распределения latency/error. Для выбора видны проверенные/отложенные кандидаты, eligibility, лексикографический rank, причина выбора/удержания, поиск/coverage, cache/circuit states и расход probe budget. Для provisioning и algorithm rollout - совместимые версии, этапы, gates и rollback.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md"
+      ],
+      "implementationScope": "Read-only web view for one settled UTC hour: aggregate event counts and mean measured duration by kind, result and mode.",
+      "remainingScope": "Per-class availability, freshness and distributions, candidate and budget evidence, and provisioning and algorithm rollout status."
     },
     {
       "id": "TEL-07",
@@ -1532,8 +1536,8 @@
       "evidence": [
         "docs/telemetry-ingest.md"
       ],
-      "implementationScope": "Separate analysis and retention roles, bounded hourly summaries without identifiers, 14-day detail and 180-day summary pruning.",
-      "remainingScope": "Scheduled operations acceptance, full dashboards, bundles, audit, copies and device erasure."
+      "implementationScope": "Separate analysis, retention and read-only summary roles; 14-day detail and 180-day summary pruning; explicit and audited web access to identifier-free aggregates.",
+      "remainingScope": "Scheduled operations acceptance, full dashboards, support bundles, remaining audit and retention, copies and device erasure."
     },
     {
       "id": "LOG-01",

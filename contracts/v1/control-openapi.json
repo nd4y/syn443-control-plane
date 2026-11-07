@@ -1477,6 +1477,43 @@
                 "const": 1
               },
               "action": {
+                "const": "telemetry.summary.get"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 24,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]{24,128}$"
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "hour"
+                ],
+                "properties": {
+                  "hour": {
+                    "type": "string",
+                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:00Z$"
+                  }
+                }
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
                 "const": "configuration.layers.drafts.list"
               },
               "requestId": {

@@ -29,6 +29,13 @@ const server=http.createServer(async(req,res)=>{
  calls.push(body.action);
  const p=body.payload;
  switch(body.action){
+ case 'telemetry.summary.get':{
+  if(Object.keys(p).length!==1||!/^\d{4}-\d{2}-\d{2}T\d{2}:00Z$/.test(p.hour)){send(400,{});break;}
+  if(options.telemetryDenied){send(403,{});break;}
+  const empty=p.hour.endsWith('T02:00Z');
+  send(200,{schemaVersion:1,hourStartMs:Date.parse(p.hour)+(p.hour.endsWith('T03:00Z')?3600000:0),available:!empty,
+   rows:empty?[]:[{kind:'probe',code:'ok',mode:'wifi',events:3,timed:2,duration:51,ignored:'synthetic-untrusted-data'}]});break;
+ }
  case 'configuration.history.get':{
   if(p.id!=='device-a'||p.revision!==7||p.hash!=='a'.repeat(64)){send(403,{});break;}
   send(200,{device:p.id,owner:'synthetic-user',state:'assigned',revision:7,hash:'a'.repeat(64),currentRevision:options.remoteChanged?8:7,historical:true,mode:'wifi',approvalUntilMs:1800003600000,layers:[{id:'template-a',kind:'template',priority:0,revision:2,changes:[],permissions:null}]});break;

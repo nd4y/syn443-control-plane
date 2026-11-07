@@ -41,8 +41,10 @@ expected.update({
     'source job history shows bounded retries and clears scoped results on logout',
     'manual subscription file retries exactly once without exposing or storing its contents',
     'source recipient edits require confirmation and retry the same scoped mutation',
+    'hourly telemetry distinguishes data empty and mismatched reports and clears on expiry',
+    'scoped telemetry denial preserves an unrelated unsaved draft',
 })
-assert len(cases) >= 34
+assert len(cases) >= 36
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

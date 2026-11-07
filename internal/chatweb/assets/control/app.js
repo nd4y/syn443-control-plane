@@ -65,6 +65,7 @@ function applyRouteChecks(state){
 function controls(){
  $('login').disabled=busy||authenticated;$('logout').disabled=busy||!authenticated;
  for(const id of ['load-sources','load-inventory','open-draft','save-draft','new-draft','new-source','save-source'])$(id).disabled=busy||!authenticated||!!pending;
+ for(const id of ['telemetry-hour','load-telemetry'])$(id).disabled=busy||!authenticated;
  for(const id of sourceFields)$(id).disabled=busy||!authenticated||!!pending||sourceIdentity&&['source-id','source-owner','source-mode'].includes(id);
  const deviceSource=$('source-mode').value==='device';
  $('source-device-settings').hidden=!deviceSource;
@@ -90,18 +91,50 @@ function controls(){
  layerControls();
  drawRouteChecks();
 }
-function erase(){clearLayers();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details','inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions'])$(id).replaceChildren();$('inventory-state').textContent='';$('inventory-view').hidden=true;}
-async function request(path,body){
+function erase(){clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details','inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions'])$(id).replaceChildren();$('inventory-state').textContent='';$('inventory-view').hidden=true;}
+async function request(path,body,scopedDenial=false){
  const raw=typeof body==='string'?body:JSON.stringify(body);
  if(path===sourceImportPath?raw.length>14*1024*1024+65536:new TextEncoder().encode(raw).length>278528)throw Error('size');
  const response=await fetch(path,{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:{'Content-Type':'application/json','X-Syn443-CSRF':'1'},body:raw});
- if(response.status===401||response.status===403){authenticated=false;erase();throw Error(response.status===401?'login':'denied');}
+ if(response.status===401||response.status===403){if(response.status===401||!scopedDenial){authenticated=false;erase();}throw Error(response.status===401?'login':'denied');}
  if(response.status===413)throw Error(path===sourceImportPath?'importSize':'size');
  if(!response.ok)throw Error(response.status===409?'conflict':response.status===400?'invalid':'network');
  return response.json();
 }
 const envelope=(action,payload)=>JSON.stringify({version:1,action,requestId:crypto.randomUUID(),payload});
 const action=(name,payload)=>request('/control/action',envelope(name,payload));
+function clearTelemetry(){
+ $('telemetry-status').textContent='';$('telemetry-rows').replaceChildren();$('telemetry-view').hidden=true;
+}
+$('telemetry-hour').value=new Date(Math.floor(Date.now()/3600000-2)*3600000).toISOString().slice(0,16);
+$('telemetry-hour').onchange=clearTelemetry;
+$('telemetry-form').onsubmit=event=>{
+ event.preventDefault();
+ if(!authenticated||busy)return;
+ clearTelemetry();
+ const hour=$('telemetry-hour').value+'Z';
+ if(!/^\d{4}-\d{2}-\d{2}T\d{2}:00Z$/.test(hour)){$('telemetry-status').textContent='Укажите начало часа без минут.';return;}
+ void work(async()=>{
+  try{
+   const report=await request('/control/action',envelope('telemetry.summary.get',{hour}),true);
+   if(report?.schemaVersion!==1||report.hourStartMs!==Date.parse(hour)||!Array.isArray(report.rows)||report.rows.length>256||report.available!==(report.rows.length>0))throw Error('network');
+   if(!report.available){$('telemetry-status').textContent='За этот час нет готовой сводки.';return;}
+   const rows=document.createDocumentFragment();
+   for(const row of report.rows){
+    if(!row||![row.kind,row.code,row.mode].every(s=>typeof s==='string'&&/^[a-z0-9_]{1,48}$/.test(s))||![row.events,row.timed,row.duration].every(Number.isSafeInteger)||row.events<=0||row.timed<0||row.timed>row.events||row.duration<0||row.duration>row.timed*600000)throw Error('network');
+    const tr=document.createElement('tr');
+    for(const value of [row.kind,row.code,row.mode,row.events,row.timed?`${Math.round(row.duration/row.timed)} мс`:'—']){
+     const cell=document.createElement('td');cell.textContent=value;tr.append(cell);
+    }
+    rows.append(tr);
+   }
+   $('telemetry-rows').append(rows);$('telemetry-view').hidden=false;
+   $('telemetry-status').textContent='Сводка за '+hour;
+  }catch(error){
+   $('telemetry-status').textContent=({denied:'Нет доступа к сводкам или просмотр выключен.',login:'Сессия завершена. Войдите снова.',invalid:'Час недоступен. Выберите завершившийся час за последние 180 суток.'})[error.message]||'Не удалось загрузить сводку.';
+  }
+ });
+};
 async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.');}finally{busy=false;controls();}}
 function textItem(list,text){const item=document.createElement('li');item.textContent=text;list.append(item);return item;}
 function inventoryPair(list,name,value){const term=document.createElement('dt');term.textContent=name;const detail=document.createElement('dd');detail.textContent=value;list.append(term,detail);}
