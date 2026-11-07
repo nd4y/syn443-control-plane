@@ -1532,8 +1532,8 @@
       "evidence": [
         "docs/telemetry-ingest.md"
       ],
-      "implementationScope": "Distinct SQL retention role and bounded deletion of detail events past 14 days.",
-      "remainingScope": "Scheduled operations acceptance, aggregates, bundles, audit, copies and device erasure."
+      "implementationScope": "Separate analysis and retention roles, bounded hourly summaries without identifiers, 14-day detail and 180-day summary pruning.",
+      "remainingScope": "Scheduled operations acceptance, full dashboards, bundles, audit, copies and device erasure."
     },
     {
       "id": "LOG-01",

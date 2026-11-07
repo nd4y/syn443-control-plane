@@ -8,7 +8,7 @@ import (
 
 const DetailRetention = 14 * 24 * time.Hour
 
-type Pruned struct{ Events, Windows int64 }
+type Pruned struct{ Events, Windows, Summaries int64 }
 
 func CheckRetentionRole(ctx context.Context, db *sql.DB) error {
 	var scoped bool
@@ -17,6 +17,10 @@ func CheckRetentionRole(ctx context.Context, db *sql.DB) error {
  AND NOT has_column_privilege(current_user,'public.identity_telemetry_events','code','SELECT')
  AND NOT has_table_privilege(current_user,'public.identity_telemetry_events','INSERT')
  AND has_table_privilege(current_user,'public.identity_telemetry_windows','DELETE')
+ AND has_table_privilege(current_user,'public.identity_telemetry_hourly','DELETE')
+ AND has_column_privilege(current_user,'public.identity_telemetry_hourly','hour_start_ms','SELECT')
+ AND NOT has_column_privilege(current_user,'public.identity_telemetry_hourly','events','SELECT')
+ AND NOT has_table_privilege(current_user,'public.identity_telemetry_hourly','INSERT')
  AND NOT has_any_column_privilege(current_user,'public.identity_devices','SELECT')`).Scan(&scoped)
 	if err != nil || !scoped {
 		return ErrUnavailable
@@ -45,8 +49,15 @@ func Prune(ctx context.Context, db *sql.DB, now time.Time) (Pruned, error) {
 	if err != nil {
 		return out, ErrUnavailable
 	}
+	summaries, err := tx.ExecContext(ctx, `WITH expired AS (
+ SELECT DISTINCT hour_start_ms FROM identity_telemetry_hourly WHERE hour_start_ms<$1 ORDER BY hour_start_ms LIMIT 4)
+ DELETE FROM identity_telemetry_hourly h USING expired x WHERE h.hour_start_ms=x.hour_start_ms`, now.Add(-SummaryRetention).UnixMilli())
+	if err != nil {
+		return out, ErrUnavailable
+	}
 	out.Events, _ = events.RowsAffected()
 	out.Windows, _ = windows.RowsAffected()
+	out.Summaries, _ = summaries.RowsAffected()
 	if err = tx.Commit(); err != nil {
 		return Pruned{}, ErrUnavailable
 	}

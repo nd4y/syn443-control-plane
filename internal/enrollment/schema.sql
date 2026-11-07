@@ -136,3 +136,14 @@ CREATE TABLE IF NOT EXISTS identity_telemetry_events (
 );
 CREATE INDEX IF NOT EXISTS identity_telemetry_event_age ON identity_telemetry_events(received_at_ms);
 REVOKE ALL ON identity_telemetry_windows,identity_telemetry_events FROM PUBLIC;
+CREATE TABLE IF NOT EXISTS identity_telemetry_hourly (
+ hour_start_ms bigint NOT NULL CHECK(hour_start_ms>0 AND hour_start_ms%3600000=0),
+ kind text NOT NULL CHECK(kind IN ('network','vpn','probe','route','policy','engine','overlay')),
+ code text NOT NULL CHECK(code ~ '^[a-z_]{2,32}$'),
+ mode text NOT NULL CHECK(mode IN ('unknown','home_wifi','wifi','cellular_restricted','cellular')),
+ events bigint NOT NULL CHECK(events BETWEEN 1 AND 100000),
+ timed bigint NOT NULL CHECK(timed BETWEEN 0 AND events),
+ duration_total_ms bigint NOT NULL CHECK(duration_total_ms BETWEEN 0 AND timed*600000),
+ PRIMARY KEY(hour_start_ms,kind,code,mode)
+);
+REVOKE ALL ON identity_telemetry_hourly FROM PUBLIC;

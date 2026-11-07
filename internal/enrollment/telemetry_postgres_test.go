@@ -6,12 +6,81 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 )
+
+func TestTelemetrySummaryUsesScopedRolesAndKeepsLastCompleteHour(t *testing.T) {
+	f := newFixture(t, 1)
+	f.api.TelemetryEnabled = true
+	k := key(t)
+	session, _, _ := f.register(t, k)
+	ctx := t.Context()
+	if err := telemetry.CheckAnalysisRole(ctx, fixtureAnalysis); err != nil || telemetry.CheckAnalysisRole(ctx, fixtureOwner) == nil {
+		t.Fatal("incorrect analysis privilege boundary", err)
+	}
+	if err := telemetry.CheckRetentionRole(ctx, fixtureTelemetryRetention); err != nil || telemetry.CheckRetentionRole(ctx, fixtureAnalysis) == nil {
+		t.Fatal("retention role is not separate", err)
+	}
+	if _, err := fixtureAnalysis.Exec(`SELECT device,event_id,session_id,path_id FROM identity_telemetry_events`); err == nil {
+		t.Fatal("analysis role read event identity")
+	}
+	period := f.now.UTC().Truncate(time.Hour)
+	now := period.Add(3 * time.Hour)
+	if _, err := telemetry.AggregateHour(ctx, fixtureAnalysis, period, period.Add(time.Hour)); !errors.Is(err, telemetry.ErrInvalid) {
+		t.Fatal("unsettled hour was summarized", err)
+	}
+	duration := 93
+	batch := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 52, AlgorithmRevision: 1,
+		Events: []telemetry.Event{
+			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "probe", Code: "ok", Mode: "wifi", DurationMS: &duration},
+			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "probe", Code: "ok", Mode: "wifi"},
+			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "vpn", Code: "online", Mode: "wifi"},
+		}}
+	body, _ := json.Marshal(batch)
+	expect(t, f.call(t, k, http.MethodPost, telemetryPath, session.AccessToken, session.Nonce, body), http.StatusOK)
+	if _, err := fixtureOwner.Exec(`UPDATE identity_telemetry_events SET received_at_ms=$2 WHERE event_id=$1`,
+		batch.Events[2].ID, period.Add(time.Hour).UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		out, err := telemetry.AggregateHour(ctx, fixtureAnalysis, period, now)
+		if err != nil || out.Groups != 1 || out.Events != 2 {
+			t.Fatal("aggregate did not select exactly one hour", err, out)
+		}
+	}
+	verify := func() {
+		t.Helper()
+		var events, timed, total int
+		if err := fixtureAnalysis.QueryRow(`SELECT events,timed,duration_total_ms FROM identity_telemetry_hourly
+ WHERE hour_start_ms=$1 AND kind='probe' AND code='ok' AND mode='wifi'`, period.UnixMilli()).Scan(&events, &timed, &total); err != nil || events != 2 || timed != 1 || total != duration {
+			t.Fatal("complete aggregate changed", err)
+		}
+	}
+	verify()
+	if _, err := fixtureOwner.Exec(`INSERT INTO identity_telemetry_events(device,event_id,session_id,build,policy_revision,algorithm_revision,received_at_ms,observed_at_ms,elapsed_ms,network_epoch,kind,code,mode)
+ SELECT device,lpad(i::text,43,'x'),session_id,build,policy_revision,algorithm_revision,received_at_ms,observed_at_ms,0,0,
+ kind,'overload_'||chr(97+i/26)||chr(97+i%26),mode
+ FROM identity_telemetry_events CROSS JOIN generate_series(1,257) i WHERE event_id=$1`, batch.Events[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := telemetry.AggregateHour(ctx, fixtureAnalysis, period, now); !errors.Is(err, telemetry.ErrBudget) {
+		t.Fatal("over-budget summary was accepted", err)
+	}
+	verify()
+	if _, err := fixtureOwner.Exec(`INSERT INTO identity_telemetry_hourly VALUES($1,'probe','ok','wifi',1,0,0)`,
+		period.Add(-telemetry.SummaryRetention-time.Hour).UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := telemetry.Prune(ctx, fixtureTelemetryRetention, now); err != nil || got.Summaries != 1 {
+		t.Fatal("aggregate retention did not remove only expired hours", err, got)
+	}
+	verify()
+}
 
 func TestDeviceTelemetryIsBoundedDeduplicatedAndScopedToItsSession(t *testing.T) {
 	f := newFixture(t, 2)
