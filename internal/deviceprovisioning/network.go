@@ -72,6 +72,9 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	if e != nil {
 		return nil, e
 	}
+	if plan.Network.RouteFailover != nil && (approved.Mode != "wifi" || !slices.Contains(target.Capabilities, "route.failover.v1")) {
+		return nil, enrollment.ErrDenied
+	}
 	// Duplicate graph aliases may address one immutable source profile. Sort
 	// and deduplicate before SQL selection to keep lock acquisition stable.
 	refs := []catalog.ProfileReference{}
@@ -117,9 +120,6 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 		required = append(required, "route.health.v1")
 	}
 	if plan.Network.RouteFailover != nil {
-		if !slices.Contains(target.Capabilities, "route.failover.v1") {
-			return nil, enrollment.ErrDenied
-		}
 		required = append(required, "route.failover.v1")
 	}
 	if plan.Graph.NetBird != nil {

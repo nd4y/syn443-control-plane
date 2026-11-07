@@ -213,6 +213,42 @@ func TestSQLManagedRouteHealthRequiresAdvertisedDeviceCapability(t *testing.T) {
 	}
 }
 
+func TestSQLInternalFailoverCannotUseProfilesApprovedForAnotherMode(t *testing.T) {
+	n := newNetworkFixture(t)
+	n.authority.Layers = networkLayersFunc(func(_ context.Context, received enrollment.ConfigurationTarget, _ time.Time) (*ApprovedNetworkLayers, error) {
+		approved := *n.approved
+		approved.Target = received
+		return &approved, nil
+	})
+	var graph configuration.Graph
+	changes := n.approved.Layers[0].Changes
+	if err := json.Unmarshal(changes[1].Value, &graph); err != nil {
+		t.Fatal(err)
+	}
+	graph.Balancers["internal"] = configuration.Balancer{Type: "selector", Members: []string{"proxy", "alias"}, Default: "proxy"}
+	changes[1].Value, _ = json.Marshal(graph)
+	changes[2].Value = json.RawMessage(`{"schemaVersion":1,"requiredNetworks":["tcp"],"dnsFinal":"system","dnsStrategy":"prefer_ipv4",
+ "rules":[{"id":"internal-rule","match":{"domains":["home.example.invalid"]},"networks":["tcp"],"action":"route","outbound":"internal"}],
+ "routeFailover":{"selector":"internal","networkMode":"wifi","intent":"INTERNAL"},
+ "routeChecks":[
+   {"outbound":"internal","required":true,"checks":[{"method":"tcp","target":"home.example.invalid:22"}]},
+   {"outbound":"proxy","required":false,"checks":[{"method":"tcp","target":"home.example.invalid:22"}]},
+   {"outbound":"alias","required":false,"checks":[{"method":"tcp","target":"home.example.invalid:22"}]}
+ ]}`)
+	target := n.target
+	target.Capabilities = append(append([]string{}, target.Capabilities...), "route.health.v1", "route.failover.v1")
+	ctx := context.Background()
+	n.approved.Mode = "cellular"
+	if _, err := n.authority.Prepare(ctx, target, n.f.now); !errors.Is(err, enrollment.ErrDenied) {
+		t.Fatal("non-Wi-Fi source approval leaked into a Wi-Fi failover policy", err)
+	}
+	n.approved.Mode = "wifi"
+	prepared, err := n.authority.Prepare(ctx, target, n.f.now)
+	if err != nil || prepared == nil || !slices.Contains(prepared.RequiredCapabilities, "route.failover.v1") {
+		t.Fatal("matching mode failed to prepare", err)
+	}
+}
+
 func TestSQLNetworkAuthorityRejectsForeignUnapprovedAndUnavailableInputs(t *testing.T) {
 	n := newNetworkFixture(t)
 	for _, change := range []string{"nil", "fence", "owner", "device", "key", "grant", "revision", "capability", "expired", "far-future", "mode", "plan", "profile", "locked", "outage", "cancelled", "role"} {
