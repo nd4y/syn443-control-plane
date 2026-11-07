@@ -29,8 +29,10 @@ test('manual subscription file retries exactly once without exposing or storing 
  await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();
  await page.getByRole('button',{name:'Настроить источник'}).first().click();
  const file=page.locator('#source-import-file');
+ await expect(file).toBeEnabled();
  await file.setInputFiles({name:'synthetic.txt',mimeType:'text/plain',buffer:Buffer.from('http://proxy.example.invalid:443')});
- await page.locator('#source-import').click();
+ await expect(page.locator('#source-import')).toBeEnabled();
+ await page.locator('#source-import').click({timeout:5000});
  await expect(page.locator('#pending')).toBeVisible();await expect(file).toHaveValue('');
  await page.locator('#retry-save').click();
  await expect(page.locator('#pending')).toBeHidden();await expect(page.locator('#job-status')).toContainText('synthetic-import-job');
