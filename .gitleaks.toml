@@ -6,6 +6,13 @@ useDefault = true
 # Keep the default detector and constrain the exception to one field/value/path.
 [[rules]]
 id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Reviewed SHA-256 of the public exit-check OpenAPI contract"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "b12be5795d3c05d6ccbcd26acc2579a38a3354390bfc914a6b9f54bce376c73a",?\s*$''']
 [[rules.allowlists]]
 description = "Reviewed SHA-256 of public reserve probe cooldown contracts"
 condition = "AND"

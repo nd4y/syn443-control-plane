@@ -84,7 +84,8 @@
           "overlay.credentials.v1",
           "route.health.v1",
           "route.failover.v1",
-          "route.reserve-cooldown.v1"
+          "route.reserve-cooldown.v1",
+          "route.exit-ip.v1"
         ]
       },
       "allOf": [
@@ -196,6 +197,14 @@
     }
   },
   "allOf": [
+    {
+      "if": {"properties": {"requiredCapabilities": {"contains": {"const": "route.exit-ip.v1"}}}},
+      "then": {"properties": {
+        "schemaVersion": {"const": 2},
+        "operation": {"const": "configure"},
+        "requiredCapabilities": {"contains": {"const": "route.health.v1"}}
+      }}
+    },
     {
       "if": {
         "properties": {

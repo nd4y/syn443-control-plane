@@ -108,21 +108,25 @@ test('route checks editor changes only its private draft and restores saved chec
  await target.fill('home.example.invalid:22');await add.click();
  await expect(list).toContainText('home.example.invalid:22 · обязательная');
  await method.selectOption('https_204');await target.fill('https://health.example.invalid/204');await add.click();
- await expect(list.locator('li')).toHaveCount(2);
+ const expectedIP=page.locator('#route-check-ip');
+ await expect(expectedIP).toBeHidden();await method.selectOption('https_exit_ip');await expect(expectedIP).toBeVisible();
+ await target.fill('https://health.example.invalid/address');await expectedIP.fill('192.0.2.9');await add.click();
+ await expect(list.locator('li')).toHaveCount(3);await expect(list).toContainText('192.0.2.9');
  let state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(0);
  const current=JSON.parse(await page.locator('#plan').inputValue());
  expect(current.network.routeChecks).toEqual([{outbound:'proxy',required:true,checks:[
   {method:'tcp',target:'home.example.invalid:22'},{method:'https_204',target:'https://health.example.invalid/204'},
+  {method:'https_exit_ip',target:'https://health.example.invalid/address',expected_ip:'192.0.2.9'},
  ]}]);
  expect(current.graph).toEqual(plan.graph);
  await page.locator('#save-draft').click();await expect(page.locator('#draft-version')).toContainText('Версия черновика: 1');
  await page.locator('#plan').fill('{}');await page.locator('#open-draft').click();
- await expect(list.locator('li')).toHaveCount(2);
+ await expect(list.locator('li')).toHaveCount(3);
  await list.locator('li').first().getByRole('button',{name:'Удалить проверку'}).click();
- await expect(list.locator('li')).toHaveCount(1);
+ await expect(list.locator('li')).toHaveCount(2);
  await target.fill('unsaved.example.invalid:443');await page.locator('#logout').click();
- await expect(target).toHaveValue('');await expect(list).toHaveText('');
+ await expect(target).toHaveValue('');await expect(expectedIP).toHaveValue('');await expect(list).toHaveText('');
  state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });

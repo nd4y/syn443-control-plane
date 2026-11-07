@@ -1336,8 +1336,8 @@
         "docs/implementation-status.md#evidence-index-and-register-semantics",
         "docs/control-catalog.md"
       ],
-      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
-      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
+      "implementationScope": "Per-outbound check editor and compiler with exact IP evidence over an approved HTTPS endpoint, delivered only to compatible enrolled devices.",
+      "remainingScope": "Full traffic-rule plans, any/quorum/stages, geographic/provider exit attribution and autonomous public exit selection."
     },
     {
       "id": "CHK-02",

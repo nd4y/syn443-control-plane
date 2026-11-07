@@ -211,6 +211,21 @@ func TestSQLManagedRouteHealthRequiresAdvertisedDeviceCapability(t *testing.T) {
 		len(engine.Checks[0].Checks) != 1 || engine.Checks[0].Checks[0].Target != "home.example.invalid:22" {
 		t.Fatal("per-outbound health checks were changed before signing", err)
 	}
+	n.approved.Layers[0].Changes[2].Value = json.RawMessage(`{
+ "schemaVersion":1,"requiredNetworks":["tcp"],"dnsFinal":"system","dnsStrategy":"prefer_ipv4",
+ "routeChecks":[{"outbound":"proxy","required":true,"checks":[{"method":"https_exit_ip","target":"https://health.example.invalid/address","expected_ip":"192.0.2.9"}]}]}`)
+	if _, err := n.authority.Prepare(ctx, target, n.f.now); !errors.Is(err, enrollment.ErrDenied) {
+		t.Fatal("egress proof offered to a route-health-only client", err)
+	}
+	target.Capabilities = append(target.Capabilities, policy.RouteExitIP)
+	prepared, err = n.authority.Prepare(ctx, target, n.f.now)
+	if err != nil || prepared == nil || !slices.Contains(prepared.RequiredCapabilities, policy.RouteExitIP) {
+		t.Fatal("capability was not required for the delivered check", err)
+	}
+	if err := json.Unmarshal(prepared.EngineConfig, &engine); err != nil || len(engine.Checks) != 1 ||
+		len(engine.Checks[0].Checks) != 1 || engine.Checks[0].Checks[0].ExpectedIP != "192.0.2.9" {
+		t.Fatal("signed plan lost the expected address", err)
+	}
 }
 
 func TestSQLInternalFailoverCannotUseProfilesApprovedForAnotherMode(t *testing.T) {

@@ -123,6 +123,33 @@ func TestReserveProbeCooldownRequiresSignedKeyBoundFailover(t *testing.T) {
 	}
 }
 
+func TestExitCheckRequiresMatchingCapabilityOnKeyBoundConfiguration(t *testing.T) {
+	_, baseline, now := sample(t)
+	engine := []byte(`{"outbounds":[{"type":"direct","tag":"direct"}],"route_checks":[{"outbound":"direct","checks":[{"method":"https_exit_ip","target":"https://health.example.invalid/address","expected_ip":"192.0.2.9"}]}]}`)
+	sum := sha256.Sum256(engine)
+	qualified := baseline
+	qualified.SchemaVersion = 2
+	qualified.KeyThumbprint = base64.RawURLEncoding.EncodeToString(make([]byte, 32))
+	qualified.EngineConfigB64, qualified.ContentHash = base64.RawURLEncoding.EncodeToString(engine), hex.EncodeToString(sum[:])
+	qualified.RequiredCapabilities = append(append([]string{}, baseline.RequiredCapabilities...), "policy.keybound.v2", "route.health.v1", RouteExitIP)
+	if err := qualified.Validate(now); err != nil {
+		t.Fatal(err)
+	}
+	for _, change := range []func(*Payload){
+		func(p *Payload) { p.Operation = "release" },
+		func(p *Payload) {
+			p.RequiredCapabilities = append([]string{}, qualified.RequiredCapabilities[:len(qualified.RequiredCapabilities)-1]...)
+		},
+		func(p *Payload) { p.EngineConfigB64, p.ContentHash = baseline.EngineConfigB64, baseline.ContentHash },
+	} {
+		candidate := qualified
+		change(&candidate)
+		if candidate.Validate(now) == nil {
+			t.Fatal("exit proof escaped the capability or scope fence")
+		}
+	}
+}
+
 func TestVersionTwoPublicationBindsClientOwnedKey(t *testing.T) {
 	_, p, now := sample(t)
 	root, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

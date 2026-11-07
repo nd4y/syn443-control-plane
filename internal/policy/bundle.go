@@ -68,6 +68,7 @@ func ascii(s string) bool {
 }
 
 const ReserveProbeCooldown = "route.reserve-cooldown.v1"
+const RouteExitIP = "route.exit-ip.v1"
 
 func (p Payload) Validate(now time.Time) error {
 	bad := errors.New("invalid policy")
@@ -86,7 +87,7 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	caps := map[string]bool{}
-	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true}
+	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true}
 	if len(p.RequiredCapabilities) < 1 || len(p.RequiredCapabilities) > 16 || p.AlgorithmRevision != "m1-local-v1" {
 		return bad
 	}
@@ -105,6 +106,24 @@ func (p Payload) Validate(now time.Time) error {
 	engine, err := base64.RawURLEncoding.Strict().DecodeString(p.EngineConfigB64)
 	sum := sha256.Sum256(engine)
 	if err != nil || len(engine) < 1 || len(engine) > 262144 || !utf8.Valid(engine) || !json.Valid(engine) || hex.EncodeToString(sum[:]) != p.ContentHash {
+		return bad
+	}
+	var routeConfig struct {
+		Checks []struct {
+			Checks []struct {
+				Method string `json:"method"`
+			} `json:"checks"`
+		} `json:"route_checks"`
+	}
+	configErr := json.Unmarshal(engine, &routeConfig)
+	hasExitCheck := false
+	for _, group := range routeConfig.Checks {
+		for _, check := range group.Checks {
+			hasExitCheck = hasExitCheck || check.Method == "https_exit_ip"
+		}
+	}
+	if hasExitCheck != caps[RouteExitIP] || hasExitCheck &&
+		(configErr != nil || p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"]) {
 		return bad
 	}
 	if caps[ReserveProbeCooldown] {

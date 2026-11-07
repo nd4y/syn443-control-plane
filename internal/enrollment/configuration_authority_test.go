@@ -106,6 +106,18 @@ func TestSharedGrantCannotEnableADeviceRolloutWithoutItsApprovedConfiguration(t 
 	if err := grant.Validate(now); err != nil {
 		t.Fatal("legacy grant with route checks was rejected", err)
 	}
+	prepared, payload, now = configuredPreparation(t)
+	prepared.EngineConfig = json.RawMessage(`{"outbounds":[{"type":"direct","tag":"direct"}],"route":{"final":"direct"},"route_checks":[{"outbound":"direct","checks":[{"method":"https_exit_ip","target":"https://health.example.invalid/address","expected_ip":"192.0.2.9"}]}]}`)
+	prepared.RequiredCapabilities = []string{"route.health.v1", policy.RouteExitIP}
+	available = append(append([]string(nil), payload.RequiredCapabilities...), prepared.RequiredCapabilities...)
+	if err := applyPreparedConfiguration(&payload, prepared, available, now); err != nil {
+		t.Fatal("approved device configuration could not add the exit check", err)
+	}
+	payload.KeyThumbprint = ""
+	grant.Template = payload
+	if err := grant.Validate(now); !errors.Is(err, identity.ErrInvalid) {
+		t.Fatal("shared template bypassed per-device exit-check approval", err)
+	}
 }
 
 func TestPreparedConfigurationRejectsUnfencedUnsupportedAndNativeAuthorityInputs(t *testing.T) {

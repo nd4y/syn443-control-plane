@@ -53,8 +53,9 @@ type DNSRule struct {
 	Server     string   `json:"server"`
 }
 type OutboundCheck struct {
-	Method string `json:"method"`
-	Target string `json:"target"`
+	Method     string `json:"method"`
+	Target     string `json:"target"`
+	ExpectedIP string `json:"expected_ip,omitempty"`
 }
 type OutboundCheckPlan struct {
 	Outbound string          `json:"outbound"`
@@ -326,11 +327,19 @@ func outboundCheckTarget(check OutboundCheck) bool {
 	if len(raw) < 1 || len(raw) > 2048 || strings.IndexFunc(raw, func(r rune) bool { return r <= 32 || r > 126 }) >= 0 {
 		return false
 	}
+	if check.Method == "https_exit_ip" {
+		address, err := netip.ParseAddr(check.ExpectedIP)
+		if len(check.ExpectedIP) > 45 || err != nil || address.Zone() != "" || address.Is4In6() {
+			return false
+		}
+	} else if check.ExpectedIP != "" {
+		return false
+	}
 	switch check.Method {
 	case "tcp", "ssh_banner":
 		host, port, err := net.SplitHostPort(raw)
 		return err == nil && outboundCheckHost(host) && outboundCheckPort(port)
-	case "tls", "https_204":
+	case "tls", "https_204", "https_exit_ip":
 		target, err := url.Parse(raw)
 		return err == nil && target.Scheme == "https" && target.User == nil && target.Opaque == "" &&
 			!strings.Contains(raw, "#") && !strings.HasSuffix(target.Host, ":") && outboundCheckHost(target.Hostname()) &&
@@ -427,6 +436,11 @@ func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]an
 	base := byOutbound[plan.Selector]
 	if !base.Required || len(base.Checks) == 0 {
 		return nil, ErrInvalid
+	}
+	for _, check := range base.Checks {
+		if check.Method == "https_exit_ip" {
+			return nil, ErrInvalid
+		}
 	}
 	for _, member := range selector.Members {
 		check := byOutbound[member]
