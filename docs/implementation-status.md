@@ -7,14 +7,15 @@ This document supersedes repository-wide readiness claims in historical stage no
 ## Current development branches
 
 - [Android PR34](https://github.com/nd4y/syn443-android/pull/34):
-  [version 48 Actions](https://github.com/nd4y/syn443-android/actions/runs/42381640907)
-  contains addressed subscription fetch, root upgrade support, and bounded
-  recovery changes. Physical receipts and device state are tracked privately.
+  [version 51 Actions](https://github.com/nd4y/syn443-android/actions/runs/42386332197)
+  passed the native/JVM/three-API matrix for the managed Wi-Fi candidate.
+  Device receipts and device state are tracked privately. The telemetry and
+  route cooldown update has a [separate Android 52 run](https://github.com/nd4y/syn443-android/actions/runs/42393024638).
 - [Control plane PR17](https://github.com/nd4y/syn443-control-plane/pull/17):
-  [conditional device subscriptions](https://github.com/nd4y/syn443-control-plane/actions/runs/42384028258)
-  and [managed route checks and editor](https://github.com/nd4y/syn443-control-plane/actions/runs/42384881188)
-  passed their exact CI. The limited internal Wi-Fi failover candidate has
-  separate CI and acceptance gates.
+  conditional device subscriptions, managed route checks and internal Wi-Fi
+  failover are followed by [exact telemetry and SQL restore CI](https://github.com/nd4y/syn443-control-plane/actions/runs/42392058600).
+  The restore test verifies device-policy delivery and chat attachment access
+  through the restricted API against an isolated restored database.
 
 These branches are drafts and do not establish release or production acceptance.
 
