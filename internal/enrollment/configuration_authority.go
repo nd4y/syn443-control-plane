@@ -102,7 +102,7 @@ func validatePreparedNetwork(raw []byte) error {
 		return identity.ErrInvalid
 	}
 	for name := range root {
-		if name != "outbounds" && name != "route" && name != "dns" && name != "route_checks" {
+		if name != "outbounds" && name != "route" && name != "dns" && name != "route_checks" && name != "route_failover" {
 			return identity.ErrInvalid
 		}
 	}

@@ -1969,6 +1969,15 @@
             "maxItems": 16,
             "items": {"$ref": "#/components/schemas/PlanOutboundChecks"}
           },
+          "routeFailover": {
+            "type": "object", "additionalProperties": false,
+            "required": ["selector", "networkMode", "intent"],
+            "properties": {
+              "selector": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+              "networkMode": {"const": "wifi"},
+              "intent": {"const": "INTERNAL"}
+            }
+          },
           "rules": {
             "type": "array",
             "items": {

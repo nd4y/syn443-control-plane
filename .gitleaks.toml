@@ -7,6 +7,16 @@ useDefault = true
 [[rules]]
 id = "generic-api-key"
 [[rules.allowlists]]
+description = "Reviewed SHA-256 of public Wi-Fi failover contracts"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"control-openapi\.json": "d61d0ec2ce489b02386ade55bb0ce73f687cc4f567b20a09b0bd42160fd5c1ad",?\s*$''',
+  '''^\s*"policy-payload\.schema\.json": "1469551248c3b9616a9fec40f69d7c4116a0dd2b0abe12ea81fb17589faad2e8",?\s*$''',
+]
+
+[[rules.allowlists]]
 description = "Reviewed SHA-256 of public managed route check contracts"
 condition = "AND"
 paths = ['''^contracts/lock\.json$''']

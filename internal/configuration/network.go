@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -60,6 +61,14 @@ type OutboundCheckPlan struct {
 	Required bool            `json:"required"`
 	Checks   []OutboundCheck `json:"checks"`
 }
+
+// Initial failover is explicit and scoped to an internal destination rule.
+// Public exit classes require independent exit evidence before adoption.
+type RouteFailoverPlan struct {
+	Selector    string `json:"selector"`
+	NetworkMode string `json:"networkMode"`
+	Intent      string `json:"intent"`
+}
 type NetworkSettings struct {
 	SchemaVersion    int                  `json:"schemaVersion"`
 	RequiredNetworks []string             `json:"requiredNetworks"`
@@ -69,6 +78,7 @@ type NetworkSettings struct {
 	DNSFinal         string               `json:"dnsFinal"`
 	DNSStrategy      string               `json:"dnsStrategy"`
 	RouteChecks      []OutboundCheckPlan  `json:"routeChecks,omitempty"`
+	RouteFailover    *RouteFailoverPlan   `json:"routeFailover,omitempty"`
 }
 
 func (NetworkSettings) String() string     { return "NetworkSettings([redacted])" }
@@ -355,6 +365,86 @@ func routeChecks(graph CompiledGraph, plans []OutboundCheckPlan) (json.RawMessag
 	return encoded, nil
 }
 
+type routeSelectorNode struct {
+	Tag       string   `json:"tag"`
+	Kind      string   `json:"type"`
+	Detour    string   `json:"detour"`
+	Members   []string `json:"outbounds"`
+	Interrupt bool     `json:"interrupt_exist_connections"`
+}
+
+var failoverTag = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
+
+func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]any, error) {
+	plan := settings.RouteFailover
+	if plan == nil {
+		return nil, nil
+	}
+	if plan.NetworkMode != "wifi" || plan.Intent != "INTERNAL" || plan.Selector == graph.Final || !failoverTag.MatchString(plan.Selector) {
+		return nil, ErrInvalid
+	}
+	nodes := make(map[string]routeSelectorNode, len(graph.Outbounds))
+	for _, raw := range graph.Outbounds {
+		var node routeSelectorNode
+		if json.Unmarshal(raw, &node) != nil || node.Tag == "" || node.Detour == plan.Selector ||
+			slices.Contains(node.Members, plan.Selector) {
+			return nil, ErrInvalid
+		}
+		nodes[node.Tag] = node
+	}
+	selector := nodes[plan.Selector]
+	if selector.Kind != "selector" || selector.Interrupt || len(selector.Members) < 2 || len(selector.Members) > 8 {
+		return nil, ErrInvalid
+	}
+	rules := 0
+	for _, rule := range settings.Rules {
+		if rule.Action != "route" || rule.Outbound != plan.Selector {
+			continue
+		}
+		if rule.MatchAll || len(rule.Domains)+len(rule.DomainSuffixes)+len(rule.IPPrefixes) == 0 ||
+			len(rule.DomainKeywords)+len(rule.DomainRegex) != 0 {
+			return nil, ErrInvalid
+		}
+		rules++
+	}
+	for _, server := range settings.DNSServers {
+		if server.Outbound == plan.Selector {
+			return nil, ErrInvalid
+		}
+	}
+	if rules != 1 {
+		return nil, ErrInvalid
+	}
+	byOutbound := map[string]OutboundCheckPlan{}
+	for _, check := range settings.RouteChecks {
+		byOutbound[check.Outbound] = check
+	}
+	base := byOutbound[plan.Selector]
+	if !base.Required || len(base.Checks) == 0 {
+		return nil, ErrInvalid
+	}
+	for _, member := range selector.Members {
+		check := byOutbound[member]
+		if !failoverTag.MatchString(member) || check.Required || !slices.Equal(base.Checks, check.Checks) {
+			return nil, ErrInvalid
+		}
+		visited := map[string]bool{}
+		for tag := member; tag != ""; tag = nodes[tag].Detour {
+			if visited[tag] || len(visited) == 4 {
+				return nil, ErrInvalid
+			}
+			visited[tag] = true
+			switch nodes[tag].Kind {
+			case "http", "socks", "vless", "ssh":
+			default:
+				return nil, ErrInvalid
+			}
+		}
+	}
+	return map[string]any{"selector": plan.Selector, "network_mode": plan.NetworkMode, "intent": plan.Intent,
+		"members": selector.Members}, nil
+}
+
 func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMessage, error) {
 	if settings.SchemaVersion != 1 || len(graph.Outbounds) < 1 || len(graph.Outbounds) > 64 || len(settings.Rules) > 128 || len(settings.DNSServers) > 16 || len(settings.DNSRules) > 64 {
 		return nil, ErrInvalid
@@ -431,6 +521,13 @@ func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMess
 	output := map[string]any{"outbounds": graph.Outbounds, "route": map[string]any{"rules": rules, "final": graph.Final}, "dns": map[string]any{"servers": dnsServers, "rules": dnsRules, "final": dnsTag(settings.DNSFinal), "strategy": settings.DNSStrategy}}
 	if metadata != nil {
 		output["route_checks"] = metadata
+	}
+	failover, err := routeFailover(graph, settings)
+	if err != nil {
+		return nil, err
+	}
+	if failover != nil {
+		output["route_failover"] = failover
 	}
 	result, err := json.Marshal(output)
 	if err != nil || len(result) > 262144 {

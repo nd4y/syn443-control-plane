@@ -49,6 +49,13 @@ TCP, TLS, HTTPS 204 or SSH banner checks for each configured outbound. Up to
 targets and incompatible paths are rejected in preview. Required checks
 participate in activation on a client advertising `route.health.v1`. The
 publisher rejects plans with these checks for clients that lack that capability.
+
+The opt-in `network.routeFailover` pilot applies to one named internal
+destination rule on Wi-Fi. It requires a noninterrupting selector with
+two to eight concrete proxy paths and identical signed probes for the
+selector and its members. The selector cannot also be the default route,
+a detour for another outbound, or a DNS path. It is only issued to a
+client advertising `route.failover.v1`.
 Only a newly accepted verified snapshot can restore it. Cache TTL/provider expiry
 remain visible even when the most recent refresh failed. Source recipient
 changes require both share and receive authority; device-fetched data is personal.

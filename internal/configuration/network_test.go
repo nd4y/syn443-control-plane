@@ -82,6 +82,40 @@ func TestNetworkPlanEmitsScopedPerOutboundHealthChecks(t *testing.T) {
 	}
 }
 
+func TestInternalWifiFailoverRequiresComparableConcreteAuthorizedPaths(t *testing.T) {
+	source := graphBase()
+	source.Balancers["internal"] = Balancer{Type: "selector", Members: []string{"entry", "socks"}, Default: "entry"}
+	graph, err := CompileGraph(source, defaultGraphResolver())
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := networkBase()
+	settings.Rules = []RouteRule{{ID: "home", HostMatch: HostMatch{Domains: []string{"node.home.example.invalid"}},
+		Networks: []string{"tcp"}, Action: "route", Outbound: "internal"}}
+	settings.RouteFailover = &RouteFailoverPlan{Selector: "internal", NetworkMode: "wifi", Intent: "INTERNAL"}
+	for _, tag := range []string{"internal", "entry", "socks"} {
+		settings.RouteChecks = append(settings.RouteChecks, OutboundCheckPlan{Outbound: tag, Required: tag == "internal",
+			Checks: []OutboundCheck{{Method: "tcp", Target: "node.home.example.invalid:22"}}})
+	}
+	raw, err := CompileNetwork(graph, settings)
+	if err != nil || networkValue(t, raw)["route_failover"] == nil {
+		t.Fatal("scoped internal failover was not emitted", err)
+	}
+	for _, change := range []func(*NetworkSettings){
+		func(v *NetworkSettings) { v.RouteFailover.NetworkMode = "cellular" },
+		func(v *NetworkSettings) { v.RouteFailover.Intent = "NON_RU" },
+		func(v *NetworkSettings) { v.Rules = nil },
+		func(v *NetworkSettings) { v.RouteChecks[1].Checks[0].Target = "different.example.invalid:22" },
+		func(v *NetworkSettings) { v.RouteChecks[1].Required = true },
+	} {
+		bad := cloneNetwork(t, settings)
+		change(&bad)
+		if _, err := CompileNetwork(graph, bad); err == nil {
+			t.Fatal("failover widened scope or compared incompatible checks")
+		}
+	}
+}
+
 func TestNetworkCompilerEmitsTypedDNSRoutingAndApplicationRulesDeterministically(t *testing.T) {
 	graph := networkGraph(t)
 	settings := networkBase()
