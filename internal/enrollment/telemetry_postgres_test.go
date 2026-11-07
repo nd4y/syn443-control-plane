@@ -26,6 +26,12 @@ func TestTelemetrySummaryUsesScopedRolesAndKeepsLastCompleteHour(t *testing.T) {
 	if err := telemetry.CheckRetentionRole(ctx, fixtureTelemetryRetention); err != nil || telemetry.CheckRetentionRole(ctx, fixtureAnalysis) == nil {
 		t.Fatal("retention role is not separate", err)
 	}
+	if err := telemetry.CheckReportRole(ctx, fixtureTelemetryReader); err != nil || telemetry.CheckReportRole(ctx, fixtureAnalysis) == nil {
+		t.Fatal("report role has broader permissions than intended", err)
+	}
+	if _, err := fixtureTelemetryReader.Exec(`SELECT kind FROM identity_telemetry_events`); err == nil {
+		t.Fatal("report reader could see raw events")
+	}
 	if _, err := fixtureAnalysis.Exec(`SELECT device,event_id,session_id,path_id FROM identity_telemetry_events`); err == nil {
 		t.Fatal("analysis role read event identity")
 	}
@@ -60,8 +66,20 @@ func TestTelemetrySummaryUsesScopedRolesAndKeepsLastCompleteHour(t *testing.T) {
  WHERE hour_start_ms=$1 AND kind='probe' AND code='ok' AND mode='wifi'`, period.UnixMilli()).Scan(&events, &timed, &total); err != nil || events != 2 || timed != 1 || total != duration {
 			t.Fatal("complete aggregate changed", err)
 		}
+		report, err := telemetry.ReportHour(ctx, fixtureTelemetryReader, period, now)
+		if err != nil || report.SchemaVersion != 1 || !report.Available || len(report.Rows) != 1 ||
+			report.Rows[0].Events != 2 || report.Rows[0].Timed != 1 || report.Rows[0].Duration != int64(duration) {
+			t.Fatal("read-only report did not return the complete aggregate", err)
+		}
 	}
 	verify()
+	empty, err := telemetry.ReportHour(ctx, fixtureTelemetryReader, period.Add(time.Hour), now)
+	if err != nil || empty.Available || len(empty.Rows) != 0 {
+		t.Fatal("unprocessed hour looked like a completed summary", err)
+	}
+	if _, err = fixtureTelemetryReader.Exec(`DELETE FROM identity_telemetry_hourly WHERE hour_start_ms=$1`, period.UnixMilli()); err == nil {
+		t.Fatal("report role could modify aggregates")
+	}
 	if _, err := fixtureOwner.Exec(`INSERT INTO identity_telemetry_events(device,event_id,session_id,build,policy_revision,algorithm_revision,received_at_ms,observed_at_ms,elapsed_ms,network_epoch,kind,code,mode)
  SELECT device,lpad(i::text,43,'x'),session_id,build,policy_revision,algorithm_revision,received_at_ms,observed_at_ms,0,0,
  kind,'overload_'||chr(97+i/26)||chr(97+i%26),mode

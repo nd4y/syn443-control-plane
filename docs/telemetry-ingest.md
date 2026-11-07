@@ -23,7 +23,8 @@ for four hours past 180 days. Operators schedule pruning before enabling
 intake and monitor whether it catches up.
 
 The separate `syn443_telemetry_analysis` role can summarize one settled
-UTC hour with `enrollment-admin telemetry-aggregate 2026-01-01T12:00Z`.
+UTC hour with `enrollment-admin telemetry-aggregate <UTC-hour>` using
+the format `YYYY-MM-DDTHH:00Z`.
 Configure its DSN via `SYN443_TELEMETRY_ANALYSIS_DSN_FILE` and apply
 `internal/telemetry/analysis-roles.sql` after the schema migration. It
 has access only to received time, category, code, mode and duration.
@@ -31,8 +32,15 @@ Aggregates contain no device, session or route identifiers. Counters
 include event count, measured count and total measured duration per group.
 An hour needs at least one hour to settle and must still be inside the
 detail retention window. A run exceeding 100,000 events or 256 groups
-leaves the previous summary intact. Do not expose either SQL role through
+leaves the previous summary intact. Do not expose these SQL roles through
 the control panel or the enrollment API.
+
+For offline analysis, `enrollment-admin telemetry-summary <UTC-hour>`
+returns versioned JSON for one selected hour. The reader uses the separate
+`syn443_telemetry_reader` role from `internal/telemetry/report-roles.sql`
+and `SYN443_TELEMETRY_READER_DSN_FILE`. This role can read only the
+aggregate table. An hour without aggregate rows reports
+`available: false`; it does not claim that no events were received.
 
 Enabling ingestion does not turn on Android uploads without device consent.
 End-to-end delivery, scheduled analysis, operator views and retention for

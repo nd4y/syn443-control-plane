@@ -30,7 +30,7 @@ import (
 var fixtureOwner *sql.DB
 var fixtureAPI, fixturePublisher *sql.DB
 var fixtureBroker *sql.DB
-var fixtureAnalysis, fixtureTelemetryRetention *sql.DB
+var fixtureAnalysis, fixtureTelemetryRetention, fixtureTelemetryReader *sql.DB
 var fixtureAPIDSN, fixturePublisherDSN, fixtureBrokerDSN string
 var b64 = base64.RawURLEncoding
 
@@ -54,7 +54,8 @@ func TestMain(m *testing.M) {
 		name   string
 		target **sql.DB
 	}{{"syn443_identity_api", &fixtureAPI}, {"syn443_identity_publisher", &fixturePublisher}, {"syn443_overlay_worker", &fixtureBroker},
-		{"syn443_telemetry_analysis", &fixtureAnalysis}, {"syn443_telemetry_retention", &fixtureTelemetryRetention}} {
+		{"syn443_telemetry_analysis", &fixtureAnalysis}, {"syn443_telemetry_retention", &fixtureTelemetryRetention},
+		{"syn443_telemetry_reader", &fixtureTelemetryReader}} {
 		password := random()
 		var statement string
 		if e = fixtureOwner.QueryRow(`SELECT format('CREATE ROLE %I LOGIN NOINHERIT NOBYPASSRLS PASSWORD %L',$1::text,$2::text)`, item.name, password).Scan(&statement); e != nil {
@@ -81,7 +82,7 @@ func TestMain(m *testing.M) {
 	if _, e = fixtureOwner.Exec(Roles); e != nil {
 		panic(e)
 	}
-	if _, e = fixtureOwner.Exec(telemetry.AnalysisRoles + "\n" + telemetry.RetentionRoles); e != nil {
+	if _, e = fixtureOwner.Exec(telemetry.AnalysisRoles + "\n" + telemetry.RetentionRoles + "\n" + telemetry.ReportRoles); e != nil {
 		panic(e)
 	}
 	code := m.Run()
@@ -90,6 +91,7 @@ func TestMain(m *testing.M) {
 	fixtureBroker.Close()
 	fixtureAnalysis.Close()
 	fixtureTelemetryRetention.Close()
+	fixtureTelemetryReader.Close()
 	fixtureOwner.Close()
 	os.Exit(code)
 }

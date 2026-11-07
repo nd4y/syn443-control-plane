@@ -27,6 +27,9 @@ func run() error {
 	if os.Args[1] == "telemetry-aggregate" {
 		return runTelemetryAggregate(os.Args[2:])
 	}
+	if os.Args[1] == "telemetry-summary" {
+		return runTelemetrySummary(os.Args[2:])
+	}
 	c, e := enrollment.ReadConfig(os.Getenv("SYN443_ENROLLMENT_CONFIG"))
 	if e != nil {
 		return e
