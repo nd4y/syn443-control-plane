@@ -39,8 +39,9 @@ expected.update({
     'private layer discard lost acknowledgment retains exact operation until verified receipt',
     'private layer discard conflicts and substituted receipts never clear the current editor',
     'source job history shows bounded retries and clears scoped results on logout',
+    'manual subscription file retries exactly once without exposing or storing its contents',
 })
-assert len(cases) >= 32
+assert len(cases) >= 33
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

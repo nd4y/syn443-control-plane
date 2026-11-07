@@ -10,14 +10,24 @@ not return the previous secret, and a successful save clears new secret text.
 Literal replacement JSON retains duplicate members for server-side rejection.
 The existing SQL ACL, freshness/MFA and secret validation remain authoritative.
 
-The fixed-path control BFF also admits scoped `source.put`, `source.sync` and
-`job.get`; arbitrary paths/deletion/publication stay rejected, and support-chat
-sessions still cannot reach control actions. Refresh queues a SQL job and the
+The fixed-path control BFF admits scoped `source.put`, `source.sync`,
+`job.get` and `job.list`. Support-chat sessions cannot reach control actions.
+Refresh queues a SQL job and the
 screen reads its state. Unacknowledged mutations retry the identical body/request
 identity; fields stay locked until the result or a fresh server read is chosen.
 Permission/session withdrawal and logout erase both draft and new source-secret
-memory. No browser storage is used. Manual data import, device fetch, source-share
-editing and full resource/user/group/publication administration remain unfinished.
+memory. The console keeps the temporary edit in the current tab. Device fetch,
+source-share editing and full resource/user/group administration remain unfinished.
+
+For a saved manual source, the console submits a file up to 10 MiB to
+`/control/source/import`. That BFF endpoint accepts only `source.import` and
+forwards the original proof-bound request to the existing source job API.
+It admits one import at a time under the standard session and CSRF checks.
+Allow the base64 envelope up to 14 MiB plus 64 KiB at the ingress for this path.
+Other control requests retain their ordinary limit. The source worker parses
+the file, applies normal quarantine and erases raw input on terminal outcomes.
+The file selector clears after the body is prepared. An uncertain reply keeps
+the same pending operation in tab memory for an explicit retry.
 
 Three new required browser cases cover save/read-without-secrets/sync job,
 lost-acknowledgment idempotency and denial erasure. The browser gate now requires

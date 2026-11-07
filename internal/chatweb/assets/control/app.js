@@ -1,5 +1,8 @@
 import {mergeDeviceProposal} from './layer-merge.js';
 const $=id=>document.getElementById(id);
+const sourceImportPath='/control/source/import';
+const sourceImportBytes=10*1024*1024;
+const jobStates={queued:'В очереди',running:'Выполняется',succeeded:'Завершено',failed:'Ошибка',cancelled:'Отменено',dead_letter:'Истёк срок или лимит повторов'};
 let authenticated=false,busy=false,pending=null,revision=0,opened=null,next='',listedOwner='';
 let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='',sourceHistoryNext='';
 let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null;
@@ -15,6 +18,8 @@ function controls(){
  $('sync-source').disabled=busy||!authenticated||!!pending||!sourceIdentity;$('source-job').disabled=busy||!authenticated||!!pending||!sourceJob;
  $('source-history').disabled=busy||!authenticated||!!pending||!sourceIdentity;
  $('source-history-more').disabled=$('source-history').disabled||!sourceHistoryNext;
+ $('source-import-file').disabled=busy||!authenticated||!!pending||sourceIdentity?.mode!=='manual';
+ $('source-import').disabled=$('source-import-file').disabled||!$('source-import-file').files.length;
  $('more-sources').disabled=busy||!authenticated||!next||!!pending;
  for(const id of ['owner','inventory-device',...formFields])$(id).disabled=busy||!authenticated||!!pending;
  $('pending').hidden=!pending;for(const id of ['retry-save','discard-save'])$(id).disabled=busy||!authenticated;
@@ -27,15 +32,16 @@ function controls(){
 function erase(){clearLayers();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan'])$(id).value='';$('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';for(const id of ['sources','profiles','source-details','inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions'])$(id).replaceChildren();$('inventory-state').textContent='';$('inventory-view').hidden=true;}
 async function request(path,body){
  const raw=typeof body==='string'?body:JSON.stringify(body);
- if(new TextEncoder().encode(raw).length>278528)throw Error('size');
+ if(path===sourceImportPath?raw.length>14*1024*1024+65536:new TextEncoder().encode(raw).length>278528)throw Error('size');
  const response=await fetch(path,{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:{'Content-Type':'application/json','X-Syn443-CSRF':'1'},body:raw});
  if(response.status===401||response.status===403){authenticated=false;erase();throw Error(response.status===401?'login':'denied');}
+ if(response.status===413)throw Error(path===sourceImportPath?'importSize':'size');
  if(!response.ok)throw Error(response.status===409?'conflict':response.status===400?'invalid':'network');
  return response.json();
 }
 const envelope=(action,payload)=>JSON.stringify({version:1,action,requestId:crypto.randomUUID(),payload});
 const action=(name,payload)=>request('/control/action',envelope(name,payload));
-async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру плана.',size:'План превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.');}finally{busy=false;controls();}}
+async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.');}finally{busy=false;controls();}}
 function textItem(list,text){const item=document.createElement('li');item.textContent=text;list.append(item);return item;}
 function inventoryPair(list,name,value){const term=document.createElement('dt');term.textContent=name;const detail=document.createElement('dd');detail.textContent=value;list.append(term,detail);}
 function inventoryOrigin(origin){return origin&&typeof origin==='object'&&!Array.isArray(origin)&&typeof origin.layerId==='string'&&typeof origin.kind==='string'&&Number.isSafeInteger(origin.revision)&&origin.revision>=0;}
@@ -150,10 +156,44 @@ async function save(){
  if(new TextEncoder().encode(raw).length>278528)throw Error('size');
  pendingKind='draft';pending=raw;await retry();
 }
-async function retry(){if(!pending)throw Error('invalid');let result;try{result=await request('/control/action',pending);}catch(error){if(error.message==='invalid')pending=null;throw error;}if(pendingKind==='source'){showSource(result);status('Источник сохранён. Активные политики меняются отдельной публикацией.');}else if(pendingKind==='sync'){if(typeof result.id!=='string')throw Error('invalid');sourceJob=result.id;$('job-status').textContent=JSON.stringify(result,null,2);status('Задание обновления поставлено в очередь.');}else if(pendingKind.startsWith('layer-')){acceptLayerMutation(pendingKind,result);}else{showDraft(result);status('Черновик сохранён. Политики устройств не изменены.');}pending=null;}
-function clearSource(){sourceRevision=0;sourceIdentity=null;sourceJob='';clearSourceHistory();for(const id of ['source-id','source-owner','source-name','source-resource','source-external','source-until','source-secret'])$(id).value='';$('source-mode').value='server';$('source-format').value='uri';$('source-refresh').value='3600';$('source-stale').value='86400';$('source-enabled').checked=true;$('source-secret-operation').value='keep';for(const option of $('source-modes').options)option.selected=option.value==='wifi';$('source-version').textContent='Источник не выбран';$('job-status').replaceChildren();}
+async function retry(){
+ if(!pending)throw Error('invalid');
+ let result;
+ try{result=await request(pendingKind==='import'?sourceImportPath:'/control/action',pending);}
+ catch(error){if(['invalid','size','importSize'].includes(error.message))pending=null;throw error;}
+ if(pendingKind==='source'){
+  showSource(result);status('Источник сохранён. Активные политики меняются отдельной публикацией.');
+ }else if(['sync','import'].includes(pendingKind)){
+  if(result.sourceId!==sourceIdentity?.id||typeof result.id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(result.id)
+      ||typeof result.phase!=='string'||!Object.hasOwn(jobStates,result.phase))throw Error('invalid');
+  sourceJob=result.id;
+  $('job-status').textContent=JSON.stringify({id:result.id,sourceId:result.sourceId,phase:result.phase},null,2);
+  status('Задание принято. Проверьте результат в истории источника.');
+ }else if(pendingKind.startsWith('layer-')){
+  acceptLayerMutation(pendingKind,result);
+ }else{
+  showDraft(result);status('Черновик сохранён. Политики устройств не изменены.');
+ }
+ pending=null;
+}
+function clearSource(){sourceRevision=0;sourceIdentity=null;sourceJob='';clearSourceHistory();for(const id of ['source-id','source-owner','source-name','source-resource','source-external','source-until','source-secret','source-import-file'])$(id).value='';$('source-mode').value='server';$('source-format').value='uri';$('source-refresh').value='3600';$('source-stale').value='86400';$('source-enabled').checked=true;$('source-secret-operation').value='keep';for(const option of $('source-modes').options)option.selected=option.value==='wifi';$('source-version').textContent='Источник не выбран';$('job-status').replaceChildren();}
 function localDate(seconds){const d=new Date(seconds*1000);if(!Number.isFinite(d.getTime()))throw Error('invalid');return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-function showSource(s){if(!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');sourceIdentity={id:s.id,owner:s.owner};sourceRevision=s.revision;sourceJob='';clearSourceHistory();$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
+function showSource(s){if(!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');sourceIdentity={id:s.id,owner:s.owner,mode:s.mode};sourceRevision=s.revision;sourceJob='';clearSourceHistory();$('source-import-file').value='';$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
+async function importSource(){
+ const field=$('source-import-file'),file=field.files[0];
+ if(pending||sourceIdentity?.mode!=='manual'||!file||file.size<1)throw Error('invalid');
+ if(file.size>sourceImportBytes)throw Error('importSize');
+ const bytes=new Uint8Array(await file.arrayBuffer());
+ try{
+  if(bytes.length!==file.size||bytes.length>sourceImportBytes)throw Error('invalid');
+  const chunks=[],chunkSize=3*8192;
+  for(let offset=0;offset<bytes.length;offset+=chunkSize)chunks.push(btoa(String.fromCharCode(...bytes.subarray(offset,offset+chunkSize))));
+  pendingKind='import';
+  pending=envelope('source.import',{id:sourceIdentity.id,revision:sourceRevision,data:chunks.join('')});
+  field.value='';
+ }finally{bytes.fill(0);}
+ await retry();
+}
 function clearSourceHistory(){
  sourceHistoryNext='';$('source-history-status').textContent='';$('source-history-list').replaceChildren();
 }
@@ -162,19 +202,18 @@ async function sourceHistory(more=false){
  if(!sourceId||more&&!sourceHistoryNext)throw Error('invalid');
  const after=more?sourceHistoryNext:'';
  const page=await action('job.list',{sourceId,after});
- const states={queued:'В очереди',running:'Выполняется',succeeded:'Завершено',failed:'Ошибка',cancelled:'Отменено',dead_letter:'Истёк срок или лимит повторов'};
  if(page.sourceId!==sourceId||!Array.isArray(page.jobs)||page.jobs.length>20||typeof page.next!=='string'||!/^[A-Za-z0-9_-]{0,128}$/.test(page.next))throw Error('invalid');
  if(page.next&&(page.jobs.length!==20||page.next!==page.jobs[19]?.job?.id||page.next===after))throw Error('invalid');
  const summaries=page.jobs.map(item=>{
   const {job,updatedAt,nextAttemptAt}=item||{};
   if(!job||job.sourceId!==sourceId||typeof job.id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(job.id)
-      ||typeof job.phase!=='string'||!Object.hasOwn(states,job.phase)||!['fetch','resource','manual','device'].includes(job.kind)
+      ||typeof job.phase!=='string'||!Object.hasOwn(jobStates,job.phase)||!['fetch','resource','manual','device'].includes(job.kind)
       ||!Number.isSafeInteger(job.sourceRevision)||job.sourceRevision<1||!Number.isInteger(job.attempts)||job.attempts<0||job.attempts>8
       ||typeof job.reason!=='string'||!/^[a-z_]{0,64}$/.test(job.reason)||!Number.isSafeInteger(updatedAt)||updatedAt<1
       ||!Number.isSafeInteger(nextAttemptAt)||nextAttemptAt<0)throw Error('invalid');
   const retry=nextAttemptAt? ` · не ранее ${inventoryDate(nextAttemptAt*1000)}`:'';
   const reason=job.reason? ` · ${job.reason}`:'';
-  return `${states[job.phase]} · ${job.kind} · v${job.sourceRevision} · попыток ${job.attempts} · ${inventoryDate(updatedAt*1000)}${retry}${reason}`;
+  return `${jobStates[job.phase]} · ${job.kind} · v${job.sourceRevision} · попыток ${job.attempts} · ${inventoryDate(updatedAt*1000)}${retry}${reason}`;
  });
  if(!more)clearSourceHistory();
  sourceHistoryNext=page.next;
@@ -203,6 +242,8 @@ $('sync-source').onclick=()=>work(async()=>{if(pending||!sourceIdentity)throw Er
 $('source-job').onclick=()=>work(async()=>{if(!sourceJob)throw Error('invalid');$('job-status').textContent=JSON.stringify(await action('job.get',{id:sourceJob}),null,2);status('Состояние задания обновлено.');});
 $('source-history').onclick=()=>work(()=>sourceHistory());
 $('source-history-more').onclick=()=>work(()=>sourceHistory(true));
+$('source-import-file').onchange=controls;
+$('source-import').onclick=()=>work(importSource);
 controls();work(async()=>{await request('/session',{});authenticated=true;status('Вы вошли. Выберите пользователя или откройте личный черновик.');});
 
 function clearLayerReview(){layerPreview=null;$('layer-confirm').checked=false;$('layer-review').hidden=true;$('layer-impact').textContent='';}

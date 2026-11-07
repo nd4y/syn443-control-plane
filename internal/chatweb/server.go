@@ -4,6 +4,7 @@
 package chatweb
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -57,14 +58,15 @@ type session struct {
 	cancel                 context.CancelFunc
 }
 type Server struct {
-	config   Config
-	verifier verifier
-	client   *http.Client
-	mu       sync.Mutex
-	pending  map[string]pending
-	sessions map[string]*session
-	clock    func() time.Time
-	slots    chan struct{}
+	config        Config
+	verifier      verifier
+	client        *http.Client
+	mu            sync.Mutex
+	pending       map[string]pending
+	sessions      map[string]*session
+	clock         func() time.Time
+	slots         chan struct{}
+	sourceImports chan struct{}
 }
 
 func validURL(raw string, origin, fixture bool) bool {
@@ -86,7 +88,7 @@ func newServer(c Config, p verifier, transport http.RoundTripper) *Server {
 	if transport == nil {
 		transport = &http.Transport{Proxy: nil, ResponseHeaderTimeout: 5 * time.Second, MaxIdleConns: 4, IdleConnTimeout: 30 * time.Second}
 	}
-	return &Server{config: c, verifier: p, client: &http.Client{Transport: transport, Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, pending: map[string]pending{}, sessions: map[string]*session{}, clock: time.Now, slots: make(chan struct{}, 4)}
+	return &Server{config: c, verifier: p, client: &http.Client{Transport: transport, Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, pending: map[string]pending{}, sessions: map[string]*session{}, clock: time.Now, slots: make(chan struct{}, 4), sourceImports: make(chan struct{}, 1)}
 }
 func random() string {
 	b := make([]byte, 32)
@@ -215,7 +217,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	action := strings.TrimPrefix(r.URL.Path, "/chat/")
 	allowed := map[string]bool{"self": true, "inbox": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
-	control := s.config.ControlConsole && r.URL.Path == "/control/action"
+	sourceImport := s.config.ControlConsole && r.URL.Path == "/control/source/import"
+	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport)
 	if !control && (s.config.ControlConsole || !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action]) {
 		fail(w, 404)
 		return
@@ -225,14 +228,28 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		limit = 352 * 1024
 	}
 	if control {
-		limit = 278528
+		limit = consoleActionLimit
+	}
+	if sourceImport {
+		limit = consoleImportLimit
+		select {
+		case s.sourceImports <- struct{}{}:
+			defer func() { <-s.sourceImports }()
+		default:
+			fail(w, 503)
+			return
+		}
+	}
+	if r.ContentLength > limit {
+		fail(w, 413)
+		return
 	}
 	raw, e := io.ReadAll(io.LimitReader(r.Body, limit+1))
 	if e != nil || int64(len(raw)) > limit {
 		fail(w, 413)
 		return
 	}
-	if control && !validConsoleAction(raw) {
+	if control && !validConsoleAction(raw, sourceImport) {
 		fail(w, 400)
 		return
 	}
@@ -271,7 +288,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fail(w, 503)
 			return
 		}
-		req, e := http.NewRequestWithContext(ctx, "POST", uri, strings.NewReader(string(raw)))
+		req, e := http.NewRequestWithContext(ctx, "POST", uri, bytes.NewReader(raw))
 		if e != nil {
 			fail(w, 503)
 			return

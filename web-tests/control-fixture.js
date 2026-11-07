@@ -9,9 +9,11 @@ const server=http.createServer(async(req,res)=>{
  if(req.method==='GET'&&['/','/app.js','/style.css','/layer-merge.js'].includes(req.url)){
   const name=req.url==='/'?'index.html':req.url.slice(1);res.writeHead(200,{'Content-Type':name.endsWith('js')?'text/javascript':name.endsWith('css')?'text/css':'text/html','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"});res.end(fs.readFileSync(new URL('../internal/chatweb/assets/control/'+name,import.meta.url)));return;
  }
- let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>278528){send(413,{});return;}}
+ const importing=req.url==='/control/source/import';
+ const limit=importing?14*1024*1024+65536:278528;
+ let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>limit){send(413,{});return;}}
  let body;try{body=JSON.parse(raw||'{}');}catch{send(400,{});return;}
- if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];sources=new Map([['source-a',originalSource()]]);jobs=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
+ if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
  if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],layerDrafts:[...layerDrafts.values()],sources:[...sources.values()],operations:operations.size,calls});return;}
  if(req.url==='/fixture/revoke'){denied=true;send(200,{});return;}
  if(req.url==='/fixture/expire'){auth=false;send(200,{});return;}
@@ -21,7 +23,8 @@ const server=http.createServer(async(req,res)=>{
  if(req.url==='/session'){send(200,{authenticated:true});return;}
  if(req.url==='/logout'){auth=false;send(200,{ok:true});return;}
  if(denied){send(403,{});return;}
- if(req.url!=='/control/action'||body.version!==1){send(404,{});return;}
+ if((!importing&&req.url!=='/control/action')||body.version!==1){send(404,{});return;}
+ if(importing!==(body.action==='source.import')){send(400,{});return;}
  calls.push(body.action);
  const p=body.payload;
  switch(body.action){
@@ -89,6 +92,15 @@ const server=http.createServer(async(req,res)=>{
   if(failSave){failSave=false;send(503,{});}else send(200,value);break;
  }
  case 'source.sync':{const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}const source=sources.get(p.id);if(!source||source.revision!==p.revision){send(409,{});break;}const value={id:'job-a',phase:'queued',sourceId:p.id};jobs.set(value.id,value);operations.set(body.requestId,{raw,value});send(200,value);break;}
+ case 'source.import':{
+  const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}
+  const source=sources.get(p.id);
+  if(source?.mode!=='manual'||source.revision!==p.revision||Buffer.from(p.data,'base64').toString()!=='http://proxy.example.invalid:443'){send(400,{});break;}
+  const value={id:'synthetic-import-job',phase:'queued',sourceId:p.id};
+  jobs.set(value.id,value);operations.set(body.requestId,{raw,value});
+  if(options.importFailOnce){options.importFailOnce=false;send(503,{});}else send(200,value);
+  break;
+ }
  case 'job.get':{const job=jobs.get(p.id);send(job?200:403,job?{...job,phase:'succeeded'}:{});break;}
  case 'job.list':{
   if(!sources.has(p.sourceId)||!['','job-19'].includes(p.after)){send(403,{});break;}

@@ -23,6 +23,23 @@ test('source job history shows bounded retries and clears scoped results on logo
  await expect(history).toHaveText('');
  await expect(page.locator('#source-history')).toBeDisabled();
 });
+
+test('manual subscription file retries exactly once without exposing or storing its contents',async({page,request})=>{
+ await reset(request,{manualSource:true,importFailOnce:true});await page.goto(origin);await expect(page.locator('#load-sources')).toBeEnabled();
+ await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();
+ await page.getByRole('button',{name:'Настроить источник'}).first().click();
+ const file=page.locator('#source-import-file');
+ await file.setInputFiles({name:'synthetic.txt',mimeType:'text/plain',buffer:Buffer.from('http://proxy.example.invalid:443')});
+ await page.locator('#source-import').click();
+ await expect(page.locator('#pending')).toBeVisible();await expect(file).toHaveValue('');
+ await page.locator('#retry-save').click();
+ await expect(page.locator('#pending')).toBeHidden();await expect(page.locator('#job-status')).toContainText('synthetic-import-job');
+ await expect(page.locator('main')).not.toContainText('proxy.example.invalid');
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.calls.filter(call=>call==='source.import')).toHaveLength(2);expect(state.operations).toBe(1);
+ expect(state.calls).not.toContain('configuration.publish');
+ expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
+});
 async function draft(page){await page.locator('#draft-id').fill('draft-a');await page.locator('#target-id').fill('device-a');await page.locator('#plan').fill(JSON.stringify(plan,null,2));}
 test('console safely renders source metadata and saves/reopens its private draft',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();

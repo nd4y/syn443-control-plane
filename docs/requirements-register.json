@@ -262,6 +262,8 @@
       "text": "Способы загрузки: сервером; самим устройством для подписок с привязкой к устройству/IP; ручной импорт администратором. Выбор фиксируется на источнике. Нельзя обходить лимит устройств подменой HWID или выдавать серверную загрузку за работу пользовательского устройства. Собственные ссылки пользователя, если добавление разрешено, по умолчанию доступны только ему.",
       "status": "partial",
       "evidence": [
+        "docs/control-console.md#source-management-extension-acceptance-pending",
+        "internal/chatweb/control_test.go",
         "docs/control-catalog.md",
         "internal/catalog/worker.go",
         "internal/catalog/store_postgres_test.go",

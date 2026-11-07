@@ -20,9 +20,11 @@
 <label><input id="source-enabled" type="checkbox" checked> Включён</label>
 <label for="source-secret-operation">Учётные данные</label><select id="source-secret-operation"><option value="keep">Сохранить прежние</option><option value="replace">Заменить</option><option value="delete">Удалить</option></select>
 <label for="source-secret">Новые параметры HTTPS, JSON</label><textarea id="source-secret" rows="5" maxlength="65536" autocomplete="off" spellcheck="false"></textarea>
-<p>Для HTTPS: объект с полем url и при необходимости headers, rootCa, allowedNetworks. Прежние значения не отображаются. Изменение секрета требует свежей MFA. Ручной импорт и получение с устройства на этом экране пока недоступны.</p>
+<p>Для HTTPS: объект с полем url и при необходимости headers, rootCa, allowedNetworks. Прежние значения не отображаются. Изменение секрета требует свежей MFA.</p>
 <button id="save-source" disabled>Сохранить источник</button></form>
 <button id="sync-source" disabled>Обновить профили</button><button id="source-job" disabled>Проверить задание</button><pre id="job-status"></pre>
+<label for="source-import-file">Файл подписки до 10 МиБ</label><input id="source-import-file" type="file" disabled>
+<button id="source-import" disabled>Импортировать в ручной источник</button>
 <h3>История заданий источника</h3>
 <button id="source-history" disabled>Загрузить историю</button><button id="source-history-more" disabled>Более ранние задания</button>
 <p id="source-history-status" role="status"></p><ul id="source-history-list"></ul>
