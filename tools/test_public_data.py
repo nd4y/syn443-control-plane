@@ -1,8 +1,41 @@
+from pathlib import Path
+import subprocess
+import tempfile
 import unittest
-from check_public_data import findings
+from unittest.mock import patch
+from check_public_data import findings, scan_history
 
 
 class PublicDataTest(unittest.TestCase):
+    def test_history_scans_deleted_blobs_and_binary_bytes_on_other_refs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def git(*args):
+                return subprocess.check_output(["git", "-C", str(root), *args])
+
+            git("init", "--quiet", "--initial-branch=main")
+            git("config", "user.name", "Synthetic Test")
+            git("config", "user.email", "fixture@users.noreply.github.com")
+            git("config", "commit.gpgsign", "false")
+            sample = root / "probe.txt"
+            sample.write_bytes(b"first\nserver." + b"local\nlast\n")
+            git("add", "probe.txt")
+            git("commit", "--quiet", "-m", "Synthetic history fixture")
+            old = git("rev-parse", "HEAD:probe.txt").decode().strip()
+            git("rm", "--quiet", "probe.txt")
+            git("commit", "--quiet", "-m", "Remove synthetic history fixture")
+            git("switch", "--quiet", "-c", "other")
+            (root / "probe.bin").write_bytes(b"line\n\0bytes\n")
+            git("add", "probe.bin")
+            git("commit", "--quiet", "-m", "Synthetic binary fixture")
+            binary = git("rev-parse", "HEAD:probe.bin").decode().strip()
+            git("switch", "--quiet", "main")
+            with patch("check_public_data.ROOT", root):
+                self.assertEqual(set(scan_history()), {
+                    (old[:12] + ":probe.txt", "private-domain"),
+                    (binary[:12] + ":probe.bin", "unreviewed-binary"),
+                })
+
     def test_private_addresses(self):
         for octets in ((10, 2, 3, 4), (192, 168, 5, 6), (172, 16, 2, 3), (100, 106, 1, 2)):
             self.assertIn("private-address", findings(".".join(map(str, octets)).encode()))
