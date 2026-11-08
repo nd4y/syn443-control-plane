@@ -19,6 +19,7 @@ function status(message,tone='info'){
 }
 function setNavExpanded(expanded){
  $('console-nav-toggle').setAttribute('aria-expanded',String(expanded));
+ $('console-shell').classList.toggle('mobile-nav-expanded',expanded);
 }
 function setDesktopNavExpanded(expanded){
  $('desktop-nav-toggle').setAttribute('aria-expanded',String(expanded));
@@ -139,7 +140,7 @@ function applyRouteChecks(state){
 function controls(){
  $('login').disabled=busy||authenticated;$('logout').disabled=busy||!authenticated;
  $('login').hidden=authenticated;$('logout').hidden=!authenticated;
- for(const id of ['workspace','console-navigation','skip-workspace','desktop-nav-toggle'])$(id).hidden=!authenticated;
+ for(const id of ['workspace','console-navigation','skip-workspace','desktop-nav-toggle','console-nav-toggle'])$(id).hidden=!authenticated;
  $('signin').hidden=authenticated;
  if(!authenticated){
   setNavExpanded(false);
@@ -524,10 +525,15 @@ const desktopNavToggle=$('desktop-nav-toggle');
 desktopNavToggle.onclick=()=>setDesktopNavExpanded(desktopNavToggle.getAttribute('aria-expanded')!=='true');
 const navToggle=$('console-nav-toggle');
 navToggle.onclick=()=>setNavExpanded(navToggle.getAttribute('aria-expanded')!=='true');
-$('console-navigation').addEventListener('keydown',event=>{
+document.addEventListener('keydown',event=>{
  if(event.key==='Escape'&&navToggle.getAttribute('aria-expanded')==='true'){
   setNavExpanded(false);
   navToggle.focus();
+ }
+});
+document.addEventListener('pointerdown',event=>{
+ if(navToggle.getAttribute('aria-expanded')==='true'&&!event.target.closest('#console-navigation, #console-nav-toggle')){
+  setNavExpanded(false);
  }
 });
 $('console-nav').addEventListener('click',event=>{

@@ -61,7 +61,7 @@ function Brand() {
 
 function Header() {
   return (
-    <Masthead className="masthead pf-v6-theme-dark">
+    <Masthead className="masthead" display={{ default: 'inline' }}>
       <MastheadMain>
         <MastheadToggle>
           <PageToggleButton
@@ -72,6 +72,21 @@ function Header() {
             hidden
           >
             <BarsIcon />
+          </PageToggleButton>
+          <PageToggleButton
+            id="console-nav-toggle"
+            aria-labelledby="mobile-nav-label console-nav-current"
+            aria-expanded="false"
+            aria-controls="console-navigation"
+            hidden
+          >
+            <BarsIcon />
+            <span id="mobile-nav-label" className="pf-v6-u-screen-reader">
+              Разделы:
+            </span>
+            <span id="console-nav-current" className="pf-v6-u-screen-reader">
+              Устройства
+            </span>
           </PageToggleButton>
         </MastheadToggle>
         <Brand />
@@ -104,21 +119,7 @@ function currentSection() {
 function Navigation() {
   const section = useSyncExternalStore(subscribeToSection, currentSection);
   return (
-    <aside
-      id="console-navigation"
-      className="console-navigation pf-v6-theme-dark"
-      hidden
-    >
-      <Button
-        id="console-nav-toggle"
-        className="console-nav-toggle"
-        variant="plain"
-        aria-expanded="false"
-        aria-controls="console-nav"
-      >
-        <span>Разделы</span>
-        <span id="console-nav-current">Устройства</span>
-      </Button>
+    <aside id="console-navigation" className="console-navigation" hidden>
       <Nav
         id="console-nav"
         className="console-nav"

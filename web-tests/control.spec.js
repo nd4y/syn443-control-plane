@@ -342,6 +342,16 @@ test('mobile device form submits by keyboard and cannot keep a stale device sele
  expect(state.operations).toBe(0);
 });
 
+async function rgbContrast(locator,background){
+ return locator.evaluate((node,fallback)=>{
+  const rgb=value=>value.match(/[0-9.]+/g).slice(0,3).map(Number);
+  const luminance=channels=>channels.map(value=>value/255).map(value=>value<=0.04045?value/12.92:((value+0.055)/1.055)**2.4).reduce((total,value,index)=>total+value*[0.2126,0.7152,0.0722][index],0);
+  const style=getComputedStyle(node),surface=style.backgroundColor==='rgba(0, 0, 0, 0)'?getComputedStyle(document.querySelector(fallback)).backgroundColor:style.backgroundColor;
+  const values=[luminance(rgb(style.color)),luminance(rgb(surface))].sort((a,b)=>b-a);
+  return (values[0]+0.05)/(values[1]+0.05);
+ },background);
+}
+
 test('console shell keeps the active section and keyboard focus visible on desktop',async({page,request})=>{
  await reset(request);
  await page.setViewportSize({width:1440,height:960});
@@ -364,6 +374,9 @@ test('console shell keeps the active section and keyboard focus visible on deskt
  await expect(page.locator('#inventory-state')).toHaveAttribute('data-tone','success');
  await expect(page.locator('#inventory-issued')).toHaveAttribute('data-tone','info');
  await expect(page.locator('#inventory-report')).toHaveAttribute('data-tone','danger');
+ for(const item of await nav.getByRole('link').all())expect(await rgbContrast(item,'#console-navigation')).toBeGreaterThanOrEqual(4.5);
+ for(const heading of await nav.getByRole('heading').all())expect(await rgbContrast(heading,'#console-navigation')).toBeGreaterThanOrEqual(4.5);
+ expect(await rgbContrast(page.locator('#logout'),'.masthead')).toBeGreaterThanOrEqual(4.5);
  await page.screenshot({path:'test-results/console-visual/desktop.png',animations:'disabled'});
  const skip=page.getByRole('link',{name:'К рабочей области'});
  await skip.focus();
@@ -400,6 +413,12 @@ test('console shell fits a narrow screen and retains a keyboard scroll region',a
  await expect(toggle).toHaveAttribute('aria-expanded','false');
  await expect(nav).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ const brand=await page.locator('.masthead .brand').boundingBox();
+ const logout=await page.locator('#logout').boundingBox();
+ const masthead=await page.locator('.masthead').boundingBox();
+ expect(masthead.height).toBeLessThanOrEqual(72);
+ expect(logout.x).toBeGreaterThan(brand.x+brand.width);
+ expect(Math.abs(logout.y+logout.height/2-brand.y-brand.height/2)).toBeLessThan(4);
  const report=await page.locator('#inventory-report-time').boundingBox();
  expect(report.y+report.height).toBeLessThanOrEqual(900);
  await page.screenshot({path:'test-results/console-visual/mobile.png',animations:'disabled'});
