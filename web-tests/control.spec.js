@@ -402,6 +402,7 @@ test('console shell keeps the active section and keyboard focus visible on deskt
 });
 
 test('console shell fits a narrow screen and retains a keyboard scroll region',async({page,request})=>{
+ page.setDefaultTimeout(8000);
  await reset(request);
  await page.setViewportSize({width:320,height:900});
  const hosts=new Set();
@@ -421,7 +422,7 @@ test('console shell fits a narrow screen and retains a keyboard scroll region',a
  expect(Math.abs(logout.y+logout.height/2-brand.y-brand.height/2)).toBeLessThan(4);
  const report=await page.locator('#inventory-report-time').boundingBox();
  expect(report.y+report.height).toBeLessThanOrEqual(900);
- await page.screenshot({path:'test-results/console-visual/mobile.png',animations:'disabled'});
+ await page.screenshot({path:'test-results/console-visual/mobile.png',animations:'disabled',timeout:8000});
  await toggle.press('Enter');
  await expect(toggle).toHaveAttribute('aria-expanded','true');
  await expect(nav.getByRole('link')).toHaveCount(5);
