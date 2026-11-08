@@ -415,11 +415,13 @@ test('console shell fits a narrow screen and retains a keyboard scroll region',a
  await expect(nav).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  const menu=await toggle.boundingBox();
+ const menuIcon=await toggle.locator('svg').boundingBox();
  const brand=await page.locator('.masthead .brand').boundingBox();
  const logout=await page.locator('#logout').boundingBox();
  const masthead=await page.locator('.masthead').boundingBox();
  expect(masthead.height).toBeLessThanOrEqual(72);
  expect(menu.width).toBeGreaterThanOrEqual(44);
+ expect(Math.abs(menuIcon.y+menuIcon.height/2-menu.y-menu.height/2)).toBeLessThan(2);
  expect(menu.x+menu.width).toBeLessThanOrEqual(brand.x);
  expect(logout.x).toBeGreaterThan(brand.x+brand.width);
  expect(Math.abs(logout.y+logout.height/2-brand.y-brand.height/2)).toBeLessThan(4);

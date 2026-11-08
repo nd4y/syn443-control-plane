@@ -310,10 +310,16 @@ pre:not(:empty) {
   :root { --masthead-size: 3.75rem; }
   .masthead #desktop-nav-toggle { display: none; }
   .masthead #console-nav-toggle {
-    display: inline-flex;
+    display: inline-grid;
+    place-items: center;
     inline-size: 2.75rem;
     block-size: 2.75rem;
     padding: 0;
+  }
+  .masthead #console-nav-toggle .pf-v6-c-button__text {
+    display: flex;
+    align-items: center;
+    line-height: 1;
   }
   .masthead #logout { min-block-size: 2.75rem; }
   .console-shell.signed-in { display: block; }
