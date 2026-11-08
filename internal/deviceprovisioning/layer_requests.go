@@ -43,20 +43,31 @@ func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifie
 	if ctx == nil || verifier == nil || len(receipt.Body) > 262144 || receipt.URI != origin+"/v1/control/action" || receipt.AcceptedAt > now.Unix() || receipt.AcceptedAt < now.Unix()-180 || len(receipt.Token) < 24 || len(receipt.Token) > 16384 || identity.DecodeConfiguration(receipt.Body, &envelope) != nil || envelope.Version != 1 || !configurationRequestID.MatchString(envelope.RequestID) {
 		return "", envelope, 0, enrollment.ErrDenied
 	}
+	requiresFreshMFA := true
 	switch envelope.Action {
-	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.layers.draft.discard", "configuration.history.get":
+	case "configuration.inventory.get", "configuration.layers.drafts.list":
+		requiresFreshMFA = false
+	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.draft.discard", "configuration.history.get":
 	default:
 		return "", envelope, 0, enrollment.ErrDenied
 	}
 	p, e := verifier.Verify(ctx, receipt.Token, now)
-	if e != nil || !p.HasScope("syn443.control") || p.Expires <= now.Unix() || p.MFAUntil(acr, now) <= now.Unix() {
+	if e != nil || !p.HasScope("syn443.control") || p.Expires <= now.Unix() {
 		return "", envelope, 0, enrollment.ErrDenied
+	}
+	authorityUntil := min(p.Expires, receipt.AcceptedAt+180)
+	if requiresFreshMFA {
+		mfaUntil := p.MFAUntil(acr, now)
+		if mfaUntil <= now.Unix() {
+			return "", envelope, 0, enrollment.ErrDenied
+		}
+		authorityUntil = min(authorityUntil, mfaUntil)
 	}
 	proof, e := identity.VerifyProof(receipt.Proof, identity.ProofContext{Method: "POST", URI: receipt.URI, Token: receipt.Token, BodyHash: identity.Hash(receipt.Body), Now: time.Unix(receipt.AcceptedAt, 0)})
 	if e != nil || proof.Thumbprint != p.Thumbprint {
 		return "", envelope, 0, enrollment.ErrDenied
 	}
-	return identity.Hash([]byte(p.Issuer + "\x00" + p.Subject)), envelope, min(p.Expires, p.MFAUntil(acr, now), receipt.AcceptedAt+180), nil
+	return identity.Hash([]byte(p.Issuer + "\x00" + p.Subject)), envelope, authorityUntil, nil
 }
 
 type ConfigurationRequestView struct {

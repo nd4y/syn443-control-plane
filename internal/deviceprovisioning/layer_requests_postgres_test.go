@@ -44,6 +44,41 @@ func configurationCall(t *testing.T, n networkFixture, c *ConfigurationControl, 
 	return raw, token, proof
 }
 
+func TestSQLSharedSSOCanReadOnlyAuthorizedDeviceMetadata(t *testing.T) {
+	n, c, proposal := configurationControlFixture(t)
+	ctx := context.Background()
+	n.f.v.p.ACR = "0"
+	n.f.v.p.Methods = nil
+	n.f.v.p.AuthTime = n.f.now.Add(-time.Hour).Unix()
+	call := func(action string, payload any) (any, error) {
+		t.Helper()
+		raw, token, proof := configurationCall(t, n, c, action, identity.Hash([]byte(action)), payload)
+		return c.Dispatch(ctx, token, proof, raw, n.f.now)
+	}
+	in := map[string]string{"id": n.target.Device}
+	got, err := call("configuration.inventory.get", in)
+	if err != nil || got.(ConfigurationInventory).Device != n.target.Device {
+		t.Fatal("authorized device card", err)
+	}
+	got, err = call("configuration.layers.drafts.list", map[string]string{"targetKind": "device", "targetId": n.target.Device})
+	if err != nil || got.(ConfigurationDraftInventory).TargetID != n.target.Device {
+		t.Fatal("authorized draft list", err)
+	}
+	if _, err = call("configuration.preview.request", configurationPreviewInput{proposal}); !errors.Is(err, enrollment.ErrDenied) {
+		t.Fatal("preview accepted without fresh MFA", err)
+	}
+	raw, token, _ := configurationCall(t, n, c, "configuration.inventory.get", identity.Hash([]byte("bad read proof")), in)
+	if _, err = c.Dispatch(ctx, token, "invalid-proof", raw, n.f.now); !errors.Is(err, enrollment.ErrDenied) {
+		t.Fatal("device card accepted without a valid proof", err)
+	}
+	if _, err = fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, n.actor.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = call("configuration.inventory.get", in); !errors.Is(err, enrollment.ErrDenied) {
+		t.Fatal("device card accepted without device permission", err)
+	}
+}
+
 func TestSQLConfigurationQueuePreservesOriginalReceiptAndLostReplyOperation(t *testing.T) {
 	n, c, p := configurationControlFixture(t)
 	ctx := context.Background()
