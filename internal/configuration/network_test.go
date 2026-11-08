@@ -129,6 +129,8 @@ func TestInternalWifiFailoverRequiresComparableConcreteAuthorizedPaths(t *testin
 		func(v *NetworkSettings) { v.RouteFailover.NetworkMode = "cellular" },
 		func(v *NetworkSettings) { v.RouteFailover.Intent = "NON_RU" },
 		func(v *NetworkSettings) { v.Rules = nil },
+		func(v *NetworkSettings) { v.Rules[0].IPPrefixes = []string{"0.0.0.0/0"} },
+		func(v *NetworkSettings) { v.Rules[0].IPPrefixes = []string{"::/0"} },
 		func(v *NetworkSettings) { v.RouteChecks[1].Checks[0].Target = "different.example.invalid:22" },
 		func(v *NetworkSettings) { v.RouteChecks[1].Required = true },
 		func(v *NetworkSettings) {
