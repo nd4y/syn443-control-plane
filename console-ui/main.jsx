@@ -61,7 +61,7 @@ function Brand() {
 
 function Header() {
   return (
-    <Masthead className="masthead" display={{ default: 'inline' }}>
+    <Masthead className="masthead">
       <MastheadMain>
         <MastheadToggle>
           <PageToggleButton
