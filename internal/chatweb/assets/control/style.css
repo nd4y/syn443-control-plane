@@ -68,8 +68,8 @@ a { color: var(--action); }
 }
 .masthead .pf-v6-c-masthead__main { min-inline-size: 0; }
 .masthead .pf-v6-c-masthead__content { flex: none; }
-.masthead .brand { margin: 0; padding: 0; border: 0; }
-.masthead .pf-v6-c-masthead__toggle { display: flex; }
+.masthead .brand { order: 0; margin: 0; padding: 0; border: 0; }
+.masthead .pf-v6-c-masthead__toggle { display: flex; order: -1; }
 .masthead .pf-v6-c-button {
   --pf-v6-c-button--m-plain--Color: var(--nav-text);
   --pf-v6-c-button--m-plain--hover--Color: var(--nav-text);
