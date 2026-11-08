@@ -81,10 +81,10 @@ function Header() {
             hidden
           >
             <BarsIcon />
-            <span id="mobile-nav-label" className="pf-v6-u-screen-reader">
+            <span id="mobile-nav-label" className="pf-v6-screen-reader">
               Разделы:
             </span>
-            <span id="console-nav-current" className="pf-v6-u-screen-reader">
+            <span id="console-nav-current" className="pf-v6-screen-reader">
               Устройства
             </span>
           </PageToggleButton>

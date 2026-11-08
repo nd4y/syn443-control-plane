@@ -309,7 +309,12 @@ pre:not(:empty) {
 @media (max-width: 48rem) {
   :root { --masthead-size: 3.75rem; }
   .masthead #desktop-nav-toggle { display: none; }
-  .masthead #console-nav-toggle { display: inline-flex; }
+  .masthead #console-nav-toggle {
+    display: inline-flex;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    padding: 0;
+  }
   .masthead #logout { min-block-size: 2.75rem; }
   .console-shell.signed-in { display: block; }
   .console-navigation {
