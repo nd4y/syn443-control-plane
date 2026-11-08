@@ -423,7 +423,10 @@ func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]an
 			continue
 		}
 		if rule.MatchAll || len(rule.Domains)+len(rule.DomainSuffixes)+len(rule.IPPrefixes) == 0 ||
-			len(rule.DomainKeywords)+len(rule.DomainRegex) != 0 {
+			len(rule.DomainKeywords)+len(rule.DomainRegex) != 0 || slices.ContainsFunc(rule.IPPrefixes, func(value string) bool {
+			prefix, err := netip.ParsePrefix(value)
+			return err != nil || prefix.Bits() == 0
+		}) {
 			return nil, ErrInvalid
 		}
 		rules++
