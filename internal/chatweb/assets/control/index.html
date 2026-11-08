@@ -1,8 +1,28 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>SYN443 - Управление</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
-<body><header><div><strong>SYN443</strong><h1>Управление</h1></div><nav><button id="login">Войти через Keycloak</button><button id="logout" disabled>Выйти</button></nav></header>
+<body><a class="skip-link" href="#workspace" id="skip-workspace" hidden>К рабочей области</a><header><div><strong>SYN443</strong><h1>Управление</h1></div><nav aria-label="Учётная запись"><button id="login">Войти через Keycloak</button><button id="logout" hidden disabled>Выйти</button></nav></header>
 <p id="status" role="status">Войдите с административной учётной записью.</p>
-<main><section aria-labelledby="sources-title"><h2 id="sources-title">Источники</h2>
+<nav id="console-nav" class="console-nav" aria-label="Разделы управления" hidden>
+<a href="#inventory-title">Устройства</a><a href="#sources-title">Источники</a><a href="#draft-title">Черновики</a>
+<a href="#layer-title">Публикация</a><a href="#telemetry-title">Телеметрия</a></nav>
+<main id="workspace" tabindex="-1" hidden><section class="wide" aria-labelledby="inventory-title">
+<h2 id="inventory-title">Устройства</h2>
+<p id="inventory-help">Введите ID из приложения. Панель показывает последнюю выдачу политики и отчёт Android.</p>
+<form id="inventory-form" class="inventory-form"><div><label for="inventory-device">ID устройства</label>
+<input id="inventory-device" autocomplete="off" maxlength="64" required pattern="[A-Za-z0-9_\-]{1,64}" spellcheck="false" aria-describedby="inventory-help"></div>
+<button id="load-inventory" disabled>Загрузить конфигурацию</button></form>
+<p id="inventory-status" role="status" aria-atomic="true"></p>
+<div id="inventory-view" hidden><div class="inventory-summary">
+<div><h3>Желаемая конфигурация</h3><p id="inventory-state"></p></div>
+<div><h3>Выданная политика</h3><p id="inventory-issued"></p></div>
+<div><h3>Последний отчёт Android</h3><p id="inventory-report"></p><time id="inventory-report-time" hidden></time></div>
+</div>
+<details id="inventory-details"><summary>Технические данные</summary><dl id="inventory-meta"></dl>
+<h3>Наследованные слои</h3><ul id="inventory-layers"></ul>
+<h3>Действующие переносимые настройки</h3><pre id="inventory-effective"></pre>
+<h3>Источники полей</h3><ul id="inventory-fields"></ul>
+<h3>Ограничения</h3><ul id="inventory-restrictions"></ul></details></div>
+</section><section aria-labelledby="sources-title"><h2 id="sources-title">Источники</h2>
 <label for="owner">ID пользователя</label><input id="owner" autocomplete="off" maxlength="128"><button id="load-sources" disabled>Загрузить источники</button>
 <ul id="sources"></ul><button id="more-sources" disabled>Следующая страница</button><h3>Профили источника</h3><ul id="profiles"></ul><pre id="source-details"></pre>
 <h3>Настройки источника</h3><button id="new-source" disabled>Новый источник</button><p id="source-version">Источник не выбран</p>
@@ -70,14 +90,6 @@
 </fieldset>
 <p>Профили задаются ссылками sourceId/profileId. Ключи, пароли и состояние NetBird сюда не переносятся.</p><button id="save-draft" disabled>Сохранить черновик</button></form>
 <div id="pending" hidden><p>Изменение не подтверждено. Повтор использует ту же операцию.</p><button id="retry-save">Повторить операцию</button><button id="discard-save">Отменить повтор и проверить версию на сервере</button></div>
-</section><section class="wide" aria-labelledby="inventory-title"><h2 id="inventory-title">Конфигурация устройства (только чтение)</h2>
-<p>Показана желаемая конфигурация на сервере. Это не проверка связи и не подтверждение активации Android. Версия выданной политики ведётся отдельно от желаемой конфигурации.</p>
-<label for="inventory-device">ID устройства</label><input id="inventory-device" autocomplete="off" maxlength="64"><button id="load-inventory" disabled>Загрузить конфигурацию</button>
-<div id="inventory-view" hidden><p id="inventory-state"></p><dl id="inventory-meta"></dl>
-<h3>Наследованные слои</h3><ul id="inventory-layers"></ul>
-<h3>Действующие переносимые настройки</h3><pre id="inventory-effective"></pre>
-<h3>Источники полей</h3><ul id="inventory-fields"></ul>
-<h3>Ограничения</h3><ul id="inventory-restrictions"></ul></div>
 </section><section class="wide" aria-labelledby="layer-title"><h2 id="layer-title">Редактирование и публикация слоёв</h2>
 <p>Начните с конфигурации выбранного устройства или откройте сохранённый черновик. Предложение содержит все наследованные слои; меняйте только разрешённую область. Сервер проверяет ограничения, актуальность исходных версий и полный список затронутых устройств.</p>
 <button id="layer-from-device" disabled>Править слой выбранного устройства</button>

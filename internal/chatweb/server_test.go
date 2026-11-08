@@ -98,8 +98,8 @@ func loginWeb(t *testing.T, s *Server) *http.Cookie {
 	r.AddCookie(w.Result().Cookies()[0])
 	out := httptest.NewRecorder()
 	s.ServeHTTP(out, r)
-	if out.Code != 303 {
-		t.Fatalf("callback %d", out.Code)
+	if out.Code != 303 || out.Header().Get("Location") != "/" {
+		t.Fatalf("default callback %d", out.Code)
 	}
 	replay := httptest.NewRecorder()
 	s.ServeHTTP(replay, r)

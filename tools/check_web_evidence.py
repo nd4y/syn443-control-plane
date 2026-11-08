@@ -44,6 +44,8 @@ expected.update({
     'hourly telemetry distinguishes data empty and mismatched reports and clears on expiry',
     'scoped telemetry denial preserves an unrelated unsaved draft',
     'reserve probe cooldown requires explicit draft opt in and never publishes',
+    'device workspace is private until sign in and opens a safe linked device',
+    'mobile device form submits by keyboard and cannot keep a stale device selected',
 })
 assert len(cases) >= 37
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
