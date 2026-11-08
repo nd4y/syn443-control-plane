@@ -45,7 +45,7 @@ func configurationCall(t *testing.T, n networkFixture, c *ConfigurationControl, 
 }
 
 func TestSQLSharedSSOCanReadOnlyAuthorizedDeviceMetadata(t *testing.T) {
-	n, c, proposal := configurationControlFixture(t)
+	n, c, proposal, _ := layerPublisherFixture(t)
 	ctx := context.Background()
 	n.f.v.p.ACR = "0"
 	n.f.v.p.Methods = nil
