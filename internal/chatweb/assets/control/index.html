@@ -1,15 +1,22 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>SYN443 - Управление</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>SYN443 - Управление</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
 <body>
 <a class="skip-link" href="#workspace" id="skip-workspace" hidden>К рабочей области</a>
 <header class="masthead">
  <div class="masthead-inner">
-  <div class="brand">
+  <div class="masthead-brand">
+   <button type="button" id="desktop-nav-toggle" aria-label="Разделы управления" aria-expanded="true" aria-controls="console-navigation" hidden>
+    <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+     <path d="M4 6h16M4 12h16M4 18h16"/>
+    </svg>
+   </button>
+   <div class="brand">
    <svg class="brand-mark" aria-hidden="true" viewBox="0 0 32 32" width="32" height="32">
     <rect width="32" height="32" rx="5" fill="currentColor"/>
     <path d="M8 22l6-12 4 8 3-6 3 6M7 24h18" fill="none" stroke="white" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
    </svg>
    <strong>SYN443</strong><span class="brand-product">Control Plane</span>
+   </div>
   </div>
   <nav aria-label="Учётная запись"><button class="button-quiet" id="logout" hidden disabled>Выйти</button></nav>
  </div>
@@ -20,12 +27,27 @@
  <span>Разделы</span><span id="console-nav-current">Устройства</span>
 </button>
 <nav id="console-nav" class="console-nav" aria-label="Разделы управления">
- <p class="nav-heading">Управление</p>
- <a href="#inventory-title" aria-current="location">Устройства</a>
- <a href="#sources-title">Источники</a>
- <a href="#draft-title">Черновики</a>
- <a href="#layer-title">Публикация</a>
- <a href="#telemetry-title">Телеметрия</a>
+ <div class="console-perspective">
+  <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round">
+   <path d="M12 3l7 4v6c0 4-4 7-7 8-3-1-7-4-7-8V7z"/>
+   <path d="M9 12l2 2 4-4"/>
+  </svg>
+  <span>Администрирование</span>
+ </div>
+ <div class="nav-group" role="group" aria-labelledby="nav-home">
+  <p class="nav-heading" id="nav-home">Главная</p>
+  <a href="#inventory-title" aria-current="location">Устройства</a>
+ </div>
+ <div class="nav-group" role="group" aria-labelledby="nav-config">
+  <p class="nav-heading" id="nav-config">Конфигурация</p>
+  <a href="#sources-title">Источники</a>
+  <a href="#draft-title">Черновики</a>
+  <a href="#layer-title">Публикация</a>
+ </div>
+ <div class="nav-group" role="group" aria-labelledby="nav-observe">
+  <p class="nav-heading" id="nav-observe">Наблюдение</p>
+  <a href="#telemetry-title">Телеметрия</a>
+ </div>
 </nav>
 </div>
 <div class="console-content">
@@ -38,8 +60,8 @@
  <p id="status" class="console-status" role="status" aria-atomic="true">Войдите с административной учётной записью.</p>
  <main id="workspace" tabindex="-1" hidden>
   <div class="workspace-heading wide">
-   <p class="section-label">Control Plane</p>
-   <h1>Управление SYN443</h1>
+   <p class="workspace-context">Главная <span aria-hidden="true">/</span> <strong>Обзор</strong></p>
+   <h1>Обзор</h1>
    <p>Устройства, конфигурация и диагностика сети</p>
   </div>
 <section class="wide" aria-labelledby="inventory-title">

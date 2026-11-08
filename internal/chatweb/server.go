@@ -405,7 +405,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 
 const consoleLoginRecovery = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark"><title>SYN443 - Вход не завершён</title><link rel="stylesheet" href="/style.css"></head>
+<meta name="color-scheme" content="light"><title>SYN443 - Вход не завершён</title><link rel="stylesheet" href="/style.css"></head>
 <body><main><section class="wide"><h1>Вход не завершён</h1><p>Откройте панель и начните вход через Keycloak заново.</p>
 <p><a href="/">Вернуться ко входу</a></p></section></main></body></html>`
 

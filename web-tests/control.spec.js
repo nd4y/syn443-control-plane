@@ -211,9 +211,9 @@ test('invalid plan keeps edit available, revoked rights and logout clear private
  await reset(request);await page.reload();await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);await page.locator('#logout').click();await expect(page.locator('#plan')).toHaveValue('');await expect(page.locator('#target-id')).toHaveValue('');
  expect(await page.evaluate(()=>localStorage.length)).toBe(0);expect(await page.evaluate(()=>sessionStorage.length)).toBe(0);
 });
-test('phone layout stays dark and within viewport; expired session hides old data',async({page,request})=>{
+test('phone layout stays light and within viewport; expired session hides old data',async({page,request})=>{
  await reset(request);await page.setViewportSize({width:360,height:800});await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme)).toBe('dark');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme)).toBe('light');
  await request.post(origin+'/fixture/expire',{data:{}});await page.locator('#save-draft').click();await expect(page.locator('#status')).toContainText('Сессия завершена');await expect(page.locator('#plan')).toHaveValue('');
 });
 
@@ -343,8 +343,19 @@ test('console shell keeps the active section and keyboard focus visible on deskt
  await page.setViewportSize({width:1440,height:960});
  await page.goto(origin+'/#device=device-a');
  const nav=page.getByRole('navigation',{name:'Разделы управления'});
- await expect(page.getByRole('heading',{level:1,name:'Управление SYN443'})).toBeVisible();
- await expect(nav.getByRole('link',{name:'Устройства'})).toHaveAttribute('aria-current','location');
+ await expect(page.getByRole('heading',{level:1,name:'Обзор'})).toBeVisible();
+ await expect(nav.getByRole('group',{name:'Главная'}).getByRole('link',{name:'Устройства'})).toHaveAttribute('aria-current','location');
+ await expect(nav.getByRole('group',{name:'Конфигурация'}).getByRole('link')).toHaveCount(3);
+ await expect(nav.getByRole('group',{name:'Наблюдение'}).getByRole('link',{name:'Телеметрия'})).toBeVisible();
+ const toggle=page.locator('#desktop-nav-toggle');
+ await expect(toggle).toHaveAttribute('aria-expanded','true');
+ await toggle.press('Enter');
+ await expect(toggle).toHaveAttribute('aria-expanded','false');
+ await expect(nav).toBeHidden();
+ await expect(page.locator('#inventory-view')).toBeVisible();
+ await toggle.press('Enter');
+ await expect(toggle).toHaveAttribute('aria-expanded','true');
+ await expect(nav).toBeVisible();
  await expect(page.locator('#inventory-view')).toBeVisible();
  await expect(page.locator('#inventory-state')).toHaveAttribute('data-tone','success');
  await expect(page.locator('#inventory-issued')).toHaveAttribute('data-tone','info');

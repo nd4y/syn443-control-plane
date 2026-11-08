@@ -13,7 +13,7 @@ expected = {
     'console safely renders source metadata and saves/reopens its private draft',
     'lost save response retries identical operation without another revision',
     'invalid plan keeps edit available, revoked rights and logout clear private memory',
-    'phone layout stays dark and within viewport; expired session hides old data',
+    'phone layout stays light and within viewport; expired session hides old data',
     'source editor saves metadata without exposing prior secrets and tracks sync job',
     'source mutation lost acknowledgment retries the same request and clears new secret on success',
     'source permission withdrawal erases unsent credentials and disables mutation',

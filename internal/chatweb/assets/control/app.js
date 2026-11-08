@@ -20,6 +20,10 @@ function status(message,tone='info'){
 function setNavExpanded(expanded){
  $('console-nav-toggle').setAttribute('aria-expanded',String(expanded));
 }
+function setDesktopNavExpanded(expanded){
+ $('desktop-nav-toggle').setAttribute('aria-expanded',String(expanded));
+ $('console-shell').classList.toggle('desktop-nav-collapsed',!expanded);
+}
 function updateSectionNav(){
  const links=$('console-nav').querySelectorAll('a');
  const current=Array.from(links).find(link=>link.hash===location.hash)||links[0];
@@ -124,9 +128,12 @@ function applyRouteChecks(state){
 function controls(){
  $('login').disabled=busy||authenticated;$('logout').disabled=busy||!authenticated;
  $('login').hidden=authenticated;$('logout').hidden=!authenticated;
- for(const id of ['workspace','console-navigation','skip-workspace'])$(id).hidden=!authenticated;
+ for(const id of ['workspace','console-navigation','skip-workspace','desktop-nav-toggle'])$(id).hidden=!authenticated;
  $('signin').hidden=authenticated;
- if(!authenticated)setNavExpanded(false);
+ if(!authenticated){
+  setNavExpanded(false);
+  setDesktopNavExpanded(true);
+ }
  $('console-shell').classList.toggle('signed-in',authenticated);
  for(const id of ['load-sources','load-inventory','open-draft','save-draft','new-draft','new-source','save-source'])$(id).disabled=busy||!authenticated||!!pending;
  for(const id of ['telemetry-hour','load-telemetry'])$(id).disabled=busy||!authenticated;
@@ -502,6 +509,8 @@ $('inventory-device').oninput=()=>{
  if(linkedDevice())history.replaceState(null,'','/#inventory-title');
  layerControls();
 };
+const desktopNavToggle=$('desktop-nav-toggle');
+desktopNavToggle.onclick=()=>setDesktopNavExpanded(desktopNavToggle.getAttribute('aria-expanded')!=='true');
 const navToggle=$('console-nav-toggle');
 navToggle.onclick=()=>setNavExpanded(navToggle.getAttribute('aria-expanded')!=='true');
 $('console-navigation').addEventListener('keydown',event=>{
