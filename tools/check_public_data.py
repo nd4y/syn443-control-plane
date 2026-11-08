@@ -92,14 +92,39 @@ def git(*args):
     return subprocess.check_output(["git", "-C", str(ROOT), *args])
 
 
+def reachable_blobs():
+    rows = git("rev-list", "--objects", "--all").decode().splitlines()
+    command = ["git", "-C", str(ROOT), "cat-file", "--batch-command"]
+    with subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE) as batch:
+        def request(verb, oid):
+            batch.stdin.write(verb + b" " + oid + b"\n")
+            batch.stdin.flush()
+            header = batch.stdout.readline().split()
+            if len(header) != 3 or header[0] != oid:
+                raise RuntimeError("Git history object is missing or returned invalid metadata")
+            return header[1], int(header[2])
+
+        for row in rows:
+            oid, _, name = row.partition(" ")
+            reference = oid.encode("ascii")
+            kind, size = request(b"info", reference)
+            if kind != b"blob":
+                continue
+            if request(b"contents", reference) != (kind, size):
+                raise RuntimeError("Git history blob changed during scan")
+            data = batch.stdout.read(size)
+            if len(data) != size or batch.stdout.read(1) != b"\n":
+                raise RuntimeError("Git history blob was truncated")
+            yield oid, name, data
+        batch.stdin.close()
+        if batch.wait():
+            raise RuntimeError("Git history object scan failed")
+
+
 def scan_history():
     problems = []
     # Every reachable blob, including deleted files and other fetched branches.
-    for row in git("rev-list", "--objects", "--all").decode().splitlines():
-        oid, _, name = row.partition(" ")
-        if git("cat-file", "-t", oid).strip() != b"blob":
-            continue
-        data = git("cat-file", "blob", oid)
+    for oid, name, data in reachable_blobs():
         rules = findings(data)
         if FORBIDDEN.search(name) and name != ".env.example":
             rules.add("private-file")
