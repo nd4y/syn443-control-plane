@@ -124,7 +124,7 @@ jobs:
           mkdir -p dist/console-ui
           cp internal/chatweb/assets/control/ui/* dist/console-ui/
           git rev-parse HEAD > dist/console-ui/SOURCE.txt
-          (cd dist/console-ui && sha256sum *.js *.css *.woff2 *.svg > SHA256SUMS)
+          (cd dist/console-ui && sha256sum -- *.js *.css *.woff2 *.svg > SHA256SUMS)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: control-console-ui
