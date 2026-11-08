@@ -5,9 +5,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -31,6 +33,137 @@ func TestConsoleSourceMutationsRemainInTheClosedActionAllowlist(t *testing.T) {
 type consoleTransportFunc func(*http.Request) (*http.Response, error)
 
 func (f consoleTransportFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestConsoleDeviceTargetStaysInBoundPendingLogin(t *testing.T) {
+	s, _, principal := webFixture(t)
+	s.config.ControlConsole = true
+	principal.Scope = "syn443.control"
+	device := "synthetic-device_" + strings.Repeat("x", 47)
+	underlying := s.client.Transport
+	s.client.Transport = consoleTransportFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path != "/protocol/openid-connect/token" || r.GetBody == nil {
+			t.Error("unexpected outbound request during login")
+			return underlying.RoundTrip(r)
+		}
+		body, err := r.GetBody()
+		if err != nil {
+			t.Error("token exchange body unavailable")
+			return underlying.RoundTrip(r)
+		}
+		raw, err := io.ReadAll(body)
+		body.Close()
+		if err != nil || strings.Contains(string(raw), device) || strings.Contains(r.URL.String(), device) {
+			t.Error("device leaked to token endpoint")
+		}
+		return underlying.RoundTrip(r)
+	})
+	w := webCall(s, "/login", `{"device":"`+device+`"}`, nil)
+	if w.Code != 200 || strings.Contains(w.Body.String(), device) || strings.Contains(w.Header().Get("Set-Cookie"), device) {
+		t.Fatal("device leaked before authorization or login failed")
+	}
+	var link map[string]string
+	if json.Unmarshal(w.Body.Bytes(), &link) != nil {
+		t.Fatal("authorization URL missing")
+	}
+	auth, err := url.Parse(link["url"])
+	if err != nil || auth.Query().Get("redirect_uri") != s.config.Origin+"/callback" {
+		t.Fatal("OIDC redirect URI changed")
+	}
+	state := auth.Query().Get("state")
+	if state == "" || s.pending[state].device != device {
+		t.Fatal("device target is not bound to pending state")
+	}
+	path := "/callback?" + url.Values{"code": {"test-code"}, "state": {state}, "iss": {s.config.Issuer}}.Encode()
+	other := webCall(s, "/login", `{}`, nil)
+	if other.Code != 200 {
+		t.Fatal("unrelated pending login")
+	}
+	call := func(cookie *http.Cookie) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("GET", path, nil)
+		r.AddCookie(cookie)
+		out := httptest.NewRecorder()
+		s.ServeHTTP(out, r)
+		return out
+	}
+	if out := call(other.Result().Cookies()[0]); out.Code != 401 || out.Header().Get("Location") != "" || strings.Contains(out.Body.String(), device) {
+		t.Fatal("unrelated cookie accessed pending device")
+	}
+	cookie := w.Result().Cookies()[0]
+	if out := call(cookie); out.Code != 303 || out.Header().Get("Location") != "/#device="+device {
+		t.Fatal("bound callback did not restore device target")
+	}
+	if out := call(cookie); out.Code != 401 || out.Header().Get("Location") != "" {
+		t.Fatal("device callback was replayable")
+	}
+}
+
+func TestConsoleLoginRejectsInvalidDeviceTargetsWithoutCreatingPendingState(t *testing.T) {
+	s, _, _ := webFixture(t)
+	s.config.ControlConsole = true
+	for name, body := range map[string]string{
+		"empty":     `{"device":""}`,
+		"long":      `{"device":"` + strings.Repeat("a", 65) + `"}`,
+		"url":       `{"device":"//foreign.example.invalid/"}`,
+		"fragment":  `{"device":"device#other"}`,
+		"unicode":   `{"device":"устройство"}`,
+		"null":      `{"device":null}`,
+		"number":    `{"device":42}`,
+		"duplicate": `{"device":"device-a","device":"device-b"}`,
+		"case":      `{"Device":"device-a"}`,
+		"unknown":   `{"returnTo":"/"}`,
+		"oversize":  `{` + strings.Repeat(" ", 512) + `}`,
+	} {
+		w := webCall(s, "/login", body, nil)
+		if w.Code != 400 || len(w.Result().Cookies()) != 0 || len(s.pending) != 0 {
+			t.Fatalf("invalid device target admitted: %s", name)
+		}
+	}
+}
+
+func TestConsoleCallbackRecoveryKeepsStatusAndDoesNotReflectOAuthData(t *testing.T) {
+	s, _, _ := webFixture(t)
+	const browserAccept = "text/html,application/xhtml+xml,*/*;q=0.8"
+	for _, tc := range []struct {
+		name, accept string
+		control      bool
+		malformed    bool
+		status       int
+		wantHTML     bool
+	}{
+		{"missing state binding", browserAccept, true, false, 401, true},
+		{"invalid response", browserAccept, true, true, 400, true},
+		{"API request", "application/json", true, false, 401, false},
+		{"HTML unacceptable", "text/html;q=0.00, */*", true, false, 401, false},
+		{"chat browser", browserAccept, false, false, 401, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s.config.ControlConsole = tc.control
+			const code, state = "synthetic-callback-code", "synthetic-callback-state"
+			query := url.Values{"code": {code}, "state": {state}, "iss": {s.config.Issuer}}
+			if tc.malformed {
+				query.Add("code", "duplicate")
+			}
+			r := httptest.NewRequest("GET", "/callback?"+query.Encode(), nil)
+			r.Header.Set("Accept", tc.accept)
+			w := httptest.NewRecorder()
+			s.ServeHTTP(w, r)
+			if w.Code != tc.status || w.Header().Get("Cache-Control") != "no-store" || w.Header().Get("Referrer-Policy") != "no-referrer" || w.Header().Get("Location") != "" {
+				t.Fatal("callback failure changed HTTP or privacy contract")
+			}
+			body := w.Body.String()
+			if strings.Contains(body, code) || strings.Contains(body, state) {
+				t.Fatal("OAuth data reflected in callback error")
+			}
+			if tc.wantHTML {
+				if w.Header().Get("Content-Type") != "text/html; charset=utf-8" || !strings.Contains(body, `href="/"`) || !strings.Contains(body, "Вернуться ко входу") {
+					t.Fatal("missing same-origin login recovery")
+				}
+			} else if body != "chat_web_unavailable\n" {
+				t.Fatal("non-console browser or API response changed")
+			}
+		})
+	}
+}
 
 func TestConsoleUsesSeparateCookieAudienceAndOnlyClosedControlActions(t *testing.T) {
 	s, _, principal := webFixture(t)

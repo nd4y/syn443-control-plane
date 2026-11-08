@@ -282,3 +282,58 @@ test('desired device view distinguishes unassigned expired and mismatched respon
  await page.locator('#inventory-device').fill('device-a');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-view')).toBeVisible();
  await request.post(origin+'/fixture/revoke',{data:{}});await page.locator('#load-inventory').click();await expect(page.locator('#inventory-view')).toBeHidden();await expect(page.locator('#inventory-meta')).toHaveText('');
 });
+
+
+test('device workspace is private until sign in and opens a safe linked device',async({page,request})=>{
+ await reset(request);
+ await page.route('**/session',route=>route.fulfill({status:401,json:{}}));
+ await page.goto(origin+'/#device=device-a');
+ await expect(page.locator('#status')).toHaveText('Войдите с административной учётной записью.');
+ await expect(page.locator('#login')).toBeEnabled();
+ await expect(page.locator('#workspace')).toBeHidden();
+ let state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.calls).not.toContain('configuration.inventory.get');
+ await page.unroute('**/session');
+ await page.reload();
+ await expect(page.locator('#inventory-view')).toBeVisible();
+ await expect(page.locator('#inventory-device')).toHaveValue('device-a');
+ await expect(page.locator('#inventory-issued')).toHaveText('Версия 23');
+ await expect(page.locator('#inventory-report-time')).toHaveAttribute('datetime',/^20/);
+ expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
+ await page.goto(origin+'/#device=bad%2Fid');
+ await page.reload();
+ await expect(page.locator('#workspace')).toBeVisible();
+ await expect(page.locator('#inventory-device')).toHaveValue('');
+ await expect(page.locator('#inventory-view')).toBeHidden();
+ state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.calls.filter(call=>call==='configuration.inventory.get')).toHaveLength(1);
+ expect(state.operations).toBe(0);
+});
+
+test('mobile device form submits by keyboard and cannot keep a stale device selected',async({page,request})=>{
+ await reset(request);
+ await page.setViewportSize({width:360,height:800});
+ await page.goto(origin);
+ const input=page.locator('#inventory-device'),view=page.locator('#inventory-view');
+ await expect(page.locator('#console-nav')).toBeVisible();
+ await expect(input).toBeEnabled();
+ await draft(page);
+ await input.fill('device-a');
+ await input.press('Enter');
+ await expect(view).toBeVisible();
+ await expect(page.locator('#inventory-status')).toHaveText('Конфигурация загружена.');
+ await expect(page.locator('#inventory-details')).not.toHaveAttribute('open','');
+ await expect(page.locator('#layer-from-device')).toBeEnabled();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await input.fill('device-unassigned');
+ await expect(view).toBeHidden();
+ await expect(page.locator('#layer-from-device')).toBeDisabled();
+ await expect(page.locator('#inventory-meta')).toHaveText('');
+ await expect(page.locator('#plan')).toHaveValue(JSON.stringify(plan,null,2));
+ await input.press('Enter');
+ await expect(page.locator('#inventory-state')).toHaveText('Не назначена');
+ await expect(page.locator('#layer-from-device')).toBeDisabled();
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.calls.filter(call=>call==='configuration.inventory.get')).toHaveLength(2);
+ expect(state.operations).toBe(0);
+});

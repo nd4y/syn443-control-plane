@@ -15,8 +15,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +30,7 @@ import (
 //go:embed assets/*
 var assets embed.FS
 var invalid = errors.New("chat_web_invalid")
+var consoleDeviceID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 type Config struct {
 	Listen         string `json:"listen"`
@@ -44,9 +48,9 @@ type verifier interface {
 	Verify(context.Context, string, time.Time) (identity.Principal, error)
 }
 type pending struct {
-	verifier, cookie string
-	key              *ecdsa.PrivateKey
-	expires          time.Time
+	verifier, cookie, device string
+	key                      *ecdsa.PrivateKey
+	expires                  time.Time
 }
 type session struct {
 	gate                   chan struct{}
@@ -356,12 +360,28 @@ func sign(key *ecdsa.PrivateKey, method, uri, token, nonce string, body []byte, 
 	return input + "." + b64.EncodeToString(sig), nil
 }
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
+	var device string
+	if s.config.ControlConsole {
+		const limit = 512
+		var input struct {
+			Device json.RawMessage `json:"device"`
+		}
+		raw, e := io.ReadAll(io.LimitReader(r.Body, limit+1))
+		if e != nil || len(raw) > limit || identity.Decode(raw, &input, true) != nil {
+			fail(w, 400)
+			return
+		}
+		if len(input.Device) > 0 && (json.Unmarshal(input.Device, &device) != nil || !consoleDeviceID.MatchString(device)) {
+			fail(w, 400)
+			return
+		}
+	}
 	key, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if e != nil {
 		fail(w, 503)
 		return
 	}
-	p := pending{random(), random(), key, s.clock().Add(5 * time.Minute)}
+	p := pending{verifier: random(), cookie: random(), device: device, key: key, expires: s.clock().Add(5 * time.Minute)}
 	state := random()
 	s.mu.Lock()
 	s.prune(s.clock())
@@ -382,29 +402,60 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	s.cookie(w, true, p.cookie, 300)
 	reply(w, map[string]string{"url": s.config.Issuer + "/protocol/openid-connect/auth?" + q.Encode()})
 }
+
+const consoleLoginRecovery = `<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark"><title>SYN443 - Вход не завершён</title><link rel="stylesheet" href="/style.css"></head>
+<body><main><section class="wide"><h1>Вход не завершён</h1><p>Откройте панель и начните вход через Keycloak заново.</p>
+<p><a href="/">Вернуться ко входу</a></p></section></main></body></html>`
+
+func (s *Server) callbackFailure(w http.ResponseWriter, r *http.Request, status int) {
+	if s.config.ControlConsole {
+		for _, accept := range r.Header.Values("Accept") {
+			for media := range strings.SplitSeq(accept, ",") {
+				kind, params, e := mime.ParseMediaType(media)
+				if e != nil || kind != "text/html" {
+					continue
+				}
+				if value, hasQuality := params["q"]; hasQuality {
+					q, e := strconv.ParseFloat(value, 64)
+					if e != nil || !(q > 0 && q <= 1) {
+						continue
+					}
+				}
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.WriteHeader(status)
+				_, _ = io.WriteString(w, consoleLoginRecovery)
+				return
+			}
+		}
+	}
+	fail(w, status)
+}
+
 func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	if len(r.URL.RawQuery) > 8192 {
-		fail(w, 400)
+		s.callbackFailure(w, r, 400)
 		return
 	}
 	q, e := url.ParseQuery(r.URL.RawQuery)
 	if e != nil {
-		fail(w, 400)
+		s.callbackFailure(w, r, 400)
 		return
 	}
 	for k, v := range q {
 		if len(v) != 1 || (k != "code" && k != "state" && k != "iss" && k != "session_state") {
-			fail(w, 400)
+			s.callbackFailure(w, r, 400)
 			return
 		}
 	}
 	if q.Get("iss") != s.config.Issuer || len(q.Get("code")) < 1 || len(q.Get("code")) > 4096 {
-		fail(w, 400)
+		s.callbackFailure(w, r, 400)
 		return
 	}
 	cookie, e := r.Cookie(s.cookieName(true))
 	if e != nil {
-		fail(w, 401)
+		s.callbackFailure(w, r, 401)
 		return
 	}
 	s.mu.Lock()
@@ -412,7 +463,7 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	p, ok := s.pending[q.Get("state")]
 	if !ok || p.cookie != cookie.Value {
 		s.mu.Unlock()
-		fail(w, 401)
+		s.callbackFailure(w, r, 401)
 		return
 	}
 	delete(s.pending, q.Get("state"))
@@ -422,7 +473,7 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	v := &session{gate: make(chan struct{}, 1), key: p.key, expires: s.clock().Add(time.Hour)}
 	if s.token(ctx, v, url.Values{"grant_type": {"authorization_code"}, "code": {q.Get("code")}, "code_verifier": {p.verifier}, "client_id": {s.config.ClientID}, "redirect_uri": {s.config.Origin + "/callback"}}) != nil {
-		fail(w, 401)
+		s.callbackFailure(w, r, 401)
 		return
 	}
 	id := random()
@@ -432,7 +483,7 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	if len(s.sessions) >= 32 {
 		s.mu.Unlock()
 		v.cancel()
-		fail(w, 503)
+		s.callbackFailure(w, r, 503)
 		return
 	}
 	if old, e := r.Cookie(s.cookieName(false)); e == nil {
@@ -444,7 +495,11 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	s.sessions[id] = v
 	s.mu.Unlock()
 	s.cookie(w, false, id, 3600)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	location := "/"
+	if p.device != "" {
+		location += "#device=" + p.device
+	}
+	http.Redirect(w, r, location, http.StatusSeeOther)
 }
 func (s *Server) token(ctx context.Context, v *session, form url.Values) error {
 	endpoint := s.config.Issuer + "/protocol/openid-connect/token"
