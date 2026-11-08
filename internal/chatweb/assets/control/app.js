@@ -24,14 +24,25 @@ function setDesktopNavExpanded(expanded){
  $('desktop-nav-toggle').setAttribute('aria-expanded',String(expanded));
  $('console-shell').classList.toggle('desktop-nav-collapsed',!expanded);
 }
-function updateSectionNav(){
- const links=$('console-nav').querySelectorAll('a');
- const current=Array.from(links).find(link=>link.hash===location.hash)||links[0];
+function updateSectionNav(focus=false){
+ const links=Array.from($('console-nav').querySelectorAll('a'));
+ const current=links.find(link=>link.hash===location.hash)||links[0];
+ const heading=$(current.hash.slice(1));
  $('console-nav-current').textContent=current.textContent.trim();
- for(const link of links){
-  if(link===current)link.setAttribute('aria-current','location');
-  else link.removeAttribute('aria-current');
+ $('section-context').textContent=current.textContent.trim();
+ for(const section of $('workspace').querySelectorAll('.workspace-page')){
+  section.hidden=section.getAttribute('aria-labelledby')!==heading.id;
  }
+ if(focus&&authenticated){
+  if(location.hash==='#workspace')$('workspace').focus({preventScroll:true});
+  else heading.focus({preventScroll:true});
+  window.scrollTo(0,0);
+ }
+}
+function actionButton(){
+ const button=document.createElement('button');
+ button.className='pf-v6-c-button pf-m-secondary';
+ return button;
 }
 function inventoryBadge(id,text,tone='neutral'){
  const badge=$(id);
@@ -86,7 +97,7 @@ function drawRouteChecks(){
  for(const row of state.checks){
   for(const item of row.checks){
    if(!item||typeof item.method!=='string'||typeof item.target!=='string')continue;
-   const li=document.createElement('li'),remove=document.createElement('button');
+   const li=document.createElement('li'),remove=actionButton();
    const method=Object.hasOwn(routeCheckMethods,item.method)?routeCheckMethods[item.method]:item.method;
    const expected=item.method==='https_exit_ip'&&typeof item.expected_ip==='string'?` · ${item.expected_ip}`:'';
    li.textContent=`${row.outbound} · ${method} · ${item.target}${expected}${row.required===true?' · обязательная':''} `;
@@ -347,13 +358,13 @@ async function sources(more=false){
  listedOwner=owner;next=page.next;
  for(const source of page.sources){
   const li=textItem($('sources'),`${source.name} (${source.id}) · ${source.state} · v${source.revision}`);
-  const button=document.createElement('button');button.textContent='Показать профили';button.onclick=()=>work(async()=>{
+  const button=actionButton();button.textContent='Показать профили';button.onclick=()=>work(async()=>{
    const view=await action('source.snapshot',{id:source.id,snapshot:source.activeSnapshot||''});
    if(!Array.isArray(view.profiles))throw Error('invalid');$('profiles').replaceChildren();
    for(const profile of view.profiles)textItem($('profiles'),`${profile.name} · ${profile.kind} · ${profile.id}`);
    $('source-details').textContent=JSON.stringify({sourceId:source.id,revision:source.revision,networkModes:source.networkModes,snapshot:view.snapshot.id,observedAt:view.snapshot.observedAt,validUntil:view.snapshot.validUntil},null,2);
    status('Метаданные профилей загружены. Учётные данные прокси не выводятся.');
-  });const edit=document.createElement('button');edit.textContent='Настроить источник';edit.onclick=()=>work(async()=>{showSource(await action('source.get',{id:source.id}));status('Параметры загружены. Прежний секрет не возвращается.');});li.append(document.createElement('br'),button,edit);
+  });const edit=actionButton();edit.textContent='Настроить источник';edit.onclick=()=>work(async()=>{showSource(await action('source.get',{id:source.id}));status('Параметры загружены. Прежний секрет не возвращается.');});li.append(document.createElement('br'),button,edit);
  }
  status(page.sources.length?'Источники загружены.':'Источников для этого пользователя нет.');
 }
@@ -437,7 +448,7 @@ function renderSourceShares(){
  $('source-shares-revision').textContent=`Версия списка: ${sourceShares.revision}`+(sharesChanged()?' · есть правки':'');
  for(const [index,r] of sourceShares.recipients.entries()){
   const item=textItem(list,`${recipientKinds[r.kind]} · ${r.id} `);
-  const remove=document.createElement('button');remove.textContent='Удалить';
+  const remove=actionButton();remove.textContent='Удалить';
   remove.onclick=()=>{if(busy||pending||!sourceShares)return;sourceShares.recipients.splice(index,1);$('source-shares-confirm').checked=false;renderSourceShares();controls();};
   item.append(remove);
  }
@@ -527,7 +538,7 @@ $('console-nav').addEventListener('click',event=>{
  }
 });
 addEventListener('hashchange',()=>{
- updateSectionNav();
+ updateSectionNav(true);
  setNavExpanded(false);
  if(authenticated&&!pending&&linkedDevice())void work(openLinkedDevice);
 });$('open-draft').onclick=()=>work(openDraft);
@@ -777,7 +788,7 @@ function renderLayerComparison(){
  const list=$('layer-conflicts');list.replaceChildren();
  for(const conflict of s.result.conflicts){
   const item=textItem(list,`${conflict.path} · исходное: ${JSON.stringify(conflict.base)??'отсутствует'} · локальное: ${JSON.stringify(conflict['local'])??'отсутствует'} · серверное: ${JSON.stringify(conflict.remote)??'отсутствует'} · выбор: ${conflict.choice||'не выбран'}`);
-  for(const [choice,label] of [['local','Оставить локальное'],['remote','Оставить серверное']]){const button=document.createElement('button');button.textContent=label;button.onclick=()=>{s.choices[conflict.path]=choice;renderLayerComparison();layerControls();};item.append(document.createElement('br'),button);}
+  for(const [choice,label] of [['local','Оставить локальное'],['remote','Оставить серверное']]){const button=actionButton();button.textContent=label;button.onclick=()=>{s.choices[conflict.path]=choice;renderLayerComparison();layerControls();};item.append(document.createElement('br'),button);}
  }
  if(!s.result.conflicts.length)textItem(list,'Конфликтов значений нет. Проверьте обновлённые родительские слои и результат.');
  $('layer-comparison').hidden=false;

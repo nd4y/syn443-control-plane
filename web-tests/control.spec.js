@@ -4,7 +4,7 @@ const plan={schemaVersion:1,graph:{profiles:{proxy:{sourceId:'source-a',profileI
 async function reset(request,body={}){await request.post(origin+'/fixture/reset',{data:body});}
 
 test('hourly telemetry distinguishes data empty and mismatched reports and clears on expiry',async({page,request})=>{
- await reset(request);await page.goto(origin);
+ await reset(request);await page.goto(origin+'/#telemetry-title');
  const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows'),status=page.locator('#telemetry-status');
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
@@ -22,7 +22,7 @@ test('hourly telemetry distinguishes data empty and mismatched reports and clear
 });
 
 test('hourly route summary shows only valid counts for the two decision algorithms',async({page,request})=>{
- await reset(request,{decisionTelemetry:true});await page.goto(origin);
+ await reset(request,{decisionTelemetry:true});await page.goto(origin+'/#telemetry-title');
  const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows');
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
@@ -33,9 +33,10 @@ test('hourly route summary shows only valid counts for the two decision algorith
 });
 
 test('scoped telemetry denial preserves an unrelated unsaved draft',async({page,request})=>{
- await reset(request,{telemetryDenied:true});await page.goto(origin);
- await expect(page.locator('#load-telemetry')).toBeEnabled();
+ await reset(request,{telemetryDenied:true});await page.goto(origin+'/#draft-title');
  await draft(page);
+ await page.getByRole('link',{name:'Телеметрия'}).click();
+ await expect(page.locator('#load-telemetry')).toBeEnabled();
  await page.locator('#load-telemetry').click();
  await expect(page.locator('#telemetry-status')).toContainText('Нет доступа');
  await expect(page.locator('#plan')).toHaveValue(JSON.stringify(plan,null,2));
@@ -47,7 +48,7 @@ test('scoped telemetry denial preserves an unrelated unsaved draft',async({page,
 });
 
 test('source job history shows bounded retries and clears scoped results on logout',async({page,request})=>{
- await reset(request);await page.goto(origin);await expect(page.locator('#load-sources')).toBeEnabled();
+ await reset(request);await page.goto(origin+'/#sources-title');await expect(page.locator('#load-sources')).toBeEnabled();
  await expect(page.locator('#source-history')).toBeDisabled();
  await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();
  await page.getByRole('button',{name:'Настроить источник'}).first().click();
@@ -68,7 +69,7 @@ test('source job history shows bounded retries and clears scoped results on logo
 });
 
 test('manual subscription file retries exactly once without exposing or storing its contents',async({page,request})=>{
- await reset(request,{manualSource:true,importFailOnce:true});await page.goto(origin);await expect(page.locator('#load-sources')).toBeEnabled();
+ await reset(request,{manualSource:true,importFailOnce:true});await page.goto(origin+'/#sources-title');await expect(page.locator('#load-sources')).toBeEnabled();
  await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();
  await page.getByRole('button',{name:'Настроить источник'}).first().click();
  const file=page.locator('#source-import-file');
@@ -87,7 +88,7 @@ test('manual subscription file retries exactly once without exposing or storing 
 });
 
 test('source recipient edits require confirmation and retry the same scoped mutation',async({page,request})=>{
- await reset(request,{sharesFailOnce:true});await page.goto(origin);await expect(page.locator('#load-sources')).toBeEnabled();
+ await reset(request,{sharesFailOnce:true});await page.goto(origin+'/#sources-title');await expect(page.locator('#load-sources')).toBeEnabled();
  await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();
  await page.getByRole('button',{name:'Настроить источник'}).first().click();
  await page.locator('#source-shares-load').click();
@@ -109,7 +110,7 @@ test('source recipient edits require confirmation and retry the same scoped muta
 });
 async function draft(page){await page.locator('#draft-id').fill('draft-a');await page.locator('#target-id').fill('device-a');await page.locator('#plan').fill(JSON.stringify(plan,null,2));}
 test('route checks editor changes only its private draft and restores saved checks',async({page,request})=>{
- await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();
+ await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();
  await expect(page.locator('#route-check-add')).toBeDisabled();
  await draft(page);
  const target=page.locator('#route-check-target'),method=page.locator('#route-check-method');
@@ -142,7 +143,7 @@ test('route checks editor changes only its private draft and restores saved chec
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });
 test('reserve probe cooldown requires explicit draft opt in and never publishes',async({page,request})=>{
- await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
  const box=page.locator('#route-reserve-cooldown'),input=page.locator('#plan');
  await expect(box).toBeDisabled();
  const fixture=structuredClone(plan);
@@ -166,7 +167,7 @@ test('reserve probe cooldown requires explicit draft opt in and never publishes'
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });
 test('conservative failover and its cohort stay in the editable draft',async({page,request})=>{
- await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
  const selection=page.locator('#route-decision'),input=page.locator('#plan');
  await expect(selection).toBeDisabled();
  const fixture=structuredClone(plan);
@@ -188,23 +189,24 @@ test('conservative failover and its cohort stay in the editable draft',async({pa
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });
 test('console safely renders source metadata and saves/reopens its private draft',async({page,request})=>{
- await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();
+ await reset(request);await page.goto(origin+'/#sources-title');await expect(page.locator('#load-sources')).toBeEnabled();
  await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();
  await expect(page.locator('#sources')).toContainText('<img src=x');expect(await page.evaluate(()=>window.injected)).toBeUndefined();expect(await page.locator('#sources img').count()).toBe(0);
  await page.getByRole('button',{name:'Показать профили'}).click();await expect(page.locator('#profiles')).toContainText('profile-a');await expect(page.locator('#source-details')).toContainText('snapshot-a');
  await page.locator('#more-sources').click();await expect(page.locator('#sources li')).toHaveCount(2);
+ await page.getByRole('link',{name:'Черновики'}).click();
  await draft(page);await page.locator('#save-draft').click();await expect(page.locator('#draft-version')).toHaveText('Версия черновика: 1');
  await page.locator('#plan').fill('{}');await page.locator('#open-draft').click();await expect(page.locator('#plan')).toHaveValue(JSON.stringify(plan,null,2));
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });
 test('lost save response retries identical operation without another revision',async({page,request})=>{
- await reset(request,{failSave:true});await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);await page.locator('#save-draft').click();
+ await reset(request,{failSave:true});await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);await page.locator('#save-draft').click();
  await expect(page.locator('#pending')).toBeVisible();await expect(page.locator('#plan')).toBeDisabled();await page.locator('#retry-save').click();
  await expect(page.locator('#pending')).toBeHidden();await expect(page.locator('#draft-version')).toHaveText('Версия черновика: 1');
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();expect(state.operations).toBe(1);expect(state.drafts[0].revision).toBe(1);
 });
 test('invalid plan keeps edit available, revoked rights and logout clear private memory',async({page,request})=>{
- await reset(request);await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);await page.locator('#plan').fill('{"schemaVersion":1}');await page.locator('#save-draft').click();
+ await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);await page.locator('#plan').fill('{"schemaVersion":1}');await page.locator('#save-draft').click();
  await expect(page.locator('#status')).toContainText('Проверьте поля');await expect(page.locator('#plan')).toBeEnabled();await expect(page.locator('#pending')).toBeHidden();
  await page.locator('#plan').fill(JSON.stringify(plan));await request.post(origin+'/fixture/revoke',{data:{}});await page.locator('#save-draft').click();
  await expect(page.locator('#status')).toContainText('Доступ отозван');await expect(page.locator('#plan')).toHaveValue('');await expect(page.locator('#save-draft')).toBeDisabled();
@@ -212,21 +214,21 @@ test('invalid plan keeps edit available, revoked rights and logout clear private
  expect(await page.evaluate(()=>localStorage.length)).toBe(0);expect(await page.evaluate(()=>sessionStorage.length)).toBe(0);
 });
 test('phone layout stays light and within viewport; expired session hides old data',async({page,request})=>{
- await reset(request);await page.setViewportSize({width:360,height:800});await page.goto(origin);await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ await reset(request);await page.setViewportSize({width:360,height:800});await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme)).toBe('light');
  await request.post(origin+'/fixture/expire',{data:{}});await page.locator('#save-draft').click();await expect(page.locator('#status')).toContainText('Сессия завершена');await expect(page.locator('#plan')).toHaveValue('');
 });
 
 async function newSource(page){await page.locator('#owner').fill('synthetic-user');await page.locator('#new-source').click();await page.locator('#source-name').fill('Provider subscription');await page.locator('#source-secret-operation').selectOption('replace');await page.locator('#source-secret').fill(JSON.stringify({url:'https://provider.example.invalid/subscription'}));}
 test('source editor saves metadata without exposing prior secrets and tracks sync job',async({page,request})=>{
- await reset(request);await page.goto(origin);await expect(page.locator('#new-source')).toBeEnabled();await newSource(page);const id=await page.locator('#source-id').inputValue();
+ await reset(request);await page.goto(origin+'/#sources-title');await expect(page.locator('#new-source')).toBeEnabled();await newSource(page);const id=await page.locator('#source-id').inputValue();
  await page.locator('#save-source').click();await expect(page.locator('#source-version')).toContainText('Версия источника: 1');await expect(page.locator('#source-secret')).toHaveValue('');await expect(page.locator('#source-secret-operation')).toHaveValue('keep');
  await page.locator('#sync-source').click();await expect(page.locator('#job-status')).toContainText('queued');await page.locator('#source-job').click();await expect(page.locator('#job-status')).toContainText('succeeded');
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();expect(state.sources.find(s=>s.id===id).name).toBe('Provider subscription');expect(state.operations).toBe(2);expect(state.calls).not.toContain('configuration.publish');
  await page.locator('#load-sources').click();await page.locator('#sources li').filter({hasText:'Provider subscription'}).getByRole('button',{name:'Настроить источник'}).click();await expect(page.locator('#source-secret')).toHaveValue('');await expect(page.locator('#source-id')).toBeDisabled();
 });
 test('device subscription saves an immutable Wi-Fi binding without retaining the credential',async({page,request})=>{
- await reset(request);await page.goto(origin);await expect(page.locator('#new-source')).toBeEnabled();
+ await reset(request);await page.goto(origin+'/#sources-title');await expect(page.locator('#new-source')).toBeEnabled();
  await newSource(page);const id=await page.locator('#source-id').inputValue(),binding=page.locator('#source-device');
  await expect(binding).toBeHidden();
  await page.locator('#source-mode').selectOption('device');await expect(binding).toBeEnabled();
@@ -244,12 +246,12 @@ test('device subscription saves an immutable Wi-Fi binding without retaining the
  await page.locator('#logout').click();await expect(binding).toHaveValue('');await expect(binding).toBeHidden();
 });
 test('source mutation lost acknowledgment retries the same request and clears new secret on success',async({page,request})=>{
- await reset(request,{failSave:true});await page.goto(origin);await expect(page.locator('#new-source')).toBeEnabled();await newSource(page);await page.locator('#save-source').click();await expect(page.locator('#pending')).toBeVisible();await expect(page.locator('#source-secret')).toBeDisabled();
+ await reset(request,{failSave:true});await page.goto(origin+'/#sources-title');await expect(page.locator('#new-source')).toBeEnabled();await newSource(page);await page.locator('#save-source').click();await expect(page.locator('#pending')).toBeVisible();await expect(page.locator('#source-secret')).toBeDisabled();
  await page.locator('#retry-save').click();await expect(page.locator('#pending')).toBeHidden();await expect(page.locator('#source-version')).toContainText('Версия источника: 1');await expect(page.locator('#source-secret')).toHaveValue('');
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();expect(state.operations).toBe(1);expect(state.sources.filter(s=>s.name==='Provider subscription')).toHaveLength(1);
 });
 test('source permission withdrawal erases unsent credentials and disables mutation',async({page,request})=>{
- await reset(request);await page.goto(origin);await expect(page.locator('#new-source')).toBeEnabled();await newSource(page);await request.post(origin+'/fixture/revoke',{data:{}});await page.locator('#save-source').click();
+ await reset(request);await page.goto(origin+'/#sources-title');await expect(page.locator('#new-source')).toBeEnabled();await newSource(page);await request.post(origin+'/fixture/revoke',{data:{}});await page.locator('#save-source').click();
  await expect(page.locator('#status')).toContainText('Доступ отозван');await expect(page.locator('#source-secret')).toHaveValue('');await expect(page.locator('#source-name')).toHaveValue('');await expect(page.locator('#save-source')).toBeDisabled();
  expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
 });
@@ -313,11 +315,13 @@ test('device workspace is private until sign in and opens a safe linked device',
 test('mobile device form submits by keyboard and cannot keep a stale device selected',async({page,request})=>{
  await reset(request);
  await page.setViewportSize({width:360,height:800});
- await page.goto(origin);
+ await page.goto(origin+'/#draft-title');
  const input=page.locator('#inventory-device'),view=page.locator('#inventory-view');
  await expect(page.locator('#console-nav-toggle')).toBeVisible();
- await expect(input).toBeEnabled();
  await draft(page);
+ await page.locator('#console-nav-toggle').click();
+ await page.getByRole('link',{name:'Устройства'}).click();
+ await expect(input).toBeEnabled();
  await input.fill('device-a');
  await input.press('Enter');
  await expect(view).toBeVisible();
@@ -343,8 +347,8 @@ test('console shell keeps the active section and keyboard focus visible on deskt
  await page.setViewportSize({width:1440,height:960});
  await page.goto(origin+'/#device=device-a');
  const nav=page.getByRole('navigation',{name:'Разделы управления'});
- await expect(page.getByRole('heading',{level:1,name:'Обзор'})).toBeVisible();
- await expect(nav.getByRole('group',{name:'Главная'}).getByRole('link',{name:'Устройства'})).toHaveAttribute('aria-current','location');
+ await expect(page.getByRole('heading',{level:1,name:'Устройства'})).toBeVisible();
+ await expect(nav.getByRole('group',{name:'Главная'}).getByRole('link',{name:'Устройства'})).toHaveAttribute('aria-current','page');
  await expect(nav.getByRole('group',{name:'Конфигурация'}).getByRole('link')).toHaveCount(3);
  await expect(nav.getByRole('group',{name:'Наблюдение'}).getByRole('link',{name:'Телеметрия'})).toBeVisible();
  const toggle=page.locator('#desktop-nav-toggle');
@@ -368,16 +372,18 @@ test('console shell keeps the active section and keyboard focus visible on deskt
  const sources=nav.getByRole('link',{name:'Источники'});
  await sources.focus();
  await sources.press('Enter');
- await expect(sources).toHaveAttribute('aria-current','location');
- await expect(nav.getByRole('link',{name:'Устройства'})).not.toHaveAttribute('aria-current','location');
+ await expect(sources).toHaveAttribute('aria-current','page');
+ await expect(nav.getByRole('link',{name:'Устройства'})).not.toHaveAttribute('aria-current','page');
  await expect(page.locator('#sources-title')).toBeFocused();
+ await expect(page.locator('#inventory-title')).toBeHidden();
+ await expect(page.locator('#workspace .workspace-page:visible')).toHaveCount(1);
  const geometry=await page.evaluate(()=>{
   const top=id=>document.getElementById(id).getBoundingClientRect().top;
   return {heading:top('sources-title'),banner:document.getElementById('status').getBoundingClientRect().bottom};
  });
  expect(geometry.heading).toBeGreaterThanOrEqual(geometry.banner);
  await page.goBack();
- await expect(nav.getByRole('link',{name:'Устройства'})).toHaveAttribute('aria-current','location');
+ await expect(nav.getByRole('link',{name:'Устройства'})).toHaveAttribute('aria-current','page');
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(0);
 });
@@ -438,4 +444,39 @@ test('console sign-in is the only entry when no session is present',async({page,
  await page.screenshot({path:'test-results/console-visual/signin.png',animations:'disabled'});
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.calls).toEqual([]);
+});
+
+test('PatternFly resources are same-origin and section history keeps an unsaved draft',async({page,request})=>{
+ await reset(request);
+ const assetResponses=new Map(),failures=[];
+ page.on('response',response=>{
+  const url=new URL(response.url());
+  if(url.pathname.startsWith('/ui/'))assetResponses.set(url.href,response.status());
+ });
+ page.on('pageerror',error=>failures.push(error.message));
+ page.on('console',message=>{if(message.type()==='error')failures.push(message.text());});
+ await page.goto(origin+'/#draft-title');
+ await expect(page.locator('header.pf-v6-c-masthead')).toBeVisible();
+ await expect(page.locator('nav.pf-v6-c-nav')).toBeVisible();
+ await expect(page.locator('#save-draft.pf-v6-c-button')).toBeEnabled();
+ await expect(page.locator('#plan').locator('..')).toHaveClass(/pf-v6-c-form-control/);
+ await draft(page);
+ const nav=page.getByRole('navigation',{name:'Разделы управления'});
+ await nav.getByRole('link',{name:'Источники'}).click();
+ await expect(page.locator('#sources-title')).toBeFocused();
+ await expect(page.locator('#draft-title')).toBeHidden();
+ await expect(nav.getByRole('link',{name:'Источники'})).toHaveClass(/pf-m-current/);
+ await page.goBack();
+ await expect(page.locator('#draft-title')).toBeFocused();
+ await expect(page.locator('#plan')).toHaveValue(JSON.stringify(plan,null,2));
+ await page.goForward();
+ await expect(page.locator('#sources-title')).toBeFocused();
+ await page.evaluate(()=>document.fonts.ready.then(()=>true));
+ expect(assetResponses.get(origin+'/ui/console.js')).toBe(200);
+ expect(assetResponses.get(origin+'/ui/console.css')).toBe(200);
+ expect([...assetResponses].some(([url,status])=>url.startsWith(origin+'/ui/')&&url.endsWith('.woff2')&&status===200)).toBe(true);
+ expect([...assetResponses].every(([url,status])=>url.startsWith(origin+'/ui/')&&status===200)).toBe(true);
+ expect(failures).toEqual([]);
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(0);
 });

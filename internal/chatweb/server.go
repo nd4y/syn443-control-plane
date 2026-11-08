@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"mime"
 	"net/http"
 	"net/url"
@@ -30,6 +31,49 @@ import (
 //go:embed assets/*
 var assets embed.FS
 var invalid = errors.New("chat_web_invalid")
+var consoleAsset = regexp.MustCompile("^[A-Z0-9]{8}$")
+
+// ControlAssetsReady reports whether the console entry points were bundled before embedding.
+func ControlAssetsReady() bool {
+	for _, name := range []string{"console.js", "console.css"} {
+		if _, err := fs.Stat(assets, "assets/control/ui/"+name); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+func staticAsset(path string, console bool) (string, string) {
+	switch path {
+	case "/":
+		return "index.html", "text/html; charset=utf-8"
+	case "/app.js", "/layer-merge.js":
+		return path[1:], "text/javascript; charset=utf-8"
+	case "/style.css":
+		return "style.css", "text/css; charset=utf-8"
+	}
+	if !console {
+		return "", ""
+	}
+	switch path {
+	case "/ui/console.js":
+		return path[1:], "text/javascript; charset=utf-8"
+	case "/ui/console.css":
+		return path[1:], "text/css; charset=utf-8"
+	}
+	name, ok := strings.CutPrefix(path, "/ui/asset-")
+	hash, ext, found := strings.Cut(name, ".")
+	if ok && found && consoleAsset.MatchString(hash) {
+		switch ext {
+		case "woff2":
+			return path[1:], "font/woff2"
+		case "svg":
+			return path[1:], "image/svg+xml"
+		}
+	}
+	return "", ""
+}
+
 var consoleDeviceID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 type Config struct {
@@ -148,17 +192,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+	csp := "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+	if s.config.ControlConsole {
+		csp += "; font-src 'self'; img-src 'self'"
+	}
+	w.Header().Set("Content-Security-Policy", csp)
 	w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 	if r.URL.RawPath != "" || r.URL.Fragment != "" || (r.URL.RawQuery != "" && r.URL.Path != "/callback") {
 		fail(w, 400)
 		return
 	}
-	if r.Method == "GET" && (r.URL.Path == "/" || r.URL.Path == "/app.js" || r.URL.Path == "/style.css" || r.URL.Path == "/layer-merge.js") {
-		name := strings.TrimPrefix(r.URL.Path, "/")
-		if name == "" {
-			name = "index.html"
-		}
+	if name, kind := staticAsset(r.URL.Path, s.config.ControlConsole); r.Method == "GET" && name != "" {
 		prefix := "assets/"
 		if s.config.ControlConsole {
 			prefix += "control/"
@@ -168,8 +212,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fail(w, 404)
 			return
 		}
-		kind := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "layer-merge.js": "text/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8"}
-		w.Header().Set("Content-Type", kind[name])
+		w.Header().Set("Content-Type", kind)
 		_, _ = w.Write(b)
 		return
 	}

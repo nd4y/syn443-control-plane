@@ -7,8 +7,13 @@ let shares=new Map();
 let layerDrafts=new Map(),discardedDrafts=new Set(),configurationJobs=new Map(),options={};
 const server=http.createServer(async(req,res)=>{
  const send=(status,data)=>{const headers={'Content-Type':'application/json','Cache-Control':'no-store'};if(req.url.startsWith('/fixture/'))headers.Connection='close';res.writeHead(status,headers);res.end(JSON.stringify(data));};
- if(req.method==='GET'&&['/','/app.js','/style.css','/layer-merge.js'].includes(req.url)){
-  const name=req.url==='/'?'index.html':req.url.slice(1);res.writeHead(200,{'Content-Type':name.endsWith('js')?'text/javascript':name.endsWith('css')?'text/css':'text/html','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"});res.end(fs.readFileSync(new URL('../internal/chatweb/assets/control/'+name,import.meta.url)));return;
+ const asset=/^\/ui\/(?:console\.(?:js|css)|asset-[A-Z0-9]{8}\.(?:woff2|svg))$/.test(req.url);
+ if(req.method==='GET'&&(asset||['/','/app.js','/style.css','/layer-merge.js'].includes(req.url))){
+  const name=req.url==='/'?'index.html':req.url.slice(1);
+  const type={html:'text/html',js:'text/javascript',css:'text/css',woff2:'font/woff2',svg:'image/svg+xml'}[name.split('.').at(-1)];
+  res.writeHead(200,{'Content-Type':type,'Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});
+  res.end(fs.readFileSync(new URL('../internal/chatweb/assets/control/'+name,import.meta.url)));
+  return;
  }
  const importing=req.url==='/control/source/import';
  const limit=importing?14*1024*1024+65536:278528;

@@ -49,6 +49,7 @@ expected.update({
     'console shell keeps the active section and keyboard focus visible on desktop',
     'console shell fits a narrow screen and retains a keyboard scroll region',
     'console sign-in is the only entry when no session is present',
+    'PatternFly resources are same-origin and section history keeps an unsaved draft',
 })
 assert len(cases) >= 37
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
