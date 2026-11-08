@@ -81,15 +81,19 @@ a { color: var(--action); }
   max-inline-size: 105rem;
   margin-inline: auto;
 }
-.console-nav {
+.console-navigation {
   position: sticky;
   inset-block-start: var(--masthead-size);
   align-self: start;
+  block-size: calc(100dvh - var(--masthead-size));
   min-inline-size: 0;
+  overflow-y: auto;
   padding: 1.5rem 0.75rem;
   background: var(--nav);
   border-inline-end: 1px solid var(--border);
 }
+.console-nav-toggle { display: none; }
+
 .nav-heading, .section-label {
   color: var(--muted);
   font-size: 0.8125rem;
@@ -140,7 +144,14 @@ a { color: var(--action); }
   z-index: 3;
   inset-block-start: var(--masthead-size);
 }
+.console-status:empty { padding: 0; border: 0; margin: 0; }
 .signin-panel + .console-status { margin-block-start: 1rem; }
+.signin-panel:not([hidden]) + .console-status:not([data-tone="danger"]) {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0 0.25rem;
+}
 .signin-panel[hidden] + .console-status { margin-block-start: 0; }
 
 #workspace {
@@ -274,16 +285,43 @@ li { margin-block-end: 0.5rem; }
   .masthead { position: static; }
   .masthead-inner { min-block-size: 3.75rem; }
   .console-shell.signed-in { display: block; }
-  .console-nav {
+  .console-navigation {
     position: static;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.5rem;
+    block-size: auto;
+    overflow: visible;
     padding: 0.5rem 1rem;
     border-inline-end: 0;
     border-block-end: 1px solid var(--border);
   }
-  .nav-heading { display: none; }
+  .console-nav-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    inline-size: 100%;
+    margin: 0;
+    color: var(--text);
+    border-color: var(--border-input);
+    text-align: start;
+  }
+  #console-nav-current { flex: 1; color: var(--muted); }
+  .console-nav-toggle::after {
+    content: "";
+    flex: none;
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border: solid currentColor;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .console-nav-toggle[aria-expanded="true"]::after { transform: rotate(225deg); }
+  .console-nav-toggle[aria-expanded="false"] + .console-nav { display: none; }
+  .console-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.25rem 0.5rem;
+    padding-block-start: 0.5rem;
+  }
+  .nav-heading, .workspace-heading .section-label { display: none; }
   .console-nav a { margin: 0; padding-inline: 0.5rem; }
   .inventory-summary { grid-template-columns: minmax(0, 1fr); }
 }

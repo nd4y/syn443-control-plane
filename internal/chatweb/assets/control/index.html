@@ -15,7 +15,11 @@
  </div>
 </header>
 <div class="console-shell" id="console-shell">
-<nav id="console-nav" class="console-nav" aria-label="Разделы управления" hidden>
+<div id="console-navigation" class="console-navigation" hidden>
+<button type="button" id="console-nav-toggle" class="console-nav-toggle" aria-expanded="false" aria-controls="console-nav">
+ <span>Разделы</span><span id="console-nav-current">Устройства</span>
+</button>
+<nav id="console-nav" class="console-nav" aria-label="Разделы управления">
  <p class="nav-heading">Управление</p>
  <a href="#inventory-title" aria-current="location">Устройства</a>
  <a href="#sources-title">Источники</a>
@@ -23,6 +27,7 @@
  <a href="#layer-title">Публикация</a>
  <a href="#telemetry-title">Телеметрия</a>
 </nav>
+</div>
 <div class="console-content">
  <section class="signin-panel" id="signin" aria-labelledby="signin-title">
   <p class="section-label">SYN443 Control Plane</p>

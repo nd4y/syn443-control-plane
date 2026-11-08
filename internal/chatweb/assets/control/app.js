@@ -17,9 +17,13 @@ function status(message,tone='info'){
  banner.textContent=message;
  banner.dataset.tone=tone;
 }
+function setNavExpanded(expanded){
+ $('console-nav-toggle').setAttribute('aria-expanded',String(expanded));
+}
 function updateSectionNav(){
  const links=$('console-nav').querySelectorAll('a');
  const current=Array.from(links).find(link=>link.hash===location.hash)||links[0];
+ $('console-nav-current').textContent=current.textContent.trim();
  for(const link of links){
   if(link===current)link.setAttribute('aria-current','location');
   else link.removeAttribute('aria-current');
@@ -120,8 +124,9 @@ function applyRouteChecks(state){
 function controls(){
  $('login').disabled=busy||authenticated;$('logout').disabled=busy||!authenticated;
  $('login').hidden=authenticated;$('logout').hidden=!authenticated;
- for(const id of ['workspace','console-nav','skip-workspace'])$(id).hidden=!authenticated;
+ for(const id of ['workspace','console-navigation','skip-workspace'])$(id).hidden=!authenticated;
  $('signin').hidden=authenticated;
+ if(!authenticated)setNavExpanded(false);
  $('console-shell').classList.toggle('signed-in',authenticated);
  for(const id of ['load-sources','load-inventory','open-draft','save-draft','new-draft','new-source','save-source'])$(id).disabled=busy||!authenticated||!!pending;
  for(const id of ['telemetry-hour','load-telemetry'])$(id).disabled=busy||!authenticated;
@@ -248,7 +253,9 @@ function showInventory(view){
    inventoryBadge('inventory-report',summary,tone);
    const time=$('inventory-report-time');
    time.dateTime=inventoryDate(report.receivedAtMs);
-   time.textContent=new Intl.DateTimeFormat('ru',{dateStyle:'medium',timeStyle:'short'}).format(report.receivedAtMs);
+   time.textContent=new Intl.DateTimeFormat('ru',{
+    year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short',
+   }).format(report.receivedAtMs);
    time.hidden=false;
    inventoryPair(meta,'Отчёт устройства',summary);
    inventoryPair(meta,'Версия по отчёту',report.activePolicyRevision?String(report.activePolicyRevision):'Нет');
@@ -495,9 +502,25 @@ $('inventory-device').oninput=()=>{
  if(linkedDevice())history.replaceState(null,'','/#inventory-title');
  layerControls();
 };
+const navToggle=$('console-nav-toggle');
+navToggle.onclick=()=>setNavExpanded(navToggle.getAttribute('aria-expanded')!=='true');
+$('console-navigation').addEventListener('keydown',event=>{
+ if(event.key==='Escape'&&navToggle.getAttribute('aria-expanded')==='true'){
+  setNavExpanded(false);
+  navToggle.focus();
+ }
+});
+$('console-nav').addEventListener('click',event=>{
+ const link=event.target.closest('a');
+ if(link&&link.hash===location.hash&&event.button===0&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){
+  setNavExpanded(false);
+  $(link.hash.slice(1)).focus({preventScroll:true});
+ }
+});
 addEventListener('hashchange',()=>{
  updateSectionNav();
- if(authenticated&&!pending)void work(openLinkedDevice);
+ setNavExpanded(false);
+ if(authenticated&&!pending&&linkedDevice())void work(openLinkedDevice);
 });$('open-draft').onclick=()=>work(openDraft);
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
@@ -589,7 +612,7 @@ $('source-shares-save').onclick=()=>work(saveSourceShares);
 updateSectionNav();
 controls();
 void work(async()=>{
- await request('/session',{});authenticated=true;status('Вы вошли. Выберите устройство или раздел управления.');
+ await request('/session',{});authenticated=true;status('');
  await openLinkedDevice();
 });
 
