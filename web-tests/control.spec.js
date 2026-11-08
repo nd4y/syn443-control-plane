@@ -415,7 +415,7 @@ test('console shell fits a narrow screen and retains a keyboard scroll region',a
  await expect(nav).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  const menu=await toggle.boundingBox();
- const menuIcon=await toggle.locator('svg').boundingBox();
+ const menuIcon=await toggle.locator('svg.pf-v6-svg').boundingBox();
  const brand=await page.locator('.masthead .brand').boundingBox();
  const logout=await page.locator('#logout').boundingBox();
  const masthead=await page.locator('.masthead').boundingBox();
