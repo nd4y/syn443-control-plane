@@ -316,3 +316,40 @@ func TestManualSourceImportUsesSeparateBoundAndExactControlBody(t *testing.T) {
 		t.Fatal("valid source import did not reach its existing job API", w.Code)
 	}
 }
+
+func TestPatternFlyAssetsAreScopedToControlConsole(t *testing.T) {
+	if !ControlAssetsReady() {
+		t.Skip("GitHub Actions builds the console bundle before running Go tests")
+	}
+	s, _, _ := webFixture(t)
+	entries, err := assets.ReadDir("assets/control/ui")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		path := "/ui/" + entry.Name()
+		t.Run(entry.Name(), func(t *testing.T) {
+			s.config.ControlConsole = true
+			w := httptest.NewRecorder()
+			s.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+			types := map[string]string{
+				".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+				".woff2": "font/woff2", ".svg": "image/svg+xml",
+			}
+			_, ext, _ := strings.Cut(entry.Name(), ".")
+			if w.Code != http.StatusOK || w.Header().Get("Content-Type") != types["."+ext] || w.Body.Len() == 0 {
+				t.Fatalf("expected embedded PatternFly asset, got HTTP %d", w.Code)
+			}
+			csp := w.Header().Get("Content-Security-Policy")
+			if !strings.Contains(csp, "font-src 'self'; img-src 'self'") || strings.Contains(csp, "unsafe-") {
+				t.Fatal("control console asset policy is not same-origin")
+			}
+			s.config.ControlConsole = false
+			w = httptest.NewRecorder()
+			s.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+			if w.Code == http.StatusOK || strings.Contains(w.Header().Get("Content-Security-Policy"), "font-src") {
+				t.Fatal("support surface unexpectedly served console assets")
+			}
+		})
+	}
+}
