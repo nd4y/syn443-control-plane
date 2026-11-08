@@ -337,3 +337,79 @@ test('mobile device form submits by keyboard and cannot keep a stale device sele
  expect(state.calls.filter(call=>call==='configuration.inventory.get')).toHaveLength(2);
  expect(state.operations).toBe(0);
 });
+
+test('console shell keeps the active section and keyboard focus visible on desktop',async({page,request})=>{
+ await reset(request);
+ await page.setViewportSize({width:1440,height:960});
+ await page.goto(origin+'/#device=device-a');
+ const nav=page.getByRole('navigation',{name:'Разделы управления'});
+ await expect(page.getByRole('heading',{level:1,name:'Управление SYN443'})).toBeVisible();
+ await expect(nav.getByRole('link',{name:'Устройства'})).toHaveAttribute('aria-current','location');
+ await expect(page.locator('#inventory-view')).toBeVisible();
+ await expect(page.locator('#inventory-state')).toHaveAttribute('data-tone','success');
+ await expect(page.locator('#inventory-issued')).toHaveAttribute('data-tone','info');
+ await expect(page.locator('#inventory-report')).toHaveAttribute('data-tone','danger');
+ await page.screenshot({path:'test-results/console-visual/desktop.png',animations:'disabled'});
+ const skip=page.getByRole('link',{name:'К рабочей области'});
+ await skip.focus();
+ await skip.press('Enter');
+ await expect(page.locator('#workspace')).toBeFocused();
+ const sources=nav.getByRole('link',{name:'Источники'});
+ await sources.focus();
+ await sources.press('Enter');
+ await expect(sources).toHaveAttribute('aria-current','location');
+ await expect(nav.getByRole('link',{name:'Устройства'})).not.toHaveAttribute('aria-current','location');
+ await expect(page.locator('#sources-title')).toBeFocused();
+ const geometry=await page.evaluate(()=>{
+  const top=id=>document.getElementById(id).getBoundingClientRect().top;
+  return {heading:top('sources-title'),banner:document.getElementById('status').getBoundingClientRect().bottom};
+ });
+ expect(geometry.heading).toBeGreaterThanOrEqual(geometry.banner);
+ await page.goBack();
+ await expect(nav.getByRole('link',{name:'Устройства'})).toHaveAttribute('aria-current','location');
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(0);
+});
+
+test('console shell fits a narrow screen and retains a keyboard scroll region',async({page,request})=>{
+ await reset(request);
+ await page.setViewportSize({width:320,height:900});
+ const hosts=new Set();
+ page.on('request',request=>hosts.add(new URL(request.url()).origin));
+ await page.goto(origin+'/#device=device-a');
+ const nav=page.getByRole('navigation',{name:'Разделы управления'});
+ await expect(page.locator('#inventory-view')).toBeVisible();
+ await expect(nav.getByRole('link')).toHaveCount(5);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ const target=await nav.getByRole('link',{name:'Телеметрия'}).boundingBox();
+ expect(target.height).toBeGreaterThanOrEqual(44);
+ await page.screenshot({path:'test-results/console-visual/mobile.png',animations:'disabled'});
+ await nav.getByRole('link',{name:'Телеметрия'}).click();
+ await page.locator('#telemetry-hour').fill('2026-01-02T01:00');
+ await page.locator('#load-telemetry').click();
+ await expect(page.locator('#telemetry-rows').locator('tr')).toHaveCount(1);
+ const table=page.getByRole('region',{name:'Таблица технической телеметрии'});
+ await table.focus();
+ await expect(table).toBeFocused();
+ expect(await table.evaluate(el=>el.scrollWidth>el.clientWidth)).toBe(true);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ expect([...hosts]).toEqual([origin]);
+});
+
+test('console sign-in is the only entry when no session is present',async({page,request})=>{
+ await reset(request);
+ await request.post(origin+'/fixture/expire',{data:{}});
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(origin+'/#device=device-a');
+ const login=page.getByRole('button',{name:'Войти через Keycloak'});
+ await expect(page.getByRole('heading',{level:1,name:'Вход в панель управления'})).toBeVisible();
+ await expect(login).toBeEnabled();
+ await expect(page.locator('#workspace')).toBeHidden();
+ await expect(page.locator('#console-nav')).toBeHidden();
+ await expect(page.getByRole('button',{name:'Выйти'})).toHaveCount(0);
+ await page.keyboard.press('Tab');
+ await expect(login).toBeFocused();
+ await page.screenshot({path:'test-results/console-visual/signin.png',animations:'disabled'});
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.calls).toEqual([]);
+});

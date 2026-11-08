@@ -12,7 +12,24 @@ let layerDraftInventory=null;
 let sourceShares=null;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
-function status(message){$('status').textContent=message;}
+function status(message,tone='info'){
+ const banner=$('status');
+ banner.textContent=message;
+ banner.dataset.tone=tone;
+}
+function updateSectionNav(){
+ const links=$('console-nav').querySelectorAll('a');
+ const current=Array.from(links).find(link=>link.hash===location.hash)||links[0];
+ for(const link of links){
+  if(link===current)link.setAttribute('aria-current','location');
+  else link.removeAttribute('aria-current');
+ }
+}
+function inventoryBadge(id,text,tone='neutral'){
+ const badge=$(id);
+ badge.textContent=text;
+ badge.dataset.tone=tone;
+}
 const deviceID=/^[A-Za-z0-9_-]{1,64}$/;
 function linkedDevice(){
  const prefix='#device=';
@@ -104,6 +121,8 @@ function controls(){
  $('login').disabled=busy||authenticated;$('logout').disabled=busy||!authenticated;
  $('login').hidden=authenticated;$('logout').hidden=!authenticated;
  for(const id of ['workspace','console-nav','skip-workspace'])$(id).hidden=!authenticated;
+ $('signin').hidden=authenticated;
+ $('console-shell').classList.toggle('signed-in',authenticated);
  for(const id of ['load-sources','load-inventory','open-draft','save-draft','new-draft','new-source','save-source'])$(id).disabled=busy||!authenticated||!!pending;
  for(const id of ['telemetry-hour','load-telemetry'])$(id).disabled=busy||!authenticated;
  for(const id of sourceFields)$(id).disabled=busy||!authenticated||!!pending||sourceIdentity&&['source-id','source-owner','source-mode'].includes(id);
@@ -134,6 +153,7 @@ function controls(){
 function clearInventory(){
  layerInventory=null;
  for(const id of ['inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions','inventory-state','inventory-issued','inventory-report','inventory-report-time'])$(id).replaceChildren();
+ for(const id of ['inventory-state','inventory-issued','inventory-report'])delete $(id).dataset.tone;
  $('inventory-report-time').removeAttribute('datetime');$('inventory-report-time').hidden=true;
  $('inventory-details').open=false;$('inventory-view').hidden=true;
 }
@@ -191,7 +211,7 @@ $('telemetry-form').onsubmit=event=>{
   }
  });
 };
-async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({anonymous:'Войдите с административной учётной записью.',login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.');}finally{busy=false;controls();}}
+async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({anonymous:'Войдите с административной учётной записью.',login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.',error.message==='anonymous'?'info':'danger');}finally{busy=false;controls();}}
 function textItem(list,text){const item=document.createElement('li');item.textContent=text;list.append(item);return item;}
 function inventoryPair(list,name,value){const term=document.createElement('dt');term.textContent=name;const detail=document.createElement('dd');detail.textContent=value;list.append(term,detail);}
 function inventoryOrigin(origin){return origin&&typeof origin==='object'&&!Array.isArray(origin)&&typeof origin.layerId==='string'&&typeof origin.kind==='string'&&Number.isSafeInteger(origin.revision)&&origin.revision>=0;}
@@ -203,9 +223,10 @@ function showInventory(view){
  const assigned=state==='assigned'||state==='expired';
  if(!assigned&&(revision!==0||hash!==''||layers.length||effective))throw Error('invalid');
  if(assigned&&(revision<1||!/^[0-9a-f]{64}$/.test(hash)||!effective||typeof view.mode!=='string'||!view.mode||!Number.isSafeInteger(view.approvalUntilMs)||view.approvalUntilMs<1))throw Error('invalid');
- $('inventory-state').textContent={assigned:`Назначена · версия ${revision}`,unassigned:'Не назначена',expired:`Истекла · версия ${revision}`}[state];
- $('inventory-issued').textContent=policyRevision?`Версия ${policyRevision}`:'Ещё не выдана';
- $('inventory-report').textContent='Отчёт ещё не получен';
+ const stateLabel={assigned:`Назначена · версия ${revision}`,unassigned:'Не назначена',expired:`Истекла · версия ${revision}`};
+ inventoryBadge('inventory-state',stateLabel[state],{assigned:'success',unassigned:'neutral',expired:'warning'}[state]);
+ inventoryBadge('inventory-issued',policyRevision?`Версия ${policyRevision}`:'Ещё не выдана',policyRevision?'info':'neutral');
+ inventoryBadge('inventory-report','Отчёт ещё не получен');
  const meta=$('inventory-meta');meta.replaceChildren();
  inventoryPair(meta,'Устройство',device);inventoryPair(meta,'Владелец',owner);
  inventoryPair(meta,'Желаемая версия',String(revision));inventoryPair(meta,'Хэш желаемой конфигурации',hash||'-');
@@ -223,7 +244,8 @@ function showInventory(view){
    if(!Object.hasOwn(outcomes,report.outcome)||!Number.isSafeInteger(report.policyRevision)||report.policyRevision<1||!Number.isSafeInteger(report.activePolicyRevision)||report.activePolicyRevision<0||!Number.isSafeInteger(report.receivedAtMs)||report.receivedAtMs<1)throw Error('invalid');
    const historical=report.state==='historical'?' · предыдущая или истёкшая выдача':'';
    const summary=`${outcomes[report.outcome]} · политика ${report.policyRevision}${historical}`;
-   $('inventory-report').textContent=summary;
+   const tone=report.state==='historical'?'warning':{committed:'success',degraded:'warning',rolled_back:'danger'}[report.outcome];
+   inventoryBadge('inventory-report',summary,tone);
    const time=$('inventory-report-time');
    time.dateTime=inventoryDate(report.receivedAtMs);
    time.textContent=new Intl.DateTimeFormat('ru',{dateStyle:'medium',timeStyle:'short'}).format(report.receivedAtMs);
@@ -231,7 +253,11 @@ function showInventory(view){
    inventoryPair(meta,'Отчёт устройства',summary);
    inventoryPair(meta,'Версия по отчёту',report.activePolicyRevision?String(report.activePolicyRevision):'Нет');
    inventoryPair(meta,'Получен',inventoryDate(report.receivedAtMs));
-  }else inventoryPair(meta,'Отчёт устройства',report.state==='not_issued'?'Политика ещё не выдана':'Ожидаем результат применения');
+  }else{
+   const label=report.state==='not_issued'?'Политика ещё не выдана':'Ожидаем результат применения';
+   inventoryBadge('inventory-report',label,report.state==='not_issued'?'neutral':'info');
+   inventoryPair(meta,'Отчёт устройства',label);
+  }
  }
  if(assigned){inventoryPair(meta,'Режим сети',view.mode);if(view.approvalUntilMs>0)inventoryPair(meta,'Подтверждение действительно до',inventoryDate(view.approvalUntilMs));}
  const layerList=$('inventory-layers');layerList.replaceChildren();
@@ -469,7 +495,10 @@ $('inventory-device').oninput=()=>{
  if(linkedDevice())history.replaceState(null,'','/#inventory-title');
  layerControls();
 };
-addEventListener('hashchange',()=>{if(authenticated&&!pending)void work(openLinkedDevice);});$('open-draft').onclick=()=>work(openDraft);
+addEventListener('hashchange',()=>{
+ updateSectionNav();
+ if(authenticated&&!pending)void work(openLinkedDevice);
+});$('open-draft').onclick=()=>work(openDraft);
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
 $('plan').oninput=drawRouteChecks;
@@ -557,6 +586,7 @@ $('source-shares-load').onclick=()=>work(loadSourceShares);
 $('source-shares-add').onclick=()=>work(addSourceRecipient);
 $('source-shares-confirm').onchange=controls;
 $('source-shares-save').onclick=()=>work(saveSourceShares);
+updateSectionNav();
 controls();
 void work(async()=>{
  await request('/session',{});authenticated=true;status('Вы вошли. Выберите устройство или раздел управления.');
