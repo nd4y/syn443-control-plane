@@ -383,7 +383,7 @@ test('console shell fits a narrow screen and retains a keyboard scroll region',a
  await expect(toggle).toHaveAttribute('aria-expanded','false');
  await expect(nav).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- const report=await page.locator('#inventory-report').boundingBox();
+ const report=await page.locator('#inventory-report-time').boundingBox();
  expect(report.y+report.height).toBeLessThanOrEqual(900);
  await page.screenshot({path:'test-results/console-visual/mobile.png',animations:'disabled'});
  await toggle.press('Enter');

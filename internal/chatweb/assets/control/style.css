@@ -326,7 +326,7 @@ li { margin-block-end: 0.5rem; }
   .inventory-summary { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 32rem) {
-  .brand-product { display: none; }
+  .brand-product, .workspace-heading p:last-child { display: none; }
   .inventory-form { display: block; }
   .inventory-form button { inline-size: 100%; margin-block-start: 0.75rem; }
   #inventory-meta { grid-template-columns: minmax(0, 1fr); }
