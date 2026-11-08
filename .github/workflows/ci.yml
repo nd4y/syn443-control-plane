@@ -204,6 +204,22 @@ jobs:
           name: support-web-test-evidence
           path: web-tests/results.xml
           retention-days: 14
+      - name: Scan synthetic console previews
+        run: |
+          for name in desktop mobile signin; do
+            test -s "web-tests/test-results/console-visual/$name.png"
+          done
+          python3 tools/check_public_data.py web-tests/test-results/console-visual
+          bash tools/scan_secrets.sh web-tests/test-results/console-visual
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: synthetic-console-visual-qa
+          path: |
+            web-tests/test-results/console-visual/desktop.png
+            web-tests/test-results/console-visual/mobile.png
+            web-tests/test-results/console-visual/signin.png
+          if-no-files-found: error
+          retention-days: 7
   invitations:
     needs: public-data
     runs-on: ubuntu-24.04

@@ -1,18 +1,55 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>SYN443 - Управление</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
-<body><a class="skip-link" href="#workspace" id="skip-workspace" hidden>К рабочей области</a><header><div><strong>SYN443</strong><h1>Управление</h1></div><nav aria-label="Учётная запись"><button id="login">Войти через Keycloak</button><button id="logout" hidden disabled>Выйти</button></nav></header>
-<p id="status" role="status">Войдите с административной учётной записью.</p>
-<nav id="console-nav" class="console-nav" aria-label="Разделы управления" hidden>
-<a href="#inventory-title">Устройства</a><a href="#sources-title">Источники</a><a href="#draft-title">Черновики</a>
-<a href="#layer-title">Публикация</a><a href="#telemetry-title">Телеметрия</a></nav>
-<main id="workspace" tabindex="-1" hidden><section class="wide" aria-labelledby="inventory-title">
-<h2 id="inventory-title">Устройства</h2>
-<p id="inventory-help">Введите ID из приложения. Панель показывает последнюю выдачу политики и отчёт Android.</p>
+<body>
+<a class="skip-link" href="#workspace" id="skip-workspace" hidden>К рабочей области</a>
+<header class="masthead">
+ <div class="masthead-inner">
+  <div class="brand">
+   <svg class="brand-mark" aria-hidden="true" viewBox="0 0 32 32" width="32" height="32">
+    <rect width="32" height="32" rx="5" fill="currentColor"/>
+    <path d="M8 22l6-12 4 8 3-6 3 6M7 24h18" fill="none" stroke="white" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+   </svg>
+   <strong>SYN443</strong><span class="brand-product">Control Plane</span>
+  </div>
+  <nav aria-label="Учётная запись"><button class="button-quiet" id="logout" hidden disabled>Выйти</button></nav>
+ </div>
+</header>
+<div class="console-shell" id="console-shell">
+<div id="console-navigation" class="console-navigation" hidden>
+<button type="button" id="console-nav-toggle" class="console-nav-toggle" aria-expanded="false" aria-controls="console-nav">
+ <span>Разделы</span><span id="console-nav-current">Устройства</span>
+</button>
+<nav id="console-nav" class="console-nav" aria-label="Разделы управления">
+ <p class="nav-heading">Управление</p>
+ <a href="#inventory-title" aria-current="location">Устройства</a>
+ <a href="#sources-title">Источники</a>
+ <a href="#draft-title">Черновики</a>
+ <a href="#layer-title">Публикация</a>
+ <a href="#telemetry-title">Телеметрия</a>
+</nav>
+</div>
+<div class="console-content">
+ <section class="signin-panel" id="signin" aria-labelledby="signin-title">
+  <p class="section-label">SYN443 Control Plane</p>
+  <h1 id="signin-title">Вход в панель управления</h1>
+  <p>Доступ к устройствам, конфигурации и отчётам определяется правами вашей учётной записи.</p>
+  <button class="button-primary" id="login">Войти через Keycloak</button>
+ </section>
+ <p id="status" class="console-status" role="status" aria-atomic="true">Войдите с административной учётной записью.</p>
+ <main id="workspace" tabindex="-1" hidden>
+  <div class="workspace-heading wide">
+   <p class="section-label">Control Plane</p>
+   <h1>Управление SYN443</h1>
+   <p>Устройства, конфигурация и диагностика сети</p>
+  </div>
+<section class="wide" aria-labelledby="inventory-title">
+<h2 id="inventory-title" tabindex="-1">Устройства</h2>
+<p id="inventory-help">Введите ID из приложения, чтобы открыть карточку устройства.</p>
 <form id="inventory-form" class="inventory-form"><div><label for="inventory-device">ID устройства</label>
 <input id="inventory-device" autocomplete="off" maxlength="64" required pattern="[A-Za-z0-9_\-]{1,64}" spellcheck="false" aria-describedby="inventory-help"></div>
-<button id="load-inventory" disabled>Загрузить конфигурацию</button></form>
+<button class="button-primary" id="load-inventory" disabled>Открыть карточку</button></form>
 <p id="inventory-status" role="status" aria-atomic="true"></p>
-<div id="inventory-view" hidden><div class="inventory-summary">
+<div id="inventory-view" hidden><div class="inventory-summary" role="group" aria-label="Состояние устройства">
 <div><h3>Желаемая конфигурация</h3><p id="inventory-state"></p></div>
 <div><h3>Выданная политика</h3><p id="inventory-issued"></p></div>
 <div><h3>Последний отчёт Android</h3><p id="inventory-report"></p><time id="inventory-report-time" hidden></time></div>
@@ -22,7 +59,7 @@
 <h3>Действующие переносимые настройки</h3><pre id="inventory-effective"></pre>
 <h3>Источники полей</h3><ul id="inventory-fields"></ul>
 <h3>Ограничения</h3><ul id="inventory-restrictions"></ul></details></div>
-</section><section aria-labelledby="sources-title"><h2 id="sources-title">Источники</h2>
+</section><section aria-labelledby="sources-title"><h2 id="sources-title" tabindex="-1">Источники</h2>
 <label for="owner">ID пользователя</label><input id="owner" autocomplete="off" maxlength="128"><button id="load-sources" disabled>Загрузить источники</button>
 <ul id="sources"></ul><button id="more-sources" disabled>Следующая страница</button><h3>Профили источника</h3><ul id="profiles"></ul><pre id="source-details"></pre>
 <h3>Настройки источника</h3><button id="new-source" disabled>Новый источник</button><p id="source-version">Источник не выбран</p>
@@ -42,7 +79,7 @@
 <label for="source-secret-operation">Учётные данные</label><select id="source-secret-operation"><option value="keep">Сохранить прежние</option><option value="replace">Заменить</option><option value="delete">Удалить</option></select>
 <label for="source-secret">Новые параметры HTTPS, JSON</label><textarea id="source-secret" rows="5" maxlength="65536" autocomplete="off" spellcheck="false"></textarea>
 <p>Для HTTPS: объект с полем url и при необходимости headers, rootCa, allowedNetworks. Прежние значения не отображаются. Изменение секрета требует свежей MFA.</p>
-<button id="save-source" disabled>Сохранить источник</button></form>
+<button class="button-primary" id="save-source" disabled>Сохранить источник</button></form>
 <button id="sync-source" disabled>Обновить профили</button><button id="source-job" disabled>Проверить задание</button><pre id="job-status"></pre>
 <label for="source-import-file">Файл подписки до 10 МиБ</label><input id="source-import-file" type="file" disabled>
 <button id="source-import" disabled>Импортировать в ручной источник</button>
@@ -57,7 +94,7 @@
 <button id="source-shares-add" disabled>Добавить получателя</button>
 <label><input id="source-shares-confirm" type="checkbox" disabled>Подтверждаю новый список. Сервер проверит права и свежую MFA.</label>
 <button id="source-shares-save" disabled>Сохранить получателей</button>
-</section><section aria-labelledby="draft-title"><h2 id="draft-title">Личный черновик конфигурации</h2>
+</section><section aria-labelledby="draft-title"><h2 id="draft-title" tabindex="-1">Личный черновик конфигурации</h2>
 <p>Сохранение черновика не меняет VPN на устройствах. Для публикации нужны отдельные проверка и подтверждение.</p>
 <label for="draft-id">ID черновика</label><input id="draft-id" autocomplete="off" maxlength="128"><button id="open-draft" disabled>Открыть черновик</button><button id="new-draft" disabled>Новый черновик</button>
 <form id="draft-form"><label for="target-kind">Область правки</label><select id="target-kind"><option value="device">Устройство</option><option value="user">Пользователь</option><option value="group">Группа</option><option value="template">Шаблон</option></select>
@@ -88,9 +125,9 @@
 <button id="route-decision-save" type="button">Применить долю для алгоритма к черновику</button>
 </div>
 </fieldset>
-<p>Профили задаются ссылками sourceId/profileId. Ключи, пароли и состояние NetBird сюда не переносятся.</p><button id="save-draft" disabled>Сохранить черновик</button></form>
+<p>Профили задаются ссылками sourceId/profileId. Ключи, пароли и состояние NetBird сюда не переносятся.</p><button class="button-primary" id="save-draft" disabled>Сохранить черновик</button></form>
 <div id="pending" hidden><p>Изменение не подтверждено. Повтор использует ту же операцию.</p><button id="retry-save">Повторить операцию</button><button id="discard-save">Отменить повтор и проверить версию на сервере</button></div>
-</section><section class="wide" aria-labelledby="layer-title"><h2 id="layer-title">Редактирование и публикация слоёв</h2>
+</section><section class="wide" aria-labelledby="layer-title"><h2 id="layer-title" tabindex="-1">Редактирование и публикация слоёв</h2>
 <p>Начните с конфигурации выбранного устройства или откройте сохранённый черновик. Предложение содержит все наследованные слои; меняйте только разрешённую область. Сервер проверяет ограничения, актуальность исходных версий и полный список затронутых устройств.</p>
 <button id="layer-from-device" disabled>Править слой выбранного устройства</button>
 <button id="layer-list" disabled>Сохранённые черновики текущего адресата</button><label for="layer-saved">Сохранённая копия</label><select id="layer-saved" disabled></select><button id="layer-open-saved" disabled>Открыть выбранный черновик</button><p id="layer-list-status"></p>
@@ -98,17 +135,21 @@
 <p id="layer-version">Черновик слоёв не открыт</p>
 <label for="layer-proposal">Переносимое предложение, JSON</label><textarea id="layer-proposal" rows="24" maxlength="262144" autocomplete="off" spellcheck="false"></textarea>
 <p>Нативные конфиги, ключи и пароли сюда не добавляйте. Сохранение не меняет устройства. Предварительная проверка компилирует маршруты на сервере, но не проверяет доступность сети с телефона.</p>
-<label><input id="layer-discard-confirm" type="checkbox" disabled> Подтверждаю удаление сохранённого черновика. Несохранённый текст останется в редакторе.</label><button id="layer-discard" disabled>Удалить сохранённый черновик</button>
-<button id="layer-save" disabled>Сохранить черновик слоёв</button><button id="layer-preview" disabled>Проверить предложение на сервере</button><button id="layer-poll" disabled>Проверить задание конфигурации</button>
-<pre id="layer-job"></pre><div id="layer-review" hidden><h3>Проверенное предложение</h3><pre id="layer-impact"></pre><label><input id="layer-confirm" type="checkbox"> Проверил изменения и список затронутых устройств</label><button id="layer-publish" disabled>Опубликовать желаемую конфигурацию</button></div>
+<label><input id="layer-discard-confirm" type="checkbox" disabled> Подтверждаю удаление сохранённого черновика. Несохранённый текст останется в редакторе.</label><button class="button-danger" id="layer-discard" disabled>Удалить сохранённый черновик</button>
+<button class="button-primary" id="layer-save" disabled>Сохранить черновик слоёв</button><button id="layer-preview" disabled>Проверить предложение на сервере</button><button id="layer-poll" disabled>Проверить задание конфигурации</button>
+<pre id="layer-job"></pre><div id="layer-review" hidden><h3>Проверенное предложение</h3><pre id="layer-impact"></pre><label><input id="layer-confirm" type="checkbox"> Проверил изменения и список затронутых устройств</label><button class="button-primary" id="layer-publish" disabled>Опубликовать желаемую конфигурацию</button></div>
 <button id="layer-compare" disabled>Сравнить с текущей версией устройства</button><div id="layer-comparison" hidden><h3>Исходная, локальная и текущая конфигурации</h3><pre id="layer-diff"></pre><ul id="layer-conflicts"></ul><button id="layer-merge" disabled>Перенести результат сравнения в редактор</button></div>
 <p id="layer-result">Результат публикации не является подтверждением активации Android.</p>
-</section><section class="wide" aria-labelledby="telemetry-title"><h2 id="telemetry-title">Техническая телеметрия</h2>
+</section><section class="wide" aria-labelledby="telemetry-title"><h2 id="telemetry-title" tabindex="-1">Техническая телеметрия</h2>
 <p>Почасовая сводка по типу события, результату и режиму сети. Доступ выдаётся отдельно.</p>
 <form id="telemetry-form"><label for="telemetry-hour">Начало часа (UTC)</label><input id="telemetry-hour" type="datetime-local" step="3600" required disabled>
-<button id="load-telemetry" disabled>Загрузить сводку</button></form>
+<button class="button-primary" id="load-telemetry" disabled>Загрузить сводку</button></form>
 <p id="telemetry-status" role="status"></p>
-<div id="telemetry-view" hidden><table><thead><tr><th scope="col">Событие</th><th scope="col">Результат</th><th scope="col">Режим</th><th scope="col">Число событий</th><th scope="col">Среднее время</th><th scope="col">Переключения по алгоритмам</th></tr></thead>
-<tbody id="telemetry-rows"></tbody></table>
+<div id="telemetry-view" hidden><div class="table-scroll" role="region" aria-label="Таблица технической телеметрии" tabindex="0"><table><thead><tr><th scope="col">Событие</th><th scope="col">Результат</th><th scope="col">Режим</th><th scope="col">Число событий</th><th scope="col">Среднее время</th><th scope="col">Переключения по алгоритмам</th></tr></thead>
+<tbody id="telemetry-rows"></tbody></table></div>
 <p>Счётчики показывают только полученные события переключения. Количество устройств и доля успешных подключений здесь не измеряются.</p></div>
-</section></main></body></html>
+</section>
+</main>
+</div>
+</div>
+</body></html>

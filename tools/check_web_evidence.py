@@ -46,6 +46,9 @@ expected.update({
     'reserve probe cooldown requires explicit draft opt in and never publishes',
     'device workspace is private until sign in and opens a safe linked device',
     'mobile device form submits by keyboard and cannot keep a stale device selected',
+    'console shell keeps the active section and keyboard focus visible on desktop',
+    'console shell fits a narrow screen and retains a keyboard scroll region',
+    'console sign-in is the only entry when no session is present',
 })
 assert len(cases) >= 37
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
