@@ -20,3 +20,4 @@ dist/
 /web-tests/test-results/
 /web-tests/results.xml
 /web-tests/playwright-report/
+/internal/chatweb/assets/control/ui/

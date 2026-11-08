@@ -25,6 +25,9 @@ func run() error {
 	if identity.Decode(raw, &c, true) != nil {
 		return identity.ErrInvalid
 	}
+	if c.ControlConsole && !chatweb.ControlAssetsReady() {
+		return errors.New("control console bundle is missing")
+	}
 	host, _, e := net.SplitHostPort(c.Listen)
 	if e != nil || net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback() {
 		return identity.ErrInvalid

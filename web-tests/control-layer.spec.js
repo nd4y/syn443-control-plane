@@ -4,6 +4,7 @@ async function state(request){return (await request.post(origin+'/fixture/state'
 async function start(page,request,options={}){
  await request.post(origin+'/fixture/reset',{data:options});await page.goto(origin);
  await expect(page.locator('#load-inventory')).toBeEnabled();await page.locator('#inventory-device').fill('device-a');await page.locator('#load-inventory').click();
+ await page.getByRole('link',{name:'Открыть публикацию'}).click();
  await expect(page.locator('#layer-from-device')).toBeEnabled();await page.locator('#layer-from-device').click();
  const proposal=JSON.parse(await page.locator('#layer-proposal').inputValue());
  expect(proposal.bundles[0].baseRevision).toBe(7);expect(proposal.bundles[0].baseHash).toBe('a'.repeat(64));

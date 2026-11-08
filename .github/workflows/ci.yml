@@ -49,6 +49,16 @@ jobs:
         with:
           go-version: '1.27.3'
           cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.21.0'
+          cache: npm
+          cache-dependency-path: console-ui/package-lock.json
+      - name: Bundle the PatternFly control console
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+        working-directory: console-ui
       - run: test -z "$(gofmt -l cmd internal contracts integration)"
       - run: go mod verify
       - run: go vet ./...
@@ -103,6 +113,22 @@ jobs:
         with:
           name: control-plane-linux-amd64
           path: dist/control-plane/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Verify and scan the bundled console assets
+        run: |
+          test -s internal/chatweb/assets/control/ui/console.js
+          test -s internal/chatweb/assets/control/ui/console.css
+          python3 tools/check_public_data.py internal/chatweb/assets/control/ui
+          bash tools/scan_secrets.sh internal/chatweb/assets/control/ui
+          mkdir -p dist/console-ui
+          cp internal/chatweb/assets/control/ui/* dist/console-ui/
+          git rev-parse HEAD > dist/console-ui/SOURCE.txt
+          (cd dist/console-ui && sha256sum -- *.js *.css *.woff2 *.svg > SHA256SUMS)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: control-console-ui
+          path: dist/console-ui/
           if-no-files-found: error
           retention-days: 14
       - name: Workflow validation
@@ -182,7 +208,14 @@ jobs:
         with:
           node-version: '24.21.0'
           cache: npm
-          cache-dependency-path: web-tests/package-lock.json
+          cache-dependency-path: |
+            web-tests/package-lock.json
+            console-ui/package-lock.json
+      - name: Bundle the PatternFly control console
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+        working-directory: console-ui
       - run: python3 tools/check_web_sources.py
       - run: npm ci --ignore-scripts
         working-directory: web-tests

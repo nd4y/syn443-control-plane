@@ -32,3 +32,11 @@ The telemetry web console requires PostgreSQL tests for exact grant, wildcard
 denial, revocation and read audit, a BFF scope test, and Playwright tests for
 populated/empty/mismatched reports, session expiry and preservation of unrelated
 drafts on a scoped denial. The browser fixture contains only synthetic counts.
+
+The control console uses the pinned PatternFly React and React packages in
+[console-ui](../console-ui/package-lock.json). GitHub Actions installs the lock
+and runs the console bundle before embedding it in support-chat-web and before
+the Chromium suite. The control-console-ui artifact records the exact source
+revision and SHA-256 checksums of the embedded JS, CSS, fonts and images. The
+browser gate covers same-origin resources, isolated sections, browser history,
+focus and preservation of unsaved drafts across navigation.
