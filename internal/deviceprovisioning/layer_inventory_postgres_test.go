@@ -28,11 +28,15 @@ func inventoryCall(t *testing.T, n networkFixture, c *ConfigurationControl, id, 
 	return v.(ConfigurationInventory), nil
 }
 
-func TestConfigurationInventoryShowsOnlySelectedDeviceAndFieldProvenance(t *testing.T) {
-	n, c, p, publisher := layerPublisherFixture(t)
-	initial, e := inventoryCall(t, n, c, n.target.Device, "initial inventory")
-	if e != nil || initial.State != "unassigned" || initial.Revision != 0 || initial.Hash != "" || len(initial.Layers) != 0 || initial.Effective != nil || initial.PolicyRevision != 1 {
-		t.Fatal("unassigned desired layers confused with existing policy", e)
+func TestConfigurationInventoryShowsTheTemplatePolicyWithoutManagedLayers(t *testing.T) {
+	n, c, _ := configurationControlFixture(t)
+	n.publisher.Configurations = nil
+	if err := n.publisher.RunOnce(context.Background(), n.f.now); err != nil {
+		t.Fatal(err)
+	}
+	initial, e := inventoryCall(t, n, c, n.target.Device, "template issued policy inventory")
+	if e != nil || initial.State != "unassigned" || initial.Effective != nil || initial.PublicationSource != "unlinked" {
+		t.Fatal("template issuance was mistaken for a managed configuration", e)
 	}
 	if initial.IssuedSettings == nil || initial.IssuedSettings.Revision != 1 ||
 		initial.IssuedSettings.RouteFinal != "direct" || len(initial.IssuedSettings.Outbounds) != 1 {
@@ -43,6 +47,14 @@ func TestConfigurationInventoryShowsOnlySelectedDeviceAndFieldProvenance(t *test
 	}
 	if _, e = fixtureSigner.Exec("UPDATE identity_devices SET publication_view=NULL WHERE id=$1", n.target.Device); e == nil {
 		t.Fatal("publisher gained authority to rewrite the view of an existing issuance")
+	}
+}
+
+func TestConfigurationInventoryShowsOnlySelectedDeviceAndFieldProvenance(t *testing.T) {
+	n, c, p, publisher := layerPublisherFixture(t)
+	initial, e := inventoryCall(t, n, c, n.target.Device, "initial inventory")
+	if e != nil || initial.State != "unassigned" || initial.Revision != 0 || initial.Hash != "" || len(initial.Layers) != 0 || initial.Effective != nil || initial.PolicyRevision != 1 {
+		t.Fatal("unassigned desired layers confused with existing policy", e)
 	}
 	seedConfigurationDevice(t, storedLayersFixture{n: n}, "private-other-device", true)
 	p.TargetKind = "user"
