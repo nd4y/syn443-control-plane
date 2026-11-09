@@ -176,8 +176,9 @@ function controls(){
 }
 function clearInventory(){
  layerInventory=null;
- for(const id of ['inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions','inventory-issued-config','inventory-state','inventory-issued','inventory-report','inventory-report-time'])$(id).replaceChildren();
+ for(const id of ['inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions','inventory-issued-config','inventory-state','inventory-issued','inventory-issued-algorithm','inventory-report','inventory-report-time'])$(id).replaceChildren();
  for(const id of ['inventory-state','inventory-issued','inventory-report'])delete $(id).dataset.tone;
+ $('inventory-issued-algorithm').hidden=true;
  $('inventory-report-time').removeAttribute('datetime');$('inventory-report-time').hidden=true;
  $('inventory-details').open=false;$('inventory-view').hidden=true;$('inventory-issued-settings').hidden=true;$('inventory-issued-settings').open=false;
 }
@@ -297,6 +298,11 @@ function showInventory(view){
  const issued=view.issuedSettings;
  if(issued!=null){
   if(typeof issued!=='object'||Array.isArray(issued)||issued.revision!==policyRevision||!Array.isArray(issued.outbounds)||!issued.outbounds.length)throw Error('invalid');
+  if(['m1-local-v1',confirmedDecision].includes(issued.algorithmRevision)){
+   const algorithm=$('inventory-issued-algorithm');
+   algorithm.textContent='Алгоритм '+issued.algorithmRevision;
+   algorithm.hidden=false;
+  }
   $('inventory-issued-config').textContent=JSON.stringify(issued,null,2);
   $('inventory-issued-settings').hidden=false;
  }

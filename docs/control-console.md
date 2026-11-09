@@ -64,6 +64,11 @@ not returned or rendered. The editor sends portable source/profile references,
 DNS/routing and activation plans; the server applies the same closed schema and
 SQL object ACL as direct control API calls. Saving never publishes a policy.
 
+The device card shows the algorithm revision from the redacted, signed issuance
+projection when that projection belongs to the displayed policy revision. The
+Android activation card remains independent. An old issuance without a recorded
+algorithm leaves the field empty, including after switching devices.
+
 Run the existing `support-chat-web` BFF as a **separate process**, with its private
 `SYN443_CHAT_WEB_CONFIG` setting `controlConsole: true`. Configure its API origin
 to the control API, its own Keycloak client and the pinned control API audience.
