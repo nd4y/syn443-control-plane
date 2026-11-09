@@ -657,6 +657,11 @@ function layerControls(){
  const disabled=busy||!authenticated||!!pending;
  for(const id of ['layer-id','layer-proposal','layer-load','layer-save','layer-confirm'])$(id).disabled=disabled||!!layerJob;
  $('layer-from-device').disabled=disabled||!!layerJob||!layerInventory||layerInventory.state==='unassigned';
+ const first=layerInventory?.state==='unassigned';
+ $('layer-first-device').hidden=!first;
+ $('layer-first-mode').disabled=disabled||!!layerJob;
+ $('layer-first-from-plan').disabled=disabled||!!layerJob||!first||
+  !!$('layer-proposal').value.trim()&&!layerUnchanged();
  $('layer-preview').disabled=disabled||!layerUnchanged()||!!layerJob;
  $('layer-poll').disabled=disabled||!layerJob;
  $('layer-publish').disabled=disabled||!!layerJob||!layerUnchanged()||!layerPreview||!$('layer-confirm').checked||layerPreview.preview.expiresAtMs<=Date.now();
@@ -723,11 +728,27 @@ function editDeviceLayer(){
  let own=layers.find(layer=>layer.kind==='device'&&layer.id===v.device);
  if(own){if(own.revision>=Number.MAX_SAFE_INTEGER)throw Error('invalid');own.revision++;}
  else{own={id:v.device,kind:'device',priority:0,revision:1,changes:[],permissions:[]};layers.push(own);}
+ setNewLayerDraft(v,v.mode,layers,Math.max(v.approvalUntilMs,Date.now()+3600000));
+ status('Наследованные слои сохранены. Внесите изменения в changes слоя device и сохраните черновик.');
+}
+function firstDeviceLayer(){
+ const v=layerInventory,mode=$('layer-first-mode').value;
+ if(v?.state!=='unassigned'||!['home_wifi','wifi','cellular_restricted','cellular'].includes(mode)||
+   $('layer-proposal').value.trim()&&!layerUnchanged())throw Error('invalid');
+ let plan;
+ try{plan=routeDraft().value;}catch{throw Error('invalid');}
+ if(plan.schemaVersion!==1||Object.keys(plan).sort().join(',')!=='activation,graph,network,schemaVersion'||
+    !plan.activation||typeof plan.activation!=='object'||Array.isArray(plan.activation))throw Error('invalid');
+ const changes=Object.entries(plan).map(([key,value])=>({path:'/'+key,operation:'set',value}));
+ const template={id:crypto.randomUUID(),kind:'template',priority:0,revision:1,changes,permissions:[]};
+ setNewLayerDraft(v,mode,[template],Date.now()+3600000);
+ status('Первый черновик создан в редакторе. Сохраните его и запросите предварительную проверку.');
+}
+function setNewLayerDraft(device,mode,layers,approvalUntilMs){
  layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearLayerReview();clearLayerComparison();
  const id=crypto.randomUUID();$('layer-id').value=id;
- $('layer-proposal').value=JSON.stringify({draftId:id,draftRevision:1,targetKind:'device',targetId:v.device,mode:v.mode,approvalUntilMs:Math.max(v.approvalUntilMs,Date.now()+3600000),bundles:[{device:v.device,baseRevision:v.revision,baseHash:v.hash,layers}]},null,2);
+ $('layer-proposal').value=JSON.stringify({draftId:id,draftRevision:1,targetKind:'device',targetId:device.device,mode,approvalUntilMs,bundles:[{device:device.device,baseRevision:device.revision,baseHash:device.hash,layers}]},null,2);
  $('layer-version').textContent='Новый черновик слоёв';$('layer-job').textContent='';
- status('Наследованные слои сохранены. Внесите изменения в changes слоя device и сохраните черновик.');
 }
 function acceptLayerMutation(kind,result){
  if(kind==='layer-discard'){
@@ -782,6 +803,7 @@ async function pollLayerJob(){
  status(view.error==='configuration_conflict'?'Конфликт исходной версии. Сохранённый черновик сохранён; загрузите актуальную конфигурацию и сравните изменения.':'Задание отклонено или истекло. Изменения не подтверждены; проверьте права, источники и исходные версии.');
 }
 $('layer-from-device').onclick=()=>work(async()=>editDeviceLayer());
+$('layer-first-from-plan').onclick=()=>work(async()=>firstDeviceLayer());
 $('layer-load').onclick=()=>work(loadLayerDraft);$('layer-save').onclick=()=>work(saveLayerDraft);
 $('layer-id').oninput=$('layer-proposal').oninput=()=>{clearLayerReview();clearLayerComparison();layerControls();};
 $('layer-confirm').onchange=$('layer-discard-confirm').onchange=layerControls;

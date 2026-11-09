@@ -530,6 +530,20 @@ function Publication() {
         разрешённую область. Сервер проверяет ограничения, актуальность исходных
         версий и полный список затронутых устройств.
       </p>
+      <div id="layer-first-device" hidden>
+        <p>Для первой конфигурации подготовьте переносимый план в разделе «Черновики». Здесь можно скопировать его в новый личный черновик слоёв.</p>
+        <a href="#draft-title">Открыть планы</a>
+        <label htmlFor="layer-first-mode">Режим первой конфигурации</label>
+        <Select id="layer-first-mode" defaultValue="wifi">
+          <option value="home_wifi">Домашний Wi-Fi</option>
+          <option value="wifi">Любой Wi-Fi</option>
+          <option value="cellular_restricted">Ограниченная сотовая сеть</option>
+          <option value="cellular">Сотовая сеть</option>
+        </Select>
+        <Button id="layer-first-from-plan" variant="secondary" isDisabled>
+          Создать первый черновик из плана
+        </Button>
+      </div>
       <Button id="layer-from-device" variant="secondary" isDisabled>
         Править слой выбранного устройства
       </Button>
