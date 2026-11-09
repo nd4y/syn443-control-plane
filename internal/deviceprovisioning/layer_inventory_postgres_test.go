@@ -28,6 +28,28 @@ func inventoryCall(t *testing.T, n networkFixture, c *ConfigurationControl, id, 
 	return v.(ConfigurationInventory), nil
 }
 
+func TestConfigurationInventoryShowsTheTemplatePolicyWithoutManagedLayers(t *testing.T) {
+	n, c, _ := configurationControlFixture(t)
+	n.publisher.Configurations = nil
+	if err := n.publisher.RunOnce(context.Background(), n.f.now); err != nil {
+		t.Fatal(err)
+	}
+	initial, e := inventoryCall(t, n, c, n.target.Device, "template issued policy inventory")
+	if e != nil || initial.State != "unassigned" || initial.Effective != nil || initial.PublicationSource != "unlinked" {
+		t.Fatal("template issuance was mistaken for a managed configuration", e)
+	}
+	if initial.IssuedSettings == nil || initial.IssuedSettings.Revision != 1 ||
+		initial.IssuedSettings.RouteFinal != "direct" || len(initial.IssuedSettings.Outbounds) != 1 {
+		t.Fatal("legacy publisher did not preserve its visible settings independently of desired layers")
+	}
+	if _, e = fixtureControl.Exec("UPDATE identity_devices SET publication_view=NULL WHERE id=$1", n.target.Device); e == nil {
+		t.Fatal("control API gained publication view write authority")
+	}
+	if _, e = fixtureSigner.Exec("UPDATE identity_devices SET publication_view=NULL WHERE id=$1", n.target.Device); e == nil {
+		t.Fatal("publisher gained authority to rewrite the view of an existing issuance")
+	}
+}
+
 func TestConfigurationInventoryShowsOnlySelectedDeviceAndFieldProvenance(t *testing.T) {
 	n, c, p, publisher := layerPublisherFixture(t)
 	initial, e := inventoryCall(t, n, c, n.target.Device, "initial inventory")
@@ -155,6 +177,10 @@ func TestConfigurationInventoryBindsIssuedPolicyToExactApprovedRevision(t *testi
 		t.Fatal(e)
 	}
 	expect("later untracked issuance", "unlinked", 2, 4)
+	view, e := inventoryCall(t, n, c, n.target.Device, "stale issued settings")
+	if e != nil || view.IssuedSettings != nil {
+		t.Fatal("old publisher revision reused a stale view", e)
+	}
 }
 
 func TestConfigurationInventoryRequiresLiveDeviceParentACLAndCipherIntegrity(t *testing.T) {

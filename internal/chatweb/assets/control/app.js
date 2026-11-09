@@ -176,10 +176,10 @@ function controls(){
 }
 function clearInventory(){
  layerInventory=null;
- for(const id of ['inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions','inventory-state','inventory-issued','inventory-report','inventory-report-time'])$(id).replaceChildren();
+ for(const id of ['inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions','inventory-issued-config','inventory-state','inventory-issued','inventory-report','inventory-report-time'])$(id).replaceChildren();
  for(const id of ['inventory-state','inventory-issued','inventory-report'])delete $(id).dataset.tone;
  $('inventory-report-time').removeAttribute('datetime');$('inventory-report-time').hidden=true;
- $('inventory-details').open=false;$('inventory-view').hidden=true;
+ $('inventory-details').open=false;$('inventory-view').hidden=true;$('inventory-issued-settings').hidden=true;$('inventory-issued-settings').open=false;
 }
 function erase(){
  clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
@@ -293,7 +293,13 @@ function showInventory(view){
  }
  if(!layerList.children.length)textItem(layerList,'Наследованные слои отсутствуют.');
  const documentNode=$('inventory-effective');
- if(effective){if(effective.document===undefined)throw Error('invalid');documentNode.textContent=JSON.stringify(effective.document,null,2);}else documentNode.textContent='Нет действующих настроек.';
+ if(effective){if(effective.document===undefined)throw Error('invalid');documentNode.textContent=JSON.stringify(effective.document,null,2);}else documentNode.textContent='Управляемая конфигурация не назначена.';
+ const issued=view.issuedSettings;
+ if(issued!=null){
+  if(typeof issued!=='object'||Array.isArray(issued)||issued.revision!==policyRevision||!Array.isArray(issued.outbounds)||!issued.outbounds.length)throw Error('invalid');
+  $('inventory-issued-config').textContent=JSON.stringify(issued,null,2);
+  $('inventory-issued-settings').hidden=false;
+ }
  const fieldList=$('inventory-fields');fieldList.replaceChildren();
  const origins=effective&&effective.fields;
  if(origins!==undefined&&origins!==null&&(typeof origins!=='object'||Array.isArray(origins)))throw Error('invalid');
