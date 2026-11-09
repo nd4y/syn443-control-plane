@@ -1246,8 +1246,8 @@
     {
       "id": "RLP-10",
       "text": "Панель показывает, кто использует какую algorithm revision, этап rollout, метрики/gates, причины остановки и результат rollback. Публикация алгоритма не активирует отложенные x-ui/3x-ui/Tailscale/ZeroTier интеграции и не загружает их исполняемые движки.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": ["docs/control-console.md", "web-tests/control.spec.js"]
     },
     {
       "id": "ROUTE-01",

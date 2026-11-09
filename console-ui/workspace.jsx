@@ -109,6 +109,7 @@ function Devices() {
             <CardTitle component="h3">Выданная политика</CardTitle>
             <CardBody>
               <p id="inventory-issued"></p>
+              <p id="inventory-issued-algorithm" hidden></p>
             </CardBody>
           </Card>
           <Card isCompact>
