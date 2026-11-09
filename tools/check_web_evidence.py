@@ -19,6 +19,7 @@ expected = {
     'source permission withdrawal erases unsent credentials and disables mutation',
     'desired device view keeps revision provenance and hostile content separate from activation',
     'desired device view distinguishes unassigned expired and mismatched responses',
+    'unassigned device can stage its first layer draft from an explicit plan',
     'layer editor preserves inheritance and requires explicit reviewed publication',
     'layer save lost acknowledgment replays one private revision and remains reopenable',
     'layer publication lost acknowledgment reuses operation even after terminal commit',

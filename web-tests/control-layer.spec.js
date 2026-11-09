@@ -128,3 +128,42 @@ test('layer comparison resolves conflict into a draft without silently saving or
  await expect(page.locator('#layer-preview')).toBeDisabled();expect((await state(request)).operations).toBe(1);
  await page.locator('#layer-save').click();await expect(page.locator('#layer-version')).toHaveText('Сохранённая версия слоёв: 2');const s=await state(request);expect(s.operations).toBe(2);expect(s.calls).not.toContain('configuration.publish');
 });
+
+test('unassigned device can stage its first layer draft from an explicit plan',async({page,request})=>{
+ await request.post(origin+'/fixture/reset',{data:{}});
+ await page.goto(origin);
+ await page.locator('#inventory-device').fill('device-unassigned');
+ await page.locator('#load-inventory').click();
+ await page.getByRole('link',{name:'Открыть публикацию'}).click();
+ const first=page.locator('#layer-first-from-plan'),proposal=page.locator('#layer-proposal');
+ await expect(first).toBeEnabled();
+ await first.click();
+ await expect(page.locator('#status')).toContainText('Проверьте поля');
+ await expect(proposal).toHaveValue('');
+ await page.getByRole('link',{name:'Открыть планы'}).click();
+ const plan={
+  schemaVersion:1,
+  graph:{profiles:{},chains:{},balancers:{},final:'direct'},
+  network:{schemaVersion:1,requiredNetworks:['tcp'],dnsFinal:'system',dnsStrategy:'prefer_ipv4'},
+  activation:{timeoutSeconds:60,allowDegraded:false,checks:[{id:'internet',type:'https_204',target:'https://health.example.invalid/generate_204',required:true}]},
+ };
+ await page.locator('#plan').fill(JSON.stringify(plan));
+ await page.getByRole('link',{name:'Публикация',exact:true}).click();
+ await page.locator('#layer-first-mode').selectOption('home_wifi');
+ await first.click();
+ const value=JSON.parse(await proposal.inputValue());
+ expect(value).toMatchObject({draftRevision:1,targetKind:'device',targetId:'device-unassigned',mode:'home_wifi'});
+ expect(value.bundles[0]).toMatchObject({device:'device-unassigned',baseRevision:0,baseHash:''});
+ const [layer]=value.bundles[0].layers;
+ expect(layer).toMatchObject({kind:'template',priority:0,revision:1,permissions:[]});
+ expect(Object.fromEntries(layer.changes.map(change=>[change.path.slice(1),change.value]))).toEqual(plan);
+ await expect(first).toBeDisabled();
+ await expect(page.locator('#layer-preview')).toBeDisabled();
+ expect((await state(request)).operations).toBe(0);
+ await save(page);
+ await expect(page.locator('#layer-preview')).toBeEnabled();
+ await expect(page.locator('#layer-publish')).toBeDisabled();
+ const saved=await state(request);
+ expect(saved.layerDrafts).toHaveLength(1);
+ expect(saved.calls).not.toContain('configuration.publish');
+});

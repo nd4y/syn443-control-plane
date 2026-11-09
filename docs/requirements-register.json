@@ -540,7 +540,9 @@
         "docs/layered-configuration.md",
         "internal/configuration/layers.go",
         "internal/configuration/layers_test.go",
-        "internal/configuration/rebase_test.go"
+        "internal/configuration/rebase_test.go",
+        "console-ui/workspace.jsx",
+        "web-tests/control-layer.spec.js"
       ]
     },
     {
