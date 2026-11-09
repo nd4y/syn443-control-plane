@@ -291,8 +291,8 @@ pre:not(:empty) {
 .inventory-summary p[data-tone="warning"] { color: var(--warning); }
 .inventory-summary p[data-tone="danger"] { color: var(--danger); }
 .inventory-summary time { display: block; color: var(--muted); margin-block-start: 0.5rem; font-size: 0.875rem; }
-#inventory-details { border-block-start: 1px solid var(--border); padding-block-start: 0.5rem; }
-#inventory-details summary { cursor: pointer; padding: 0.625rem 0; color: var(--action); }
+:is(#inventory-details, #inventory-issued-settings) { border-block-start: 1px solid var(--border); padding-block-start: 0.5rem; }
+:is(#inventory-details, #inventory-issued-settings) summary { cursor: pointer; padding: 0.625rem 0; color: var(--action); }
 #inventory-meta { display: grid; grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr); gap: 0.5rem 1rem; }
 #inventory-meta dt { color: var(--muted); }
 #inventory-meta dd { margin: 0; }

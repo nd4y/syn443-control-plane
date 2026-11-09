@@ -274,7 +274,11 @@ test('desired device view keeps revision provenance and hostile content separate
 
 test('desired device view distinguishes unassigned expired and mismatched responses',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#load-inventory')).toBeEnabled();
- await page.locator('#inventory-device').fill('device-unassigned');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-state')).toContainText('Не назначена');await expect(page.locator('#inventory-effective')).toHaveText('Нет действующих настроек.');
+ await page.locator('#inventory-device').fill('device-unassigned');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-state')).toContainText('Не назначена');await expect(page.locator('#inventory-effective')).toHaveText('Управляемая конфигурация не назначена.');
+ await page.getByText('Настройки выданной политики',{exact:true}).click();
+ await expect(page.locator('#inventory-issued-config')).toBeVisible();
+ await expect(page.locator('#inventory-issued-config')).toContainText('"routeFinal": "direct"');
+ await expect(page.locator('#layer-from-device')).toBeDisabled();
  await expect(page.locator('#inventory-meta')).toContainText('Ожидаем результат применения');
  await expect(page.locator('#inventory-meta')).toContainText('Источник не зафиксирован');
  await page.locator('#inventory-device').fill('device-expired');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-state')).toContainText('Истекла');

@@ -354,13 +354,18 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 		}
 	}
 	encrypted := p.Store.Seal([]byte(bundle), "publication/v1/"+id+"/"+formatInt(payload.Revision))
+	view, e := json.Marshal(payload.ConsoleSettings())
+	if e != nil {
+		return e
+	}
 	var sourcePolicyRevision int64
 	if configurationSource.Revision > 0 {
 		sourcePolicyRevision = payload.Revision
 	}
-	_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET approved=true,publication=$2,revision=$3,refresh_after=$4,offline_until=$5,publication_error='',retry_after=0,publication_grant_hash=$6,publication_source_policy_revision=$7,publication_source_revision=$8,publication_source_hash=$9 WHERE id=$1`,
+	_, e = tx.ExecContext(ctx, `UPDATE identity_devices SET approved=true,publication=$2,revision=$3,refresh_after=$4,offline_until=$5,publication_error='',retry_after=0,publication_grant_hash=$6,publication_source_policy_revision=$7,publication_source_revision=$8,publication_source_hash=$9,publication_view=CASE WHEN $10::jsonb<>'null'::jsonb
+			THEN jsonb_build_object('settings',$10::jsonb,'envelopeHash',encode(sha256($2::bytea),'hex')) END WHERE id=$1`,
 		id, encrypted, payload.Revision, payload.RefreshAfterMs/1000, payload.OfflineUntilMs/1000, s.Grant,
-		sourcePolicyRevision, configurationSource.Revision, configurationSource.Hash)
+		sourcePolicyRevision, configurationSource.Revision, configurationSource.Hash, view)
 	if e != nil {
 		return e
 	}

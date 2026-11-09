@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS identity_owner_revocations (
  request_id text NOT NULL, body_hash text NOT NULL, expires bigint NOT NULL,
  PRIMARY KEY(owner,auth_jkt,request_id)
 );
+-- Credential-free snapshot of the same signed publication and revision.
+ALTER TABLE identity_devices ADD COLUMN IF NOT EXISTS publication_view jsonb;
 -- The API can insert an unapproved enrollment and revoke it, never revive it or change identity.
 CREATE OR REPLACE FUNCTION identity_device_invariants() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
@@ -62,6 +64,11 @@ BEGIN
     OR (NOT OLD.active AND NEW.active) OR (OLD.approved AND NOT NEW.approved)
     OR (OLD.approved AND (NEW.request_body,NEW.receipt) IS DISTINCT FROM (OLD.request_body,OLD.receipt))
     OR NEW.revision<OLD.revision
+    OR (NEW.publication_view IS DISTINCT FROM OLD.publication_view
+        AND (NEW.revision<=OLD.revision OR NEW.publication IS NOT DISTINCT FROM OLD.publication
+             OR (NEW.publication_view IS NOT NULL
+                 AND ((NEW.publication_view->'settings'->>'revision') IS DISTINCT FROM NEW.revision::text
+                     OR (NEW.publication_view->>'envelopeHash') IS DISTINCT FROM encode(sha256(NEW.publication),'hex')))))
     OR (OLD.publication_source_policy_revision>0 AND OLD.publication_source_policy_revision=OLD.revision
         AND NEW.revision=OLD.revision AND NEW.publication IS DISTINCT FROM OLD.publication)
     OR ((NEW.publication_source_policy_revision,NEW.publication_source_revision,NEW.publication_source_hash)

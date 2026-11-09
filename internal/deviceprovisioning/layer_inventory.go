@@ -9,6 +9,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/configuration"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/policy"
 )
 
 // A device view never returns the complete multi-recipient proposal or native
@@ -20,6 +21,7 @@ type ConfigurationInventory struct {
 	State             string                   `json:"state"`
 	Revision          int64                    `json:"revision"`
 	Hash              string                   `json:"hash"`
+	IssuedSettings    *policy.IssuedSettings   `json:"issuedSettings,omitempty"`
 	PolicyRevision    int64                    `json:"policyRevision"`
 	PublicationSource string                   `json:"publicationSource,omitempty"`
 	Mode              string                   `json:"mode"`
@@ -69,14 +71,16 @@ func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device st
 	var publicationGrant string
 	var sourcePolicyRevision, sourceRevision int64
 	var sourceHash string
+	var issuedView []byte
 	var jkt string
 	// Lock the live authorization rows. The API has only a non-authoritative
 	// guard-column UPDATE grant needed by PostgreSQL for SELECT FOR SHARE.
 	e = tx.QueryRowContext(ctx, `SELECT d.owner,d.jkt,d.active,d.approved,d.revision,a.enabled,a.valid_until,a.grant_hash,
-	  d.offline_until,d.publication_grant_hash,d.publication_source_policy_revision,d.publication_source_revision,d.publication_source_hash
+	  d.offline_until,d.publication_grant_hash,d.publication_source_policy_revision,d.publication_source_revision,d.publication_source_hash,
+	  CASE WHEN d.publication_view->>'envelopeHash'=encode(sha256(d.publication),'hex') THEN d.publication_view->'settings' END
 	  FROM identity_devices d JOIN identity_accounts a ON a.owner=d.owner WHERE d.id=$1 FOR SHARE OF a,d`, device).Scan(
 		&r.Owner, &jkt, &active, &approved, &r.PolicyRevision, &enabled, &accountUntil, &grant, &publicationUntil, &publicationGrant,
-		&sourcePolicyRevision, &sourceRevision, &sourceHash)
+		&sourcePolicyRevision, &sourceRevision, &sourceHash, &issuedView)
 	if e != nil || !active || !approved || !enabled || accountUntil <= current().Unix() {
 		return r, enrollment.ErrDenied
 	}
@@ -133,6 +137,15 @@ func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device st
 		return r, enrollment.ErrDenied
 	}
 	if !r.Historical {
+		if publicationGrant == grant && grant != "" && len(issuedView) > 0 {
+			var view *policy.IssuedSettings
+			if json.Unmarshal(issuedView, &view) != nil {
+				return r, enrollment.ErrUnavailable
+			}
+			if view != nil && view.Revision == r.PolicyRevision {
+				r.IssuedSettings = view
+			}
+		}
 		observation := ConfigurationActivation{State: "awaiting_report"}
 		r.PublicationSource = "unlinked"
 		if r.PolicyRevision == 0 {

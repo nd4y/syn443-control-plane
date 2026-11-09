@@ -124,6 +124,11 @@ function Devices() {
             Открыть публикацию
           </a>
         </div>
+        <details id="inventory-issued-settings" hidden>
+          <summary>Настройки выданной политики</summary>
+          <p>Последняя политика, подписанная сервером. Учётные данные и адреса проверок скрыты.</p>
+          <pre id="inventory-issued-config"></pre>
+        </details>
         <details id="inventory-details">
           <summary>Технические данные</summary>
           <dl id="inventory-meta"></dl>

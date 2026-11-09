@@ -34,6 +34,16 @@ func TestConfigurationInventoryShowsOnlySelectedDeviceAndFieldProvenance(t *test
 	if e != nil || initial.State != "unassigned" || initial.Revision != 0 || initial.Hash != "" || len(initial.Layers) != 0 || initial.Effective != nil || initial.PolicyRevision != 1 {
 		t.Fatal("unassigned desired layers confused with existing policy", e)
 	}
+	if initial.IssuedSettings == nil || initial.IssuedSettings.Revision != 1 ||
+		initial.IssuedSettings.RouteFinal != "direct" || len(initial.IssuedSettings.Outbounds) != 1 {
+		t.Fatal("legacy publisher did not preserve its visible settings independently of desired layers")
+	}
+	if _, e = fixtureControl.Exec("UPDATE identity_devices SET publication_view=NULL WHERE id=$1", n.target.Device); e == nil {
+		t.Fatal("control API gained publication view write authority")
+	}
+	if _, e = fixtureSigner.Exec("UPDATE identity_devices SET publication_view=NULL WHERE id=$1", n.target.Device); e == nil {
+		t.Fatal("publisher gained authority to rewrite the view of an existing issuance")
+	}
 	seedConfigurationDevice(t, storedLayersFixture{n: n}, "private-other-device", true)
 	p.TargetKind = "user"
 	p.TargetID = n.target.Owner
@@ -155,6 +165,10 @@ func TestConfigurationInventoryBindsIssuedPolicyToExactApprovedRevision(t *testi
 		t.Fatal(e)
 	}
 	expect("later untracked issuance", "unlinked", 2, 4)
+	view, e := inventoryCall(t, n, c, n.target.Device, "stale issued settings")
+	if e != nil || view.IssuedSettings != nil {
+		t.Fatal("old publisher revision reused a stale view", e)
+	}
 }
 
 func TestConfigurationInventoryRequiresLiveDeviceParentACLAndCipherIntegrity(t *testing.T) {
