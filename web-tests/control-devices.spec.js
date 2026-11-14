@@ -45,6 +45,8 @@ test('device inventory clears withdrawn or expired sessions and keeps manual loo
  await page.locator('#refresh-devices').click();await expect(page.locator('#device-rows')).toBeEmpty();
  await expect(page.locator('#devices-status')).toContainText('Список устройств недоступен');
  await page.locator('#inventory-device').fill('device-a');await page.locator('#inventory-device').press('Enter');await expect(page.locator('#inventory-view')).toBeVisible();
+ await expect(page.locator('#devices-disclosure')).not.toHaveAttribute('open','');
+ await page.locator('#devices-disclosure > summary').click();
  await page.unroute('**/control/action');
  await request.post(origin+'/fixture/revoke',{data:{}});await page.locator('#refresh-devices').click();
  await expect(page.locator('#workspace')).toBeHidden();await expect(page.locator('#device-rows')).toBeEmpty();await expect(page.locator('#inventory-device')).toHaveValue('');
