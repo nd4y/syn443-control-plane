@@ -34,6 +34,20 @@ const server=http.createServer(async(req,res)=>{
  calls.push(body.action);
  const p=body.payload;
  switch(body.action){
+ case 'configuration.devices.list':{
+  if(Object.keys(p).some(k=>k!=='after')||typeof(p.after??'')!=='string'){send(400,{});break;}
+  const row=id=>({device:id,policyRevision:23,desiredRevision:7,report:{state:'historical',policyRevision:22,outcome:'rolled_back',activePolicyRevision:21,receivedAtMs:1800000000000}});
+  let devices=options.emptyDevices?[]:[row('device-a')],next='';
+  if(options.devicePages){devices=p.after?[row('device-a')]:Array.from({length:32},(_,i)=>row('device-'+String(i).padStart(2,'0')));if(!p.after)next='device-31';}
+  if(options.invalidDeviceList==='duplicate')devices.push(row('device-a'));
+  if(options.invalidDeviceList==='extra')devices[0].secret='<img src=x onerror="window.injected=true">';
+  if(options.invalidDeviceList==='cursor')next='different-device';
+  if(options.invalidDeviceList==='oversize')devices=Array.from({length:33},(_,i)=>row('device-'+i));
+  if(options.invalidDeviceList==='revision')devices[0].policyRevision=Number.MAX_SAFE_INTEGER+1;
+  if(options.invalidDeviceList==='report')devices[0].report.state='Online';
+  if(options.invalidDeviceList==='order')devices=[row('device-b'),row('device-a')];
+  send(200,{devices,next,observedAtMs:1800000000000});break;
+ }
  case 'telemetry.summary.get':{
   if(Object.keys(p).length!==1||!/^\d{4}-\d{2}-\d{2}T\d{2}:00Z$/.test(p.hour)){send(400,{});break;}
   if(options.telemetryDenied){send(404,{});break;}

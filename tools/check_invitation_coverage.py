@@ -73,3 +73,9 @@ assert selected,'Actor-private discard and old-operation replay fences'
 value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
 print(f'Actor-private discard coverage: {value:.1f}% (minimum80%)')
 assert value>=80
+
+selected=[(count,hits) for location,(count,hits) in blocks.items() if "/internal/deviceprovisioning/device_inventory.go:" in location]
+assert selected,"Authorized device discovery"
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f"Authorized device discovery coverage: {value:.1f}% (minimum80%)")
+assert value>=80

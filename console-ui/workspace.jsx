@@ -73,8 +73,22 @@ function Devices() {
         Устройства
       </Title>
       <p id="inventory-help">
-        Введите ID из приложения, чтобы открыть карточку устройства.
+        Откройте доступное устройство или введите его ID из приложения.
       </p>
+      <Button id="refresh-devices" variant="secondary" isDisabled>
+        Обновить список
+      </Button>
+      <p id="devices-status" role="status" aria-atomic="true"></p>
+      <div id="devices-region" className="device-list-scroll" role="region" aria-label="Доступные устройства" tabIndex={0} hidden>
+        <table className="pf-v6-c-table pf-m-compact">
+          <caption>Доступные устройства. Отчёт об активации не подтверждает текущее подключение.</caption>
+          <thead><tr><th scope="col">Устройство</th><th scope="col">Желаемая версия</th><th scope="col">Выданная политика</th><th scope="col">Последний отчёт</th><th scope="col">Получен сервером</th></tr></thead>
+          <tbody id="device-rows"></tbody>
+        </table>
+      </div>
+      <Button id="more-devices" variant="secondary" isDisabled hidden>
+        Ещё устройства
+      </Button>
       <form id="inventory-form" className="inventory-form">
         <div>
           <label htmlFor="inventory-device">ID устройства</label>

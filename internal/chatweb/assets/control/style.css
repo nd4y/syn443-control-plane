@@ -346,3 +346,7 @@ pre:not(:empty) {
 @media (forced-colors: active) {
   .console-nav { --pf-v6-c-nav__item--accent--color: Highlight; }
 }
+
+.device-list-scroll{max-width:100%;overflow:auto;margin-block:1rem}
+.device-list-scroll table{min-width:620px}
+.device-list-scroll:focus-visible{outline:2px solid var(--pf-t--global--color--brand--default);outline-offset:2px}

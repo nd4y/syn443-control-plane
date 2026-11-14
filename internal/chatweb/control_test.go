@@ -16,7 +16,7 @@ import (
 )
 
 func TestConsoleSourceMutationsRemainInTheClosedActionAllowlist(t *testing.T) {
-	for _, action := range []string{"source.put", "source.sync", "source.shares.put", "job.get", "job.list", "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.layers.draft.discard", "configuration.history.get"} {
+	for _, action := range []string{"source.put", "source.sync", "source.shares.put", "job.get", "job.list", "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.devices.list", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.layers.draft.discard", "configuration.history.get"} {
 		raw := []byte(`{"version":1,"action":"` + action + `","requestId":"synthetic-request-123","payload":{}}`)
 		if !validConsoleAction(raw, false) {
 			t.Fatal("implemented scoped source action rejected")

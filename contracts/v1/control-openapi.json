@@ -1357,6 +1357,41 @@
                 "const": 1
               },
               "action": {
+                "const": "configuration.devices.list"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 24,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]{24,128}$"
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "after": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9_-]{0,64}$"
+                  }
+                }
+              }
+            },
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "action": {
                 "const": "configuration.layers.draft.get"
               },
               "requestId": {

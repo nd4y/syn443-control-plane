@@ -1,4 +1,11 @@
 # Testing and release gates
+
+Device discovery adds required PostgreSQL scope/expiry, pagination, redacted
+metadata, activation-versus-connectivity, audit failure and authority expiry
+under a real row lock. Four mandatory browser cases cover ordinary selection,
+explicit pagination on a narrow screen, atomic rejection of invalid responses
+and state erasure on withdrawal/expiry with manual-lookup fallback. See
+[the discovery contract](device-inventory.md). These do not close full M2/M3.
 All automatable implemented behavior must run on pull requests and main in GitHub Actions.
 - Documents: source hashes, 292 unique requirements, 98 unique sequential scenarios, traceability/evidence integrity.
 - Contracts: strict schema validation, shared fixtures, unsupported fields/versions and bounded numeric inputs.

@@ -45,7 +45,7 @@ func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifie
 	}
 	requiresFreshMFA := true
 	switch envelope.Action {
-	case "configuration.inventory.get", "configuration.layers.drafts.list":
+	case "configuration.inventory.get", "configuration.devices.list", "configuration.layers.drafts.list":
 		requiresFreshMFA = false
 	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.draft.discard", "configuration.history.get":
 	default:
@@ -172,6 +172,15 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 			return nil, enrollment.ErrDenied
 		}
 		return c.inventory(ctx, actor, input.ID, authorityUntil, now)
+	}
+	if envelope.Action == "configuration.devices.list" {
+		var input struct {
+			After string `json:"after"`
+		}
+		if identity.DecodeConfiguration(envelope.Payload, &input) != nil {
+			return nil, enrollment.ErrDenied
+		}
+		return c.deviceInventory(ctx, actor, input.After, envelope.RequestID, authorityUntil, now)
 	}
 	if envelope.Action == "configuration.history.get" {
 		var input struct {

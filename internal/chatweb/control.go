@@ -32,7 +32,7 @@ func validConsoleAction(raw []byte, sourceImport bool) bool {
 	switch request.Action {
 	case "telemetry.summary.get":
 		return true
-	case "source.list", "source.get", "source.snapshot", "source.shares.get", "source.shares.put", "source.put", "source.sync", "job.get", "job.list", "resource.get", "configuration.draft.get", "configuration.draft.put", "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.layers.draft.discard", "configuration.history.get":
+	case "source.list", "source.get", "source.snapshot", "source.shares.get", "source.shares.put", "source.put", "source.sync", "job.get", "job.list", "resource.get", "configuration.draft.get", "configuration.draft.put", "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.devices.list", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.layers.draft.discard", "configuration.history.get":
 		return true
 	}
 	return false

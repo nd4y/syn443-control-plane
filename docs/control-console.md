@@ -1,5 +1,10 @@
 # Control console - source metadata and private drafts
 
+The device workspace now includes [authorized device discovery](device-inventory.md).
+It keeps the existing direct identifier form as a fallback. Listing is a
+metadata read with the same device-scoped ACL, never a publication or an online
+heartbeat. The exact Actions and live-pilot acceptance are tracked separately.
+
 ## Android navigation
 
 After applying the catalog schema and roles, set `controlPanelDiscovery` in the

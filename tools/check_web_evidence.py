@@ -52,7 +52,13 @@ expected.update({
     'console sign-in is the only entry when no session is present',
     'PatternFly resources are same-origin and section history keeps an unsaved draft',
 })
-assert len(cases) >= 37
+expected.update({
+    'authorized device inventory opens a card without copying identifiers and separates old reports',
+    'device inventory pagination is explicit and fits a narrow keyboard scroll region',
+    'device inventory refuses malformed oversized duplicate and substituted metadata atomically',
+    'device inventory clears withdrawn or expired sessions and keeps manual lookup after unavailable discovery',
+})
+assert len(cases) >= 41
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

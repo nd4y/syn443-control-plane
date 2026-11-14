@@ -10,6 +10,7 @@ let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJo
 let layerComparison=null;
 let layerDraftInventory=null;
 let sourceShares=null;
+let devicesNext='',deviceIds=new Set();
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message,tone='info'){
@@ -138,6 +139,8 @@ function applyRouteChecks(state){
  status('Проверки изменены в черновике. Сохраните его, чтобы не потерять правки.');
 }
 function controls(){
+ for(const id of ['refresh-devices','more-devices'])$(id).disabled=busy||!authenticated||!!pending||(id==='more-devices'&&!devicesNext);
+ for(const button of $('device-rows').querySelectorAll('button'))button.disabled=busy||!authenticated||!!pending;
  $('login').disabled=busy||authenticated;$('logout').disabled=busy||!authenticated;
  $('login').hidden=authenticated;$('logout').hidden=!authenticated;
  for(const id of ['workspace','console-navigation','skip-workspace','desktop-nav-toggle','console-nav-toggle'])$(id).hidden=!authenticated;
@@ -183,7 +186,7 @@ function clearInventory(){
  $('inventory-details').open=false;$('inventory-view').hidden=true;$('inventory-issued-settings').hidden=true;$('inventory-issued-settings').open=false;
 }
 function erase(){
- clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
+ clearDevices();clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
  for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip'])$(id).value='';
  $('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';
  for(const id of ['sources','profiles','source-details','inventory-status'])$(id).replaceChildren();
@@ -329,6 +332,51 @@ function showInventory(view){
  }
  if(!restrictionList.children.length)textItem(restrictionList,'Ограничения не возвращены.');
  $('inventory-view').hidden=false;
+}
+function clearDevices(){
+ devicesNext='';deviceIds=new Set();$('device-rows').replaceChildren();$('devices-status').textContent='';$('devices-region').hidden=true;$('more-devices').hidden=true;
+}
+const deviceReportStates={not_issued:'Политика не выдана',awaiting_report:'Ожидается отчёт',historical:'Архивный отчёт',reported:'Отчёт о выданной политике'};
+const deviceOutcomes={committed:'Применена',degraded:'Применена частично',rolled_back:'Откат'};
+const closedObject=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
+const safeRevision=v=>Number.isSafeInteger(v)&&v>=0;
+async function loadDevices(more=false){
+ const after=more?devicesNext:'';
+ if(more&&!after)throw Error('invalid');
+ if(!more)clearDevices();
+ $('devices-status').textContent='Загружаем устройства…';
+ try{
+  const page=await action('configuration.devices.list',{after});
+  if(!closedObject(page,['devices','next','observedAtMs'])||!Array.isArray(page.devices)||page.devices.length>32||typeof page.next!=='string'||page.next&&!deviceID.test(page.next)||!Number.isSafeInteger(page.observedAtMs)||page.observedAtMs<1)throw Error('invalid');
+  const seen=more?new Set(deviceIds):new Set();let previous=after;
+  for(const row of page.devices){
+   if(!closedObject(row,['device','policyRevision','desiredRevision','report'])||typeof row.device!=='string'||!deviceID.test(row.device)||row.device<=previous||seen.has(row.device)||!safeRevision(row.policyRevision)||!safeRevision(row.desiredRevision))throw Error('invalid');
+   const report=row.report;
+   if(!closedObject(report,['state','policyRevision','outcome','activePolicyRevision','receivedAtMs'])||!Object.hasOwn(deviceReportStates,report.state)||!safeRevision(report.activePolicyRevision)||!safeRevision(report.policyRevision??0)||!safeRevision(report.receivedAtMs??0))throw Error('invalid');
+   if(['historical','reported'].includes(report.state)){
+    if(!Object.hasOwn(deviceOutcomes,report.outcome)||!report.policyRevision||!report.receivedAtMs||report.state==='reported'&&report.policyRevision!==row.policyRevision)throw Error('invalid');
+   }else if(report.policyRevision||report.outcome||report.receivedAtMs||report.activePolicyRevision||report.state==='not_issued'&&row.policyRevision!==0||report.state==='awaiting_report'&&row.policyRevision===0)throw Error('invalid');
+   previous=row.device;seen.add(row.device);
+  }
+  if(page.next&&(page.devices.length!==32||page.next!==previous))throw Error('invalid');
+  // Validate the complete page before exposing any row or attaching actions.
+  const fragment=document.createDocumentFragment();
+  for(const row of page.devices){
+   const tr=document.createElement('tr'),cell=document.createElement('td'),open=actionButton();
+   open.type='button';open.textContent=row.device;open.setAttribute('aria-label',`Открыть устройство ${row.device}`);
+   open.onclick=()=>work(async()=>{$('inventory-device').value=row.device;await loadInventory();});cell.append(open);tr.append(cell);
+   const report=row.report;const label=report.outcome?`${deviceReportStates[report.state]} · ${deviceOutcomes[report.outcome]}`:deviceReportStates[report.state];
+   for(const value of [row.desiredRevision?String(row.desiredRevision):'Не назначена',row.policyRevision?String(row.policyRevision):'Не выдана',label,report.receivedAtMs?inventoryDate(report.receivedAtMs):'—']){const td=document.createElement('td');td.textContent=value;tr.append(td);}
+   fragment.append(tr);
+  }
+  if(!more)$('device-rows').replaceChildren();$('device-rows').append(fragment);
+  deviceIds=seen;devicesNext=page.next;$('devices-region').hidden=!deviceIds.size;$('more-devices').hidden=!devicesNext;
+  $('devices-status').textContent=deviceIds.size?`Загружено устройств: ${deviceIds.size}.`:'Доступных устройств нет. Проверьте назначение и срок доступа.';
+ }catch(error){
+  clearDevices();
+  $('devices-status').textContent=error.message==='invalid'?'Сервер вернул некорректный список. Устройства скрыты.':'Список устройств недоступен. Можно открыть карточку по ID.';
+  if(['login','denied'].includes(error.message))throw error;
+ }
 }
 async function loadInventory(){
  const device=$('inventory-device').value.trim();
@@ -527,6 +575,8 @@ async function saveSource(){
 }
 $('login').onclick=()=>work(async()=>{const device=linkedDevice();const result=await request('/login',device?{device}:{});const target=new URL(result.url);if(target.protocol!=='https:'&&!(location.hostname==='127.0.0.1'&&target.protocol==='http:'&&target.hostname==='127.0.0.1'))throw Error('invalid');location.assign(target.href);});
 $('logout').onclick=()=>work(async()=>{try{await request('/logout',{});}finally{authenticated=false;erase();if(linkedDevice())history.replaceState(null,'','/#inventory-title');}status('Вы вышли. Локальная копия черновика очищена.');});
+$('refresh-devices').onclick=()=>work(()=>loadDevices());
+$('more-devices').onclick=()=>work(()=>loadDevices(true));
 $('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>work(()=>sources(true));$('inventory-form').onsubmit=event=>{event.preventDefault();if(authenticated&&!pending)void work(loadInventory);};
 $('inventory-device').oninput=()=>{
  clearInventory();clearDraftInventory();$('inventory-status').textContent='';
@@ -651,6 +701,7 @@ updateSectionNav();
 controls();
 void work(async()=>{
  await request('/session',{});authenticated=true;status('');
+ await loadDevices();
  await openLinkedDevice();
 });
 

@@ -1247,7 +1247,10 @@
       "id": "RLP-10",
       "text": "Панель показывает, кто использует какую algorithm revision, этап rollout, метрики/gates, причины остановки и результат rollback. Публикация алгоритма не активирует отложенные x-ui/3x-ui/Tailscale/ZeroTier интеграции и не загружает их исполняемые движки.",
       "status": "partial",
-      "evidence": ["docs/control-console.md", "web-tests/control.spec.js"]
+      "evidence": [
+        "docs/control-console.md",
+        "web-tests/control.spec.js"
+      ]
     },
     {
       "id": "ROUTE-01",
@@ -1625,9 +1628,10 @@
         "internal/chatweb/control.go",
         "internal/chatweb/control_test.go",
         "internal/chatweb/assets/control/app.js",
-        "web-tests/control.spec.js"
+        "web-tests/control.spec.js",
+        "docs/device-inventory.md"
       ],
-      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open. Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending.",
       "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required."
     },
     {
@@ -1778,8 +1782,12 @@
     {
       "id": "MOB-02",
       "text": "В 1.0 обязательны встроенные быстрые экраны через API: список/поиск пользователей и устройств, текущий/последний online, активная/желаемая ревизия, причины ошибок, назначение профилей/политики, публикация/откат и диагностика. Для всех остальных административных функций доступна полная адаптивная веб-панель из этой кнопки.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/device-inventory.md"
+      ],
+      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending.",
+      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open."
     },
     {
       "id": "MOB-03",
@@ -1800,8 +1808,12 @@
     {
       "id": "MOB-05",
       "text": "Карточка другого клиента показывает назначенные источники, эффективную политику, состояние синхронизации, доступную диагностику и историю. Редактирование явно называет адресата и не меняет VPN на телефоне администратора. Массовое изменение показывает число получателей и поддерживает пилотный rollout.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/device-inventory.md"
+      ],
+      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending.",
+      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open."
     },
     {
       "id": "MOB-06",
@@ -1812,8 +1824,12 @@
     {
       "id": "MOB-07",
       "text": "При отзыве административной роли, истечении сессии либо изменении области прав следующая операция получает отказ и UI обновляет capabilities. Локальный кэш роли не является разрешением на изменение сервера; ранее выданные короткоживущие сессии ограничены сроком и серверной проверкой статуса.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/device-inventory.md"
+      ],
+      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending.",
+      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open."
     },
     {
       "id": "MOB-08",
