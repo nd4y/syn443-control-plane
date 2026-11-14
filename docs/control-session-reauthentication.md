@@ -31,6 +31,11 @@ GitHub Actions must run the named PostgreSQL scope/no-mutation tests, Go
 callback/owner/proof/CSRF/logout-race tests and all five required browser recovery
 cases. The browser identity page is synthetic; those tests alone do not prove
 real Keycloak MFA conformance, a native administration flow or fleet publication.
+The separate loopback Keycloak job creates a client-specific two-level flow,
+generates a temporary OTP credential and verifies password-only denial followed
+by actual OTP, signed ACR/AMR/authentication-time acceptance and logout. Its AMR
+mapper reads completed authenticators, with no fixed claim that could bless a
+password-only login. This fixture never changes an operator realm.
 The configured live deployment needs separate identity-provider acceptance.
 
 Rollback removes the optional BFF configuration and restores its prior executable
