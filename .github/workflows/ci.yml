@@ -47,7 +47,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.3'
+          go-version: '1.27.4'
           cache: true
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -162,7 +162,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.3'
+          go-version: '1.27.4'
           cache: true
       - run: bash -n tools/test_catalog.sh
       - run: bash tools/test_catalog.sh
@@ -191,7 +191,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.3'
+          go-version: '1.27.4'
           cache: true
       - run: bash -n tools/test_keycloak.sh
       - run: bash tools/test_keycloak.sh
@@ -264,7 +264,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.3'
+          go-version: '1.27.4'
           cache: true
       - run: bash -n tools/test_invitations.sh
       - run: bash tools/test_invitations.sh
@@ -297,7 +297,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.3'
+          go-version: '1.27.4'
           cache: true
       - run: bash -n tools/test_enrollment.sh
       - run: bash tools/test_enrollment.sh

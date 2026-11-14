@@ -52,3 +52,8 @@ evidence needs the operator's migration review. Actions cover direct restricted-
 SQL attacks, reauthentication, capability ordering/conflicts, renewal, pending
 evidence refresh and corrupted approved input. Temporary PostgreSQL readiness
 checks now use TCP so the transient initdb Unix-socket server cannot satisfy them.
+
+The current continuation pins Go 1.27.4 after the mandatory vulnerability gate
+identified [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) in Go 1.27.3.
+The scanner remains mandatory. All runtime and browser artifacts must be rebuilt
+in GitHub Actions; an older green artifact does not satisfy this patched gate.
