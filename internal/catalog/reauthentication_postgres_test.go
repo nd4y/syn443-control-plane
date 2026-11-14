@@ -32,9 +32,10 @@ func TestCatalogAssuranceChallengeRequiresTheLiveObjectGrantAndCannotMutate(t *t
 func TestCatalogHTTPAssuranceDenialIsTypedWhileRevocationRemainsAPlainDenial(t *testing.T) {
 	f := adminHTTPFixture(t)
 	source := sourceExample(f.Now)
+	source.Mode = "server"
 	f.Verifier.Principal.ACR = "0"
 	f.Verifier.Principal.Methods = nil
-	payload := map[string]any{"source": source, "secret": SecretPatch{Operation: "keep"}}
+	payload := map[string]any{"source": source, "secret": SecretPatch{Operation: "replace", Value: json.RawMessage(`{"url":"https://subscription.example.invalid"}`)}}
 	var reply map[string]string
 	if e := json.Unmarshal(f.call(t, "source.put", payload, 403), &reply); e != nil || reply["code"] != "catalog_reauthentication_required" {
 		t.Fatal("missing scoped assurance challenge", e)

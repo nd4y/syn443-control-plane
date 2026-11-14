@@ -3,7 +3,7 @@ const origin='http://127.0.0.1:17851';
 const state=async request=>(await request.post(origin+'/fixture/state',{data:{}})).json();
 
 async function stagedChange(page,request,options={}){
- await request.post(origin+'/fixture/reset',{data:{reauthentication:true,...options}});await page.goto(origin+'/#device=device-a');
+ await request.post(origin+'/fixture/reset',{data:{reauthentication:true,...options}});await page.goto(origin+'/#device=device-a');await page.reload();
  await expect(page.locator('#inventory-view')).toBeVisible();await page.getByRole('link',{name:'Открыть публикацию',exact:true}).click();
  await page.locator('#layer-from-device').click();const text=await page.locator('#layer-proposal').inputValue();
  await page.locator('#layer-save').click();return text;

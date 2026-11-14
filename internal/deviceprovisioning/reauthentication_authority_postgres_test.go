@@ -19,6 +19,7 @@ func TestConfigurationAssuranceChallengePreservesEveryMutationAndItsObjectScope(
 	n, c, p, publisher := layerPublisherFixture(t)
 	preview := prepareLayerPreview(t, n, c, p, publisher, "assurance-preview")
 	queueLayerPublish(t, n, c, preview, "assurance-initial-publication")
+	n.f.now = n.f.now.Add(time.Second)
 	if e := publisher.RunOnce(context.Background(), n.f.now); e != nil {
 		t.Fatal(e)
 	}
