@@ -29,7 +29,7 @@ CI tests that each exact digest exception accepts its reviewed value and rejects
 values or the same value at another path.
 
 The credential URL check recognizes two exact Go read-only data sequences in the
-Linux ELF runtime. Their adjacent eight-byte literals come from Go 1.27.3
+Linux ELF runtime. Their adjacent eight-byte literals come from Go 1.27.4
 (`regexp/backtrack.go:168`, `net/textproto/reader.go:838`,
 `crypto/internal/fips140/pbkdf2/cast.go:33`, `crypto/x509/pem_decrypt.go:105`),
 jsonschema v6.0.3 (`draft.go:145`), pgx v5.11.0 (`pgconn/config.go:125,504,714,716,723`,
@@ -43,3 +43,10 @@ dependencies require fresh provenance before updating the rule.
 APK payloads are additionally scanned as ZIP containers: Gitleaks otherwise skips the
 binary `.apk` file. The real scanner self-test checks both a clean APK and detection
 inside an embedded synthetic asset. Upload allowlists match the scanned report paths.
+
+Go 1.27.4 provenance was rechecked from the exact Actions compiled-URL
+diagnostic and the public source locations above. The complete allowed byte
+sequence and both dependency pins are unchanged. The single accepted toolchain
+marker moves to 1.27.4; both the previous 1.27.3 marker and future versions fail
+closed. Arbitrary userinfo, modified suffixes and extra adjacent bytes remain
+mandatory negative cases.

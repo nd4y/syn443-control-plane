@@ -100,7 +100,7 @@ class PublicDataTest(unittest.TestCase):
 
     def test_only_exact_public_go_rodata_userinfo_is_exempt(self):
         metadata = (
-            b"\x7fELF\x00go1.27.3\x00"
+            b"\x7fELF\x00go1.27.4\x00"
             b"dep\tgithub.com/jackc/pgx/v5\tv5.11.0\tchecksum\n"
             b"dep\tgithub.com/santhosh-tekuri/jsonschema/v6\tv6.0.3\tchecksum\n"
         )
@@ -115,7 +115,8 @@ class PublicDataTest(unittest.TestCase):
             with self.subTest(middle=middle):
                 self.assertNotIn("credential-url", findings(metadata + public))
                 self.assertIn("credential-url", findings(public))
-                self.assertIn("credential-url", findings(metadata.replace(b"go1.27.3", b"go1.27.4") + public))
+                self.assertIn("credential-url", findings(metadata.replace(b"go1.27.4", b"go1.27.3") + public))
+                self.assertIn("credential-url", findings(metadata.replace(b"go1.27.4", b"go1.27.5") + public))
                 self.assertIn("credential-url", findings(metadata + public.replace(b"root.crt", b"root.key")))
                 self.assertIn("credential-url", findings(metadata + public + b"\x00" + real))
                 self.assertIn("credential-url", findings(metadata + public + b"extra@"))

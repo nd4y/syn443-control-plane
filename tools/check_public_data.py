@@ -23,7 +23,7 @@ TEST_NETS = tuple(ipaddress.ip_network(n) for n in ("192.0.2.0/24", "198.51.100.
 PUBLIC_ALLOCATION_TOKENS = {"100.64.0.0/10", "192.0.0.0/24", "198.18.0.0/15", "240.0.0.0/4", "10.0.0.0/8"}
 FORBIDDEN = re.compile(r"(?:^|/)(?:\.env(?:\..*)?|local\.properties|[^/]*\.(?:jks|keystore|pem|key)|(?:bugreport|logcat|backup|diagnostic-bundle)[^/]*)$", re.I)
 GO_RODATA_BUILD_MARKERS = (
-    b"go1.27.3",
+    b"go1.27.4",
     b"dep\tgithub.com/jackc/pgx/v5\tv5.11.0\t",
     b"dep\tgithub.com/santhosh-tekuri/jsonschema/v6\tv6.0.3\t",
 )
