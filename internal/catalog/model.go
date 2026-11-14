@@ -13,6 +13,10 @@ import (
 
 var ErrInvalid = errors.New("catalog_invalid")
 var ErrDenied = errors.New("catalog_denied")
+
+// A verified actor with the required live object grant still needs stronger
+// authentication. It remains a denial and never authorizes an operation.
+var ErrReauthentication = errors.Join(ErrDenied, errors.New("catalog_reauthentication_required"))
 var ErrConflict = errors.New("catalog_revision_conflict")
 var ErrUnavailable = errors.New("catalog_unavailable")
 var ErrQuota = errors.New("catalog_quota")

@@ -37,6 +37,7 @@ export function Workspace() {
           </BreadcrumbItem>
         </Breadcrumb>
       </div>
+      <Reauthentication />
       <PendingOperation />
       <Devices />
       <Sources />
@@ -44,6 +45,22 @@ export function Workspace() {
       <Publication />
       <Telemetry />
     </main>
+  );
+}
+
+function Reauthentication() {
+  return (
+    <Card id="reauthentication" isCompact role="region" aria-labelledby="reauthentication-title" hidden>
+      <CardTitle component="h2" id="reauthentication-title" tabIndex={-1}>Подтверждение входа</CardTitle>
+      <CardBody>
+        <p id="reauthentication-status">Для этой операции подтвердите вход в Keycloak. Правки в этой вкладке сохранятся.</p>
+        <p id="reauthentication-unavailable" hidden>Подтверждение входа недоступно. Обратитесь к администратору; правки остаются в этой вкладке.</p>
+        <div className="reauthentication-actions">
+          <Button id="reauthentication-start" variant="primary" isDisabled>Подтвердить вход в Keycloak</Button>
+          <Button id="reauthentication-check" variant="secondary" isDisabled>Проверить вход</Button>
+        </div>
+      </CardBody>
+    </Card>
   );
 }
 

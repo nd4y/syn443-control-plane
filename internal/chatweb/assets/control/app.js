@@ -11,6 +11,7 @@ let layerComparison=null;
 let layerDraftInventory=null;
 let sourceShares=null;
 let devicesNext='',deviceIds=new Set();
+let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticationIssuer='',reauthenticationFocus=false;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message,tone='info'){
@@ -139,6 +140,10 @@ function applyRouteChecks(state){
  status('Проверки изменены в черновике. Сохраните его, чтобы не потерять правки.');
 }
 function controls(){
+ $('reauthentication').hidden=!authenticated||!reauthenticationNeeded;
+ $('reauthentication-unavailable').hidden=reauthenticationAvailable;
+ $('reauthentication-start').disabled=busy||!authenticated||!reauthenticationAvailable;
+ $('reauthentication-check').disabled=busy||!authenticated;
  for(const id of ['refresh-devices','more-devices'])$(id).disabled=busy||!authenticated||!!pending||(id==='more-devices'&&!devicesNext);
  for(const button of $('device-rows').querySelectorAll('button'))button.disabled=busy||!authenticated||!!pending;
  $('login').disabled=busy||authenticated;$('logout').disabled=busy||!authenticated;
@@ -186,6 +191,7 @@ function clearInventory(){
  $('inventory-details').open=false;$('inventory-view').hidden=true;$('inventory-issued-settings').hidden=true;$('inventory-issued-settings').open=false;
 }
 function erase(){
+ reauthenticationAvailable=false;reauthenticationNeeded=false;reauthenticationIssuer='';reauthenticationFocus=false;
  clearDevices();clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
  for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip'])$(id).value='';
  $('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';
@@ -196,6 +202,13 @@ async function request(path,body){
  if(path===sourceImportPath?raw.length>14*1024*1024+65536:new TextEncoder().encode(raw).length>278528)throw Error('size');
  const response=await fetch(path,{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:{'Content-Type':'application/json','X-Syn443-CSRF':'1'},body:raw});
  if(response.status===401&&path==='/session'&&!authenticated)throw Error('anonymous');
+ if(response.status===403&&(path==='/control/action'||path===sourceImportPath)){
+  let challenge;
+  try{const text=await response.text();if(text.length<=128)challenge=JSON.parse(text);}catch{}
+  if(challenge&&typeof challenge==='object'&&Object.keys(challenge).length===1&&challenge.code==='catalog_reauthentication_required'){
+   reauthenticationNeeded=true;reauthenticationFocus=true;throw Error('reauth');
+  }
+ }
  if(response.status===401||response.status===403){authenticated=false;erase();throw Error(response.status===401?'login':'denied');}
  if(response.status===413)throw Error(path===sourceImportPath?'importSize':'size');
  if(!response.ok)throw Error(response.status===409?'conflict':response.status===400?'invalid':response.status===404?'not_found':'network');
@@ -239,7 +252,37 @@ $('telemetry-form').onsubmit=event=>{
   }
  });
 };
-async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({anonymous:'Войдите с административной учётной записью.',login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.',error.message==='anonymous'?'info':'danger');}finally{busy=false;controls();}}
+async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({anonymous:'Войдите с административной учётной записью.',login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',reauth:'Для операции нужно подтвердить вход. Правки и подготовленный запрос остаются в этой вкладке.',popup:'Разрешите новую вкладку для Keycloak и повторите подтверждение входа.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.',error.message==='anonymous'?'info':'danger');}finally{busy=false;controls();if(reauthenticationFocus&&authenticated){reauthenticationFocus=false;$('reauthentication-title').focus();}}}
+
+function sessionCapabilities(value){
+ if(!value||value.authenticated!==true)throw Error('invalid');
+ const available=value.reauthenticationAvailable===true;
+ if(available&&(typeof value.reauthenticationFresh!=='boolean'||typeof value.reauthenticationIssuer!=='string'))throw Error('invalid');
+ if(available){
+  const issuer=new URL(value.reauthenticationIssuer);
+  if(issuer.username||issuer.password||issuer.search||issuer.hash||issuer.protocol!=='https:'&&!(issuer.protocol==='http:'&&issuer.hostname==='127.0.0.1'))throw Error('invalid');
+ }
+ reauthenticationAvailable=available;reauthenticationIssuer=available?value.reauthenticationIssuer:'';
+ return available&&value.reauthenticationFresh===true;
+}
+async function beginReauthentication(){
+ if(!reauthenticationAvailable||!reauthenticationNeeded)throw Error('invalid');
+ const popup=window.open('about:blank','_blank');if(!popup){reauthenticationFocus=true;throw Error('popup');}
+ popup.opener=null;
+ try{
+  const device=$('inventory-device').value.trim();
+  const value=await request('/reauth',deviceID.test(device)?{device}:{});
+  const url=new URL(value.url),expected=new URL(reauthenticationIssuer+'/protocol/openid-connect/auth');
+  if(url.origin!==expected.origin||url.pathname!==expected.pathname||url.username||url.password||url.hash||url.searchParams.get('prompt')!=='login'||url.searchParams.get('max_age')!=='0'||url.searchParams.get('redirect_uri')!==location.origin+'/callback')throw Error('invalid');
+  popup.location.replace(url.href);
+  $('reauthentication-status').textContent='Подтвердите вход в новой вкладке. Затем вернитесь сюда и нажмите «Проверить вход». Изменение не отправляется повторно автоматически.';
+ }catch(error){popup.close();reauthenticationFocus=true;throw error;}
+}
+async function checkReauthentication(){
+ const fresh=sessionCapabilities(await request('/session',{}));
+ if(fresh){reauthenticationNeeded=false;status('Вход подтверждён. Проверьте правки и повторите выбранную операцию.');}
+ else $('reauthentication-status').textContent='Свежий вход с подтверждением ещё не получен. Завершите вход в новой вкладке или повторите его.';
+}
 function textItem(list,text){const item=document.createElement('li');item.textContent=text;list.append(item);return item;}
 function inventoryPair(list,name,value){const term=document.createElement('dt');term.textContent=name;const detail=document.createElement('dd');detail.textContent=value;list.append(term,detail);}
 function inventoryOrigin(origin){return origin&&typeof origin==='object'&&!Array.isArray(origin)&&typeof origin.layerId==='string'&&typeof origin.kind==='string'&&Number.isSafeInteger(origin.revision)&&origin.revision>=0;}
@@ -579,6 +622,8 @@ async function saveSource(){
 $('login').onclick=()=>work(async()=>{const device=linkedDevice();const result=await request('/login',device?{device}:{});const target=new URL(result.url);if(target.protocol!=='https:'&&!(location.hostname==='127.0.0.1'&&target.protocol==='http:'&&target.hostname==='127.0.0.1'))throw Error('invalid');location.assign(target.href);});
 $('logout').onclick=()=>work(async()=>{try{await request('/logout',{});}finally{authenticated=false;erase();if(linkedDevice())history.replaceState(null,'','/#inventory-title');}status('Вы вышли. Локальная копия черновика очищена.');});
 $('refresh-devices').onclick=()=>work(()=>loadDevices());
+$('reauthentication-start').onclick=()=>work(beginReauthentication);
+$('reauthentication-check').onclick=()=>work(checkReauthentication);
 $('more-devices').onclick=()=>work(()=>loadDevices(true));
 $('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>work(()=>sources(true));$('inventory-form').onsubmit=event=>{event.preventDefault();if(authenticated&&!pending)void work(loadInventory);};
 $('inventory-device').oninput=()=>{
@@ -703,7 +748,7 @@ $('source-shares-save').onclick=()=>work(saveSourceShares);
 updateSectionNav();
 controls();
 void work(async()=>{
- await request('/session',{});authenticated=true;status('');
+ sessionCapabilities(await request('/session',{}));authenticated=true;status('');
  await loadDevices();
  await openLinkedDevice();
 });

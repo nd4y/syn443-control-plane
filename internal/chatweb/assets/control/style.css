@@ -353,3 +353,7 @@ pre:not(:empty) {
 .device-list-scroll{max-width:100%;overflow:auto;margin-block:1rem}
 .device-list-scroll table{min-width:620px}
 .device-list-scroll:focus-visible{outline:2px solid var(--pf-t--global--color--brand--default);outline-offset:2px}
+
+#reauthentication{margin-block:1rem;max-inline-size:100%}
+.reauthentication-actions{display:flex;flex-wrap:wrap;gap:.75rem}
+.reauthentication-actions button{max-inline-size:100%;white-space:normal}

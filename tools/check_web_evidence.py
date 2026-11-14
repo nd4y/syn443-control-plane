@@ -62,7 +62,14 @@ expected.update({
     'selected device moves keyboard focus out of the collapsed discovery list',
     'issued algorithm metadata has its own line and cannot keep stale device data',
 })
-assert len(cases) >= 54
+expected.update({
+    'control reauthentication preserves the exact pending draft and requires explicit retry',
+    'control reauthentication never turns withdrawn authority into a recoverable sign-in',
+    'blocked reauthentication windows retain the unsaved draft without starting authentication',
+    'substituted reauthentication navigation and expired sessions fail closed',
+    'assurance recovery is keyboard accessible on a narrow screen and rejects untrusted error metadata',
+})
+assert len(cases) >= 59
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

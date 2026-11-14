@@ -142,6 +142,8 @@ func (s *Store) ConsumeAdminProof(ctx context.Context, actor Actor, proof identi
 func apiFailure(w http.ResponseWriter, e error) {
 	status, code := 503, "catalog_unavailable"
 	switch {
+	case errors.Is(e, ErrReauthentication):
+		status, code = 403, "catalog_reauthentication_required"
 	case errors.Is(e, ErrDenied), errors.Is(e, identity.ErrInvalid):
 		status, code = 403, "catalog_denied"
 	case errors.Is(e, errTelemetrySummaryHidden):

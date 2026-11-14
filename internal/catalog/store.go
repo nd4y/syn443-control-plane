@@ -96,7 +96,7 @@ type Actor struct {
 }
 
 func authorize(ctx context.Context, tx *sql.Tx, actor Actor, action, kind, id string, now int64, sensitive bool) error {
-	if !identifier.MatchString(actor.ID) || actor.SessionUntil <= now || sensitive && actor.MFAUntil <= now {
+	if !identifier.MatchString(actor.ID) || actor.SessionUntil <= now {
 		return ErrDenied
 	}
 	rows, e := tx.QueryContext(ctx, `SELECT target_id FROM catalog_acl WHERE actor=$1 AND (action=$2 OR action='*') AND (target_kind=$3 OR target_kind='*') AND (target_id=$4 OR target_id='*') AND expires>$5 ORDER BY target_id LIMIT 1 FOR SHARE`, actor.ID, action, kind, id, now)
@@ -106,6 +106,9 @@ func authorize(ctx context.Context, tx *sql.Tx, actor Actor, action, kind, id st
 	defer rows.Close()
 	if !rows.Next() {
 		return ErrDenied
+	}
+	if sensitive && actor.MFAUntil <= now {
+		return ErrReauthentication
 	}
 	return nil
 }

@@ -77,22 +77,24 @@ func staticAsset(path string, console bool) (string, string) {
 var consoleDeviceID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 type Config struct {
-	Listen         string `json:"listen"`
-	Origin         string `json:"origin"`
-	APIOrigin      string `json:"apiOrigin"`
-	Issuer         string `json:"issuer"`
-	ClientID       string `json:"clientId"`
-	Audience       string `json:"audience"`
-	Certificate    string `json:"certificate"`
-	CertificateKey string `json:"certificateKey"`
-	FixtureHTTP    bool   `json:"fixtureHttp"`
-	ControlConsole bool   `json:"controlConsole,omitempty"`
+	Listen              string `json:"listen"`
+	Origin              string `json:"origin"`
+	APIOrigin           string `json:"apiOrigin"`
+	Issuer              string `json:"issuer"`
+	ClientID            string `json:"clientId"`
+	Audience            string `json:"audience"`
+	Certificate         string `json:"certificate"`
+	CertificateKey      string `json:"certificateKey"`
+	FixtureHTTP         bool   `json:"fixtureHttp"`
+	ControlConsole      bool   `json:"controlConsole,omitempty"`
+	ReauthenticationACR string `json:"reauthenticationAcr,omitempty"`
 }
 type verifier interface {
 	Verify(context.Context, string, time.Time) (identity.Principal, error)
 }
 type pending struct {
 	verifier, cookie, device string
+	parentSession, owner     string
 	key                      *ecdsa.PrivateKey
 	expires                  time.Time
 }
@@ -123,6 +125,9 @@ func validURL(raw string, origin, fixture bool) bool {
 		(u.Scheme == "https" || fixture && u.Scheme == "http" && u.Hostname() == "127.0.0.1" && u.Port() != "")
 }
 func New(ctx context.Context, c Config, transport http.RoundTripper) (*Server, error) {
+	if c.ReauthenticationACR != "" && (!c.ControlConsole || !reauthenticationACR.MatchString(c.ReauthenticationACR)) {
+		return nil, invalid
+	}
 	if !validURL(c.Origin, true, c.FixtureHTTP) || !validURL(c.APIOrigin, true, c.FixtureHTTP) || !validURL(c.Issuer, false, c.FixtureHTTP) || c.ClientID == "" || len(c.ClientID) > 128 || c.Audience == "" || len(c.Audience) > 128 {
 		return nil, invalid
 	}
@@ -259,7 +264,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Path == "/session" {
-		reply(w, map[string]bool{"authenticated": true})
+		s.sessionStatus(w, r, cookie.Value, v)
+		return
+	}
+	if r.URL.Path == "/reauth" {
+		s.reauthenticate(w, r, cookie.Value, v)
 		return
 	}
 	action := strings.TrimPrefix(r.URL.Path, "/chat/")
@@ -359,6 +368,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if res.StatusCode != 200 {
+			if control && res.StatusCode == 403 && reauthenticationChallenge(data) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(403)
+				reply(w, map[string]string{"code": "catalog_reauthentication_required"})
+				return
+			}
 			if res.StatusCode == 429 {
 				w.Header().Set("Retry-After", "60")
 			}
@@ -403,6 +418,10 @@ func sign(key *ecdsa.PrivateKey, method, uri, token, nonce string, body []byte, 
 	return input + "." + b64.EncodeToString(sig), nil
 }
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
+	s.beginLogin(w, r, "", "")
+}
+
+func (s *Server) beginLogin(w http.ResponseWriter, r *http.Request, parent, owner string) {
 	var device string
 	if s.config.ControlConsole {
 		const limit = 512
@@ -424,10 +443,15 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		fail(w, 503)
 		return
 	}
-	p := pending{verifier: random(), cookie: random(), device: device, key: key, expires: s.clock().Add(5 * time.Minute)}
+	p := pending{verifier: random(), cookie: random(), device: device, parentSession: parent, owner: owner, key: key, expires: s.clock().Add(5 * time.Minute)}
 	state := random()
 	s.mu.Lock()
 	s.prune(s.clock())
+	if parent != "" && !s.liveParentLocked(parent) {
+		s.mu.Unlock()
+		fail(w, 401)
+		return
+	}
 	if len(s.pending) >= 32 || len(s.sessions) >= 32 {
 		s.mu.Unlock()
 		fail(w, 503)
@@ -441,6 +465,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	q := url.Values{"client_id": {s.config.ClientID}, "response_type": {"code"}, "redirect_uri": {s.config.Origin + "/callback"}, "state": {state}, "code_challenge": {identity.Hash([]byte(p.verifier))}, "code_challenge_method": {"S256"}, "dpop_jkt": {thumb}}
 	if s.config.ControlConsole {
 		q.Set("scope", "openid syn443.control")
+	}
+	if parent != "" {
+		q.Set("prompt", "login")
+		q.Set("max_age", "0")
+		q.Set("acr_values", s.config.ReauthenticationACR)
 	}
 	s.cookie(w, true, p.cookie, 300)
 	reply(w, map[string]string{"url": s.config.Issuer + "/protocol/openid-connect/auth?" + q.Encode()})
@@ -510,6 +539,14 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	delete(s.pending, q.Get("state"))
+	if p.parentSession != "" {
+		parentCookie, e := r.Cookie(s.cookieName(false))
+		if e != nil || parentCookie.Value != p.parentSession || !s.liveParentLocked(p.parentSession) {
+			s.mu.Unlock()
+			s.callbackFailure(w, r, 401)
+			return
+		}
+	}
 	s.mu.Unlock()
 	s.cookie(w, true, "", -1)
 	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
@@ -519,10 +556,20 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 		s.callbackFailure(w, r, 401)
 		return
 	}
+	if p.parentSession != "" && (principalOwner(v.principal) != p.owner || v.principal.MFAUntil(s.config.ReauthenticationACR, s.clock()) <= s.clock().Unix()) {
+		s.callbackFailure(w, r, 401)
+		return
+	}
 	id := random()
 	v.ctx, v.cancel = context.WithCancel(context.Background())
 	s.mu.Lock()
 	s.prune(s.clock())
+	if p.parentSession != "" && (!s.liveParentLocked(p.parentSession) || !s.clock().Before(p.expires)) {
+		s.mu.Unlock()
+		v.cancel()
+		s.callbackFailure(w, r, 401)
+		return
+	}
 	if len(s.sessions) >= 32 {
 		s.mu.Unlock()
 		v.cancel()

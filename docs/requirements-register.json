@@ -1647,10 +1647,14 @@
         "internal/deviceprovisioning/layer_inventory.go",
         "internal/deviceprovisioning/layer_inventory_postgres_test.go",
         "docs/layered-configuration.md",
-        "docs/private-draft-inventory.md"
+        "docs/private-draft-inventory.md",
+        "docs/control-session-reauthentication.md",
+        "internal/chatweb/reauthentication_test.go",
+        "internal/deviceprovisioning/reauthentication_authority_postgres_test.go",
+        "web-tests/control-reauthentication.spec.js"
       ],
-      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open.",
-      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required. Explicit actor-private discard now has CAS/tombstone/replay fences and browser confirmation source; exact new CI is pending."
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open. Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. New Actions acceptance pending.",
+      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required. Explicit actor-private discard now has CAS/tombstone/replay fences and browser confirmation source; exact new CI is pending. Real configured Keycloak MFA acceptance and the complete native administration flow remain open."
     },
     {
       "id": "EDIT-03",
@@ -1802,8 +1806,14 @@
       "evidence": [
         "docs/control-catalog.md",
         "internal/identity/crypto_test.go",
-        "internal/catalog/http_postgres_test.go"
-      ]
+        "internal/catalog/http_postgres_test.go",
+        "docs/control-session-reauthentication.md",
+        "internal/chatweb/reauthentication_test.go",
+        "internal/deviceprovisioning/reauthentication_authority_postgres_test.go",
+        "web-tests/control-reauthentication.spec.js"
+      ],
+      "implementationScope": " Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. New Actions acceptance pending.",
+      "remainingScope": " Real configured Keycloak MFA acceptance and the complete native administration flow remain open."
     },
     {
       "id": "MOB-05",
@@ -1826,10 +1836,14 @@
       "text": "При отзыве административной роли, истечении сессии либо изменении области прав следующая операция получает отказ и UI обновляет capabilities. Локальный кэш роли не является разрешением на изменение сервера; ранее выданные короткоживущие сессии ограничены сроком и серверной проверкой статуса.",
       "status": "partial",
       "evidence": [
-        "docs/device-inventory.md"
+        "docs/device-inventory.md",
+        "docs/control-session-reauthentication.md",
+        "internal/chatweb/reauthentication_test.go",
+        "internal/deviceprovisioning/reauthentication_authority_postgres_test.go",
+        "web-tests/control-reauthentication.spec.js"
       ],
-      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending.",
-      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open."
+      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending. Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. New Actions acceptance pending.",
+      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open. Real configured Keycloak MFA acceptance and the complete native administration flow remain open."
     },
     {
       "id": "MOB-08",
@@ -2430,8 +2444,14 @@
       "evidence": [
         "docs/control-catalog.md",
         "internal/identity/crypto_test.go",
-        "internal/catalog/http_postgres_test.go"
-      ]
+        "internal/catalog/http_postgres_test.go",
+        "docs/control-session-reauthentication.md",
+        "internal/chatweb/reauthentication_test.go",
+        "internal/deviceprovisioning/reauthentication_authority_postgres_test.go",
+        "web-tests/control-reauthentication.spec.js"
+      ],
+      "implementationScope": " Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. New Actions acceptance pending.",
+      "remainingScope": " Real configured Keycloak MFA acceptance and the complete native administration flow remain open."
     },
     {
       "id": "SEC-11",

@@ -17,6 +17,7 @@ import (
 var configurationObjectID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 var configurationRequestID = regexp.MustCompile(`^[A-Za-z0-9_-]{24,128}$`)
 var configurationBodyHash = regexp.MustCompile(`^[0-9a-f]{64}$`)
+var errConfigurationReauthentication = errors.Join(enrollment.ErrDenied, catalog.ErrReauthentication)
 
 func configurationTargetShape(kind, id string) bool {
 	return configurationObjectID.MatchString(id) && (kind == "template" || kind == "group" || kind == "user" || kind == "device")
@@ -56,18 +57,19 @@ func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifie
 		return "", envelope, 0, enrollment.ErrDenied
 	}
 	authorityUntil := min(p.Expires, receipt.AcceptedAt+180)
-	if requiresFreshMFA {
-		mfaUntil := p.MFAUntil(acr, now)
-		if mfaUntil <= now.Unix() {
-			return "", envelope, 0, enrollment.ErrDenied
-		}
-		authorityUntil = min(authorityUntil, mfaUntil)
-	}
+	mfaUntil := p.MFAUntil(acr, now)
 	proof, e := identity.VerifyProof(receipt.Proof, identity.ProofContext{Method: "POST", URI: receipt.URI, Token: receipt.Token, BodyHash: identity.Hash(receipt.Body), Now: time.Unix(receipt.AcceptedAt, 0)})
 	if e != nil || proof.Thumbprint != p.Thumbprint {
 		return "", envelope, 0, enrollment.ErrDenied
 	}
-	return identity.Hash([]byte(p.Issuer + "\x00" + p.Subject)), envelope, authorityUntil, nil
+	actor := identity.Hash([]byte(p.Issuer + "\x00" + p.Subject))
+	if requiresFreshMFA {
+		if mfaUntil <= now.Unix() {
+			return actor, envelope, authorityUntil, errConfigurationReauthentication
+		}
+		authorityUntil = min(authorityUntil, mfaUntil)
+	}
+	return actor, envelope, authorityUntil, nil
 }
 
 type ConfigurationRequestView struct {
@@ -98,6 +100,8 @@ func (c *ConfigurationControl) ControlAction(ctx context.Context, token, proof s
 	switch {
 	case e == nil:
 		return v, nil
+	case errors.Is(e, catalog.ErrReauthentication):
+		return nil, catalog.ErrReauthentication
 	case errors.Is(e, enrollment.ErrDenied):
 		return nil, catalog.ErrDenied
 	case errors.Is(e, enrollment.ErrConflict):
@@ -127,6 +131,11 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 	receipt := invitation.Receipt{Token: token, Proof: proof, URI: c.Origin + "/v1/control/action", Body: append([]byte(nil), raw...), AcceptedAt: now.Unix()}
 	actor, envelope, authorityUntil, e := verifyConfigurationReceipt(ctx, c.Verifier, receipt, c.Origin, c.AssuranceACR, now)
 	if e != nil {
+		if errors.Is(e, catalog.ErrReauthentication) {
+			if denied := c.reauthenticationAuthority(ctx, actor, envelope, authorityUntil, now); denied != nil {
+				return nil, denied
+			}
+		}
 		return nil, e
 	}
 	if envelope.Action == "configuration.layers.drafts.list" {

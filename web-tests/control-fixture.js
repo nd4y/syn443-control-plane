@@ -1,13 +1,17 @@
 // Synthetic UI fixture. Actual SQL/CAS, OAuth/DPoP and scope are Go-tested.
-import http from 'node:http';import fs from 'node:fs';
+import http from 'node:http';import fs from 'node:fs';import crypto from 'node:crypto';
 let auth=true,denied=false,failSave=false,drafts=new Map(),operations=new Map(),calls=[];
 const originalSource=()=>({id:'source-a',owner:'synthetic-user',name:'<img src=x onerror="window.injected=true">',mode:'server',format:'uri',enabled:true,state:'active',revision:1,networkModes:['wifi'],activeSnapshot:'snapshot-a',validUntil:1800003600,refreshSeconds:3600,maxStaleSeconds:86400});
 let sources=new Map([['source-a',originalSource()]]),jobs=new Map();
 let shares=new Map();
 let layerDrafts=new Map(),discardedDrafts=new Set(),configurationJobs=new Map(),options={};
+let freshAssurance=false,assuranceRequests=[],authenticationStarts=0;
 const server=http.createServer(async(req,res)=>{
  const send=(status,data)=>{const headers={'Content-Type':'application/json','Cache-Control':'no-store'};if(req.url.startsWith('/fixture/'))headers.Connection='close';res.writeHead(status,headers);res.end(JSON.stringify(data));};
  const asset=/^\/ui\/(?:console\.(?:js|css)|asset-[A-Z0-9]{8}\.(?:woff2|svg))$/.test(req.url);
+ if(req.method==='GET'&&req.url.startsWith('/fixture/id/protocol/openid-connect/auth?')){
+  res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});res.end('<h1>Synthetic identity provider</h1>');return;
+ }
  if(req.method==='GET'&&(asset||['/','/app.js','/style.css','/layer-merge.js'].includes(req.url))){
   const name=req.url==='/'?'index.html':req.url.slice(1);
   const type={html:'text/html',js:'text/javascript',css:'text/css',woff2:'font/woff2',svg:'image/svg+xml'}[name.split('.').at(-1)];
@@ -19,19 +23,30 @@ const server=http.createServer(async(req,res)=>{
  const limit=importing?14*1024*1024+65536:278528;
  let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>limit){send(413,{});return;}}
  let body;try{body=JSON.parse(raw||'{}');}catch{send(400,{});return;}
- if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();shares=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
- if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],layerDrafts:[...layerDrafts.values()],sources:[...sources.values()],operations:operations.size,calls});return;}
+ if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];freshAssurance=false;assuranceRequests=[];authenticationStarts=0;const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();shares=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
+ if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],layerDrafts:[...layerDrafts.values()],sources:[...sources.values()],operations:operations.size,calls,assuranceRequests,authenticationStarts});return;}
+ if(req.url==='/fixture/reauth-complete'){freshAssurance=true;send(200,{});return;}
  if(req.url==='/fixture/revoke'){denied=true;send(200,{});return;}
  if(req.url==='/fixture/expire'){auth=false;send(200,{});return;}
  if(req.url==='/fixture/advance'){options.remoteChanged=true;send(200,{});return;}
  if(req.headers['x-syn443-csrf']!=='1'||req.headers.origin!=='http://127.0.0.1:17851'){send(403,{});return;}
  if(!auth){send(401,{});return;}
- if(req.url==='/session'){send(200,{authenticated:true});return;}
+ if(req.url==='/session'){send(200,{authenticated:true,...(options.reauthentication?{reauthenticationAvailable:true,reauthenticationFresh:freshAssurance,reauthenticationIssuer:'http://127.0.0.1:17851/fixture/id'}:{})});return;}
+ if(req.url==='/reauth'){
+  if(!options.reauthentication){send(404,{});return;}
+  authenticationStarts++;
+  const query=new URLSearchParams({prompt:'login',max_age:'0',acr_values:'fixture-2',redirect_uri:'http://127.0.0.1:17851/callback',state:'synthetic-state',code_challenge:'synthetic-challenge',code_challenge_method:'S256'});
+  send(200,{url:(options.substitutedAssurance?'https://substituted.example.invalid':'http://127.0.0.1:17851')+'/fixture/id/protocol/openid-connect/auth?'+query});return;
+ }
  if(req.url==='/logout'){auth=false;send(200,{ok:true});return;}
  if(denied){send(403,{});return;}
  if((!importing&&req.url!=='/control/action')||body.version!==1){send(404,{});return;}
  if(importing!==(body.action==='source.import')){send(400,{});return;}
  calls.push(body.action);
+ if(options.reauthentication&&body.action==='configuration.layers.draft.put'){
+  assuranceRequests.push({action:body.action,requestId:body.requestId,bodyHash:crypto.createHash('sha256').update(raw).digest('hex')});
+  if(!freshAssurance){send(403,{code:'catalog_reauthentication_required',...(options.malformedAssurance?{extra:'untrusted'}:{})});return;}
+ }
  const p=body.payload;
  switch(body.action){
  case 'configuration.devices.list':{

@@ -47,3 +47,9 @@ the Chromium suite. The control-console-ui artifact records the exact source
 revision and SHA-256 checksums of the embedded JS, CSS, fonts and images. The
 browser gate covers same-origin resources, isolated sections, browser history,
 focus and preservation of unsaved drafts across navigation.
+
+The [control reauthentication recovery](control-session-reauthentication.md)
+requires scoped PostgreSQL no-mutation/withdrawal tests, owner-bound callback and
+logout-race checks, and five named browser outcomes. All59 existing and new
+browser cases must pass without skips. A fresh-MFA challenge preserves an exact
+pending operation; explicit retry still passes all live authority checks.

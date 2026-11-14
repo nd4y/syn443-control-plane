@@ -100,6 +100,11 @@ invalid request lets the administrator edit again. Conflict/readback never silen
 resubmits a different edit under that operation. Logout or access/session denial
 clears the visible configuration and pending body.
 
+A separately typed fresh-MFA requirement supports [explicit reauthentication
+recovery](control-session-reauthentication.md) without losing the original tab's
+edit. It never substitutes for a current server-side grant or automatically
+retries publication.
+
 Actions runs Go OAuth/DPoP/cookie/scope/path/CSRF/size/nonce checks, existing actual
 SQL draft tests, and Chromium source metadata/XSS, draft save/readback, lost reply,
 invalid plan, role withdrawal/logout/expiry and phone-width/dark-theme cases.
