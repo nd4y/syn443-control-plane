@@ -75,6 +75,8 @@ function Devices() {
       <p id="inventory-help">
         Откройте доступное устройство или введите его ID из приложения.
       </p>
+      <details id="devices-disclosure" open>
+      <summary>Доступные устройства</summary>
       <Button id="refresh-devices" variant="secondary" isDisabled>
         Обновить список
       </Button>
@@ -89,6 +91,7 @@ function Devices() {
       <Button id="more-devices" variant="secondary" isDisabled hidden>
         Ещё устройства
       </Button>
+      </details>
       <form id="inventory-form" className="inventory-form">
         <div>
           <label htmlFor="inventory-device">ID устройства</label>

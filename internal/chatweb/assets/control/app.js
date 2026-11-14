@@ -344,6 +344,7 @@ async function loadDevices(more=false){
  const after=more?devicesNext:'';
  if(more&&!after)throw Error('invalid');
  if(!more)clearDevices();
+ $('devices-disclosure').open=true;
  $('devices-status').textContent='Загружаем устройства…';
  try{
   const page=await action('configuration.devices.list',{after});
@@ -387,6 +388,7 @@ async function loadInventory(){
   const view=await action('configuration.inventory.get',{id:device});
   if(view?.device!==device)throw Error('invalid');
   showInventory(view);
+  $('devices-disclosure').open=false;
   layerInventory=structuredClone(view);
   $('inventory-status').textContent='Конфигурация загружена.';
  }catch(error){

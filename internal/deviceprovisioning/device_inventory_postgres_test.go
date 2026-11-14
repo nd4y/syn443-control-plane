@@ -16,6 +16,17 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
 
+func deviceInventoryFixture(t *testing.T) (networkFixture, *ConfigurationControl, LayerProposal) {
+	t.Helper()
+	n, c, proposal := configurationControlFixture(t)
+	// The invitation becomes an approved identity device only when the real
+	// independent publisher has checked it. Pending registrations are not listed.
+	if e := n.publisher.RunOnce(context.Background(), n.f.now); e != nil {
+		t.Fatal(e)
+	}
+	return n, c, proposal
+}
+
 func listDevices(t *testing.T, n networkFixture, c *ConfigurationControl, after string) (DeviceInventory, error) {
 	t.Helper()
 	raw, token, proof := configurationCall(t, n, c, "configuration.devices.list", identity.Hash([]byte("device inventory "+after)), map[string]string{"after": after})
@@ -27,7 +38,7 @@ func listDevices(t *testing.T, n networkFixture, c *ConfigurationControl, after 
 }
 
 func TestDeviceInventoryUsesExactCardACLWithoutMFAOrPrivateBodies(t *testing.T) {
-	n, c, _ := configurationControlFixture(t)
+	n, c, _ := deviceInventoryFixture(t)
 	seedConfigurationDevice(t, storedLayersFixture{n: n}, "another-device", true)
 	seedConfigurationDevice(t, storedLayersFixture{n: n}, "unapproved-device", false)
 	if _, e := fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, n.actor.ID); e != nil {
@@ -66,7 +77,7 @@ func TestDeviceInventoryUsesExactCardACLWithoutMFAOrPrivateBodies(t *testing.T) 
 }
 
 func TestDeviceInventoryPaginatesAuthorizedActiveDevicesWithoutDuplicates(t *testing.T) {
-	n, c, _ := configurationControlFixture(t)
+	n, c, _ := deviceInventoryFixture(t)
 	expected := []string{n.target.Device}
 	for i := 0; i < 35; i++ {
 		id := fmt.Sprintf("device-%02d", i)
@@ -106,7 +117,7 @@ func TestDeviceInventoryPaginatesAuthorizedActiveDevicesWithoutDuplicates(t *tes
 }
 
 func TestDeviceInventorySeparatesReportedHistoricalAndUnissuedPolicies(t *testing.T) {
-	n, c, _ := configurationControlFixture(t)
+	n, c, _ := deviceInventoryFixture(t)
 	if e := n.publisher.RunOnce(context.Background(), n.f.now); e != nil {
 		t.Fatal(e)
 	}
@@ -147,7 +158,7 @@ func TestDeviceInventorySeparatesReportedHistoricalAndUnissuedPolicies(t *testin
 }
 
 func TestDeviceInventoryRefusesExpiredAuthorityCancellationAndUnauditedReads(t *testing.T) {
-	n, c, _ := configurationControlFixture(t)
+	n, c, _ := deviceInventoryFixture(t)
 	request := identity.Hash([]byte("device-list-boundary"))
 	if _, e := c.deviceInventory(context.Background(), n.actor.ID, "", request, n.f.now.Unix(), n.f.now); !errors.Is(e, enrollment.ErrDenied) {
 		t.Fatal("expired authority", e)
@@ -170,7 +181,7 @@ func TestDeviceInventoryRefusesExpiredAuthorityCancellationAndUnauditedReads(t *
 }
 
 func TestDeviceInventoryRechecksAuthorityAfterWaitingForDeviceLock(t *testing.T) {
-	n, c, _ := configurationControlFixture(t)
+	n, c, _ := deviceInventoryFixture(t)
 	lock, e := fixtureOwner.Begin()
 	if e != nil {
 		t.Fatal(e)
