@@ -28,6 +28,31 @@ test('device inventory pagination is explicit and fits a narrow keyboard scroll 
  await page.getByRole('button',{name:'Открыть устройство device-a',exact:true}).click();await expect(page.locator('#inventory-view')).toBeVisible();
 });
 
+test('selected device moves keyboard focus out of the collapsed discovery list',async({page,request})=>{
+ await reset(request);await page.goto(origin);
+ const button=page.getByRole('button',{name:'Открыть устройство device-a',exact:true});
+ await expect(button).toBeEnabled();await button.focus();await button.press('Enter');
+ const card=page.getByRole('region',{name:'Конфигурация выбранного устройства',exact:true});
+ await expect(card).toBeVisible();await expect(card).toBeFocused();
+ await expect(page.locator('#devices-disclosure')).not.toHaveAttribute('open','');
+ await card.press('Tab');await expect(page.getByRole('link',{name:'Открыть публикацию',exact:true})).toBeFocused();
+});
+
+test('issued algorithm metadata has its own line and cannot keep stale device data',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#device=device-a');
+ const issued=page.locator('#inventory-issued'),algorithm=page.locator('#inventory-issued-algorithm');
+ await expect(algorithm).toHaveText('Алгоритм m4-confirmed-v1');
+ for(const width of [1280,360]){
+  await page.setViewportSize({width,height:900});
+  const policyBox=await issued.boundingBox(),algorithmBox=await algorithm.boundingBox();
+  expect(algorithmBox.y).toBeGreaterThanOrEqual(policyBox.y+policyBox.height+7);
+  expect(await algorithm.evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+ await page.locator('#inventory-device').fill('device-expired');await page.locator('#inventory-device').press('Enter');
+ await expect(algorithm).toBeHidden();await expect(algorithm).toHaveText('');
+});
+
 test('device inventory refuses malformed oversized duplicate and substituted metadata atomically',async({page,request})=>{
  for(const invalidDeviceList of ['duplicate','extra','cursor','oversize','revision','report','order']){
   await reset(request,{invalidDeviceList});await page.goto(origin);

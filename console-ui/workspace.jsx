@@ -110,7 +110,7 @@ function Devices() {
         </Button>
       </form>
       <p id="inventory-status" role="status" aria-atomic="true"></p>
-      <div id="inventory-view" hidden>
+      <div id="inventory-view" role="region" aria-label="Конфигурация выбранного устройства" tabIndex={-1} hidden>
         <div
           className="inventory-summary"
           role="group"

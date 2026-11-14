@@ -58,7 +58,11 @@ expected.update({
     'device inventory refuses malformed oversized duplicate and substituted metadata atomically',
     'device inventory clears withdrawn or expired sessions and keeps manual lookup after unavailable discovery',
 })
-assert len(cases) >= 41
+expected.update({
+    'selected device moves keyboard focus out of the collapsed discovery list',
+    'issued algorithm metadata has its own line and cannot keep stale device data',
+})
+assert len(cases) >= 54
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

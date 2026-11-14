@@ -34,9 +34,23 @@ erase the entire list and current card; errors never retain a stale list.
 Device metadata stays in tab memory. The PatternFly table uses a keyboard
 accessible scroll region on narrow screens.
 
+The initial discovery implementation passed all eight jobs and 52 browser
+scenarios at `74bd3d720fefe920949d18479cc15f3dc0eb0612`,
+[Actions 43649508396](https://github.com/nd4y/syn443-control-plane/actions/runs/43649508396).
+The exact artifacts were verified and the live console SSO, authorized device
+list, card selection and issued settings were checked separately. Private
+device receipts remain outside the repository.
+
+The subsequent keyboard correction focuses the selected card after collapsing
+discovery. Tab then moves to the card actions. Algorithm metadata is a separate
+secondary line, rather than another adjacent status badge. Two required browser
+cases verify the real focus order and layout on desktop and narrow screens,
+including erasure when another device has no algorithm metadata.
+
 GitHub Actions must run the schema and BFF allowlist checks, actual PostgreSQL
 ACL/isolation/pagination/report/audit/expiry-under-lock cases, and four mandatory
-Chromium discovery scenarios. Current acceptance is pending that exact build.
+Chromium discovery scenarios. Acceptance of the two corrections requires their
+exact subsequent build.
 This contributes to web administration. Friendly names, user management, native
 administrative screens, current online heartbeats and the full M2/M3 milestone
 remain separate requirements.

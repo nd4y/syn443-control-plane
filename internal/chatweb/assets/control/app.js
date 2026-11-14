@@ -389,6 +389,7 @@ async function loadInventory(){
   if(view?.device!==device)throw Error('invalid');
   showInventory(view);
   $('devices-disclosure').open=false;
+  $('inventory-view').focus({preventScroll:true});
   layerInventory=structuredClone(view);
   $('inventory-status').textContent='Конфигурация загружена.';
  }catch(error){
