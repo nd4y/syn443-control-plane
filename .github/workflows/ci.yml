@@ -151,6 +151,11 @@ jobs:
           test -s coverage.out && test -s dependency-inventory.json
           python3 tools/check_public_data.py coverage.out dependency-inventory.json
           bash tools/scan_secrets.sh coverage.out dependency-inventory.json
+          if test -f adaptive-catalogue-tests.jsonl; then
+            test -s adaptive-catalogue-tests.jsonl
+            python3 tools/check_public_data.py adaptive-catalogue-tests.jsonl
+            bash tools/scan_secrets.sh adaptive-catalogue-tests.jsonl
+          fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         id: evidence-upload
         if: always() && steps.evidence-scan.outcome == 'success'
