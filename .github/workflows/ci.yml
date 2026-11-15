@@ -65,6 +65,7 @@ jobs:
       - run: go test -race -count=1 -coverprofile=coverage.out ./...
       - run: python3 tools/check_coverage.py
       - run: go test ./internal/decision -run '^$' -fuzz '^FuzzDecode$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/routegraph -run '^$' -fuzz '^FuzzRouteGraphDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/policy -run '^$' -fuzz '^FuzzPolicyDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/identity -run '^$' -fuzz '^FuzzIdentityDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/enrollment -run '^$' -fuzz '^FuzzRuntimeObservation$' -fuzztime=15s -parallel=2
