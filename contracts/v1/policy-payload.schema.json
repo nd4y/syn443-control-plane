@@ -86,7 +86,8 @@
           "route.failover.v1",
           "route.decision.v1",
           "route.reserve-cooldown.v1",
-          "route.exit-ip.v1"
+          "route.exit-ip.v1",
+          "route.exit-country.v1"
         ]
       },
       "allOf": [
@@ -213,6 +214,14 @@
     },
     {
       "if": {"properties": {"requiredCapabilities": {"contains": {"const": "route.exit-ip.v1"}}}},
+      "then": {"properties": {
+        "schemaVersion": {"const": 2},
+        "operation": {"const": "configure"},
+        "requiredCapabilities": {"contains": {"const": "route.health.v1"}}
+      }}
+    },
+    {
+      "if": {"properties": {"requiredCapabilities": {"contains": {"const": "route.exit-country.v1"}}}},
       "then": {"properties": {
         "schemaVersion": {"const": 2},
         "operation": {"const": "configure"},

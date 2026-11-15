@@ -54,9 +54,10 @@ type DNSRule struct {
 	Server     string   `json:"server"`
 }
 type OutboundCheck struct {
-	Method     string `json:"method"`
-	Target     string `json:"target"`
-	ExpectedIP string `json:"expected_ip,omitempty"`
+	Method            string `json:"method"`
+	Target            string `json:"target"`
+	ExpectedIP        string `json:"expected_ip,omitempty"`
+	ExpectedExitClass string `json:"expected_exit_class,omitempty"`
 }
 type OutboundCheckPlan struct {
 	Outbound string          `json:"outbound"`
@@ -108,6 +109,23 @@ func DecodeNetworkSettings(raw []byte) (NetworkSettings, error) {
 	parsed, err := subscriptions.DecodeJSON(raw)
 	if err != nil || !boundedNumbers(parsed) {
 		return NetworkSettings{}, ErrInvalid
+	}
+	// Presence is part of the closed wire contract. A plain string field would
+	// otherwise collapse an explicit null/empty foreign-method predicate into
+	// its zero value before the compiler can reject the extra field.
+	root, _ := parsed.(map[string]any)
+	plans, _ := root["routeChecks"].([]any)
+	for _, plan := range plans {
+		object, _ := plan.(map[string]any)
+		checks, _ := object["checks"].([]any)
+		for _, rawCheck := range checks {
+			check, _ := rawCheck.(map[string]any)
+			_, hasIP := check["expected_ip"]
+			_, hasCountry := check["expected_exit_class"]
+			if hasIP != (check["method"] == "https_exit_ip") || hasCountry != (check["method"] == "https_exit_country") {
+				return NetworkSettings{}, ErrInvalid
+			}
+		}
 	}
 	return value, nil
 }
@@ -338,15 +356,24 @@ func outboundCheckTarget(check OutboundCheck) bool {
 	} else if check.ExpectedIP != "" {
 		return false
 	}
+	if check.Method == "https_exit_country" {
+		if check.ExpectedExitClass != "RU" && check.ExpectedExitClass != "NON_RU" {
+			return false
+		}
+	} else if check.ExpectedExitClass != "" {
+		return false
+	}
 	switch check.Method {
 	case "tcp", "ssh_banner":
 		host, port, err := net.SplitHostPort(raw)
 		return err == nil && outboundCheckHost(host) && outboundCheckPort(port)
-	case "tls", "https_204", "https_exit_ip":
+	case "tls", "https_204", "https_exit_ip", "https_exit_country":
 		target, err := url.Parse(raw)
 		return err == nil && target.Scheme == "https" && target.User == nil && target.Opaque == "" &&
 			!strings.Contains(raw, "#") && !strings.HasSuffix(target.Host, ":") && outboundCheckHost(target.Hostname()) &&
-			(target.Port() == "" || outboundCheckPort(target.Port()))
+			(target.Port() == "" || outboundCheckPort(target.Port())) &&
+			(check.Method != "https_exit_country" || (target.Path == "" || target.Path == "/") &&
+				target.RawPath == "" && target.RawQuery == "" && !target.ForceQuery)
 	default:
 		return false
 	}
@@ -448,7 +475,7 @@ func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]an
 		return nil, ErrInvalid
 	}
 	for _, check := range base.Checks {
-		if check.Method == "https_exit_ip" {
+		if check.Method == "https_exit_ip" || check.Method == "https_exit_country" {
 			return nil, ErrInvalid
 		}
 	}
