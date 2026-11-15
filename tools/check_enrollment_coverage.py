@@ -31,3 +31,9 @@ assert selected,"Bounded device runtime observation ingestion"
 value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
 print(f"Device runtime observation ingestion coverage: {value:.1f}% (minimum80%)")
 assert value>=80
+
+selected=[(count,hits) for location,(count,hits) in blocks.items() if "/internal/enrollment/chat_admin_grant.go:" in location]
+assert selected,"Owner-issued web-only chat grants"
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f"Web-only chat administrator grant coverage: {value:.1f}% (minimum80%)")
+assert value>=80

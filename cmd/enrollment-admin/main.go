@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -85,6 +86,20 @@ func run() error {
 	case "configuration-roles":
 		_, e = store.DB.ExecContext(ctx, deviceprovisioning.ConfigurationRoles)
 		return e
+	case "chat-web-admin":
+		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_CHAT_WEB_ADMIN_GRANT"), 8192)
+		if e != nil {
+			return e
+		}
+		var g enrollment.ChatWebAdminGrant
+		if identity.Decode(raw, &g, true) != nil {
+			return identity.ErrInvalid
+		}
+		hash, e := enrollment.AuthorizeChatWebAdmin(ctx, store.DB, c, g, time.Now())
+		if e != nil {
+			return e
+		}
+		return json.NewEncoder(os.Stdout).Encode(map[string]string{"grantHash": hash})
 	case "chat-admin":
 		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_CHAT_ADMIN_GRANT"), 8192)
 		if e != nil {
@@ -95,7 +110,7 @@ func run() error {
 			Subject string `json:"subject"`
 			Enabled bool   `json:"enabled"`
 		}
-		if identity.Decode(raw, &g, true) != nil || g.Issuer != c.Issuer || len(g.Subject) < 1 || len(g.Subject) > 256 {
+		if identity.Decode(raw, &g, true) != nil || (g.Issuer != c.Issuer && (c.ChatWebIssuer == "" || g.Issuer != c.ChatWebIssuer)) || len(g.Subject) < 1 || len(g.Subject) > 256 {
 			return identity.ErrInvalid
 		}
 		_, e = store.DB.ExecContext(ctx, `INSERT INTO chat_admins(owner,enabled) VALUES($1,$2) ON CONFLICT(owner) DO UPDATE SET enabled=excluded.enabled`, enrollment.Owner(g.Issuer, g.Subject), g.Enabled)

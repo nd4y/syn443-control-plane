@@ -36,9 +36,33 @@ there is no fallback to another realm after a failed token.
 `enrollment-admin chat-cleanup` removes at most 128 expired orphan uploads per
 invocation. Scheduling and production rollout are operator actions.
 
+The console BFF may explicitly set `chatApiOrigin` when the control and chat APIs
+have different HTTPS origins. Chat DPoP proofs bind the exact chat origin, while
+control proofs keep their original target. Nonces are cached separately, so
+alternating chat/control calls neither borrow a nonce nor cause repeated
+challenges. In console mode chat forwarding stays disabled unless this origin
+is configured. It grants no administrator authority. Console navigation/UI
+integration and live acceptance are separate gates.
+
+An owner can provision an account used only for web support through
+`enrollment-admin chat-web-admin`, using the owner-only
+`SYN443_CHAT_WEB_ADMIN_GRANT` file. It contains the pinned `issuer`, `subject`,
+explicit `enabled`, a future `until` no more than30 days away, and
+`expectedGrantHash` (empty for creation). The command returns `grantHash`; a
+changed grant must name the previous hash. Repeating an already committed grant
+is idempotent. A stale grant cannot restore withdrawn authority or overwrite an
+existing VPN account. Account, chat role and owner audit commit atomically.
+The new account has `device_limit=0`; real enrollment is denied even with a valid
+OIDC token. Normal device grants still require1..16. Run the owner-only migration
+before using this command on an older installation. Runtime roles cannot create
+these accounts, enable administrator roles or edit their audit. Existing VPN
+accounts can instead receive the separate explicit `chat-admin` role, retaining
+their device limit and entitlements. No live grant is enabled by source changes.
+
 The separate frontend/BFF executable reads an owner-only config from
 `SYN443_CHAT_WEB_CONFIG`, with `listen`, `origin`, `apiOrigin`, `issuer`, `clientId`,
-`audience`, `certificate`, `certificateKey`, and `fixtureHttp`. Production origins
+`audience`, `certificate`, `certificateKey`, and `fixtureHttp`, with optional
+`chatApiOrigin` for the console. Production origins
 must be HTTPS; the listener is loopback-bound, with normal certificate validation
 for outbound requests. The explicit fixture flag permits loopback HTTP only.
 Example public placeholders (certificate paths must be supplied at deployment):

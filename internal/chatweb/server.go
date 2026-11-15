@@ -80,6 +80,7 @@ type Config struct {
 	Listen              string `json:"listen"`
 	Origin              string `json:"origin"`
 	APIOrigin           string `json:"apiOrigin"`
+	ChatAPIOrigin       string `json:"chatApiOrigin,omitempty"`
 	Issuer              string `json:"issuer"`
 	ClientID            string `json:"clientId"`
 	Audience            string `json:"audience"`
@@ -103,6 +104,7 @@ type session struct {
 	key                    *ecdsa.PrivateKey
 	principal              identity.Principal
 	access, refresh, nonce string
+	chatNonce              string
 	accessUntil, expires   time.Time
 	ctx                    context.Context
 	cancel                 context.CancelFunc
@@ -128,7 +130,7 @@ func New(ctx context.Context, c Config, transport http.RoundTripper) (*Server, e
 	if c.ReauthenticationACR != "" && (!c.ControlConsole || !reauthenticationACR.MatchString(c.ReauthenticationACR)) {
 		return nil, invalid
 	}
-	if !validURL(c.Origin, true, c.FixtureHTTP) || !validURL(c.APIOrigin, true, c.FixtureHTTP) || !validURL(c.Issuer, false, c.FixtureHTTP) || c.ClientID == "" || len(c.ClientID) > 128 || c.Audience == "" || len(c.Audience) > 128 {
+	if !validURL(c.Origin, true, c.FixtureHTTP) || !validURL(c.APIOrigin, true, c.FixtureHTTP) || c.ChatAPIOrigin != "" && !validURL(c.ChatAPIOrigin, true, c.FixtureHTTP) || !validURL(c.Issuer, false, c.FixtureHTTP) || c.ClientID == "" || len(c.ClientID) > 128 || c.Audience == "" || len(c.Audience) > 128 {
 		return nil, invalid
 	}
 	p, e := identity.NewProvider(ctx, c.Issuer, c.Audience, c.ClientID, transport, c.FixtureHTTP)
@@ -275,7 +277,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	allowed := map[string]bool{"self": true, "inbox": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
 	sourceImport := s.config.ControlConsole && r.URL.Path == "/control/source/import"
 	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport)
-	if !control && (s.config.ControlConsole || !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action]) {
+	if !control && (s.config.ControlConsole && s.config.ChatAPIOrigin == "" || !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action]) {
 		fail(w, 404)
 		return
 	}
@@ -331,15 +333,21 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	uri := s.config.APIOrigin + "/v1/admin/chat/" + action
+	nonce := &v.nonce
+	if s.config.ChatAPIOrigin != "" && s.config.ChatAPIOrigin != s.config.APIOrigin {
+		uri = s.config.ChatAPIOrigin + "/v1/admin/chat/" + action
+		nonce = &v.chatNonce
+	}
 	if control {
 		if !v.principal.HasScope("syn443.control") {
 			fail(w, 403)
 			return
 		}
 		uri = s.config.APIOrigin + "/v1/control/action"
+		nonce = &v.nonce
 	}
 	for attempt := 0; attempt < 2; attempt++ {
-		proof, e := sign(v.key, "POST", uri, v.access, v.nonce, raw, s.clock())
+		proof, e := sign(v.key, "POST", uri, v.access, *nonce, raw, s.clock())
 		if e != nil {
 			fail(w, 503)
 			return
@@ -364,7 +372,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if res.StatusCode == 401 && attempt == 0 && safeNonce(res.Header.Get("DPoP-Nonce")) {
-			v.nonce = res.Header.Get("DPoP-Nonce")
+			*nonce = res.Header.Get("DPoP-Nonce")
 			continue
 		}
 		if res.StatusCode != 200 {

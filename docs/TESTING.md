@@ -1,5 +1,13 @@
 # Testing and release gates
 
+Console/chat integration adds actual proof/nonce HTTP boundaries for two pinned
+API origins and default-disabled chat forwarding. A separate80% owner-grant gate
+covers owner-only web accounts, zero-device enrollment denial, idempotent grant
+replay, CAS races, live withdrawal and transaction rollback on audit failure.
+The original1..16 database constraint is migrated in the real PostgreSQL test;
+normal device grants remain1..16. Console chat UI and actual deployment remain
+open until their own browser/live acceptance.
+
 Separate chat administrator issuers are covered by three required configuration
 and signed-token cases in `internal/enrollment/chat_provider_test.go` and the
 PostgreSQL `TestChatAdminAuthorityCannotCrossIssuersWithTheSameSubject` case.

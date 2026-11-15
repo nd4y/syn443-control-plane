@@ -1914,6 +1914,10 @@
         "internal/enrollment/chat_postgres_test.go",
         "internal/enrollment/chat_provider_test.go",
         "internal/enrollment/config.go",
+        "internal/enrollment/chat_admin_grant.go",
+        "internal/enrollment/chat_admin_grant_postgres_test.go",
+        "internal/enrollment/chat_admin_grant_test.go",
+        "internal/chatweb/chat_origin_test.go",
         "web-tests/chat.spec.js",
         "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],

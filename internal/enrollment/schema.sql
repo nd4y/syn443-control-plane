@@ -3,10 +3,21 @@ CREATE TABLE IF NOT EXISTS identity_clock (id boolean PRIMARY KEY CHECK(id), sec
 INSERT INTO identity_clock(id,second) VALUES(true,0) ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS identity_accounts (
  owner text PRIMARY KEY, issuer text NOT NULL, subject text NOT NULL,
- enabled boolean NOT NULL, device_limit integer NOT NULL CHECK(device_limit BETWEEN 1 AND 16),
+ enabled boolean NOT NULL, device_limit integer NOT NULL CHECK(device_limit BETWEEN 0 AND 16),
  valid_until bigint NOT NULL, grant_hash text NOT NULL, lock_guard integer NOT NULL DEFAULT 0,
  UNIQUE(issuer,subject)
 );
+-- Zero is reserved for owner-issued web-only accounts. Normal device grants
+-- still require 1..16 and enrollment checks the zero limit under the row lock.
+-- This owner-only migration also upgrades the original 1..16 constraint.
+ALTER TABLE identity_accounts DROP CONSTRAINT IF EXISTS identity_accounts_device_limit_check,
+ ADD CONSTRAINT identity_accounts_device_limit_check CHECK(device_limit BETWEEN 0 AND 16);
+CREATE TABLE IF NOT EXISTS identity_chat_admin_audit (
+ event_id text PRIMARY KEY, owner text NOT NULL REFERENCES identity_accounts(owner),
+ actor text NOT NULL, issued_at bigint NOT NULL, enabled boolean NOT NULL,
+ valid_until bigint NOT NULL, grant_hash text NOT NULL
+);
+REVOKE ALL ON identity_chat_admin_audit FROM PUBLIC;
 CREATE TABLE IF NOT EXISTS identity_devices (
  id text PRIMARY KEY, owner text NOT NULL REFERENCES identity_accounts(owner), jkt text NOT NULL UNIQUE,
  active boolean NOT NULL DEFAULT true, request_body bytea NOT NULL, receipt bytea NOT NULL,
