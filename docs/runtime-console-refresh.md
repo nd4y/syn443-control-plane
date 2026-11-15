@@ -28,14 +28,14 @@ check real new-observation updates, immutable old receipt time, local staleness,
 empty-to-populated views, hidden/section/auth suspension, single in-flight work,
 late responses, timeout and later recovery. The fixture retains an observation
 until a separate simulated producer updates it; a read cannot invent a heartbeat.
-All71 existing and new browser outcomes and all other required Actions jobs must
+All72 existing and new browser outcomes and all other required Actions jobs must
 pass. All builds and executable suites remain in Actions.
 
 A real browser login also remained busy while its HTTP request never completed.
 The shared JSON transport now bounds the complete request and response body to
 15 seconds and retains caller cancellation. A timed-out save keeps the exact
-pending operation for explicit retry; it is never retried automatically. Two
-additional cases cover a stalled login and an actually committed save whose
+pending operation for explicit retry; it is never retried automatically. Three
+additional cases cover a stalled initial session, login and an actually committed save whose
 response is withheld, including late responses and unchanged idempotency keys.
 
 Acceptance still requires exact artifact hashes, a guarded web-only pilot

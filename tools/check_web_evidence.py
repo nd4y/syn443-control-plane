@@ -84,10 +84,11 @@ expected.update({
     'a previously empty runtime card receives a later observation without a manual reload',
 })
 expected.update({
+    'stalled initial session never blocks sign-in indefinitely or paints a late identity',
     'stalled sign-in releases controls at its deadline and only an explicit retry navigates',
     'a committed save with a stalled response keeps its exact pending request for manual retry',
 })
-assert len(cases) >= 71
+assert len(cases) >= 72
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

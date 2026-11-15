@@ -3,6 +3,23 @@ const origin='http://127.0.0.1:17851';
 const plan={schemaVersion:1,graph:{profiles:{proxy:{sourceId:'source-a',profileId:'profile-a'}},chains:{},balancers:{},final:'proxy'},network:{schemaVersion:1,requiredNetworks:['tcp'],dnsFinal:'system',dnsStrategy:'prefer_ipv4'},activation:{timeoutSeconds:30,checks:[{id:'internet',type:'https_204',target:'https://health.example.invalid/generate_204',required:true}]}};
 const state=async request=>(await request.post(origin+'/fixture/state',{data:{}})).json();
 
+test('stalled initial session never blocks sign-in indefinitely or paints a late identity',async({page,request})=>{
+ let started=0,release,released=false;
+ const gate=new Promise(resolve=>{release=resolve;});
+ await page.route('**/session',async route=>{
+  started++;await gate;
+  try{await route.fulfill({json:{authenticated:true}});}catch{/* The initial session request was cancelled. */}finally{released=true;}
+ });
+ try{
+  await page.clock.install();await request.post(origin+'/fixture/reset',{data:{}});await page.goto(origin,{waitUntil:'commit'});
+  await expect.poll(()=>started).toBe(1);await expect(page.locator('#login')).toBeDisabled();await expect(page.locator('#workspace')).toBeHidden();
+  await page.clock.pauseAt(new Date(Date.now()+1000));await page.clock.runFor(15001);
+  await expect(page.locator('#login')).toBeEnabled();await expect(page.locator('#status')).toContainText('Сервер недоступен');
+  release();await expect.poll(()=>released).toBe(true);await page.clock.runFor(60000);
+  expect(started).toBe(1);await expect(page.locator('#workspace')).toBeHidden();await expect(page.locator('#signin')).toBeVisible();
+ }finally{release();}
+});
+
 test('stalled sign-in releases controls at its deadline and only an explicit retry navigates',async({page,request})=>{
  let attempts=0,release,released=false;
  const gate=new Promise(resolve=>{release=resolve;});

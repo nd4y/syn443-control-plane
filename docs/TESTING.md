@@ -58,6 +58,6 @@ pending operation; explicit retry still passes all live authority checks.
 actual device-session/SQL rollback/idempotency/rate/role and scoped-reader expiry
 checks. All64 browser outcomes must pass, including five named runtime cases.
 The [foreground refresh follow-up](runtime-console-refresh.md) adds five required
-clock-driven cases plus two shared-request timeout cases (71 total), including immutable receipts, hidden/section/session
+clock-driven cases plus three shared-request timeout cases (72 total), including immutable receipts, hidden/section/session
 fences, timeout and late-selection response rejection. Ingestion and the new reader each require80% coverage. No phone heartbeat or
 independent traffic attestation is established by these synthetic server/UI tests.
