@@ -147,7 +147,7 @@ const server=http.createServer(async(req,res)=>{
  case 'configuration.request.get':{const job=configurationJobs.get(p.id);send(job?200:403,job||{});break;}
  case 'configuration.inventory.get':{
   if(p.id==='device-unassigned'){send(200,{device:p.id,owner:'synthetic-user',state:'unassigned',revision:0,hash:'',policyRevision:3,issuedSettings:{revision:3,algorithmRevision:'m1-local-v1',outbounds:[{type:'direct',tag:'direct'}],routeFinal:'direct'},publicationSource:'unlinked',mode:'',approvalUntilMs:0,layers:[],activation:{state:'awaiting_report',activePolicyRevision:0}});break;}
-  if(!['device-a','device-expired','device-mismatch'].includes(p.id)){send(403,{});break;}
+  if(!['device-a','device-expired','device-mismatch',...(options.runtimeSecondDevice?['device-b']:[])].includes(p.id)){send(403,{});break;}
   const origin={kind:'template',layerId:'template-a',revision:2};
   send(200,{device:p.id==='device-mismatch'?'other-device':p.id,owner:'synthetic-user',state:p.id==='device-expired'?'expired':'assigned',revision:7,hash:'a'.repeat(64),policyRevision:23,publicationSource:p.id==='device-expired'||options.remoteChanged?'different_revision':'matches_desired',mode:'wifi',approvalUntilMs:1800003600000,
    ...(p.id==='device-a'?{issuedSettings:{revision:23,algorithmRevision:'m4-confirmed-v1',outbounds:[{type:'selector',tag:'selected'}]}}:{}),

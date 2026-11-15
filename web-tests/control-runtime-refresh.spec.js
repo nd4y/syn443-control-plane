@@ -38,8 +38,12 @@ test('runtime refresh pauses outside the visible device section and erases expir
  await visibility(page,true);await advance(page,request,180000);expect(sent).toBe(1);
  await visibility(page,false);await page.clock.runFor(5);await expect.poll(()=>sent).toBe(2);
  await expect(page.locator('#inventory-runtime')).toHaveText('Отчёт устарел');
- await page.getByRole('link',{name:'Телеметрия',exact:true}).click();await advance(page,request,120000);expect(sent).toBe(2);
- await page.getByRole('link',{name:'Устройства',exact:true}).click();await page.clock.runFor(5);await expect.poll(()=>sent).toBe(3);
+ await page.getByRole('link',{name:'Телеметрия',exact:true}).click();
+ await expect(page.locator('#inventory-view')).toBeHidden();
+ await advance(page,request,120000);expect(sent).toBe(2);
+ await page.getByRole('link',{name:'Устройства',exact:true}).click();
+ await expect(page.locator('#inventory-view')).toBeVisible();
+ await page.clock.runFor(5);await expect.poll(()=>sent).toBe(3);
  await request.post(origin+'/fixture/expire',{data:{}});await advance(page,request,60000);
  await expect(page.locator('#workspace')).toBeHidden();await expect(page.locator('#inventory-runtime')).toHaveText('');
  const after=sent;await advance(page,request,300000);expect(sent).toBe(after);
@@ -57,7 +61,7 @@ test('pending automatic runtime read stays single and cannot paint a changed dev
   }else await route.continue();
  });
  try{
-  await open(page,request);block=true;await advance(page,request,60000);await expect.poll(()=>held).toBe(1);
+  await open(page,request,{runtime:'recent',runtimeSecondDevice:true});block=true;await advance(page,request,60000);await expect.poll(()=>held).toBe(1);
   await expect(page.locator('#refresh-runtime')).toBeDisabled();await advance(page,request,5000);expect(held).toBe(1);
   await page.locator('#inventory-device').fill('device-b');await page.getByRole('button',{name:'Открыть карточку',exact:true}).click();
   await expect(page.locator('#inventory-status')).toHaveText('Конфигурация загружена.');
