@@ -358,3 +358,17 @@ pre:not(:empty) {
 #reauthentication{margin-block:1rem;max-inline-size:100%}
 .reauthentication-actions{display:flex;flex-wrap:wrap;gap:.75rem}
 .reauthentication-actions button{max-inline-size:100%;white-space:normal}
+/* Support uses the same PatternFly cards and controls as the console workspace. */
+.support-grid{display:grid;grid-template-columns:minmax(14rem,1fr) minmax(0,3fr);gap:var(--pf-t--global--spacer--md,1rem);align-items:start;margin-block-start:1rem}
+.support-grid>*{min-width:0}
+.support-inbox,.support-messages{list-style:none;padding:0;margin-block:1rem;overflow-wrap:anywhere}
+.support-inbox{max-height:45vh;overflow:auto}
+.support-messages{max-height:45vh;overflow:auto}
+.support-messages .message{padding-block:1rem;border-block-end:1px solid var(--pf-t--global--border--color--default,#444)}
+.support-messages .meta,.support-notice{font-size:.875rem;color:var(--pf-t--global--text--color--subtle,#4f5255)}
+.support-messages .message>div:not(.meta){white-space:pre-wrap;overflow-wrap:anywhere}
+.support-compose{display:grid;gap:.5rem}
+.support-compose input{max-width:100%}
+.support-actions{display:flex;flex-wrap:wrap;gap:.5rem}
+.support-notice{margin-block-start:1rem;overflow-wrap:anywhere}
+@media(max-width:1000px){.support-grid{grid-template-columns:minmax(0,1fr)}}

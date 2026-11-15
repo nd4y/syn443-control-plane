@@ -11,6 +11,7 @@ import {
   Title,
 } from '@patternfly/react-core';
 import { CaretDownIcon } from '@patternfly/react-icons';
+import { Support } from './support.jsx';
 
 // The controller writes the native value when it loads or clears a draft.
 function Select(props) {
@@ -44,6 +45,7 @@ export function Workspace() {
       <Drafts />
       <Publication />
       <Telemetry />
+      <Support />
     </main>
   );
 }

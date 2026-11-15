@@ -1885,6 +1885,9 @@
       "id": "CHAT-01",
       "status": "partial",
       "evidence": [
+        "console-ui/support.jsx",
+        "internal/chatweb/assets/support-controller.js",
+        "web-tests/control-chat.spec.js",
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
