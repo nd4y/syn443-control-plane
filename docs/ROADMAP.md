@@ -1,6 +1,7 @@
 # Implementation roadmap
 
 Current evidence and remaining scope: [implementation snapshot](implementation-status.md).
+Current accepted source and USB/Wi-Fi checks: [2026-11-15 checkpoint](non-lte-acceptance-20261115.md).
 The normative specification remains0.9; all292 requirements and98 scenarios are retained.
 
 ## M0 - contracts and executable reference core (foundation implemented)
@@ -11,7 +12,7 @@ not complete path discovery or a production service. See the historical M0 note.
 ## M1 - physical Android vertical gate (partial)
 Real isolated native/TUN ownership, direct/two-hop/NetBird forwarding, durable
 intent, bounded recovery, route evidence and reproducible OS scenarios are implemented.
-Accepted snapshot:159 JVM methods,138 Android outcomes per API29/35/37 and57
+Historical foundation snapshot:159 JVM methods,138 Android outcomes per API29/35/37 and57
 physical UI/storage cases plus actual USB Xperia Wi-Fi/route/controller/OS checks.
 Physical LTE/restricted LTE, natural Doze, unplugged battery and endurance remain
 open. Resource snapshots and emulator passes do not close these gates.

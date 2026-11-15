@@ -1651,10 +1651,11 @@
         "docs/control-session-reauthentication.md",
         "internal/chatweb/reauthentication_test.go",
         "internal/deviceprovisioning/reauthentication_authority_postgres_test.go",
-        "web-tests/control-reauthentication.spec.js"
+        "web-tests/control-reauthentication.spec.js",
+        "docs/non-lte-acceptance-20261115.md"
       ],
-      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open. Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. New Actions acceptance pending.",
-      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required. Explicit actor-private discard now has CAS/tombstone/replay fences and browser confirmation source; exact new CI is pending. Real configured Keycloak MFA acceptance and the complete native administration flow remain open."
+      "implementationScope": "Initial dark responsive control BFF/UI supports authorized source/profile metadata and private portable-network draft save/readback with exact-operation retries. Initial console Actions41447469608 all8 PASS, nine browser cases without skips; complete native/publish flow remains open. Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. Actions43655979806 passed all8 jobs including59 browser cases and actual isolated Keycloak OTP. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial.",
+      "remainingScope": "Full native editing, provenance/permissions, local experiments, independent preview/MFA publication, three-way conflict editing, assignments and complete settings remain required. Explicit actor-private discard now has CAS/tombstone/replay fences and browser confirmation source; exact new CI is pending. Real configured Keycloak MFA acceptance and the complete native administration flow remain open. Full normative clauses and excluded physical/operational gates remain required."
     },
     {
       "id": "EDIT-03",
@@ -1810,20 +1811,22 @@
         "docs/control-session-reauthentication.md",
         "internal/chatweb/reauthentication_test.go",
         "internal/deviceprovisioning/reauthentication_authority_postgres_test.go",
-        "web-tests/control-reauthentication.spec.js"
+        "web-tests/control-reauthentication.spec.js",
+        "docs/non-lte-acceptance-20261115.md"
       ],
-      "implementationScope": " Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. New Actions acceptance pending.",
-      "remainingScope": " Real configured Keycloak MFA acceptance and the complete native administration flow remain open."
+      "implementationScope": " Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. Actions43655979806 passed all8 jobs including59 browser cases and actual isolated Keycloak OTP. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial.",
+      "remainingScope": " Real configured Keycloak MFA acceptance and the complete native administration flow remain open. Full normative clauses and excluded physical/operational gates remain required."
     },
     {
       "id": "MOB-05",
       "text": "Карточка другого клиента показывает назначенные источники, эффективную политику, состояние синхронизации, доступную диагностику и историю. Редактирование явно называет адресата и не меняет VPN на телефоне администратора. Массовое изменение показывает число получателей и поддерживает пилотный rollout.",
       "status": "partial",
       "evidence": [
-        "docs/device-inventory.md"
+        "docs/device-inventory.md",
+        "docs/non-lte-acceptance-20261115.md"
       ],
-      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending.",
-      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open."
+      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Actions43649508396,43651567526 and43655979806 passed all mandatory jobs; live scoped discovery/card readback passed. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial.",
+      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open. Full normative clauses and excluded physical/operational gates remain required."
     },
     {
       "id": "MOB-06",
@@ -1840,10 +1843,11 @@
         "docs/control-session-reauthentication.md",
         "internal/chatweb/reauthentication_test.go",
         "internal/deviceprovisioning/reauthentication_authority_postgres_test.go",
-        "web-tests/control-reauthentication.spec.js"
+        "web-tests/control-reauthentication.spec.js",
+        "docs/non-lte-acceptance-20261115.md"
       ],
-      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending. Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. New Actions acceptance pending.",
-      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open. Real configured Keycloak MFA acceptance and the complete native administration flow remain open."
+      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Actions43649508396,43651567526 and43655979806 passed all mandatory jobs; live scoped discovery/card readback passed. Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. Actions43655979806 passed all8 jobs including59 browser cases and actual isolated Keycloak OTP. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial.",
+      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open. Real configured Keycloak MFA acceptance and the complete native administration flow remain open. Full normative clauses and excluded physical/operational gates remain required."
     },
     {
       "id": "MOB-08",
@@ -2448,10 +2452,11 @@
         "docs/control-session-reauthentication.md",
         "internal/chatweb/reauthentication_test.go",
         "internal/deviceprovisioning/reauthentication_authority_postgres_test.go",
-        "web-tests/control-reauthentication.spec.js"
+        "web-tests/control-reauthentication.spec.js",
+        "docs/non-lte-acceptance-20261115.md"
       ],
-      "implementationScope": " Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. New Actions acceptance pending.",
-      "remainingScope": " Real configured Keycloak MFA acceptance and the complete native administration flow remain open."
+      "implementationScope": " Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. Actions43655979806 passed all8 jobs including59 browser cases and actual isolated Keycloak OTP. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial.",
+      "remainingScope": " Real configured Keycloak MFA acceptance and the complete native administration flow remain open. Full normative clauses and excluded physical/operational gates remain required."
     },
     {
       "id": "SEC-11",

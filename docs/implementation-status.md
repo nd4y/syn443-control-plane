@@ -4,22 +4,19 @@ Snapshot: 2026-11-07. Specification0.9 contains292 requirements and98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
 
-## Current development branches
+## Current accepted checkpoint
 
-- [Android PR34](https://github.com/nd4y/syn443-android/pull/34):
-  [version 51 Actions](https://github.com/nd4y/syn443-android/actions/runs/42386332197)
-  passed the native/JVM/three-API matrix for the managed Wi-Fi candidate.
-  Device receipts and device state are tracked privately. The telemetry and
-  route cooldown update has a [separate Android 52 run](https://github.com/nd4y/syn443-android/actions/runs/42393024638).
-- [Control plane PR17](https://github.com/nd4y/syn443-control-plane/pull/17):
-  conditional device subscriptions, managed route checks and internal Wi-Fi
-  failover are followed by [exact telemetry and SQL restore CI](https://github.com/nd4y/syn443-control-plane/actions/runs/42392058600).
-  The restore test verifies device-policy delivery and chat attachment access
-  through the restricted API against an isolated restored database.
+See the [2026-11-15 source, CI and USB/Wi-Fi checkpoint](non-lte-acceptance-20261115.md)
+for the current Android v73 and Control Plane snapshots, delivery provenance,
+physical recovery, live console readback and remaining scope. This refresh does
+not promote a broad requirement from a component test or merge status.
 
-These branches are drafts and do not establish release or production acceptance.
+## Historical foundation integration - 2026-11-01
 
-## Accepted source and integration
+The following table and counts document the earlier accepted foundation.
+Current source and acceptance are pinned in the checkpoint above.
+
+
 
 | Component | Accepted implementation | Integration into main |
 | --- | --- | --- |
