@@ -6,6 +6,8 @@ let sources=new Map([['source-a',originalSource()]]),jobs=new Map();
 let shares=new Map();
 let layerDrafts=new Map(),discardedDrafts=new Set(),configurationJobs=new Map(),options={};
 let freshAssurance=false,assuranceRequests=[],authenticationStarts=0;
+let runtimeSamples=new Map(),runtimeClockOffset=0;
+const runtimeNow=()=>Date.now()+runtimeClockOffset;
 const server=http.createServer(async(req,res)=>{
  const send=(status,data)=>{const headers={'Content-Type':'application/json','Cache-Control':'no-store'};if(req.url.startsWith('/fixture/'))headers.Connection='close';res.writeHead(status,headers);res.end(JSON.stringify(data));};
  const asset=/^\/ui\/(?:console\.(?:js|css)|asset-[A-Z0-9]{8}\.(?:woff2|svg))$/.test(req.url);
@@ -23,7 +25,17 @@ const server=http.createServer(async(req,res)=>{
  const limit=importing?14*1024*1024+65536:278528;
  let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>limit){send(413,{});return;}}
  let body;try{body=JSON.parse(raw||'{}');}catch{send(400,{});return;}
- if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];freshAssurance=false;assuranceRequests=[];authenticationStarts=0;const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();shares=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
+ if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];freshAssurance=false;assuranceRequests=[];authenticationStarts=0;runtimeSamples=new Map();runtimeClockOffset=0;const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();shares=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
+ if(req.url==='/fixture/runtime-clock'){
+  if(!Number.isSafeInteger(body.advanceMs)||body.advanceMs<0||body.advanceMs>3600000){send(400,{});return;}
+  runtimeClockOffset+=body.advanceMs;send(200,{});return;
+ }
+ if(req.url==='/fixture/runtime-update'){
+  if(!/^[a-z0-9-]{1,64}$/.test(body.device||'')||!['online','recovering'].includes(body.phase||'online')){send(400,{});return;}
+  const previous=runtimeSamples.get(body.device);
+  runtimeSamples.set(body.device,{at:runtimeNow(),sequence:(previous?.sequence||0)+1,phase:body.phase||'online'});
+  options.runtime='recent';send(200,{});return;
+ }
  if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],layerDrafts:[...layerDrafts.values()],sources:[...sources.values()],operations:operations.size,calls,assuranceRequests,authenticationStarts});return;}
  if(req.url==='/fixture/reauth-complete'){freshAssurance=true;send(200,{});return;}
  if(req.url==='/fixture/revoke'){denied=true;send(200,{});return;}
@@ -52,15 +64,16 @@ const server=http.createServer(async(req,res)=>{
  case 'configuration.runtime.get':{
   if(options.runtimeDenied){send(403,{});break;}
   if(options.runtimeUnavailable){send(503,{});break;}
-  const now=Date.now(),kind=options.runtime||'none';
+  const now=runtimeNow(),kind=options.runtime||'none';
   if(kind==='none'){send(200,{device:p.id,observedAtMs:now,state:'none'});break;}
-  const ago=kind==='stale'?181000:kind==='expires'?178000:0;
-  const report={version:1,sequence:1,build:74,phase:'online',policyRevision:23,engineKnown:true,engineActive:true,network:'wifi',sampledAtMs:now-ago,receivedAtMs:now-ago};
-  let device=p.id,state=ago>=180000?'stale':'recent';
+  if(!runtimeSamples.has(p.id))runtimeSamples.set(p.id,{at:now-(kind==='stale'?181000:kind==='expires'?178000:0),sequence:1,phase:'online'});
+  const sample=runtimeSamples.get(p.id);
+  const report={version:1,sequence:sample.sequence,build:74,phase:sample.phase,policyRevision:23,engineKnown:true,engineActive:true,network:'wifi',sampledAtMs:sample.at,receivedAtMs:sample.at};
+  let device=p.id,state=now-sample.at>=180000?'stale':'recent';
   if(kind==='foreign')device='another-device';
   if(kind==='extra')report.secret='synthetic-untrusted';
   if(kind==='future')report.receivedAtMs=report.sampledAtMs=now+1;
-  if(kind==='old-sample')report.sampledAtMs=now-120001;
+  if(kind==='old-sample')report.sampledAtMs=sample.at-120001;
   if(kind==='false-online')report.engineActive=false;
   if(kind==='false-fresh')state='stale';
   send(200,{device,observedAtMs:now,state,report});break;

@@ -13,6 +13,8 @@ let sourceShares=null;
 let devicesNext='',deviceIds=new Set();
 let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticationIssuer='',reauthenticationFocus=false;
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
+let runtimeRefreshTimer=null,runtimeRequest=null,runtimePolling=false,runtimeLastStarted=0;
+const runtimeRefreshMs=60000;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message,tone='info'){
@@ -42,7 +44,7 @@ function updateSectionNav(focus=false){
   else heading.focus({preventScroll:true});
   window.scrollTo(0,0);
  }
- if(runtimeReport)renderRuntime();
+ syncRuntimeVisibility();
 }
 function actionButton(){
  const button=document.createElement('button');
@@ -142,7 +144,7 @@ function applyRouteChecks(state){
  status('Проверки изменены в черновике. Сохраните его, чтобы не потерять правки.');
 }
 function controls(){
- $('refresh-runtime').disabled=busy||!authenticated||!layerInventory;
+ $('refresh-runtime').disabled=busy||!!runtimeRequest||!authenticated||!layerInventory;
  $('reauthentication').hidden=!authenticated||!reauthenticationNeeded;
  $('reauthentication-unavailable').hidden=reauthenticationAvailable;
  $('reauthentication-start').disabled=busy||!authenticated||!reauthenticationAvailable;
@@ -201,10 +203,10 @@ function erase(){
  $('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';
  for(const id of ['sources','profiles','source-details','inventory-status'])$(id).replaceChildren();
 }
-async function request(path,body){
+async function request(path,body,signal){
  const raw=typeof body==='string'?body:JSON.stringify(body);
  if(path===sourceImportPath?raw.length>14*1024*1024+65536:new TextEncoder().encode(raw).length>278528)throw Error('size');
- const response=await fetch(path,{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:{'Content-Type':'application/json','X-Syn443-CSRF':'1'},body:raw});
+ const response=await fetch(path,{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:{'Content-Type':'application/json','X-Syn443-CSRF':'1'},body:raw,signal});
  if(response.status===401&&path==='/session'&&!authenticated)throw Error('anonymous');
  if(response.status===403&&(path==='/control/action'||path===sourceImportPath)){
   let challenge;
@@ -219,7 +221,7 @@ async function request(path,body){
  return response.json();
 }
 const envelope=(action,payload)=>JSON.stringify({version:1,action,requestId:crypto.randomUUID(),payload});
-const action=(name,payload)=>request('/control/action',envelope(name,payload));
+const action=(name,payload,signal)=>request('/control/action',envelope(name,payload),signal);
 function clearTelemetry(){
  $('telemetry-status').textContent='';$('telemetry-rows').replaceChildren();$('telemetry-view').hidden=true;
 }
@@ -449,6 +451,8 @@ async function loadInventory(){
  }
 }
 function clearRuntime(){
+ runtimePolling=false;clearTimeout(runtimeRefreshTimer);runtimeRefreshTimer=null;
+ const prior=runtimeRequest;runtimeRequest=null;prior?.controller.abort();
  runtimeEpoch++;runtimeReport=null;runtimeDeadline=0;clearTimeout(runtimeTimer);runtimeTimer=null;
  for(const id of ['inventory-runtime','inventory-runtime-detail','inventory-runtime-time'])$(id).replaceChildren();
  $('inventory-runtime-time').hidden=true;$('inventory-runtime-time').removeAttribute('datetime');delete $('inventory-runtime').dataset.tone;
@@ -477,20 +481,52 @@ function renderRuntime(){
  const time=$('inventory-runtime-time');time.dateTime=inventoryDate(r.receivedAtMs);time.textContent='Получен сервером: '+new Date(r.receivedAtMs).toLocaleString('ru-RU');time.hidden=false;
  if(recent&&!document.hidden&&$('inventory-view').getClientRects().length)runtimeTimer=setTimeout(renderRuntime,Math.max(1,runtimeDeadline-performance.now()));
 }
-async function loadRuntime(){
- const device=layerInventory?.device;if(!deviceID.test(device||''))throw Error('invalid');
- clearRuntime();const epoch=runtimeEpoch,started=performance.now();
- $('inventory-runtime').textContent='Загружаем состояние…';
- try{
-  const value=await action('configuration.runtime.get',{id:device});
-  if(epoch!==runtimeEpoch||!authenticated||layerInventory?.device!==device)return;
-  const checked=checkedRuntime(value,device);runtimeReport=checked?.report||null;runtimeDeadline=started+(checked?.remaining||0);renderRuntime();
- }catch(error){
-  if(['login','denied'].includes(error.message))throw error;
-  if(epoch!==runtimeEpoch)return;
-  clearRuntime();$('inventory-runtime').textContent='Состояние недоступно';
-  $('inventory-runtime-detail').textContent=error.message==='invalid'?'Сервер вернул некорректный отчёт.':'Повторите обновление состояния. Карточка конфигурации сохранена.';
+function runtimeVisible(){return authenticated&&!!layerInventory&&!document.hidden&&$('inventory-view').getClientRects().length>0;}
+function scheduleRuntimeRefresh(){
+ clearTimeout(runtimeRefreshTimer);runtimeRefreshTimer=null;
+ if(!runtimePolling||!runtimeVisible()||runtimeRequest)return;
+ runtimeRefreshTimer=setTimeout(()=>{
+  runtimeRefreshTimer=null;
+  if(!runtimePolling||!runtimeVisible())return;
+  if(busy){runtimeRefreshTimer=setTimeout(scheduleRuntimeRefresh,1000);return;}
+  void loadRuntime(true).catch(error=>{
+   if(['login','denied'].includes(error.message))status(error.message==='login'?'Сессия завершена. Войдите снова.':'Доступ отозван или недостаточно прав.','danger');
+  });
+ },Math.max(1,runtimeLastStarted+runtimeRefreshMs-performance.now()));
+}
+function syncRuntimeVisibility(){
+ if(runtimeReport)renderRuntime();
+ if(runtimeVisible())scheduleRuntimeRefresh();
+ else{
+  clearTimeout(runtimeRefreshTimer);runtimeRefreshTimer=null;
+  if(runtimeRequest?.background){const old=runtimeRequest;runtimeRequest=null;runtimeEpoch++;old.controller.abort();controls();}
  }
+}
+function loadRuntime(background=false){
+ const device=layerInventory?.device;if(!deviceID.test(device||''))throw Error('invalid');
+ if(runtimeRequest?.device===device)return runtimeRequest.promise;
+ if(!background)clearRuntime();
+ const epoch=runtimeEpoch,started=performance.now();runtimeLastStarted=started;runtimePolling=true;
+ const owner={device,background,controller:new AbortController(),timedOut:false,promise:null,timeout:null};runtimeRequest=owner;
+ owner.timeout=setTimeout(()=>{owner.timedOut=true;owner.controller.abort();},15000);
+ if(!background)$('inventory-runtime').textContent='Загружаем состояние…';
+ controls();
+ owner.promise=(async()=>{try{
+   const value=await action('configuration.runtime.get',{id:device},owner.controller.signal);
+   if(epoch!==runtimeEpoch||!authenticated||layerInventory?.device!==device)return;
+   const checked=checkedRuntime(value,device);runtimeReport=checked?.report||null;runtimeDeadline=started+(checked?.remaining||0);renderRuntime();
+  }catch(error){
+   if(['login','denied'].includes(error.message))throw error;
+   if(epoch!==runtimeEpoch||owner.controller.signal.aborted&&!owner.timedOut)return;
+   clearRuntime();$('inventory-runtime').textContent='Состояние недоступно';
+   $('inventory-runtime-detail').textContent=error.message==='invalid'?'Сервер вернул некорректный отчёт.':'Повторите обновление состояния. Карточка конфигурации сохранена.';
+   runtimePolling=authenticated&&layerInventory?.device===device;scheduleRuntimeRefresh();
+  }finally{
+   clearTimeout(owner.timeout);
+   if(runtimeRequest===owner){runtimeRequest=null;scheduleRuntimeRefresh();}
+   controls();
+  }})();
+ return owner.promise;
 }
 function openLinkedDevice(){
  const device=linkedDevice();
@@ -674,7 +710,7 @@ $('refresh-devices').onclick=()=>work(()=>loadDevices());
 $('reauthentication-start').onclick=()=>work(beginReauthentication);
 $('reauthentication-check').onclick=()=>work(checkReauthentication);
 $('refresh-runtime').onclick=()=>work(loadRuntime);
-document.addEventListener('visibilitychange',()=>{if(runtimeReport)renderRuntime();});
+document.addEventListener('visibilitychange',syncRuntimeVisibility);
 $('more-devices').onclick=()=>work(()=>loadDevices(true));
 $('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>work(()=>sources(true));$('inventory-form').onsubmit=event=>{event.preventDefault();if(authenticated&&!pending)void work(loadInventory);};
 $('inventory-device').oninput=()=>{

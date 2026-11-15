@@ -1485,7 +1485,8 @@
         "internal/enrollment/runtime_observation_test.go",
         "internal/enrollment/runtime_observation_postgres_test.go",
         "internal/deviceprovisioning/runtime_observation_postgres_test.go",
-        "web-tests/control-runtime.spec.js"
+        "web-tests/control-runtime.spec.js",
+        "docs/runtime-console-refresh.md"
       ],
       "implementationScope": " Bounded current-key runtime observation ingestion and scoped audited web readback with explicit sample/receipt age and no inferred online attestation. New64-browser/SQL/fuzz Actions evidence pending.",
       "remainingScope": " Android durable sender, actual phone/server runtime readback and full normative telemetry/native administration remain open."
@@ -1807,7 +1808,8 @@
         "internal/enrollment/runtime_observation_test.go",
         "internal/enrollment/runtime_observation_postgres_test.go",
         "internal/deviceprovisioning/runtime_observation_postgres_test.go",
-        "web-tests/control-runtime.spec.js"
+        "web-tests/control-runtime.spec.js",
+        "docs/runtime-console-refresh.md"
       ],
       "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending. Bounded current-key runtime observation ingestion and scoped audited web readback with explicit sample/receipt age and no inferred online attestation. New64-browser/SQL/fuzz Actions evidence pending.",
       "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open. Android durable sender, actual phone/server runtime readback and full normative telemetry/native administration remain open."
@@ -1846,7 +1848,8 @@
         "internal/enrollment/runtime_observation_test.go",
         "internal/enrollment/runtime_observation_postgres_test.go",
         "internal/deviceprovisioning/runtime_observation_postgres_test.go",
-        "web-tests/control-runtime.spec.js"
+        "web-tests/control-runtime.spec.js",
+        "docs/runtime-console-refresh.md"
       ],
       "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Actions43649508396,43651567526 and43655979806 passed all mandatory jobs; live scoped discovery/card readback passed. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial. Bounded current-key runtime observation ingestion and scoped audited web readback with explicit sample/receipt age and no inferred online attestation. New64-browser/SQL/fuzz Actions evidence pending.",
       "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open. Full normative clauses and excluded physical/operational gates remain required. Android durable sender, actual phone/server runtime readback and full normative telemetry/native administration remain open."

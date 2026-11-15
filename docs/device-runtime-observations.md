@@ -26,6 +26,8 @@ distinguish no observation, one received within180 seconds and an older observat
 The console labels this as **reported by the client**, with server receipt time;
 it does not independently attest to current traffic or route health. The UI ages
 the observation using elapsed time and removes it on a denied/changed selection.
+Its [bounded foreground refresh](runtime-console-refresh.md) fetches later reports
+while the selected card is visible. A read never renews the stored receipt.
 
 The Android sender must reuse the existing supervisor and account transport,
 send at most once per60 seconds, retain a single durable pending operation and
