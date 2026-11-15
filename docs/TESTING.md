@@ -1,5 +1,11 @@
 # Testing and release gates
 
+Separate chat administrator issuers are covered by three required configuration
+and signed-token cases in `internal/enrollment/chat_provider_test.go` and the
+PostgreSQL `TestChatAdminAuthorityCannotCrossIssuersWithTheSameSubject` case.
+They retain single-issuer discovery, separate client/audience, DPoP and live SQL
+authority. Exact-head Actions and live pilot integration remain required.
+
 Device discovery adds required PostgreSQL scope/expiry, pagination, redacted
 metadata, activation-versus-connectivity, audit failure and authority expiry
 under a real row lock. Four mandatory browser cases cover ordinary selection,

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"github.com/jackc/pgx/v5"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"regexp"
@@ -38,6 +39,7 @@ type Config struct {
 	ChatWebOrigin         string            `json:"chatWebOrigin"`
 	ChatWebClientID       string            `json:"chatWebClientId"`
 	ChatWebAudience       string            `json:"chatWebAudience"`
+	ChatWebIssuer         string            `json:"chatWebIssuer"`
 }
 
 func PrivateFile(path string, max int64) ([]byte, error) {
@@ -75,7 +77,7 @@ func ReadConfig(path string) (Config, error) {
 	return c, nil
 }
 func (c Config) ValidateChat() error {
-	if c.ChatWebOrigin == "" && c.ChatWebClientID == "" && c.ChatWebAudience == "" {
+	if c.ChatWebOrigin == "" && c.ChatWebClientID == "" && c.ChatWebAudience == "" && c.ChatWebIssuer == "" {
 		return nil
 	}
 	u, e := url.Parse(c.ChatWebOrigin)
@@ -83,6 +85,26 @@ func (c Config) ValidateChat() error {
 		return identity.ErrInvalid
 	}
 	return nil
+}
+
+// ChatProvider pins one operator-owned web issuer. An omitted override preserves
+// existing deployments; it never tries multiple issuers or borrows device tokens.
+func (c Config) ChatProvider(ctx context.Context, transport http.RoundTripper) (Verifier, error) {
+	if e := c.ValidateChat(); e != nil {
+		return nil, e
+	}
+	if c.ChatWebOrigin == "" {
+		return nil, nil
+	}
+	issuer := c.Issuer
+	if c.ChatWebIssuer != "" {
+		issuer = c.ChatWebIssuer
+	}
+	provider, e := identity.NewProvider(ctx, issuer, c.ChatWebAudience, c.ChatWebClientID, transport, c.FixtureHTTP)
+	if e != nil {
+		return nil, e
+	}
+	return provider, nil
 }
 func OpenStore(c Config) (*Store, error) {
 	key, e := base64.StdEncoding.Strict().DecodeString(c.EncryptionKey)

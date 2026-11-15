@@ -25,7 +25,14 @@ with `enrollment-admin chat-admin` and an owner-only JSON grant file supplied in
 source control. Run existing schema migration before enabling chat.
 
 Enrollment config adds `chatEnabled`, `chatWebOrigin`, `chatWebClientId` and
-`chatWebAudience`. Omit all three web fields when only Android is enabled.
+`chatWebAudience`, with an optional `chatWebIssuer`. Omit all web fields when
+only Android is enabled. The optional issuer pins a separate administrator realm;
+when absent the existing enrollment issuer is used. Each deployment accepts one
+pinned web issuer, its separate client/audience and a live SQL grant keyed by both
+issuer and subject. A same-named device account or a device session grants no web
+authority. Only the explicit fixture flag allows loopback HTTP. Issuer discovery
+and JWKS use the same pinned provider and bounded cache as device authentication;
+there is no fallback to another realm after a failed token.
 `enrollment-admin chat-cleanup` removes at most 128 expired orphan uploads per
 invocation. Scheduling and production rollout are operator actions.
 
@@ -51,6 +58,12 @@ again and does not lose SQL history. Browser JavaScript receives no OAuth tokens
 Cookies use HttpOnly, Secure, host-only scope and SameSite=Lax. State/cookie and
 PKCE bind the callback; all browser mutations require the exact Origin and CSRF
 header. CSP prevents inline scripts, frames and external connections.
+
+Configuration and signed-token tests cover both the default and explicit web
+issuer, fixture-only HTTP, unsafe/partial/duplicate fields, foreign signatures,
+issuer/client/audience rejection and bounded discovery. A PostgreSQL HTTP case
+checks that equal subjects across two issuers cannot share administrator rights,
+and that withdrawal leaves the ordinary device conversation intact.
 
 SQL tests cover account/device ownership, live administrator withdrawal including
 pending uploads, concurrent idempotent sends/replay, a complete 25 MiB transfer,
