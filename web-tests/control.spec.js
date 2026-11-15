@@ -442,7 +442,7 @@ test('console shell fits a narrow screen and retains a keyboard scroll region',a
  await page.screenshot({path:'test-results/console-visual/mobile.png',animations:'disabled',timeout:8000});
  await toggle.press('Enter');
  await expect(toggle).toHaveAttribute('aria-expanded','true');
- await expect(nav.getByRole('link')).toHaveCount(5);
+ await expect(nav.getByRole('link')).toHaveText(['Устройства','Источники','Черновики','Публикация','Телеметрия','Чат поддержки']);
  const telemetry=nav.getByRole('link',{name:'Телеметрия'});
  const target=await telemetry.boundingBox();
  expect(target.height).toBeGreaterThanOrEqual(44);

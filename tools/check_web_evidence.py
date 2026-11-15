@@ -88,7 +88,16 @@ expected.update({
     'stalled sign-in releases controls at its deadline and only an explicit retry navigates',
     'a committed save with a stalled response keeps its exact pending request for manual retry',
 })
-assert len(cases) >= 72
+expected.update({
+    'PatternFly console chat sends hostile text safely without leaving device administration',
+    'PatternFly console chat transfers and verifies a full 25 MiB file',
+    'PatternFly console chat retries a lost acknowledgment without duplicate delivery',
+    'chat authority withdrawal erases its thread and preserves an unrelated console draft',
+    'console logout cancels a late chat response and never paints the previous session',
+    'console chat backs off failures and hidden navigation cannot bypass its admission',
+    'console chat has a narrow empty state and rejects oversize attachments locally',
+})
+assert len(cases) >= 79
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

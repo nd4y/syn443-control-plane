@@ -41,8 +41,14 @@ have different HTTPS origins. Chat DPoP proofs bind the exact chat origin, while
 control proofs keep their original target. Nonces are cached separately, so
 alternating chat/control calls neither borrow a nonce nor cause repeated
 challenges. In console mode chat forwarding stays disabled unless this origin
-is configured. It grants no administrator authority. Console navigation/UI
-integration and live acceptance are separate gates.
+is configured. It grants no administrator authority. The PatternFly console adds
+a support workspace with its own conversation list, text/file controls, explicit
+retry and an empty state. It shares the standalone transfer controller; upload
+identities, chunk hashes, final download verification and immutable send retries
+are preserved. Workspace hiding cancels owned requests and polling; logout clears
+the chat state and revokes prepared download URLs. Failure polling backs off to
+60/120/240/300 seconds, with one owned attempt and a manual refresh floor.
+Exact-head browser and live acceptance remain separate gates.
 
 An owner can provision an account used only for web support through
 `enrollment-admin chat-web-admin`, using the owner-only
