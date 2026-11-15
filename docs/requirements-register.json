@@ -24,7 +24,8 @@
         "internal/decision/decision_test.go",
         "contracts/README.md",
         "docs/managed-policy.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/adaptive-catalogue-snapshot.md"
       ]
     },
     {
@@ -587,7 +588,8 @@
         "internal/deviceprovisioning/network.go",
         "internal/deviceprovisioning/network_postgres_test.go",
         "internal/deviceprovisioning/layer_inventory_postgres_test.go",
-        "docs/device-activation-report.md"
+        "docs/device-activation-report.md",
+        "docs/adaptive-catalogue-snapshot.md"
       ],
       "implementationScope": "Bounded portable network layers, private SQL drafts, persistent approvals and independent source-to-publisher composition. The signed issuance is atomically linked to the exact approved desired revision. Full settings and final device acceptance remain open."
     },

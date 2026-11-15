@@ -63,6 +63,13 @@ jobs:
       - run: go mod verify
       - run: go vet ./...
       - run: go test -race -count=1 -coverprofile=coverage.out ./...
+      - name: Require actual adaptive catalogue snapshot outcomes
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -json ./internal/configuration -run '^TestAdaptiveSnapshot' | tee adaptive-catalogue-tests.jsonl
+          python3 tools/check_adaptive_snapshot_evidence.py adaptive-catalogue-tests.jsonl
+          python3 tools/check_public_data.py adaptive-catalogue-tests.jsonl
+          bash tools/scan_secrets.sh adaptive-catalogue-tests.jsonl
       - run: python3 tools/check_coverage.py
       - run: go test ./internal/decision -run '^$' -fuzz '^FuzzDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/routegraph -run '^$' -fuzz '^FuzzRouteGraphDecode$' -fuzztime=15s -parallel=2
@@ -151,6 +158,7 @@ jobs:
           name: control-plane-test-evidence
           path: |
             coverage.out
+            adaptive-catalogue-tests.jsonl
             dependency-inventory.json
           retention-days: 14
   catalog:

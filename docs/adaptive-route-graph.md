@@ -13,6 +13,9 @@ class. A valid graph may have no eligible path on the current network; that is
 not permission to fall back to direct traffic.
 
 Metadata IDs bind one-to-one to an independently authorized immutable catalogue.
+The unactivated [catalogue snapshot compiler](adaptive-catalogue-snapshot.md)
+owns that finite graph/profile binding; its source and Actions acceptance are
+separate from signed issuance and runtime activation.
 Metadata cannot grant access to another provider or inject transport credentials.
 Actual protocol capabilities and TLS/SSH policies are checked separately against
 the normalized profile. Declared exit metadata is not proof of the observed exit.
