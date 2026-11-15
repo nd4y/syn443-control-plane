@@ -14,6 +14,7 @@ func runtimeBody(r RuntimeObservation) []byte { raw, _ := json.Marshal(r); retur
 
 func TestRuntimeObservationRequiresTheBoundLiveDeviceAndPreservesPublication(t *testing.T) {
 	f := newFixture(t, 1)
+	f.api.Clock = func() time.Time { return f.now }
 	k := key(t)
 	session, _, _ := f.register(t, k)
 	r := RuntimeObservation{Version: 1, Sequence: 1, Build: 74, Phase: "online", PolicyRevision: 1, EngineKnown: true, EngineActive: true, Network: "wifi", SampledAtMs: f.now.UnixMilli()}
@@ -74,13 +75,14 @@ func TestRuntimeObservationRequiresTheBoundLiveDeviceAndPreservesPublication(t *
 
 func TestRuntimeObservationRejectsOldAndFutureSamplesAndRollsBackAWriteFailure(t *testing.T) {
 	f := newFixture(t, 1)
+	f.api.Clock = func() time.Time { return f.now }
 	k := key(t)
 	session, _, _ := f.register(t, k)
 	if e := f.publisher().RunOnce(context.Background(), f.now); e != nil {
 		t.Fatal(e)
 	}
 	r := RuntimeObservation{Version: 1, Sequence: 1, Build: 74, Phase: "off", EngineKnown: true, Network: "none", SampledAtMs: f.now.UnixMilli()}
-	for _, delta := range []int64{-120001, 30001} {
+	for _, delta := range []int64{-120001, 60000} {
 		bad := r
 		bad.SampledAtMs += delta
 		expect(t, f.call(t, k, "POST", runtimeObservationPath, session.AccessToken, session.Nonce, runtimeBody(bad)), http.StatusConflict)

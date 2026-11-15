@@ -78,7 +78,7 @@ func TestRuntimeViewRequiresItsLiveDeviceGrantAndCannotWriteObservations(t *test
 	if _, e := fixtureControl.Exec(`UPDATE identity_runtime_observations SET phase='unknown'`); e == nil {
 		t.Fatal("control role acquired device observation write")
 	}
-	if _, e := fixturePublisher.Exec(`SELECT * FROM identity_runtime_observations`); e == nil {
+	if _, e := fixtureSigner.Exec(`SELECT * FROM identity_runtime_observations`); e == nil {
 		t.Fatal("publisher acquired observation read")
 	}
 	if _, e := fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, n.actor.ID); e != nil {

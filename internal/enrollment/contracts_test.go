@@ -94,6 +94,8 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 	}
 	paths := doc["paths"].(map[string]any)
 	expected := map[string]bool{"/v1/devices/enroll": true, "/v1/identity/devices/revoke": true, "/v1/device/session/refresh": true, "/v1/device/revoke": true, "/v1/device/policy": true, "/v1/device/control-panel": true, "/v1/device/overlay/fetch": true, "/v1/device/overlay/consume": true, "/v1/device/capabilities": true, "/v1/devices/capabilities": true, deviceFetchClaimPath: true, deviceFetchResultPath: true, deviceFetchV2ClaimPath: true, deviceFetchV2ResultPath: true, telemetryPath: true}
+	expected[runtimeObservationPath] = true
+	expected[activationStatusPath] = true
 	if len(paths) != len(expected) {
 		t.Fatal("unexpected API scope")
 	}
