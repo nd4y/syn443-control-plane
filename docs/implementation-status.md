@@ -7,9 +7,11 @@ This document supersedes repository-wide readiness claims in historical stage no
 ## Current accepted checkpoint
 
 See the [2026-11-15 source, CI and USB/Wi-Fi checkpoint](non-lte-acceptance-20261115.md)
-for the current Android v73 and Control Plane snapshots, delivery provenance,
+for the earlier Android v73 and Control Plane snapshots, delivery provenance,
 physical recovery, live console readback and remaining scope. This refresh does
 not promote a broad requirement from a component test or merge status.
+The [v75 runtime checkpoint](runtime-acceptance-20261115.md) supersedes its
+runtime delivery and integration status without closing the remaining milestones.
 
 ## Historical foundation integration - 2026-11-01
 

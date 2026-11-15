@@ -1,5 +1,9 @@
 # Accepted non-LTE checkpoint - 2026-11-15
 
+Historical v73 checkpoint. The [later v75 runtime acceptance](runtime-acceptance-20261115.md)
+supersedes the delivery, runtime-report and integration status below; these earlier
+checks remain evidence only for their stated source versions.
+
 This checkpoint records specific source, CI and physical evidence. Full M1-M5,
 version1.0 and production acceptance remain open. The normative specification's
 292 requirements and98 acceptance scenarios are unchanged. LTE, restricted LTE,
