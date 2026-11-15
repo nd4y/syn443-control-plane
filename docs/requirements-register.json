@@ -40,7 +40,9 @@
       "id": "ARC-05",
       "text": "Разрешённый граф конечен и объявлен шаблонами ingress/transit/egress с cardinality/edge constraints. Reference limit: до4096 различных цепочек на intent, четыре proxy hops, до64 resident frontier states плюс компактный cursor; каталог500профилей не означает500 в каждой позиции четырёх hops. Preview вычисляет/оценивает верхнюю границу, превышение отклоняется с предложением сузить шаблон. Нельзя незаметно обрезать хвост и затем заявить полный coverage. Порядок enumeration и продолжение детерминированы; на малом конечном fixture полнота обхода проверяется.",
       "status": "planned",
-      "evidence": []
+      "evidence": [
+        "docs/chat-acceptance-20261115.md"
+      ]
     },
     {
       "id": "ARC-06",
@@ -930,7 +932,8 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/chat-acceptance-20261115.md"
       ],
       "text": "Одно нажатие «Подключиться» в приложении или плитке Android транзакционно сохраняет desiredOn=true, ссылку на проверенную желаемую конфигурацию/configRevision, режим и монотонный intentGeneration до запуска побочных эффектов. UI, плитка, уведомление и разрешённый ADB/API используют один сериализованный контракт команд и один источник состояния; создание Activity не является командой подключения. Намерение и конфигурация переживают смерть UI/контроллера/сервиса и допустимый ОС перезапуск, не зависят от памяти процесса и восстанавливаются с проверкой schema/signature/lease/capability и доступности ключей. Ошибка записи намерения явно возвращается, ложное подтверждение отсутствует. Недоступная или невалидная конфигурация не заменяется произвольным профилем и не сбрасывает намерение; серверный desired pointer и пользовательское намерение имеют разные области версионирования."
     },
@@ -938,7 +941,8 @@
       "id": "REC-02",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/chat-acceptance-20261115.md"
       ],
       "text": "Пока desiredOn=true и нет запрета/необходимого действия пользователя по ENG-01/02, единый reconcile loop повторно приводит фактическое состояние к разрешённому желаемому. DNS timeout/EOF/TLS failure и недоступный узел вызывают классификацию и восстановление, а не окончательный Off; валидация TLS не ослабляется. Reference retry policy v1: base=1секунда, factor=2, cap=60секунд, jitter multiplier в пределах0.8-1.2 с итоговым clamp1-60секунд; floor для досрочной попытки по новому usable network=5секунд между такими попытками, с общим admission limit. Параметры версионируются внутри локальных hard limits. Повторы используют бюджеты AUTO-07/ARC-06; номер попытки, причина, следующий допуск и история тяжёлых запусков переживают рестарт контроллера. При NoNetwork активные сетевые попытки не выполняются: ожидание callback ОС, без polling/wakelock storm. При новой пригодной Network разрешена своевременная попытка с актуальным контекстом и общим rate limit; повторные смены epoch не обнуляют backoff, cooldown и rolling budget. Задержка сбрасывается только после устойчивого успеха (reference policy v1: не менее30секунд и трёх свежих успешных required checks), а не по созданию процесса или одному callback. Исчерпание краткосрочного бюджета откладывает следующую допустимую попытку, не стирая намерение; Doze и ограничения ОС могут отложить её дольше60секунд. Невалидная схема/подпись, истёкшее право или отсутствие разрешения ждут изменения входных условий/действия пользователя без бесполезного частого retry. Повтор транспорта не означает повтор активации отвергнутого bundle вопреки ARC-04."
     },
@@ -946,7 +950,8 @@
       "id": "REC-03",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/chat-acceptance-20261115.md"
       ],
       "text": "Необязательный туннель/peer/outbound может быть недоступен уже при холодном старте: независимые разрешённые маршруты должны запуститься/продолжить работу, а затронутые приватные назначения остаются явно заблокированными без fallback в общий прокси или direct. Восстановление выбирает минимальную неисправную dependency scope; проверяются DNS/bootstrap dependencies, отсутствие потока до установки блокировок и отсутствие утечки при старте, handover, реконфигурации и смерти модуля. Граница отдельного процесса не доказывает независимый startup/recovery outbounds внутри одного native box: engine-api объявляет реальные capabilities, движок/адаптер устраняет fail-fast общего запуска для optional dependency либо использует доказанную архитектуру с теми же гарантиями. Если для восстановления разделяемого runtime всё же нужен общий перезапуск, он bounded, временный разрыв независимых потоков измерен, блокировки установлены до него; это не считается независимым восстановлением и не закрывает соответствующий AC86. Обязательные взаимозависимости не объявляются optional ради прохождения проверки.",
       "implementationScope": "Deferred optional NetBird startup and independent target-route evidence.",
@@ -956,7 +961,8 @@
       "id": "REC-04",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/chat-acceptance-20261115.md"
       ],
       "text": "Supervisor и контроль его прогресса находятся вне управляемого native runtime. Watchdog проверяет полезный прогресс/дедлайны операций, а не только живой PID или ответ отдельного control looper; полный native hang имеет fault-injection сценарий. После bounded graceful stop supervisor вправе завершить только аутентифицированный принадлежащий ему host с проверенными identity token/UID/handle, подтвердить его смерть и освобождение TUN duplicates/identity locks перед новым поколением. Timeout или PID не являются подтверждением. После смерти самого контроллера разрешённый ОС новый экземпляр сначала читает намерение/последний Stop, сверяет реальное владение и незавершённые эффекты, безопасно дожидается/завершает только своего старого host; два владельца TUN/identity и повторное enrollment исключены. Если прекращение владения не доказано, новый host не запускается, отображается блокировка/необходимое действие. Смерть владельца TUN может уничтожить интерфейс и оборвать трафик; отсутствие сети или процесса-владельца не сопровождается обещанием непрерывного соединения. Границы MOD-08/09 и системный lockdown остаются обязательными."
     },
@@ -964,7 +970,8 @@
       "id": "REC-05",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/chat-acceptance-20261115.md"
       ],
       "text": "UI, плитка, уведомление и status API отдельно показывают сохранённое намерение и факты: «Работает», «Частично работает», «Ожидание сети», «Повтор через N», «Требуется действие пользователя» с конкретной причиной. Online/Connected допустим только после required checks актуального поколения; наличие VpnService/TUN или desiredOn=true недостаточно. Следующий допуск указывается с оговоркой ожидания сети/ОС; после срока он пересчитывается без ложного обещания точного пробуждения. Невалидная конфигурация, NeedsPermission/NeedsUnlock/NeedsLogin и запрет запуска отображаются без частого retry. Даже при выключенном подробном логировании сохраняется bounded редактированный поток диагностических событий: intent/config/network/engine generations без приватных идентификаторов, слой/код отказа, попытка/решение/бюджет и следующий допуск/условие возобновления; секреты, raw endpoints и пользовательский трафик не записываются. Публикация/сбор телеметрии сохраняет действующие consent/retention/redaction ограничения."
     },
@@ -972,7 +979,8 @@
       "id": "REC-06",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/chat-acceptance-20261115.md"
       ],
       "text": "До реализации поставляются версия transition table и нормативный recovery-policy contract: типы transient/permanent/user-action ошибок, параметры bounded backoff/jitter, floor при network flapping, окно устойчивого успеха, общие rolling budgets, retry eligibility и минимальная recovery scope. Монотонные времена действуют внутри boot; после reboot/clock jump/повреждённого checkpoint применяется ограниченная консервативная реконструкция, не мгновенный массовый retry и не бесконечное откладывание. Неограниченный polling, постоянный wakelock и обход Doze не являются реализацией одной кнопки. Все команды/таймеры/эффекты fenced по intentGeneration и контексту ARC-03; перед эффектом актуальность проверяется вновь. Детерминированные simulator/model/trace fixtures с управляемыми clock/jitter/fault injection и воспроизводимые Android-тесты входят в GitHub Actions при реализации; AC82-AC90 обязательны в M1, реальные Wi-Fi/LTE/restricted LTE, Doze и поведение ОС отдельно подтверждаются на Pixel. Новая декларативная policy не может отключить локальные hard limits/Stop или добавить удалённый исполняемый код."
     },
@@ -1630,7 +1638,8 @@
       "text": "Android-приложение использует тёмную тему по умолчанию независимо от системной темы Android. Единая контрастная палитра применяется ко всем экранам, диалогам, системным панелям и экрану старта; светлые вспышки при переходах не допускаются. Контент учитывает системные отступы и вырезы, элементы доступны на небольших экранах и при увеличенном шрифте. Приложение не меняет системную тему устройства.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/chat-acceptance-20261115.md"
       ]
     },
     {
@@ -1892,7 +1901,8 @@
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
         "web-tests/chat.spec.js",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/chat-acceptance-20261115.md"
       ],
       "text": "В Android доступен раздел «Поддержка»: личная переписка пользователя с администраторами SYN443. Администратор видит список диалогов и отвечает из Android и адаптивного веб-интерфейса control plane. В базовый выпуск входят текст, файлы, изображения и видео; групповые чаты пользователей, звонки, боты и интеграции внешних мессенджеров не входят."
     },
@@ -1922,7 +1932,8 @@
         "internal/enrollment/chat_admin_grant_test.go",
         "internal/chatweb/chat_origin_test.go",
         "web-tests/chat.spec.js",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/chat-acceptance-20261115.md"
       ],
       "text": "Сервер проверяет активную сессию, владельца и административное право при каждой операции чтения/записи/загрузки. Отзыв права или устройства прекращает дальнейший доступ; локальный кэш и роль из UI не являются разрешением. Веб-вход использует Keycloak OAuth 2.0 Authorization Code с PKCE, отдельный client/audience и подтверждение владения ключом DPoP. Отдельный frontend/BFF проверяет подписанный access token по pinned issuer/audience/client/key и хранит токены только в ограниченной по времени серверной сессии; браузеру выдаётся HttpOnly/Secure/SameSite cookie с проверкой Origin/CSRF. Непроверенный ID token не используется для идентификации. Device session не даёт административных прав сама по себе."
     },

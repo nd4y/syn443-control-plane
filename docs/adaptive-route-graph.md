@@ -2,9 +2,9 @@
 
 This is an in-progress M4 contribution. It does not advertise a new device
 capability, accept a graph policy or change the installed client's routes.
-The complete stage is tracked separately from the accepted v75/runtime console.
+The complete stage is tracked separately from the accepted v77 device/runtime scope.
 
-The [closed metadata contract](../contracts/v 1/route-graph.schema.json) describes
+The [closed metadata contract](../contracts/v1/route-graph.schema.json) describes
 at most 500 profiles,4096 directed edges,64 templates and 16 destination/check
 groups. Each template has 1-4 slots. A group fixes its exit intent and comparison
 features. Physical entry mode is determined locally. All hops and edges must
@@ -67,8 +67,10 @@ network, intent, policy dependency or engine generation.
 
 ## Required remaining implementation and acceptance
 
-The contract still needs accepted Go/Kotlin semantic conformance, native pool/lifecycle
-tests, shared admission and memory, immutable source preview/issuance fences,
+Go/Kotlin semantic conformance has accepted CI in [Android PR65](https://github.com/nd4y/syn443-android/pull/65)
+and [Control Plane PR40](https://github.com/nd4y/syn443-control-plane/pull/40).
+The remaining scope includes native pool/lifecycle tests, shared admission and memory,
+immutable source preview/issuance fences,
 signed capability gating, client/UI integration and actual Wi-Fi proxy-chain
 failure/recovery on Xperia. Required Actions and original-state restoration remain
 mandatory. No physical LTE, natural Doze, unplugged energy or endurance gate is
@@ -77,5 +79,7 @@ closed by this stage's synthetic network-mode cases.
 The current source adds shared positive vectors, 21 path queries, 60 closed-failure
 fixtures, exact byte/catalogue/combinatorial bounds, concurrent-read ownership,
 redacted diagnostics and fuzzing. Kotlin also checks deterministic bounded cursor
-results against the same paths and cross-language identities. These are source
-additions pending Actions acceptance; no policy decoder or capability is enabled.
+results against the same paths and cross-language identities. These passed exact Actions [43701539388](https://github.com/nd4y/syn443-android/actions/runs/43701539388)
+and [43700009850](https://github.com/nd4y/syn443-control-plane/actions/runs/43700009850).
+The private constructor has separate [accepted evidence](https://github.com/nd4y/syn443-android/actions/runs/43715523260).
+No graph policy decoder or capability is enabled.
