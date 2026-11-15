@@ -49,6 +49,22 @@ const server=http.createServer(async(req,res)=>{
  }
  const p=body.payload;
  switch(body.action){
+ case 'configuration.runtime.get':{
+  if(options.runtimeDenied){send(403,{});break;}
+  if(options.runtimeUnavailable){send(503,{});break;}
+  const now=Date.now(),kind=options.runtime||'none';
+  if(kind==='none'){send(200,{device:p.id,observedAtMs:now,state:'none'});break;}
+  const ago=kind==='stale'?181000:kind==='expires'?178000:0;
+  const report={version:1,sequence:1,build:74,phase:'online',policyRevision:23,engineKnown:true,engineActive:true,network:'wifi',sampledAtMs:now-ago,receivedAtMs:now-ago};
+  let device=p.id,state=ago>=180000?'stale':'recent';
+  if(kind==='foreign')device='another-device';
+  if(kind==='extra')report.secret='synthetic-untrusted';
+  if(kind==='future')report.receivedAtMs=report.sampledAtMs=now+1;
+  if(kind==='old-sample')report.sampledAtMs=now-120001;
+  if(kind==='false-online')report.engineActive=false;
+  if(kind==='false-fresh')state='stale';
+  send(200,{device,observedAtMs:now,state,report});break;
+ }
  case 'configuration.devices.list':{
   if(Object.keys(p).some(k=>k!=='after')||typeof(p.after??'')!=='string'){send(400,{});break;}
   const row=id=>({device:id,policyRevision:23,desiredRevision:7,report:{state:'historical',policyRevision:22,outcome:'rolled_back',activePolicyRevision:21,receivedAtMs:1800000000000}});

@@ -116,6 +116,38 @@ END; $$;
 DROP TRIGGER IF EXISTS identity_policy_activation_guard ON identity_policy_activation;
 CREATE TRIGGER identity_policy_activation_guard BEFORE UPDATE ON identity_policy_activation FOR EACH ROW EXECUTE FUNCTION identity_activation_invariants();
 
+-- One bounded current-key observation, independent of activation/publication.
+CREATE TABLE IF NOT EXISTS identity_runtime_observations (
+ device text PRIMARY KEY REFERENCES identity_devices(id) ON DELETE CASCADE,
+ key_thumbprint text NOT NULL CHECK(key_thumbprint ~ '^[A-Za-z0-9_-]{43}$'),
+ sequence bigint NOT NULL CHECK(sequence BETWEEN 1 AND 9007199254740991),
+ report_hash text NOT NULL CHECK(report_hash ~ '^[A-Za-z0-9_-]{43}$'),
+ build integer NOT NULL CHECK(build BETWEEN 1 AND 2100000000),
+ phase text NOT NULL CHECK(phase IN ('off','starting','online','recovering','no_network','blocked','unknown')),
+ policy_revision bigint NOT NULL CHECK(policy_revision BETWEEN 0 AND 9007199254740991),
+ engine_known boolean NOT NULL,
+ engine_active boolean NOT NULL,
+ network text NOT NULL CHECK(network IN ('none','wifi','cellular','unknown')),
+ sampled_at_ms bigint NOT NULL CHECK(sampled_at_ms BETWEEN 1 AND 9007199254740991),
+ received_at_ms bigint NOT NULL CHECK(received_at_ms BETWEEN 1 AND 9007199254740991),
+ CHECK (NOT engine_active OR engine_known),
+ CHECK (sampled_at_ms BETWEEN received_at_ms-120000 AND received_at_ms+30000),
+ CHECK (phase<>'online' OR (engine_known AND engine_active AND policy_revision>0)),
+ CHECK (phase<>'off' OR (engine_known AND NOT engine_active))
+);
+REVOKE ALL ON identity_runtime_observations FROM PUBLIC;
+CREATE OR REPLACE FUNCTION identity_runtime_observation_invariants() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.device<>OLD.device OR NEW.received_at_ms<OLD.received_at_ms+30000
+  OR (NEW.key_thumbprint=OLD.key_thumbprint AND NEW.sequence<=OLD.sequence) THEN
+  RAISE EXCEPTION 'stale runtime observation';
+ END IF;
+ RETURN NEW;
+END; $$;
+REVOKE ALL ON FUNCTION identity_runtime_observation_invariants() FROM PUBLIC;
+DROP TRIGGER IF EXISTS identity_runtime_observation_guard ON identity_runtime_observations;
+CREATE TRIGGER identity_runtime_observation_guard BEFORE UPDATE ON identity_runtime_observations FOR EACH ROW EXECUTE FUNCTION identity_runtime_observation_invariants();
+
 CREATE TABLE IF NOT EXISTS identity_telemetry_windows (
  device text NOT NULL REFERENCES identity_devices(id) ON DELETE CASCADE,
  period bigint NOT NULL CHECK(period>0),

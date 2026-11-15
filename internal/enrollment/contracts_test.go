@@ -41,6 +41,8 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 	values["CapabilitySnapshot"] = CapabilitySnapshot{CapabilityState: CapabilityState{Version: 0, Hash: random(), Capabilities: caps}, AuthorityHash: random()}
 	values["CapabilityRequest"] = CapabilityRequestView{RequestID: random(), State: "queued"}
 	values["ControlPanelHint"] = ControlPanelHint{SchemaVersion: 1, UntilMs: 1800000060000}
+	values["RuntimeObservation"] = RuntimeObservation{Version: 1, Sequence: 1, Build: 74, Phase: "off", EngineKnown: true, Network: "none", SampledAtMs: 1800000000000}
+	values["DeviceActivationReport"] = ActivationReport{Version: 1, PolicyRevision: 1, EnvelopeHash: random(), ActivationGeneration: 1, Outcome: "committed", ActivePolicyRevision: 1}
 	values["TelemetryBatch"] = telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 51, AlgorithmRevision: 1,
 		Events: []telemetry.Event{{ID: random(), AtMS: 1800000000000, Kind: "vpn", Code: "online", Mode: "wifi"}}}
 	values["TelemetryReceipt"] = telemetry.Receipt{SchemaVersion: 1, EventIDs: []string{random()}}
@@ -92,6 +94,8 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 	}
 	paths := doc["paths"].(map[string]any)
 	expected := map[string]bool{"/v1/devices/enroll": true, "/v1/identity/devices/revoke": true, "/v1/device/session/refresh": true, "/v1/device/revoke": true, "/v1/device/policy": true, "/v1/device/control-panel": true, "/v1/device/overlay/fetch": true, "/v1/device/overlay/consume": true, "/v1/device/capabilities": true, "/v1/devices/capabilities": true, deviceFetchClaimPath: true, deviceFetchResultPath: true, deviceFetchV2ClaimPath: true, deviceFetchV2ResultPath: true, telemetryPath: true}
+	expected[runtimeObservationPath] = true
+	expected[activationStatusPath] = true
 	if len(paths) != len(expected) {
 		t.Fatal("unexpected API scope")
 	}

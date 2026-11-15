@@ -46,7 +46,7 @@ func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifie
 	}
 	requiresFreshMFA := true
 	switch envelope.Action {
-	case "configuration.inventory.get", "configuration.devices.list", "configuration.layers.drafts.list":
+	case "configuration.inventory.get", "configuration.devices.list", "configuration.runtime.get", "configuration.layers.drafts.list":
 		requiresFreshMFA = false
 	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.draft.discard", "configuration.history.get":
 	default:
@@ -147,6 +147,15 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 			return nil, enrollment.ErrDenied
 		}
 		return c.draftInventory(ctx, actor, input.TargetKind, input.TargetID, authorityUntil, now)
+	}
+	if envelope.Action == "configuration.runtime.get" {
+		var input struct {
+			ID string `json:"id"`
+		}
+		if identity.DecodeConfiguration(envelope.Payload, &input) != nil || !configurationObjectID.MatchString(input.ID) {
+			return nil, enrollment.ErrDenied
+		}
+		return c.runtimeObservation(ctx, actor, input.ID, envelope.RequestID, authorityUntil, now)
 	}
 	if envelope.Action == "configuration.layers.draft.get" {
 		var input struct {

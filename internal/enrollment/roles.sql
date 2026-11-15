@@ -19,6 +19,8 @@ REVOKE ALL ON FUNCTION identity_device_invariants() FROM PUBLIC;
 GRANT SELECT,INSERT,UPDATE(policy_revision,envelope_hash,activation_generation,outcome,active_policy_revision,received_at_ms)
  ON identity_policy_activation TO syn443_identity_api;
 REVOKE ALL ON FUNCTION identity_activation_invariants() FROM PUBLIC;
+GRANT SELECT,INSERT,UPDATE(key_thumbprint,sequence,report_hash,build,phase,policy_revision,engine_known,engine_active,network,sampled_at_ms,received_at_ms)
+ ON identity_runtime_observations TO syn443_identity_api;
 -- Ingestion cannot read or modify collected event rows.
 GRANT INSERT ON identity_telemetry_events TO syn443_identity_api;
 GRANT SELECT,INSERT,UPDATE(used) ON identity_telemetry_windows TO syn443_identity_api;

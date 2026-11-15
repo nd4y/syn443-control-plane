@@ -258,7 +258,7 @@ pre:not(:empty) {
 #inventory-status { min-block-size: 1.5em; margin-block: 0.5rem 0; }
 .inventory-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.75rem;
   margin-block: 1rem;
 }
@@ -268,6 +268,7 @@ pre:not(:empty) {
   background: var(--surface);
 }
 .inventory-summary h3 { margin: 0; color: var(--muted); font-size: 0.875rem; }
+.inventory-summary small { display: block; margin-block-start: 0.5rem; color: var(--muted); }
 .device-actions { text-align: end; }
 .device-actions .pf-v6-c-button { margin-block: 0; }
 .inventory-summary p {

@@ -12,6 +12,7 @@ let layerDraftInventory=null;
 let sourceShares=null;
 let devicesNext='',deviceIds=new Set();
 let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticationIssuer='',reauthenticationFocus=false;
+let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
 function status(message,tone='info'){
@@ -41,6 +42,7 @@ function updateSectionNav(focus=false){
   else heading.focus({preventScroll:true});
   window.scrollTo(0,0);
  }
+ if(runtimeReport)renderRuntime();
 }
 function actionButton(){
  const button=document.createElement('button');
@@ -140,6 +142,7 @@ function applyRouteChecks(state){
  status('Проверки изменены в черновике. Сохраните его, чтобы не потерять правки.');
 }
 function controls(){
+ $('refresh-runtime').disabled=busy||!authenticated||!layerInventory;
  $('reauthentication').hidden=!authenticated||!reauthenticationNeeded;
  $('reauthentication-unavailable').hidden=reauthenticationAvailable;
  $('reauthentication-start').disabled=busy||!authenticated||!reauthenticationAvailable;
@@ -183,6 +186,7 @@ function controls(){
  drawRouteChecks();
 }
 function clearInventory(){
+ clearRuntime();
  layerInventory=null;
  for(const id of ['inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions','inventory-issued-config','inventory-state','inventory-issued','inventory-issued-algorithm','inventory-report','inventory-report-time'])$(id).replaceChildren();
  for(const id of ['inventory-state','inventory-issued','inventory-report'])delete $(id).dataset.tone;
@@ -434,6 +438,7 @@ async function loadInventory(){
   $('devices-disclosure').open=false;
   $('inventory-view').focus({preventScroll:true});
   layerInventory=structuredClone(view);
+  await loadRuntime();
   $('inventory-status').textContent='Конфигурация загружена.';
  }catch(error){
   clearInventory();
@@ -441,6 +446,50 @@ async function loadInventory(){
    error.message==='denied'?'Проверьте права доступа и повторите вход.':
    error.message==='login'?'Сессия завершена. Войдите снова.':'Не удалось загрузить карточку. Повторите попытку.';
   throw error;
+ }
+}
+function clearRuntime(){
+ runtimeEpoch++;runtimeReport=null;runtimeDeadline=0;clearTimeout(runtimeTimer);runtimeTimer=null;
+ for(const id of ['inventory-runtime','inventory-runtime-detail','inventory-runtime-time'])$(id).replaceChildren();
+ $('inventory-runtime-time').hidden=true;$('inventory-runtime-time').removeAttribute('datetime');delete $('inventory-runtime').dataset.tone;
+}
+function checkedRuntime(view,device){
+ const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join('|')===[...keys].sort().join('|');
+ const integer=(n,min=0,max=Number.MAX_SAFE_INTEGER)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
+ if(!view||!['none','recent','stale'].includes(view.state)||!exact(view,view.state==='none'?['device','observedAtMs','state']:['device','observedAtMs','state','report'])||view.device!==device||!integer(view.observedAtMs,1))throw Error('invalid');
+ if(view.state==='none')return null;
+ const r=view.report;
+ if(!exact(r,['version','sequence','build','phase','policyRevision','engineKnown','engineActive','network','sampledAtMs','receivedAtMs'])||r.version!==1||!integer(r.sequence,1)||!integer(r.build,1,2100000000)||!integer(r.policyRevision)||typeof r.engineKnown!=='boolean'||typeof r.engineActive!=='boolean'||!integer(r.sampledAtMs,1)||!integer(r.receivedAtMs,1)||r.receivedAtMs>view.observedAtMs||r.sampledAtMs<r.receivedAtMs-120000||r.sampledAtMs>r.receivedAtMs+30000)throw Error('invalid');
+ if(!['off','starting','online','recovering','no_network','blocked','unknown'].includes(r.phase)||!['none','wifi','cellular','unknown'].includes(r.network)||!r.engineKnown&&r.engineActive||r.phase==='online'&&(!r.engineKnown||!r.engineActive||r.policyRevision===0)||r.phase==='off'&&(!r.engineKnown||r.engineActive))throw Error('invalid');
+ const remaining=Math.min(r.sampledAtMs,r.receivedAtMs)+180000-view.observedAtMs;
+ if((remaining>0)!==(view.state==='recent'))throw Error('invalid');
+ inventoryDate(r.receivedAtMs);
+ return {report:r,remaining:Math.max(0,Math.min(180000,remaining))};
+}
+function renderRuntime(){
+ clearTimeout(runtimeTimer);runtimeTimer=null;
+ if(!runtimeReport){$('inventory-runtime').textContent='Нет отчёта';$('inventory-runtime-detail').textContent='Клиент ещё не присылал состояние.';return;}
+ const r=runtimeReport,recent=performance.now()<runtimeDeadline;
+ const phase={off:'VPN выключен',starting:'Запуск VPN',online:'VPN включён',recovering:'Восстановление VPN',no_network:'Нет сети',blocked:'VPN заблокирован политикой',unknown:'Состояние неизвестно'}[r.phase];
+ $('inventory-runtime').textContent=recent?`Сообщено: ${phase}`:'Отчёт устарел';
+ $('inventory-runtime').dataset.tone=recent?'info':'warning';
+ $('inventory-runtime-detail').textContent=`${recent?'По данным клиента':'Последнее сообщение: '+phase} · ${ {none:'Без сети',wifi:'Wi-Fi',cellular:'Мобильная сеть',unknown:'Сеть неизвестна'}[r.network]} · сборка ${r.build} · политика ${r.policyRevision}`;
+ const time=$('inventory-runtime-time');time.dateTime=inventoryDate(r.receivedAtMs);time.textContent='Получен сервером: '+new Date(r.receivedAtMs).toLocaleString('ru-RU');time.hidden=false;
+ if(recent&&!document.hidden&&$('inventory-view').getClientRects().length)runtimeTimer=setTimeout(renderRuntime,Math.max(1,runtimeDeadline-performance.now()));
+}
+async function loadRuntime(){
+ const device=layerInventory?.device;if(!deviceID.test(device||''))throw Error('invalid');
+ clearRuntime();const epoch=runtimeEpoch,started=performance.now();
+ $('inventory-runtime').textContent='Загружаем состояние…';
+ try{
+  const value=await action('configuration.runtime.get',{id:device});
+  if(epoch!==runtimeEpoch||!authenticated||layerInventory?.device!==device)return;
+  const checked=checkedRuntime(value,device);runtimeReport=checked?.report||null;runtimeDeadline=started+(checked?.remaining||0);renderRuntime();
+ }catch(error){
+  if(['login','denied'].includes(error.message))throw error;
+  if(epoch!==runtimeEpoch)return;
+  clearRuntime();$('inventory-runtime').textContent='Состояние недоступно';
+  $('inventory-runtime-detail').textContent=error.message==='invalid'?'Сервер вернул некорректный отчёт.':'Повторите обновление состояния. Карточка конфигурации сохранена.';
  }
 }
 function openLinkedDevice(){
@@ -624,6 +673,8 @@ $('logout').onclick=()=>work(async()=>{try{await request('/logout',{});}finally{
 $('refresh-devices').onclick=()=>work(()=>loadDevices());
 $('reauthentication-start').onclick=()=>work(beginReauthentication);
 $('reauthentication-check').onclick=()=>work(checkReauthentication);
+$('refresh-runtime').onclick=()=>work(loadRuntime);
+document.addEventListener('visibilitychange',()=>{if(runtimeReport)renderRuntime();});
 $('more-devices').onclick=()=>work(()=>loadDevices(true));
 $('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>work(()=>sources(true));$('inventory-form').onsubmit=event=>{event.preventDefault();if(authenticated&&!pending)void work(loadInventory);};
 $('inventory-device').oninput=()=>{

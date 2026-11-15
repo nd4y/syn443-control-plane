@@ -6,6 +6,11 @@ for name in ('invitation-coverage.out','provisioning-coverage.out'):
     for line in Path(name).read_text().splitlines()[1:]:
         location,count,hits=line.split()
         blocks[location]=(int(count),max(int(hits),blocks.get(location,(0,0))[1]))
+selected=[(count,hits) for location,(count,hits) in blocks.items() if '/internal/deviceprovisioning/runtime_observation.go:' in location]
+assert selected,'Scoped current-key runtime observation reader'
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f'Scoped runtime observation reader coverage: {value:.1f}% (minimum80%)')
+assert value>=80
 selected=[(count,hits) for location,(count,hits) in blocks.items() if '/internal/deviceprovisioning/reauthentication_authority.go:' in location]
 assert selected,'Scoped reauthentication challenge authority'
 value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)

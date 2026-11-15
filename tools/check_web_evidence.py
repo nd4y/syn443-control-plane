@@ -69,7 +69,14 @@ expected.update({
     'substituted reauthentication navigation and expired sessions fail closed',
     'assurance recovery is keyboard accessible on a narrow screen and rejects untrusted error metadata',
 })
-assert len(cases) >= 59
+expected.update({
+    'runtime observation is separately attributed and never invents an activation or mutation',
+    'runtime observation expires locally without polling or refreshing a historical receipt',
+    'runtime observation refuses substituted future extra contradictory and stale sample metadata',
+    'runtime observation denial and session expiry erase cached state and private proposals',
+    'unknown or unavailable runtime keeps its configuration card and narrow keyboard actions usable',
+})
+assert len(cases) >= 64
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

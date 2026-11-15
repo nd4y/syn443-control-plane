@@ -134,6 +134,14 @@ function Devices() {
           aria-label={'Состояние устройства'}
         >
           <Card isCompact>
+            <CardTitle component="h3">Состояние клиента</CardTitle>
+            <CardBody>
+              <p id="inventory-runtime"></p>
+              <small id="inventory-runtime-detail"></small>
+              <time id="inventory-runtime-time" hidden></time>
+            </CardBody>
+          </Card>
+          <Card isCompact>
             <CardTitle component="h3">Желаемая конфигурация</CardTitle>
             <CardBody>
               <p id="inventory-state"></p>
@@ -158,6 +166,7 @@ function Devices() {
           <a href="#layer-title" className="pf-v6-c-button pf-m-link">
             Открыть публикацию
           </a>
+          <Button id="refresh-runtime" variant="secondary" isDisabled>Обновить состояние</Button>
         </div>
         <details id="inventory-issued-settings" hidden>
           <summary>Настройки выданной политики</summary>

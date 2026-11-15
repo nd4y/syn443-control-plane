@@ -1466,16 +1466,29 @@
       "text": "Общие поля: eventId, schemaVersion, время UTC и monotonic time, pseudonymous deviceId, sessionId, app/core/build версии, policyRevision, networkEpoch, pathId, eventType, severity, duration, result, errorCode. Backend добавляет время приёма и обрабатывает расхождение часов. Дополнительно фиксируются algorithm/evaluator revision, cohortId, health profile revision и decisionId; эти поля не требуют раскрытия пользовательского назначения.",
       "status": "partial",
       "evidence": [
-        "docs/telemetry-ingest.md"
+        "docs/telemetry-ingest.md",
+        "docs/device-runtime-observations.md",
+        "internal/enrollment/runtime_observation_test.go",
+        "internal/enrollment/runtime_observation_postgres_test.go",
+        "internal/deviceprovisioning/runtime_observation_postgres_test.go",
+        "web-tests/control-runtime.spec.js"
       ],
-      "implementationScope": "Closed envelope, authenticated device scope and receipt timestamp.",
-      "remainingScope": "Full build/core/algorithm/policy/cohort/decision metadata and clock-skew analysis."
+      "implementationScope": "Closed envelope, authenticated device scope and receipt timestamp. Bounded current-key runtime observation ingestion and scoped audited web readback with explicit sample/receipt age and no inferred online attestation. New64-browser/SQL/fuzz Actions evidence pending.",
+      "remainingScope": "Full build/core/algorithm/policy/cohort/decision metadata and clock-skew analysis. Android durable sender, actual phone/server runtime readback and full normative telemetry/native administration remain open."
     },
     {
       "id": "TEL-03",
       "text": "Сетевые события: появление/потеря сети, Wi-Fi/cellular/unknown, metered, captive portal, смена физического пути, выбранный режим, этап определения, причины переключений, reconnect/backoff, активный профиль и цепочка как непрозрачные ID.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/device-runtime-observations.md",
+        "internal/enrollment/runtime_observation_test.go",
+        "internal/enrollment/runtime_observation_postgres_test.go",
+        "internal/deviceprovisioning/runtime_observation_postgres_test.go",
+        "web-tests/control-runtime.spec.js"
+      ],
+      "implementationScope": " Bounded current-key runtime observation ingestion and scoped audited web readback with explicit sample/receipt age and no inferred online attestation. New64-browser/SQL/fuzz Actions evidence pending.",
+      "remainingScope": " Android durable sender, actual phone/server runtime readback and full normative telemetry/native administration remain open."
     },
     {
       "id": "TEL-04",
@@ -1789,10 +1802,15 @@
       "text": "В 1.0 обязательны встроенные быстрые экраны через API: список/поиск пользователей и устройств, текущий/последний online, активная/желаемая ревизия, причины ошибок, назначение профилей/политики, публикация/откат и диагностика. Для всех остальных административных функций доступна полная адаптивная веб-панель из этой кнопки.",
       "status": "partial",
       "evidence": [
-        "docs/device-inventory.md"
+        "docs/device-inventory.md",
+        "docs/device-runtime-observations.md",
+        "internal/enrollment/runtime_observation_test.go",
+        "internal/enrollment/runtime_observation_postgres_test.go",
+        "internal/deviceprovisioning/runtime_observation_postgres_test.go",
+        "web-tests/control-runtime.spec.js"
       ],
-      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending.",
-      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open."
+      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Exact Actions acceptance pending. Bounded current-key runtime observation ingestion and scoped audited web readback with explicit sample/receipt age and no inferred online attestation. New64-browser/SQL/fuzz Actions evidence pending.",
+      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open. Android durable sender, actual phone/server runtime readback and full normative telemetry/native administration remain open."
     },
     {
       "id": "MOB-03",
@@ -1823,10 +1841,15 @@
       "status": "partial",
       "evidence": [
         "docs/device-inventory.md",
-        "docs/non-lte-acceptance-20261115.md"
+        "docs/non-lte-acceptance-20261115.md",
+        "docs/device-runtime-observations.md",
+        "internal/enrollment/runtime_observation_test.go",
+        "internal/enrollment/runtime_observation_postgres_test.go",
+        "internal/deviceprovisioning/runtime_observation_postgres_test.go",
+        "web-tests/control-runtime.spec.js"
       ],
-      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Actions43649508396,43651567526 and43655979806 passed all mandatory jobs; live scoped discovery/card readback passed. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial.",
-      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open. Full normative clauses and excluded physical/operational gates remain required."
+      "implementationScope": " Authorized web device discovery with the existing per-device read ACL, bounded metadata and explicit selection. Actions43649508396,43651567526 and43655979806 passed all mandatory jobs; live scoped discovery/card readback passed. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial. Bounded current-key runtime observation ingestion and scoped audited web readback with explicit sample/receipt age and no inferred online attestation. New64-browser/SQL/fuzz Actions evidence pending.",
+      "remainingScope": "Complete normative requirement including native administration and all remaining workflows stays open. Full normative clauses and excluded physical/operational gates remain required. Android durable sender, actual phone/server runtime readback and full normative telemetry/native administration remain open."
     },
     {
       "id": "MOB-06",
