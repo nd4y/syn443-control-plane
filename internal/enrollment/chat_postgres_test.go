@@ -256,6 +256,46 @@ func TestChatWebAdminRequiresSeparateVerifierLiveAuthorityAndNonce(t *testing.T)
 	expect(t, w, 403)
 }
 
+func TestChatAdminAuthorityCannotCrossIssuersWithTheSameSubject(t *testing.T) {
+	f, user := chatSetup(t)
+	conversation := chatSelf(t, f, user)
+	old := chatOther(t, f, "synthetic-admin")
+	chatAdmin(t, old, true)
+	grant := f.grant
+	grant.Issuer = "https://id.example.invalid/realms/operators"
+	grant.Subject = "synthetic-admin"
+	if e := Authorize(context.Background(), fixtureOwner, grant, f.now); e != nil {
+		t.Fatal(e)
+	}
+	admin := chatClient{key: key(t), owner: Owner(grant.Issuer, grant.Subject)}
+	thumb, _ := identity.PublicJWK(&admin.key.PublicKey).Thumbprint()
+	token := random()
+	f.api.ChatVerifier = &verifier{principals: map[string]identity.Principal{token: {Issuer: grant.Issuer, Subject: grant.Subject, Thumbprint: thumb}}}
+	path := "/v1/admin/chat/inbox"
+	body := []byte(`{}`)
+	// The same subject has authority only in the device issuer. Neither its
+	// existing device session nor that grant authorizes the web issuer.
+	expect(t, f.call(t, admin.key, "POST", path, token, "", body), 403)
+	expect(t, f.call(t, old.key, "POST", path, old.session.AccessToken, "", body), 401)
+	chatAdmin(t, admin, true)
+	r := f.call(t, admin.key, "POST", path, token, "", body)
+	expect(t, r, 401)
+	nonce := r.Header().Get("DPoP-Nonce")
+	if nonce == "" {
+		t.Fatal("missing web challenge")
+	}
+	expect(t, f.call(t, admin.key, "POST", path, token, nonce, body), 200)
+	raw, e := json.Marshal(map[string]any{"conversation": conversation})
+	if e != nil {
+		t.Fatal(e)
+	}
+	expect(t, f.call(t, admin.key, "POST", "/v1/admin/chat/messages", token, nonce, raw), 200)
+	chatAdmin(t, admin, false)
+	expect(t, f.call(t, admin.key, "POST", path, token, nonce, body), 403)
+	// Withdrawing the web grant leaves ordinary device access intact.
+	chatCall(t, f, user, "messages", map[string]any{"conversation": conversation}, 200)
+}
+
 func TestChatConcurrentIdempotencyAndReplay(t *testing.T) {
 	f, c := chatSetup(t)
 	id := chatSelf(t, f, c)
