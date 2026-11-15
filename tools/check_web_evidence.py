@@ -83,7 +83,11 @@ expected.update({
     'runtime read timeout keeps unrelated controls usable and later refresh recovers',
     'a previously empty runtime card receives a later observation without a manual reload',
 })
-assert len(cases) >= 69
+expected.update({
+    'stalled sign-in releases controls at its deadline and only an explicit retry navigates',
+    'a committed save with a stalled response keeps its exact pending request for manual retry',
+})
+assert len(cases) >= 71
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
 print(f'{len(cases)} required browser outcomes passed without skips')

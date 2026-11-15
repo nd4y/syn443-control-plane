@@ -39,7 +39,7 @@ build75 report and aged it after Stop without renewing its timestamp. Personal
 write/MFA acceptance remains separate; no additional personal rights were granted.
 
 An open card retaining its old report after real recovery was reproduced. The
-[foreground refresh correction](runtime-console-refresh.md) has its own69-case
+[foreground refresh correction](runtime-console-refresh.md) has its own71-case
 CI, artifact and live web-only rollout gates. The accepted backend64-case
 snapshot alone does not accept this correction.
 

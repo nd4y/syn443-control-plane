@@ -206,7 +206,11 @@ function erase(){
 async function request(path,body,signal){
  const raw=typeof body==='string'?body:JSON.stringify(body);
  if(path===sourceImportPath?raw.length>14*1024*1024+65536:new TextEncoder().encode(raw).length>278528)throw Error('size');
- const response=await fetch(path,{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:{'Content-Type':'application/json','X-Syn443-CSRF':'1'},body:raw,signal});
+ const controller=new AbortController(),abort=()=>controller.abort();
+ if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
+ const deadline=setTimeout(abort,15000);
+ try{
+ const response=await fetch(path,{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:{'Content-Type':'application/json','X-Syn443-CSRF':'1'},body:raw,signal:controller.signal});
  if(response.status===401&&path==='/session'&&!authenticated)throw Error('anonymous');
  if(response.status===403&&(path==='/control/action'||path===sourceImportPath)){
   let challenge;
@@ -218,7 +222,8 @@ async function request(path,body,signal){
  if(response.status===401||response.status===403){authenticated=false;erase();throw Error(response.status===401?'login':'denied');}
  if(response.status===413)throw Error(path===sourceImportPath?'importSize':'size');
  if(!response.ok)throw Error(response.status===409?'conflict':response.status===400?'invalid':response.status===404?'not_found':'network');
- return response.json();
+ return await response.json();
+ }finally{clearTimeout(deadline);signal?.removeEventListener('abort',abort);}
 }
 const envelope=(action,payload)=>JSON.stringify({version:1,action,requestId:crypto.randomUUID(),payload});
 const action=(name,payload,signal)=>request('/control/action',envelope(name,payload),signal);
