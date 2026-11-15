@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:syn443:route-graph:v1",
+  "title": "Finite route graph metadata",
+  "description": "Metadata bound to an independently authorized immutable profile catalogue. This document grants no network or activation authority. Decoders also enforce a 262144-byte UTF-8 limit, exact catalogue binding, referential integrity and a conservative maximum of 4096 candidate combinations per exit intent.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "hops", "edges", "templates", "groups"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "hops": {"type": "array", "minItems": 1, "maxItems": 500, "items": {"$ref": "#/$defs/hop"}},
+    "edges": {"type": "array", "maxItems": 4096, "uniqueItems": true, "items": {"$ref": "#/$defs/edge"}},
+    "templates": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/template"}},
+    "groups": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/group"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
+    "ids": {"type": "array", "minItems": 1, "maxItems": 500, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "intent": {"enum": ["RU", "NON_RU", "INTERNAL"]},
+    "features": {"type": "array", "minItems": 1, "maxItems": 5, "uniqueItems": true, "items": {"enum": ["TCP", "UDP", "IPV4", "IPV6", "ICMP"]}},
+    "hop": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "entryModes", "exitClass", "features"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "entryModes": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"enum": ["HOME_WIFI", "WIFI", "CELLULAR_RESTRICTED", "CELLULAR"]}},
+        "exitClass": {"anyOf": [{"$ref": "#/$defs/intent"}, {"type": "null"}]},
+        "features": {"$ref": "#/$defs/features"}
+      }
+    },
+    "edge": {
+      "type": "object", "additionalProperties": false,
+      "required": ["from", "to", "features"],
+      "properties": {"from": {"$ref": "#/$defs/id"}, "to": {"$ref": "#/$defs/id"}, "features": {"$ref": "#/$defs/features"}}
+    },
+    "template": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "slots"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "slots": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"$ref": "#/$defs/ids"}}}
+    },
+    "group": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "intent", "features", "templates"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "intent": {"$ref": "#/$defs/intent"}, "features": {"$ref": "#/$defs/features"}, "templates": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}}
+    }
+  }
+}

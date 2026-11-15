@@ -1,0 +1,1196 @@
+{
+  "schemaVersion": 1,
+  "validCases": [
+    {
+      "name": "intent-separated-sparse-cycle",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "graph": {
+        "schemaVersion": 1,
+        "hops": [
+          {
+            "id": "entry",
+            "entryModes": [
+              "CELLULAR_RESTRICTED"
+            ],
+            "exitClass": "RU",
+            "features": [
+              "TCP",
+              "UDP",
+              "IPV4"
+            ]
+          },
+          {
+            "id": "transit",
+            "entryModes": [],
+            "exitClass": null,
+            "features": [
+              "TCP",
+              "UDP",
+              "IPV4"
+            ]
+          },
+          {
+            "id": "exit-a",
+            "entryModes": [],
+            "exitClass": "NON_RU",
+            "features": [
+              "TCP",
+              "UDP",
+              "IPV4"
+            ]
+          },
+          {
+            "id": "exit-b",
+            "entryModes": [
+              "WIFI",
+              "CELLULAR"
+            ],
+            "exitClass": "NON_RU",
+            "features": [
+              "TCP",
+              "IPV4"
+            ]
+          },
+          {
+            "id": "home",
+            "entryModes": [
+              "HOME_WIFI"
+            ],
+            "exitClass": "INTERNAL",
+            "features": [
+              "ICMP",
+              "IPV4"
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "from": "entry",
+            "to": "transit",
+            "features": [
+              "TCP",
+              "UDP",
+              "IPV4"
+            ]
+          },
+          {
+            "from": "transit",
+            "to": "exit-a",
+            "features": [
+              "TCP",
+              "UDP",
+              "IPV4"
+            ]
+          },
+          {
+            "from": "entry",
+            "to": "exit-b",
+            "features": [
+              "TCP",
+              "IPV4"
+            ]
+          },
+          {
+            "from": "transit",
+            "to": "entry",
+            "features": [
+              "TCP",
+              "UDP",
+              "IPV4"
+            ]
+          }
+        ],
+        "templates": [
+          {
+            "id": "simple",
+            "slots": [
+              [
+                "entry",
+                "exit-b"
+              ]
+            ]
+          },
+          {
+            "id": "direct",
+            "slots": [
+              [
+                "exit-a",
+                "exit-b"
+              ]
+            ]
+          },
+          {
+            "id": "two",
+            "slots": [
+              [
+                "entry"
+              ],
+              [
+                "exit-b"
+              ]
+            ]
+          },
+          {
+            "id": "three",
+            "slots": [
+              [
+                "entry"
+              ],
+              [
+                "transit"
+              ],
+              [
+                "exit-a"
+              ]
+            ]
+          },
+          {
+            "id": "loop",
+            "slots": [
+              [
+                "entry"
+              ],
+              [
+                "transit"
+              ],
+              [
+                "entry"
+              ]
+            ]
+          },
+          {
+            "id": "home",
+            "slots": [
+              [
+                "home"
+              ]
+            ]
+          }
+        ],
+        "groups": [
+          {
+            "id": "ru",
+            "intent": "RU",
+            "features": [
+              "TCP",
+              "IPV4"
+            ],
+            "templates": [
+              "simple"
+            ]
+          },
+          {
+            "id": "foreign",
+            "intent": "NON_RU",
+            "features": [
+              "TCP",
+              "IPV4"
+            ],
+            "templates": [
+              "direct",
+              "two",
+              "three",
+              "loop"
+            ]
+          },
+          {
+            "id": "foreign-udp",
+            "intent": "NON_RU",
+            "features": [
+              "TCP",
+              "UDP",
+              "IPV4"
+            ],
+            "templates": [
+              "two",
+              "three"
+            ]
+          },
+          {
+            "id": "foreign-three",
+            "intent": "NON_RU",
+            "features": [
+              "TCP",
+              "IPV4"
+            ],
+            "templates": [
+              "three"
+            ]
+          },
+          {
+            "id": "home",
+            "intent": "INTERNAL",
+            "features": [
+              "ICMP",
+              "IPV4"
+            ],
+            "templates": [
+              "home"
+            ]
+          }
+        ]
+      },
+      "groupBounds": {
+        "ru": 2,
+        "foreign": 5,
+        "foreign-udp": 2,
+        "foreign-three": 1,
+        "home": 1
+      },
+      "intentBounds": {
+        "RU": 2,
+        "NON_RU": 5,
+        "INTERNAL": 1
+      },
+      "queries": [
+        {
+          "name": "ru-entry",
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry"
+          ],
+          "allowed": true,
+          "pathId": "923fe53966c6cd9343e11af776cd4b05be315ea4b200b02e4d5dfb0f929b73bf"
+        },
+        {
+          "name": "ru-rejects-foreign-exit",
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "exit-b"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "ru-unavailable-on-wifi",
+          "group": "ru",
+          "mode": "WIFI",
+          "path": [
+            "entry"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "foreign-direct-wifi",
+          "group": "foreign",
+          "mode": "WIFI",
+          "path": [
+            "exit-b"
+          ],
+          "allowed": true,
+          "pathId": "5b80bf150ab561e30861a1179e0af1b095b1da48e3f09df89d12bd311a59b593"
+        },
+        {
+          "name": "foreign-direct-cellular",
+          "group": "foreign",
+          "mode": "CELLULAR",
+          "path": [
+            "exit-b"
+          ],
+          "allowed": true,
+          "pathId": "5b80bf150ab561e30861a1179e0af1b095b1da48e3f09df89d12bd311a59b593"
+        },
+        {
+          "name": "foreign-does-not-borrow-home-mode",
+          "group": "foreign",
+          "mode": "HOME_WIFI",
+          "path": [
+            "exit-b"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "foreign-two-hops",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "exit-b"
+          ],
+          "allowed": true,
+          "pathId": "3976a477e91aa5f2c5ad78ff4889780d9d42ca1eabeaffb66704ead0fa7654cb"
+        },
+        {
+          "name": "foreign-three-hops",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "transit",
+            "exit-a"
+          ],
+          "allowed": true,
+          "pathId": "78ae9ef3365d1c3bbb89169408a784eba4f660cfbe1e1e554e97d5f65188f08d"
+        },
+        {
+          "name": "foreign-no-missing-edge",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "exit-a"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "foreign-no-ineligible-first-hop",
+          "group": "foreign",
+          "mode": "WIFI",
+          "path": [
+            "exit-a"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "foreign-no-repeated-hop",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "transit",
+            "entry"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "foreign-no-unknown-hop",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "missing"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "foreign-no-empty-fallback",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [],
+          "allowed": false
+        },
+        {
+          "name": "foreign-no-oversized-path",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "transit",
+            "exit-a",
+            "exit-b",
+            "home"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "foreign-no-unknown-group",
+          "group": "missing",
+          "mode": "WIFI",
+          "path": [
+            "exit-b"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "foreign-udp-full-path",
+          "group": "foreign-udp",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "transit",
+            "exit-a"
+          ],
+          "allowed": true,
+          "pathId": "78ae9ef3365d1c3bbb89169408a784eba4f660cfbe1e1e554e97d5f65188f08d"
+        },
+        {
+          "name": "foreign-udp-rejects-edge-and-hop",
+          "group": "foreign-udp",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "exit-b"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "foreign-requires-declared-template",
+          "group": "foreign-three",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "exit-b"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "home-own-intent",
+          "group": "home",
+          "mode": "HOME_WIFI",
+          "path": [
+            "home"
+          ],
+          "allowed": true,
+          "pathId": "4ea140588150773ce3aace786aeef7f4049ce100fa649c94fbbddb960f1da942"
+        },
+        {
+          "name": "home-no-wifi-fallback",
+          "group": "home",
+          "mode": "WIFI",
+          "path": [
+            "home"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "home-not-ru",
+          "group": "ru",
+          "mode": "HOME_WIFI",
+          "path": [
+            "home"
+          ],
+          "allowed": false
+        }
+      ],
+      "enumerations": [
+        {
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "paths": [
+            [
+              "entry",
+              "exit-b"
+            ],
+            [
+              "entry",
+              "transit",
+              "exit-a"
+            ]
+          ]
+        },
+        {
+          "group": "foreign-udp",
+          "mode": "CELLULAR_RESTRICTED",
+          "paths": [
+            [
+              "entry",
+              "transit",
+              "exit-a"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "WIFI",
+          "paths": [
+            [
+              "exit-b"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "CELLULAR",
+          "paths": [
+            [
+              "exit-b"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "HOME_WIFI",
+          "paths": []
+        },
+        {
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "paths": [
+            [
+              "entry"
+            ]
+          ]
+        },
+        {
+          "group": "home",
+          "mode": "HOME_WIFI",
+          "paths": [
+            [
+              "home"
+            ]
+          ]
+        },
+        {
+          "group": "home",
+          "mode": "WIFI",
+          "paths": []
+        }
+      ]
+    }
+  ],
+  "invalidCases": [
+    {
+      "name": "catalogue-is-separate-authority",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "other"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "catalogue-duplicate",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home",
+        "entry"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "catalogue-empty",
+      "catalogue": [],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "catalogue-invalid-id",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "UPPER"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "unknown-field",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}],\"authority\":true}"
+    },
+    {
+      "name": "case-sensitive-root",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}],\"SchemaVersion\":1}"
+    },
+    {
+      "name": "missing-root",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "null-hops",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":null,\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "object-hops",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":{},\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "null-edges",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":null,\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "object-edges",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":{},\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "null-templates",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":null,\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "object-templates",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":{},\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "null-groups",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":null}"
+    },
+    {
+      "name": "object-groups",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":{}}"
+    },
+    {
+      "name": "empty-hops",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "empty-templates",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "empty-groups",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[]}"
+    },
+    {
+      "name": "wrong-version",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":2,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "string-version",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":\"1\",\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "decimal-version",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1.0,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "exponent-version",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1e0,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "negative-version",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":-1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "missing-nullable-exit",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "unknown-hop-field",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"password\":\"synthetic-untrusted-input\"},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "duplicate-hop",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "invalid-hop-id",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry/escape\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "unknown-hop-mode",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"AUTO\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "duplicate-hop-mode",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"WIFI\",\"WIFI\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "null-hop-mode",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":null,\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "unknown-exit-class",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"OTHER\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "empty-hop-features",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "unknown-hop-feature",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"ANY\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "duplicate-hop-feature",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"TCP\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "edge-self",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "edge-unresolved",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"missing\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "edge-capability-not-on-both-hops",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"UDP\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "edge-empty-features",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "duplicate-edge",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "duplicate-template",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]},{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "empty-template-slots",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "five-template-slots",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\"],[\"entry\"],[\"entry\"],[\"entry\"],[\"entry\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "null-template-slot",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[null]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "empty-template-slot",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "duplicate-template-choice",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"entry\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "unresolved-template-choice",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"missing\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "duplicate-group",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]},{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]}]}"
+    },
+    {
+      "name": "unresolved-group-template",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"missing\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "duplicate-group-template",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\",\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "empty-group-template",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "unknown-group-intent",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"OTHER\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "empty-group-features",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "null-root",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "null"
+    },
+    {
+      "name": "array-root",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "[]"
+    },
+    {
+      "name": "trailing-value",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]} {}"
+    },
+    {
+      "name": "truncated-value",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]"
+    },
+    {
+      "name": "trailing-comma",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}],}"
+    },
+    {
+      "name": "escaped-duplicate-root-key",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}],\"schema\\u0056ersion\":1}"
+    },
+    {
+      "name": "duplicate-hop-key",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"id\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "escaped-duplicate-hop-key",
+      "catalogue": [
+        "entry",
+        "transit",
+        "exit-a",
+        "exit-b",
+        "home"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"\\u0069d\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    }
+  ]
+}

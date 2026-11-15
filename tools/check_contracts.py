@@ -17,3 +17,10 @@ for case in data["cases"]:
     assert {r["pathId"] for r in result["rejected"]}==ids-set(order)
 print(f'Contract {lock["version"]}: hashes, {len(data["cases"])} valid and {len(data["invalidCases"])} invalid fixtures verified')
 
+
+route_graph=json.loads((root/"contracts/v1/route-graph-vectors.json").read_text())
+assert route_graph["schemaVersion"]==1
+route_names=[c["name"] for c in route_graph["validCases"]+route_graph["invalidCases"]]
+assert len(route_names)==len(set(route_names)) and len(route_graph["invalidCases"])>=60
+assert {"route-graph.schema.json","route-graph-vectors.json"} <= lock["files"].keys()
+print("Closed route graph: shared positive/negative contract fixtures locked")
