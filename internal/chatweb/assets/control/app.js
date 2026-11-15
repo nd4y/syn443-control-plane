@@ -186,9 +186,6 @@ function controls(){
  if(!['server','resource','device'].includes($('source-mode').value)||deviceSource&&!sourceIdentity?.fetchDeviceId)$('sync-source').disabled=true;
  layerControls();
  drawRouteChecks();
- // The controller owns native disabled state after the static React mount.
- // PatternFly also styles its initial isDisabled prop through this class.
- for(const button of document.querySelectorAll('button.pf-v6-c-button'))button.classList.toggle('pf-m-disabled',button.disabled);
 }
 function clearInventory(){
  clearRuntime();
