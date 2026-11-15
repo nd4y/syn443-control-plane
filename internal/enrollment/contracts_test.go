@@ -41,6 +41,8 @@ func TestEnrollmentWireSchemasMatchRuntime(t *testing.T) {
 	values["CapabilitySnapshot"] = CapabilitySnapshot{CapabilityState: CapabilityState{Version: 0, Hash: random(), Capabilities: caps}, AuthorityHash: random()}
 	values["CapabilityRequest"] = CapabilityRequestView{RequestID: random(), State: "queued"}
 	values["ControlPanelHint"] = ControlPanelHint{SchemaVersion: 1, UntilMs: 1800000060000}
+	values["RuntimeObservation"] = RuntimeObservation{Version: 1, Sequence: 1, Build: 74, Phase: "off", EngineKnown: true, Network: "none", SampledAtMs: 1800000000000}
+	values["DeviceActivationReport"] = ActivationReport{Version: 1, PolicyRevision: 1, EnvelopeHash: random(), ActivationGeneration: 1, Outcome: "committed", ActivePolicyRevision: 1}
 	values["TelemetryBatch"] = telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 51, AlgorithmRevision: 1,
 		Events: []telemetry.Event{{ID: random(), AtMS: 1800000000000, Kind: "vpn", Code: "online", Mode: "wifi"}}}
 	values["TelemetryReceipt"] = telemetry.Receipt{SchemaVersion: 1, EventIDs: []string{random()}}

@@ -1028,6 +1028,169 @@
           }
         }
       }
+    },
+    "/v1/device/runtime": {
+      "post": {
+        "operationId": "runtimeObservation",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Changed/regressing sequence, stale/future sample or other idempotency conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "One new observation per30 seconds; fixed text and Retry-After:30. General API admission also applies."
+          },
+          "204": {
+            "description": "Observation accepted, or exact prior sequence/body acknowledged without updating time."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "Closed JSON up to1024 bytes. A persistent per-key sequence and server-time estimate; no device ID, wall clock, endpoint or free text. Exact retries do not renew receipt time.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuntimeObservation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/device/policy/status": {
+      "post": {
+        "operationId": "policyActivationStatus",
+        "security": [
+          {
+            "deviceDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "description": "ES256 public P-256 JWK; htm, exact htu, iat, unique jti, ath and server nonce. POST also binds raw body via req_hash SHA256 base64url."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Invalid identity or proof, replay, refresh reuse or use_dpop_nonce; nonce challenge includes DPoP-Nonce.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account/device denied, expired session, no assignment or exceeded device limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict or fresh authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporary identity/database/capacity/delivery failure; no fallback config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission budget exceeded. Fixed text response, Retry-After seconds."
+          },
+          "204": {
+            "description": "Exact current activation report accepted or its same-body retry acknowledged."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceActivationReport"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1487,6 +1650,174 @@
             ]
           }
         }
+      },
+      "RuntimeObservation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "const": 1
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "build": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2100000000
+          },
+          "phase": {
+            "enum": [
+              "off",
+              "starting",
+              "online",
+              "recovering",
+              "no_network",
+              "blocked",
+              "unknown"
+            ]
+          },
+          "policyRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "engineKnown": {
+            "type": "boolean"
+          },
+          "engineActive": {
+            "type": "boolean"
+          },
+          "network": {
+            "enum": [
+              "none",
+              "wifi",
+              "cellular",
+              "unknown"
+            ]
+          },
+          "sampledAtMs": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "version",
+          "sequence",
+          "build",
+          "phase",
+          "policyRevision",
+          "engineKnown",
+          "engineActive",
+          "network",
+          "sampledAtMs"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "phase": {
+                  "const": "online"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "engineKnown": {
+                  "const": true
+                },
+                "engineActive": {
+                  "const": true
+                },
+                "policyRevision": {
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "phase": {
+                  "const": "off"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "engineKnown": {
+                  "const": true
+                },
+                "engineActive": {
+                  "const": false
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "engineKnown": {
+                  "const": false
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "engineActive": {
+                  "const": false
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DeviceActivationReport": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "const": 1
+          },
+          "policyRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "envelopeHash": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "activationGeneration": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "outcome": {
+            "enum": [
+              "committed",
+              "degraded",
+              "rolled_back"
+            ]
+          },
+          "activePolicyRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "version",
+          "policyRevision",
+          "envelopeHash",
+          "activationGeneration",
+          "outcome",
+          "activePolicyRevision"
+        ],
+        "description": "Committed/degraded requires activePolicyRevision=policyRevision; rollback requires activePolicyRevision<policyRevision. Binds the exact current signed configure envelope. Historical receipt, not an online heartbeat."
       }
     }
   },

@@ -25,3 +25,9 @@ for label, marker in (('Capability state and canonical reader', '/internal/enrol
     value = 100 * sum(count for count, hits in selected if hits) / sum(count for count, _ in selected)
     print(f'{label} coverage: {value:.1f}% (minimum 80%)')
     assert value >= 80
+
+selected=[(count,hits) for location,(count,hits) in blocks.items() if "/internal/enrollment/runtime_observation.go:" in location]
+assert selected,"Bounded device runtime observation ingestion"
+value=100*sum(count for count,hits in selected if hits)/sum(count for count,_ in selected)
+print(f"Device runtime observation ingestion coverage: {value:.1f}% (minimum80%)")
+assert value>=80

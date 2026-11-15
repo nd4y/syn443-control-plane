@@ -53,3 +53,9 @@ requires scoped PostgreSQL no-mutation/withdrawal tests, owner-bound callback an
 logout-race checks, and five named browser outcomes. All59 existing and new
 browser cases must pass without skips. A fresh-MFA challenge preserves an exact
 pending operation; explicit retry still passes all live authority checks.
+
+[Runtime observations](device-runtime-observations.md) add mandatory strict wire/fuzz,
+actual device-session/SQL rollback/idempotency/rate/role and scoped-reader expiry
+checks. All64 browser outcomes must pass, including five named runtime cases.
+Ingestion and the new reader each require80% coverage. No phone heartbeat or
+independent traffic attestation is established by these synthetic server/UI tests.

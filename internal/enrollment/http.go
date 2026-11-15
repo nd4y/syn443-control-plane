@@ -124,6 +124,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	isOverlay := a.OverlayServiceID != "" && (path == "/v1/device/overlay/fetch" || path == "/v1/device/overlay/consume")
 	isCapabilities := path == "/v1/device/capabilities" || path == "/v1/devices/capabilities"
 	isActivation := path == activationStatusPath && r.Method == "POST"
+	isRuntime := path == runtimeObservationPath && r.Method == "POST"
 	isControlPanel := a.ControlPanelDiscovery && path == controlPanelPath && r.Method == "GET"
 	isTelemetry := a.TelemetryEnabled && path == telemetryPath && r.Method == "POST"
 	fetchV2 := path == deviceFetchV2ClaimPath || path == deviceFetchV2ResultPath
@@ -131,7 +132,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	isFetchResult := a.DeviceFetch != nil && (path == deviceFetchResultPath || path == deviceFetchV2ResultPath) && r.Method == "POST"
 	isInvite := path == "/v1/invitations/time" || path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
 	allowed := isCapabilities && (r.Method == "GET" || r.Method == "POST") || isOverlay && r.Method == "POST" || isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
-	if !allowed && !isActivation && !isControlPanel && !isFetchClaim && !isFetchResult && !isTelemetry {
+	if !allowed && !isActivation && !isRuntime && !isControlPanel && !isFetchClaim && !isFetchResult && !isTelemetry {
 		http.NotFound(w, r)
 		return
 	}
@@ -209,6 +210,9 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	maxBody := int64(8192)
+	if isRuntime {
+		maxBody = maxRuntimeObservationBody
+	}
 	if isFetchResult {
 		if r.Header.Get("Origin") != "" || r.Header.Get("Content-Type") != "application/octet-stream" {
 			failure(w, identity.ErrInvalid)
@@ -350,6 +354,24 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(value)
+		return
+	}
+	if isRuntime {
+		if r.Header.Get("Origin") != "" {
+			failure(w, identity.ErrInvalid)
+			return
+		}
+		e = a.Store.RecordRuntimeObservation(ctx, binding, token, proof, raw, now)
+		if errors.Is(e, ErrRuntimeObservationBudget) {
+			w.Header().Set("Retry-After", "30")
+			http.Error(w, "runtime_observation_budget_exhausted", http.StatusTooManyRequests)
+			return
+		}
+		if e != nil {
+			failure(w, e)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if isActivation {
