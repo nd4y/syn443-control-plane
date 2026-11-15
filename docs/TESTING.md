@@ -1,4 +1,11 @@
 # Testing and release gates
+
+Device discovery adds required PostgreSQL scope/expiry, pagination, redacted
+metadata, activation-versus-connectivity, audit failure and authority expiry
+under a real row lock. Four mandatory browser cases cover ordinary selection,
+explicit pagination on a narrow screen, atomic rejection of invalid responses
+and state erasure on withdrawal/expiry with manual-lookup fallback. See
+[the discovery contract](device-inventory.md). These do not close full M2/M3.
 All automatable implemented behavior must run on pull requests and main in GitHub Actions.
 - Documents: source hashes, 292 unique requirements, 98 unique sequential scenarios, traceability/evidence integrity.
 - Contracts: strict schema validation, shared fixtures, unsupported fields/versions and bounded numeric inputs.
@@ -10,6 +17,12 @@ All automatable implemented behavior must run on pull requests and main in GitHu
 Physical-only release gates: real restricted LTE, RF handover, vendor power management, measured idle energy, external-provider availability and long endurance.
 CI must list these as pending rather than skip them and report success.
 Coverage applies to implemented code; line coverage alone is not behavioral coverage.
+
+Portable managed NetBird adds required Go compilation and PostgreSQL publication
+cases described in [its scope and limits](portable-netbird.md). The regular race,
+fuzz and configuration85% gates remain unchanged. These cases exercise direct and
+VLESS composition, internal DNS, invalid branches/authority fields, missing broker
+retention and stable addressed enrollment reference across transport changes.
 All fixtures use synthetic endpoints, identifiers and secrets. No real provider credentials are needed in CI.
 Every later feature PR updates requirements-register with scope and concrete evidence.
 
@@ -18,3 +31,25 @@ The mandatory `keycloak` Actions job uses a digest-pinned temporary IdP and gene
 M1 recovery gates (REC-01-06 / AC82-AC90) have partial cross-repository implementation and scoped acceptance; see [current evidence](implementation-status.md). Implemented paths require deterministic model/trace tests and Android fault injection must cover durable intent/config, exponential backoff/jitter and flapping, Stop/stale effects, optional-outbound partial startup without private leaks, full native hang and controller/service death, truthful status with detailed logs disabled, and persisted budgets across restart/reboot/clock changes. Physical Pixel evidence separately covers Wi-Fi/LTE/restricted LTE, actual OS restart/Force stop/revoke/Always-on behavior, Doze and energy. A live control looper, a JVM timeout, or process isolation alone does not prove these gates.
 
 M2 identity/enrollment pilot: see [scope and evidence](enrollment-pilot.md). Actions must run strict OIDC/DPoP crypto and schema tests, real temporary PostgreSQL role/transaction races, Keycloak code/key/refresh conformance, and the Android identity JVM suite with its 90% protocol-class line gate. These do not establish Android browser enrollment or physical policy activation. Raw operator identity/device evidence is never an upload payload.
+
+The enrollment job includes the [isolated PostgreSQL restore drill](database-recovery.md).
+Its dump is temporary and must not be uploaded.
+
+The telemetry web console requires PostgreSQL tests for exact grant, wildcard
+denial, revocation and read audit, a BFF scope test, and Playwright tests for
+populated/empty/mismatched reports, session expiry and preservation of unrelated
+drafts on a scoped denial. The browser fixture contains only synthetic counts.
+
+The control console uses the pinned PatternFly React and React packages in
+[console-ui](../console-ui/package-lock.json). GitHub Actions installs the lock
+and runs the console bundle before embedding it in support-chat-web and before
+the Chromium suite. The control-console-ui artifact records the exact source
+revision and SHA-256 checksums of the embedded JS, CSS, fonts and images. The
+browser gate covers same-origin resources, isolated sections, browser history,
+focus and preservation of unsaved drafts across navigation.
+
+The [control reauthentication recovery](control-session-reauthentication.md)
+requires scoped PostgreSQL no-mutation/withdrawal tests, owner-bound callback and
+logout-race checks, and five named browser outcomes. All59 existing and new
+browser cases must pass without skips. A fresh-MFA challenge preserves an exact
+pending operation; explicit retry still passes all live authority checks.

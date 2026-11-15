@@ -25,7 +25,7 @@ func TestOwnerConfigurationTrustAndFileBoundaries(t *testing.T) {
 	}
 	write(secret, []byte(fixtureToken+"\n"), 0600)
 	write(cert, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}), 0644)
-	base := ownerConfig{ResourceID: "panel-a", ProviderType: "panel.remnawave", APIVersion: "3.4", Endpoint: server.URL, Enabled: true, CredentialFile: secret, CertificateAuthorityFile: cert, AllowedNetworks: []string{"127.0.0.1/32"}}
+	base := ownerConfig{FixtureLoopback: true, ResourceID: "panel-a", ProviderType: "panel.remnawave", APIVersion: "3.4", Endpoint: server.URL, Enabled: true, CredentialFile: secret, CertificateAuthorityFile: cert, AllowedNetworks: []string{"127.0.0.1/32"}}
 	put := func(o ownerConfig) {
 		t.Helper()
 		raw, e := json.Marshal(o)

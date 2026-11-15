@@ -4,6 +4,7 @@
 package chatweb
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -14,8 +15,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
+	"mime"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,25 +31,72 @@ import (
 //go:embed assets/*
 var assets embed.FS
 var invalid = errors.New("chat_web_invalid")
+var consoleAsset = regexp.MustCompile("^[A-Z0-9]{8}$")
+
+// ControlAssetsReady reports whether the console entry points were bundled before embedding.
+func ControlAssetsReady() bool {
+	for _, name := range []string{"console.js", "console.css"} {
+		if _, err := fs.Stat(assets, "assets/control/ui/"+name); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+func staticAsset(path string, console bool) (string, string) {
+	switch path {
+	case "/":
+		return "index.html", "text/html; charset=utf-8"
+	case "/app.js", "/layer-merge.js":
+		return path[1:], "text/javascript; charset=utf-8"
+	case "/style.css":
+		return "style.css", "text/css; charset=utf-8"
+	}
+	if !console {
+		return "", ""
+	}
+	switch path {
+	case "/ui/console.js":
+		return path[1:], "text/javascript; charset=utf-8"
+	case "/ui/console.css":
+		return path[1:], "text/css; charset=utf-8"
+	}
+	name, ok := strings.CutPrefix(path, "/ui/asset-")
+	hash, ext, found := strings.Cut(name, ".")
+	if ok && found && consoleAsset.MatchString(hash) {
+		switch ext {
+		case "woff2":
+			return path[1:], "font/woff2"
+		case "svg":
+			return path[1:], "image/svg+xml"
+		}
+	}
+	return "", ""
+}
+
+var consoleDeviceID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 type Config struct {
-	Listen         string `json:"listen"`
-	Origin         string `json:"origin"`
-	APIOrigin      string `json:"apiOrigin"`
-	Issuer         string `json:"issuer"`
-	ClientID       string `json:"clientId"`
-	Audience       string `json:"audience"`
-	Certificate    string `json:"certificate"`
-	CertificateKey string `json:"certificateKey"`
-	FixtureHTTP    bool   `json:"fixtureHttp"`
+	Listen              string `json:"listen"`
+	Origin              string `json:"origin"`
+	APIOrigin           string `json:"apiOrigin"`
+	Issuer              string `json:"issuer"`
+	ClientID            string `json:"clientId"`
+	Audience            string `json:"audience"`
+	Certificate         string `json:"certificate"`
+	CertificateKey      string `json:"certificateKey"`
+	FixtureHTTP         bool   `json:"fixtureHttp"`
+	ControlConsole      bool   `json:"controlConsole,omitempty"`
+	ReauthenticationACR string `json:"reauthenticationAcr,omitempty"`
 }
 type verifier interface {
 	Verify(context.Context, string, time.Time) (identity.Principal, error)
 }
 type pending struct {
-	verifier, cookie string
-	key              *ecdsa.PrivateKey
-	expires          time.Time
+	verifier, cookie, device string
+	parentSession, owner     string
+	key                      *ecdsa.PrivateKey
+	expires                  time.Time
 }
 type session struct {
 	gate                   chan struct{}
@@ -56,14 +108,15 @@ type session struct {
 	cancel                 context.CancelFunc
 }
 type Server struct {
-	config   Config
-	verifier verifier
-	client   *http.Client
-	mu       sync.Mutex
-	pending  map[string]pending
-	sessions map[string]*session
-	clock    func() time.Time
-	slots    chan struct{}
+	config        Config
+	verifier      verifier
+	client        *http.Client
+	mu            sync.Mutex
+	pending       map[string]pending
+	sessions      map[string]*session
+	clock         func() time.Time
+	slots         chan struct{}
+	sourceImports chan struct{}
 }
 
 func validURL(raw string, origin, fixture bool) bool {
@@ -72,6 +125,9 @@ func validURL(raw string, origin, fixture bool) bool {
 		(u.Scheme == "https" || fixture && u.Scheme == "http" && u.Hostname() == "127.0.0.1" && u.Port() != "")
 }
 func New(ctx context.Context, c Config, transport http.RoundTripper) (*Server, error) {
+	if c.ReauthenticationACR != "" && (!c.ControlConsole || !reauthenticationACR.MatchString(c.ReauthenticationACR)) {
+		return nil, invalid
+	}
 	if !validURL(c.Origin, true, c.FixtureHTTP) || !validURL(c.APIOrigin, true, c.FixtureHTTP) || !validURL(c.Issuer, false, c.FixtureHTTP) || c.ClientID == "" || len(c.ClientID) > 128 || c.Audience == "" || len(c.Audience) > 128 {
 		return nil, invalid
 	}
@@ -85,7 +141,7 @@ func newServer(c Config, p verifier, transport http.RoundTripper) *Server {
 	if transport == nil {
 		transport = &http.Transport{Proxy: nil, ResponseHeaderTimeout: 5 * time.Second, MaxIdleConns: 4, IdleConnTimeout: 30 * time.Second}
 	}
-	return &Server{config: c, verifier: p, client: &http.Client{Transport: transport, Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, pending: map[string]pending{}, sessions: map[string]*session{}, clock: time.Now, slots: make(chan struct{}, 4)}
+	return &Server{config: c, verifier: p, client: &http.Client{Transport: transport, Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, pending: map[string]pending{}, sessions: map[string]*session{}, clock: time.Now, slots: make(chan struct{}, 4), sourceImports: make(chan struct{}, 1)}
 }
 func random() string {
 	b := make([]byte, 32)
@@ -96,6 +152,9 @@ func random() string {
 }
 func (s *Server) cookieName(login bool) string {
 	name := "syn443-admin"
+	if s.config.ControlConsole {
+		name = "syn443-control"
+	}
 	if login {
 		name += "-login"
 	}
@@ -138,24 +197,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+	csp := "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+	if s.config.ControlConsole {
+		csp += "; font-src 'self'; img-src 'self'"
+	}
+	w.Header().Set("Content-Security-Policy", csp)
 	w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 	if r.URL.RawPath != "" || r.URL.Fragment != "" || (r.URL.RawQuery != "" && r.URL.Path != "/callback") {
 		fail(w, 400)
 		return
 	}
-	if r.Method == "GET" && (r.URL.Path == "/" || r.URL.Path == "/app.js" || r.URL.Path == "/style.css") {
-		name := strings.TrimPrefix(r.URL.Path, "/")
-		if name == "" {
-			name = "index.html"
+	if name, kind := staticAsset(r.URL.Path, s.config.ControlConsole); r.Method == "GET" && name != "" {
+		prefix := "assets/"
+		if s.config.ControlConsole {
+			prefix += "control/"
 		}
-		b, e := assets.ReadFile("assets/" + name)
+		b, e := assets.ReadFile(prefix + name)
 		if e != nil {
 			fail(w, 404)
 			return
 		}
-		kind := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8"}
-		w.Header().Set("Content-Type", kind[name])
+		w.Header().Set("Content-Type", kind)
 		_, _ = w.Write(b)
 		return
 	}
@@ -202,12 +264,18 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Path == "/session" {
-		reply(w, map[string]bool{"authenticated": true})
+		s.sessionStatus(w, r, cookie.Value, v)
+		return
+	}
+	if r.URL.Path == "/reauth" {
+		s.reauthenticate(w, r, cookie.Value, v)
 		return
 	}
 	action := strings.TrimPrefix(r.URL.Path, "/chat/")
 	allowed := map[string]bool{"self": true, "inbox": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
-	if !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action] {
+	sourceImport := s.config.ControlConsole && r.URL.Path == "/control/source/import"
+	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport)
+	if !control && (s.config.ControlConsole || !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action]) {
 		fail(w, 404)
 		return
 	}
@@ -215,9 +283,30 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if action == "uploads/part" {
 		limit = 352 * 1024
 	}
+	if control {
+		limit = consoleActionLimit
+	}
+	if sourceImport {
+		limit = consoleImportLimit
+		select {
+		case s.sourceImports <- struct{}{}:
+			defer func() { <-s.sourceImports }()
+		default:
+			fail(w, 503)
+			return
+		}
+	}
+	if r.ContentLength > limit {
+		fail(w, 413)
+		return
+	}
 	raw, e := io.ReadAll(io.LimitReader(r.Body, limit+1))
 	if e != nil || int64(len(raw)) > limit {
 		fail(w, 413)
+		return
+	}
+	if control && !validConsoleAction(raw, sourceImport) {
+		fail(w, 400)
 		return
 	}
 	select {
@@ -242,13 +331,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	uri := s.config.APIOrigin + "/v1/admin/chat/" + action
+	if control {
+		if !v.principal.HasScope("syn443.control") {
+			fail(w, 403)
+			return
+		}
+		uri = s.config.APIOrigin + "/v1/control/action"
+	}
 	for attempt := 0; attempt < 2; attempt++ {
 		proof, e := sign(v.key, "POST", uri, v.access, v.nonce, raw, s.clock())
 		if e != nil {
 			fail(w, 503)
 			return
 		}
-		req, e := http.NewRequestWithContext(ctx, "POST", uri, strings.NewReader(string(raw)))
+		req, e := http.NewRequestWithContext(ctx, "POST", uri, bytes.NewReader(raw))
 		if e != nil {
 			fail(w, 503)
 			return
@@ -272,6 +368,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if res.StatusCode != 200 {
+			if control && res.StatusCode == 403 && reauthenticationChallenge(data) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(403)
+				reply(w, map[string]string{"code": "catalog_reauthentication_required"})
+				return
+			}
 			if res.StatusCode == 429 {
 				w.Header().Set("Retry-After", "60")
 			}
@@ -316,15 +418,40 @@ func sign(key *ecdsa.PrivateKey, method, uri, token, nonce string, body []byte, 
 	return input + "." + b64.EncodeToString(sig), nil
 }
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
+	s.beginLogin(w, r, "", "")
+}
+
+func (s *Server) beginLogin(w http.ResponseWriter, r *http.Request, parent, owner string) {
+	var device string
+	if s.config.ControlConsole {
+		const limit = 512
+		var input struct {
+			Device json.RawMessage `json:"device"`
+		}
+		raw, e := io.ReadAll(io.LimitReader(r.Body, limit+1))
+		if e != nil || len(raw) > limit || identity.Decode(raw, &input, true) != nil {
+			fail(w, 400)
+			return
+		}
+		if len(input.Device) > 0 && (json.Unmarshal(input.Device, &device) != nil || !consoleDeviceID.MatchString(device)) {
+			fail(w, 400)
+			return
+		}
+	}
 	key, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if e != nil {
 		fail(w, 503)
 		return
 	}
-	p := pending{random(), random(), key, s.clock().Add(5 * time.Minute)}
+	p := pending{verifier: random(), cookie: random(), device: device, parentSession: parent, owner: owner, key: key, expires: s.clock().Add(5 * time.Minute)}
 	state := random()
 	s.mu.Lock()
 	s.prune(s.clock())
+	if parent != "" && !s.liveParentLocked(parent) {
+		s.mu.Unlock()
+		fail(w, 401)
+		return
+	}
 	if len(s.pending) >= 32 || len(s.sessions) >= 32 {
 		s.mu.Unlock()
 		fail(w, 503)
@@ -336,32 +463,71 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	// Access-token identity is verified by the pinned API audience, issuer, client
 	// and DPoP key. We request OAuth authorization, never use an unverified ID token.
 	q := url.Values{"client_id": {s.config.ClientID}, "response_type": {"code"}, "redirect_uri": {s.config.Origin + "/callback"}, "state": {state}, "code_challenge": {identity.Hash([]byte(p.verifier))}, "code_challenge_method": {"S256"}, "dpop_jkt": {thumb}}
+	if s.config.ControlConsole {
+		q.Set("scope", "openid syn443.control")
+	}
+	if parent != "" {
+		q.Set("prompt", "login")
+		q.Set("max_age", "0")
+		q.Set("acr_values", s.config.ReauthenticationACR)
+	}
 	s.cookie(w, true, p.cookie, 300)
 	reply(w, map[string]string{"url": s.config.Issuer + "/protocol/openid-connect/auth?" + q.Encode()})
 }
+
+const consoleLoginRecovery = `<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light"><title>SYN443 - Вход не завершён</title><link rel="stylesheet" href="/style.css"></head>
+<body><main><section class="wide"><h1>Вход не завершён</h1><p>Откройте панель и начните вход через Keycloak заново.</p>
+<p><a href="/">Вернуться ко входу</a></p></section></main></body></html>`
+
+func (s *Server) callbackFailure(w http.ResponseWriter, r *http.Request, status int) {
+	if s.config.ControlConsole {
+		for _, accept := range r.Header.Values("Accept") {
+			for media := range strings.SplitSeq(accept, ",") {
+				kind, params, e := mime.ParseMediaType(media)
+				if e != nil || kind != "text/html" {
+					continue
+				}
+				if value, hasQuality := params["q"]; hasQuality {
+					q, e := strconv.ParseFloat(value, 64)
+					if e != nil || !(q > 0 && q <= 1) {
+						continue
+					}
+				}
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.WriteHeader(status)
+				_, _ = io.WriteString(w, consoleLoginRecovery)
+				return
+			}
+		}
+	}
+	fail(w, status)
+}
+
 func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	if len(r.URL.RawQuery) > 8192 {
-		fail(w, 400)
+		s.callbackFailure(w, r, 400)
 		return
 	}
 	q, e := url.ParseQuery(r.URL.RawQuery)
 	if e != nil {
-		fail(w, 400)
+		s.callbackFailure(w, r, 400)
 		return
 	}
 	for k, v := range q {
 		if len(v) != 1 || (k != "code" && k != "state" && k != "iss" && k != "session_state") {
-			fail(w, 400)
+			s.callbackFailure(w, r, 400)
 			return
 		}
 	}
 	if q.Get("iss") != s.config.Issuer || len(q.Get("code")) < 1 || len(q.Get("code")) > 4096 {
-		fail(w, 400)
+		s.callbackFailure(w, r, 400)
 		return
 	}
 	cookie, e := r.Cookie(s.cookieName(true))
 	if e != nil {
-		fail(w, 401)
+		s.callbackFailure(w, r, 401)
 		return
 	}
 	s.mu.Lock()
@@ -369,27 +535,45 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	p, ok := s.pending[q.Get("state")]
 	if !ok || p.cookie != cookie.Value {
 		s.mu.Unlock()
-		fail(w, 401)
+		s.callbackFailure(w, r, 401)
 		return
 	}
 	delete(s.pending, q.Get("state"))
+	if p.parentSession != "" {
+		parentCookie, e := r.Cookie(s.cookieName(false))
+		if e != nil || parentCookie.Value != p.parentSession || !s.liveParentLocked(p.parentSession) {
+			s.mu.Unlock()
+			s.callbackFailure(w, r, 401)
+			return
+		}
+	}
 	s.mu.Unlock()
 	s.cookie(w, true, "", -1)
 	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 	defer cancel()
 	v := &session{gate: make(chan struct{}, 1), key: p.key, expires: s.clock().Add(time.Hour)}
 	if s.token(ctx, v, url.Values{"grant_type": {"authorization_code"}, "code": {q.Get("code")}, "code_verifier": {p.verifier}, "client_id": {s.config.ClientID}, "redirect_uri": {s.config.Origin + "/callback"}}) != nil {
-		fail(w, 401)
+		s.callbackFailure(w, r, 401)
+		return
+	}
+	if p.parentSession != "" && (principalOwner(v.principal) != p.owner || v.principal.MFAUntil(s.config.ReauthenticationACR, s.clock()) <= s.clock().Unix()) {
+		s.callbackFailure(w, r, 401)
 		return
 	}
 	id := random()
 	v.ctx, v.cancel = context.WithCancel(context.Background())
 	s.mu.Lock()
 	s.prune(s.clock())
+	if p.parentSession != "" && (!s.liveParentLocked(p.parentSession) || !s.clock().Before(p.expires)) {
+		s.mu.Unlock()
+		v.cancel()
+		s.callbackFailure(w, r, 401)
+		return
+	}
 	if len(s.sessions) >= 32 {
 		s.mu.Unlock()
 		v.cancel()
-		fail(w, 503)
+		s.callbackFailure(w, r, 503)
 		return
 	}
 	if old, e := r.Cookie(s.cookieName(false)); e == nil {
@@ -401,7 +585,11 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	s.sessions[id] = v
 	s.mu.Unlock()
 	s.cookie(w, false, id, 3600)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	location := "/"
+	if p.device != "" {
+		location += "#device=" + p.device
+	}
+	http.Redirect(w, r, location, http.StatusSeeOther)
 }
 func (s *Server) token(ctx context.Context, v *session, form url.Values) error {
 	endpoint := s.config.Issuer + "/protocol/openid-connect/token"
@@ -444,7 +632,7 @@ func (s *Server) token(ctx context.Context, v *session, form url.Values) error {
 			return invalid
 		}
 		thumb, _ := identity.PublicJWK(&v.key.PublicKey).Thumbprint()
-		if p.Thumbprint != thumb || (v.principal.Subject != "" && p != v.principal) {
+		if p.Thumbprint != thumb || s.config.ControlConsole && !p.HasScope("syn443.control") || (v.principal.Subject != "" && (p.Issuer != v.principal.Issuer || p.Subject != v.principal.Subject || p.Thumbprint != v.principal.Thumbprint)) {
 			return invalid
 		}
 		v.access = token.Access

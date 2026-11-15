@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "base",
+      "address": {
+        "serviceId": "service-a",
+        "ownerTag": "bwR5SVFvwHp7vMgEGpApvgu8aNzWwJ0QMUiCOP2AJZk",
+        "deviceId": "device-a",
+        "overlayId": "personal-overlay",
+        "provider": "netbird",
+        "resourceId": "cloud-resource",
+        "networkId": "provider-network",
+        "identityEpoch": 1,
+        "managementURL": "https://api.example.invalid"
+      },
+      "expected": "managed-netbird/qunnl-DySihN4g9Qo0ymAUlR5FFsq7zr0O52mMnjKmY"
+    },
+    {
+      "name": "canonical-origin",
+      "address": {
+        "serviceId": "service-a",
+        "ownerTag": "bwR5SVFvwHp7vMgEGpApvgu8aNzWwJ0QMUiCOP2AJZk",
+        "deviceId": "device-a",
+        "overlayId": "personal-overlay",
+        "provider": "netbird",
+        "resourceId": "cloud-resource",
+        "networkId": "provider-network",
+        "identityEpoch": 1,
+        "managementURL": "https://API.EXAMPLE.INVALID:443/"
+      },
+      "expected": "managed-netbird/qunnl-DySihN4g9Qo0ymAUlR5FFsq7zr0O52mMnjKmY"
+    },
+    {
+      "name": "account-isolation",
+      "address": {
+        "serviceId": "service-a",
+        "ownerTag": "KDsMsDZgtazneUAO3v4A9IBhwQ1CPd9sdtcP3Y3UdCc",
+        "deviceId": "device-a",
+        "overlayId": "personal-overlay",
+        "provider": "netbird",
+        "resourceId": "cloud-resource",
+        "networkId": "provider-network",
+        "identityEpoch": 1,
+        "managementURL": "https://api.example.invalid"
+      },
+      "expected": "managed-netbird/JrxCnCV7KCmQHxSiPF5F1ahQW3Qi4aJBiiLNNnOn8bQ"
+    },
+    {
+      "name": "resource-isolation",
+      "address": {
+        "serviceId": "service-a",
+        "ownerTag": "bwR5SVFvwHp7vMgEGpApvgu8aNzWwJ0QMUiCOP2AJZk",
+        "deviceId": "device-a",
+        "overlayId": "personal-overlay",
+        "provider": "netbird",
+        "resourceId": "other-resource",
+        "networkId": "provider-network",
+        "identityEpoch": 1,
+        "managementURL": "https://api.example.invalid"
+      },
+      "expected": "managed-netbird/SAKWssP1nFzEfc1PntDLKDMIoujFaQBwVg3tLlnxKhs"
+    },
+    {
+      "name": "network-isolation",
+      "address": {
+        "serviceId": "service-a",
+        "ownerTag": "bwR5SVFvwHp7vMgEGpApvgu8aNzWwJ0QMUiCOP2AJZk",
+        "deviceId": "device-a",
+        "overlayId": "personal-overlay",
+        "provider": "netbird",
+        "resourceId": "cloud-resource",
+        "networkId": "other-provider-network",
+        "identityEpoch": 1,
+        "managementURL": "https://api.example.invalid"
+      },
+      "expected": "managed-netbird/VvO0RYT4GnNJJNBHLTGXMvXwbv2wE2vy4c_e3Ic5oFU"
+    },
+    {
+      "name": "identity-rotation",
+      "address": {
+        "serviceId": "service-a",
+        "ownerTag": "bwR5SVFvwHp7vMgEGpApvgu8aNzWwJ0QMUiCOP2AJZk",
+        "deviceId": "device-a",
+        "overlayId": "personal-overlay",
+        "provider": "netbird",
+        "resourceId": "cloud-resource",
+        "networkId": "provider-network",
+        "identityEpoch": 2,
+        "managementURL": "https://api.example.invalid"
+      },
+      "expected": "managed-netbird/4xys7yWuYpuAJW8GLVAkX4_VMU_oRaDPWL3u7XJW8Og"
+    },
+    {
+      "name": "ipv6",
+      "address": {
+        "serviceId": "service-a",
+        "ownerTag": "bwR5SVFvwHp7vMgEGpApvgu8aNzWwJ0QMUiCOP2AJZk",
+        "deviceId": "device-a",
+        "overlayId": "personal-overlay",
+        "provider": "netbird",
+        "resourceId": "cloud-resource",
+        "networkId": "provider-network",
+        "identityEpoch": 1,
+        "managementURL": "https://[::1]:8443/"
+      },
+      "expected": "managed-netbird/sn_XrvtV1b0FpkBbNtJ1gBU-p8UCMR5KXBTLE7dXnnQ"
+    }
+  ]
+}

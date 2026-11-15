@@ -35,6 +35,7 @@ jobs:
           persist-credentials: false
       - run: python3 tools/check_documents.py
       - run: python3 tools/check_contracts.py
+      - run: python3 -m unittest discover -s tools -p 'test_enrollment_site.py'
   go:
     needs: public-data
     runs-on: ubuntu-24.04
@@ -46,8 +47,18 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.3'
+          go-version: '1.27.4'
           cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.21.0'
+          cache: npm
+          cache-dependency-path: console-ui/package-lock.json
+      - name: Bundle the PatternFly control console
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+        working-directory: console-ui
       - run: test -z "$(gofmt -l cmd internal contracts integration)"
       - run: go mod verify
       - run: go vet ./...
@@ -57,6 +68,25 @@ jobs:
       - run: go test ./internal/policy -run '^$' -fuzz '^FuzzPolicyDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/identity -run '^$' -fuzz '^FuzzIdentityDecode$' -fuzztime=15s -parallel=2
       - run: go test ./internal/remnawave -run '^$' -fuzz '^FuzzProviderJSON$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/subscriptions -run '^$' -fuzz '^FuzzSubscriptionJSON$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/configuration -run '^$' -fuzz '^FuzzConfigurationGraph$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/overlay -run '^$' -fuzz '^FuzzAddressedCredential$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/configuration -run '^$' -fuzz '^FuzzConfigurationLayers$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/configuration -run '^$' -fuzz '^FuzzNetworkPlan$' -fuzztime=15s -parallel=2
+      - run: go test ./internal/bootstrap -run '^$' -fuzz '^FuzzInvitationLink$' -fuzztime=15s -parallel=2
+      - name: Generate public Go to Kotlin bootstrap evidence
+        run: |
+          mkdir -p dist/bootstrap-wire
+          go run ./cmd/bootstrap-fixture > dist/bootstrap-wire/bootstrap-wire-vectors.json
+          test -s dist/bootstrap-wire/bootstrap-wire-vectors.json
+          python3 tools/check_public_data.py dist/bootstrap-wire
+          bash tools/scan_secrets.sh dist/bootstrap-wire
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: bootstrap-wire-evidence
+          path: dist/bootstrap-wire/bootstrap-wire-vectors.json
+          if-no-files-found: error
+          retention-days: 14
       - run: go build -o bin/syn443-api ./cmd/api
       - run: python3 tools/smoke_api.py bin/syn443-api
       - run: go build -o bin/syn443-policy-sign ./cmd/policy-sign && go build -o bin/syn443-policy-serve ./cmd/policy-serve
@@ -67,14 +97,15 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           mkdir -p dist/control-plane
-          for binary in enrollment-api enrollment-worker enrollment-admin support-chat-web resource-inspect; do
+          for binary in enrollment-api enrollment-worker enrollment-admin support-chat-web resource-inspect control-api source-worker overlay-worker; do
             go build -trimpath -ldflags='-s -w -buildid=' -o "dist/control-plane/$binary" "./cmd/$binary"
           done
           git rev-parse HEAD > dist/control-plane/SOURCE.txt
-          (cd dist/control-plane && sha256sum enrollment-api enrollment-worker enrollment-admin support-chat-web resource-inspect > SHA256SUMS)
+          (cd dist/control-plane && sha256sum enrollment-api enrollment-worker enrollment-admin support-chat-web resource-inspect control-api source-worker overlay-worker > SHA256SUMS)
       - name: Scan control-plane runtime payloads
         id: runtime-scan
         run: |
+          python3 tools/check_compiled_url_shapes.py dist/control-plane
           python3 tools/check_public_data.py dist/control-plane
           bash tools/scan_secrets.sh dist/control-plane
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -82,6 +113,22 @@ jobs:
         with:
           name: control-plane-linux-amd64
           path: dist/control-plane/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Verify and scan the bundled console assets
+        run: |
+          test -s internal/chatweb/assets/control/ui/console.js
+          test -s internal/chatweb/assets/control/ui/console.css
+          python3 tools/check_public_data.py internal/chatweb/assets/control/ui
+          bash tools/scan_secrets.sh internal/chatweb/assets/control/ui
+          mkdir -p dist/console-ui
+          cp internal/chatweb/assets/control/ui/* dist/console-ui/
+          git rev-parse HEAD > dist/console-ui/SOURCE.txt
+          (cd dist/console-ui && sha256sum -- *.js *.css *.woff2 *.svg > SHA256SUMS)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: control-console-ui
+          path: dist/console-ui/
           if-no-files-found: error
           retention-days: 14
       - name: Workflow validation
@@ -104,6 +151,35 @@ jobs:
             coverage.out
             dependency-inventory.json
           retention-days: 14
+  catalog:
+    needs: public-data
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.4'
+          cache: true
+      - run: bash -n tools/test_catalog.sh
+      - run: bash tools/test_catalog.sh
+      - run: python3 tools/check_catalog_coverage.py
+      - name: Scan catalog evidence
+        id: catalog-scan
+        if: always()
+        run: |
+          test -s catalog-coverage.out
+          python3 tools/check_public_data.py catalog-coverage.out
+          bash tools/scan_secrets.sh catalog-coverage.out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && steps.catalog-scan.outcome == 'success'
+        with:
+          name: catalog-test-evidence
+          path: catalog-coverage.out
+          retention-days: 14
   keycloak:
     needs: public-data
     runs-on: ubuntu-24.04
@@ -115,7 +191,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.3'
+          go-version: '1.27.4'
           cache: true
       - run: bash -n tools/test_keycloak.sh
       - run: bash tools/test_keycloak.sh
@@ -132,7 +208,14 @@ jobs:
         with:
           node-version: '24.21.0'
           cache: npm
-          cache-dependency-path: web-tests/package-lock.json
+          cache-dependency-path: |
+            web-tests/package-lock.json
+            console-ui/package-lock.json
+      - name: Bundle the PatternFly control console
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+        working-directory: console-ui
       - run: python3 tools/check_web_sources.py
       - run: npm ci --ignore-scripts
         working-directory: web-tests
@@ -140,6 +223,7 @@ jobs:
         working-directory: web-tests
       - run: npm test
         working-directory: web-tests
+      - run: python3 tools/check_web_evidence.py
       - name: Scan synthetic browser evidence
         id: web-scan
         if: always()
@@ -153,6 +237,55 @@ jobs:
           name: support-web-test-evidence
           path: web-tests/results.xml
           retention-days: 14
+      - name: Scan synthetic console previews
+        run: |
+          for name in desktop mobile signin; do
+            test -s "web-tests/test-results/console-visual/$name.png"
+          done
+          python3 tools/check_public_data.py web-tests/test-results/console-visual
+          bash tools/scan_secrets.sh web-tests/test-results/console-visual
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: synthetic-console-visual-qa
+          path: |
+            web-tests/test-results/console-visual/desktop.png
+            web-tests/test-results/console-visual/mobile.png
+            web-tests/test-results/console-visual/signin.png
+          if-no-files-found: error
+          retention-days: 7
+  invitations:
+    needs: public-data
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.4'
+          cache: true
+      - run: bash -n tools/test_invitations.sh
+      - run: bash tools/test_invitations.sh
+      - run: python3 tools/check_invitation_coverage.py
+      - name: Scan invitation evidence
+        id: invitation-scan
+        if: always()
+        run: |
+          test -s invitation-coverage.out
+          test -s provisioning-coverage.out
+          python3 tools/check_public_data.py invitation-coverage.out provisioning-coverage.out
+          bash tools/scan_secrets.sh invitation-coverage.out provisioning-coverage.out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && steps.invitation-scan.outcome == 'success'
+        with:
+          name: invitation-test-evidence
+          path: |
+            invitation-coverage.out
+            provisioning-coverage.out
+          if-no-files-found: error
+          retention-days: 14
   enrollment:
     needs: public-data
     runs-on: ubuntu-24.04
@@ -164,7 +297,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: '1.27.3'
+          go-version: '1.27.4'
           cache: true
       - run: bash -n tools/test_enrollment.sh
       - run: bash tools/test_enrollment.sh

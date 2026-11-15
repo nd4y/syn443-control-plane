@@ -251,6 +251,59 @@ func TestOIDCBindings(t *testing.T) {
 	}
 }
 
+func TestSignedAdministrativeAssuranceAndScope(t *testing.T) {
+	k, jwks := rsaFixture(t)
+	keys, e := ParseJWKS(jwks)
+	if e != nil {
+		t.Fatal(e)
+	}
+	now := time.Unix(1800000000, 0)
+	thumb, _ := PublicJWK(&ec(t).PublicKey).Thumbprint()
+	o := OIDC{"https://id.example.invalid/realms/test", "syn443-control-api", "syn443-control-mobile", keys}
+	header := jsonBytes(t, map[string]any{"alg": "RS256", "typ": "JWT", "kid": "fixture"})
+	claims := map[string]any{"iss": o.Issuer, "sub": "synthetic-admin", "aud": o.Audience, "azp": o.Client, "exp": now.Unix() + 300, "iat": now.Unix(), "cnf": map[string]string{"jkt": thumb}, "auth_time": now.Unix() - 60, "amr": []string{"pwd", "otp"}, "acr": "urn:syn443:loa:2", "scope": "openid syn443.control"}
+	verify := func(v map[string]any) (Principal, error) { return o.Verify(jwt(t, k, header, jsonBytes(t, v)), now) }
+	p, e := verify(claims)
+	if e != nil || p.MFAUntil("urn:syn443:loa:2", now) != p.Expires || !p.HasScope("syn443.control") || p.HasScope("syn443") {
+		t.Fatal("signed assurance", e)
+	}
+	if p.MFAUntil("other", now) != 0 || p.MFAUntil("", now) != 0 {
+		t.Fatal("unpinned assurance")
+	}
+	p.AuthTime = now.Unix() - 601
+	if p.MFAUntil("urn:syn443:loa:2", now) != 0 {
+		t.Fatal("stale MFA")
+	}
+	p.AuthTime = now.Unix() + 31
+	if p.MFAUntil("urn:syn443:loa:2", now) != 0 {
+		t.Fatal("future MFA")
+	}
+	p.AuthTime = now.Unix()
+	p.Methods = []string{"pwd"}
+	if p.MFAUntil("urn:syn443:loa:2", now) != 0 {
+		t.Fatal("password became MFA")
+	}
+	for key, values := range map[string][]any{"auth_time": {-1, now.Unix() + 31}, "acr": {strings.Repeat("a", 129), "bad\nvalue"}, "amr": {[]string{"otp", "otp"}, []string{""}, []string{strings.Repeat("a", 33)}, []string{"bad\nvalue"}}, "scope": {strings.Repeat("a", 2049), "admin\ncontrol"}} {
+		for _, value := range values {
+			bad := map[string]any{}
+			for k, v := range claims {
+				bad[k] = v
+			}
+			bad[key] = value
+			if _, e = verify(bad); e == nil {
+				t.Fatal("invalid assurance accepted", key)
+			}
+		}
+	}
+	delete(claims, "amr")
+	delete(claims, "acr")
+	delete(claims, "auth_time")
+	p, e = verify(claims)
+	if e != nil || p.MFAUntil("urn:syn443:loa:2", now) != 0 {
+		t.Fatal("ordinary login lost compatibility", e)
+	}
+}
+
 type roundTrip func(*http.Request) (*http.Response, error)
 
 func (f roundTrip) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

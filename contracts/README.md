@@ -18,3 +18,8 @@ Stop wins later completion; comparison/commit is synchronized. Overflow rejects 
 The implemented preview API is specified in v1/openapi.json and its result schema. In-process transitions are specified in ../docs/coordinator-transitions.md. All transport and schema limits apply together.
 
 The separate M2 pilot wire contract is `v1/enrollment-openapi.json`. Its bounds, exact JSON members, DPoP raw-body extension, durable idempotency and pending/error states are normative for the five implemented identity endpoints; the wider M2 protocol remains planned.
+
+`overlay-namespace-vectors.json` binds the server/Android isolated identity hash
+and canonical management origin. All inputs are public synthetic metadata; no
+setup key, SDK private key or live provider identifier is included. The vectors
+do not grant enrollment or implement managed NetBird activation.

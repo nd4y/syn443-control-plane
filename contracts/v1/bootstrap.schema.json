@@ -1,0 +1,312 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.example.invalid/syn443/bootstrap-v1",
+  "title": "SYN443 installation bootstrap trust",
+  "description": "Closed syntax. Runtime also verifies canonical ES256, P256 SPKI, epoch/revision/validity, exact service/origin, distinct offline/online keys and both root-transition signatures. A descriptor/link grants no account/session/role. Invitation is exactly syn443://enroll/v1?service=...&origin=...&code=...&bootstrap=...; the code is unassigned opaque32-byte entropy until the one-time invitation service authorizes it.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Anchor"
+    },
+    {
+      "$ref": "#/$defs/Floor"
+    },
+    {
+      "$ref": "#/$defs/Descriptor"
+    },
+    {
+      "$ref": "#/$defs/Transition"
+    },
+    {
+      "$ref": "#/$defs/Rotation"
+    }
+  ],
+  "$defs": {
+    "Anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "spki",
+        "epoch",
+        "lastTransition"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "spki": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 344,
+          "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "lastTransition": {
+          "oneOf": [
+            {
+              "const": ""
+            },
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          ]
+        }
+      }
+    },
+    "Floor": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "serviceId",
+            "revision",
+            "hash"
+          ],
+          "properties": {
+            "serviceId": {
+              "const": ""
+            },
+            "revision": {
+              "const": 0
+            },
+            "hash": {
+              "const": ""
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "serviceId",
+            "revision",
+            "hash"
+          ],
+          "properties": {
+            "serviceId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "hash": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          }
+        }
+      ]
+    },
+    "Descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "audience",
+        "rootEpoch",
+        "revision",
+        "serviceId",
+        "issuer",
+        "clientId",
+        "apiOrigin",
+        "roots",
+        "issuedAt",
+        "notBefore",
+        "expires"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "audience": {
+          "const": "syn443-client-bootstrap"
+        },
+        "rootEpoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "serviceId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^https://"
+        },
+        "clientId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "apiOrigin": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^https://"
+        },
+        "roots": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 4,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 344,
+            "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+          }
+        },
+        "issuedAt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "notBefore": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "expires": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "controlPanelOrigin": {
+          "type": "string",
+          "maxLength": 2048,
+          "anyOf": [
+            {
+              "const": ""
+            },
+            {
+              "pattern": "^https://[^/?#@]+$"
+            }
+          ]
+        }
+      }
+    },
+    "Transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "audience",
+        "from",
+        "to",
+        "spki",
+        "epoch",
+        "issuedAt",
+        "notBefore",
+        "expires"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "audience": {
+          "const": "syn443-root-transition"
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "to": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "spki": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 344,
+          "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "issuedAt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "notBefore": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "expires": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "Rotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "previous",
+        "next"
+      ],
+      "properties": {
+        "previous": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 6144,
+          "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 6144,
+          "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+        }
+      }
+    },
+    "Header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alg",
+        "kid",
+        "typ"
+      ],
+      "properties": {
+        "alg": {
+          "const": "ES256"
+        },
+        "kid": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "typ": {
+          "enum": [
+            "syn443-bootstrap+jws",
+            "syn443-root-transition+jws"
+          ]
+        }
+      }
+    }
+  }
+}
