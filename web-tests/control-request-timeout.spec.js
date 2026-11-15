@@ -14,7 +14,7 @@ test('stalled initial session never blocks sign-in indefinitely or paints a late
   await page.clock.install();await request.post(origin+'/fixture/reset',{data:{}});await page.goto(origin,{waitUntil:'commit'});
   await expect.poll(()=>started).toBe(1);await expect(page.locator('#login')).toBeDisabled();await expect(page.locator('#workspace')).toBeHidden();
   await page.clock.pauseAt(new Date(Date.now()+1000));await page.clock.runFor(15001);
-  await expect(page.locator('#login')).toBeEnabled();await expect(page.locator('#status')).toContainText('Сервер недоступен');
+  await expect(page.locator('#login')).toBeEnabled();await expect(page.locator('#status')).toContainText('Сервер не ответил вовремя');
   release();await expect.poll(()=>released).toBe(true);await page.clock.runFor(60000);
   expect(started).toBe(1);await expect(page.locator('#workspace')).toBeHidden();await expect(page.locator('#signin')).toBeVisible();
  }finally{release();}
@@ -33,7 +33,7 @@ test('stalled sign-in releases controls at its deadline and only an explicit ret
   await page.goto(origin);await expect(page.locator('#login')).toBeEnabled();
   await page.clock.pauseAt(new Date(Date.now()+1000));await page.locator('#login').click();await expect.poll(()=>attempts).toBe(1);
   await expect(page.locator('#login')).toBeDisabled();await page.clock.runFor(15001);
-  await expect(page.locator('#login')).toBeEnabled();await expect(page.locator('#status')).toContainText('Сервер недоступен');
+  await expect(page.locator('#login')).toBeEnabled();await expect(page.locator('#status')).toContainText('Сервер не ответил вовремя');
   await page.clock.runFor(60000);expect(attempts).toBe(1);expect(page.url()).toBe(origin+'/');
   release();await expect.poll(()=>released).toBe(true);expect(page.url()).toBe(origin+'/');
   await page.locator('#login').click();await expect(page.getByRole('heading',{name:'Synthetic identity provider'})).toBeVisible();expect(attempts).toBe(2);

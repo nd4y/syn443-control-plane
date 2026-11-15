@@ -208,7 +208,8 @@ async function request(path,body,signal){
  if(path===sourceImportPath?raw.length>14*1024*1024+65536:new TextEncoder().encode(raw).length>278528)throw Error('size');
  const controller=new AbortController(),abort=()=>controller.abort();
  if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
- const deadline=setTimeout(abort,15000);
+ let timedOut=false;
+ const deadline=setTimeout(()=>{timedOut=true;abort();},15000);
  try{
  const response=await fetch(path,{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:{'Content-Type':'application/json','X-Syn443-CSRF':'1'},body:raw,signal:controller.signal});
  if(response.status===401&&path==='/session'&&!authenticated)throw Error('anonymous');
@@ -223,7 +224,8 @@ async function request(path,body,signal){
  if(response.status===413)throw Error(path===sourceImportPath?'importSize':'size');
  if(!response.ok)throw Error(response.status===409?'conflict':response.status===400?'invalid':response.status===404?'not_found':'network');
  return await response.json();
- }finally{clearTimeout(deadline);signal?.removeEventListener('abort',abort);}
+ }catch(error){if(timedOut)throw Error('timeout');throw error;}
+ finally{clearTimeout(deadline);signal?.removeEventListener('abort',abort);}
 }
 const envelope=(action,payload)=>JSON.stringify({version:1,action,requestId:crypto.randomUUID(),payload});
 const action=(name,payload,signal)=>request('/control/action',envelope(name,payload),signal);
@@ -263,7 +265,7 @@ $('telemetry-form').onsubmit=event=>{
   }
  });
 };
-async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({anonymous:'Войдите с административной учётной записью.',login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',reauth:'Для операции нужно подтвердить вход. Правки и подготовленный запрос остаются в этой вкладке.',popup:'Разрешите новую вкладку для Keycloak и повторите подтверждение входа.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.',error.message==='anonymous'?'info':'danger');}finally{busy=false;controls();if(reauthenticationFocus&&authenticated){reauthenticationFocus=false;$('reauthentication-title').focus();}}}
+async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({timeout:'Сервер не ответил вовремя. Повторите действие.',anonymous:'Войдите с административной учётной записью.',login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',reauth:'Для операции нужно подтвердить вход. Правки и подготовленный запрос остаются в этой вкладке.',popup:'Разрешите новую вкладку для Keycloak и повторите подтверждение входа.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.',error.message==='anonymous'?'info':'danger');}finally{busy=false;controls();if(reauthenticationFocus&&authenticated){reauthenticationFocus=false;$('reauthentication-title').focus();}}}
 
 function sessionCapabilities(value){
  if(!value||value.authenticated!==true)throw Error('invalid');
