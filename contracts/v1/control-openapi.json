@@ -2177,13 +2177,23 @@
               "additionalProperties": false,
               "required": ["method", "target"],
               "properties": {
-                "method": {"enum": ["tcp", "tls", "https_204", "ssh_banner", "https_exit_ip"]},
+                "method": {"enum": ["tcp", "tls", "https_204", "ssh_banner", "https_exit_ip", "https_exit_country"]},
                 "target": {"type": "string", "minLength": 1, "maxLength": 2048},
-                "expected_ip": {"type": "string", "minLength": 2, "maxLength": 45, "pattern": "^[0-9a-fA-F:.]+$"}
+                "expected_ip": {"type": "string", "minLength": 2, "maxLength": 45, "pattern": "^[0-9a-fA-F:.]+$"},
+                "expected_exit_class": {"enum": ["RU", "NON_RU"]}
               },
-              "if": {"properties": {"method": {"const": "https_exit_ip"}}},
-              "then": {"required": ["expected_ip"]},
-              "else": {"not": {"required": ["expected_ip"]}}
+              "allOf": [
+                {
+                  "if": {"properties": {"method": {"const": "https_exit_ip"}}},
+                  "then": {"required": ["expected_ip"]},
+                  "else": {"not": {"required": ["expected_ip"]}}
+                },
+                {
+                  "if": {"properties": {"method": {"const": "https_exit_country"}}},
+                  "then": {"required": ["expected_exit_class"]},
+                  "else": {"not": {"required": ["expected_exit_class"]}}
+                }
+              ]
             }
           }
         }

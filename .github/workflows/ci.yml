@@ -36,6 +36,7 @@ jobs:
       - run: python3 tools/check_documents.py
       - run: python3 tools/check_contracts.py
       - run: python3 -m unittest discover -s tools -p 'test_enrollment_site.py'
+      - run: python3 -m unittest discover -s tools -p 'test_exit_country_evidence.py'
   go:
     needs: public-data
     runs-on: ubuntu-24.04
@@ -62,7 +63,11 @@ jobs:
       - run: test -z "$(gofmt -l cmd internal contracts integration)"
       - run: go mod verify
       - run: go vet ./...
-      - run: go test -race -count=1 -coverprofile=coverage.out ./...
+      - name: Run complete race suite with actual country outcome evidence
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -json -coverprofile=coverage.out ./... | tee exit-country-core-tests.jsonl
+          python3 tools/check_exit_country_evidence.py exit-country-core-tests.jsonl --stage core
       - name: Require actual adaptive catalogue snapshot outcomes
         run: |
           set -euo pipefail
@@ -148,14 +153,16 @@ jobs:
         id: evidence-scan
         if: always()
         run: |
+          for evidence in exit-country-core-tests.jsonl adaptive-catalogue-tests.jsonl; do
+            if test -f "$evidence"; then
+              test -s "$evidence"
+              python3 tools/check_public_data.py "$evidence"
+              bash tools/scan_secrets.sh "$evidence"
+            fi
+          done
           test -s coverage.out && test -s dependency-inventory.json
           python3 tools/check_public_data.py coverage.out dependency-inventory.json
           bash tools/scan_secrets.sh coverage.out dependency-inventory.json
-          if test -f adaptive-catalogue-tests.jsonl; then
-            test -s adaptive-catalogue-tests.jsonl
-            python3 tools/check_public_data.py adaptive-catalogue-tests.jsonl
-            bash tools/scan_secrets.sh adaptive-catalogue-tests.jsonl
-          fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         id: evidence-upload
         if: always() && steps.evidence-scan.outcome == 'success'
@@ -163,6 +170,7 @@ jobs:
           name: control-plane-test-evidence
           path: |
             coverage.out
+            exit-country-core-tests.jsonl
             adaptive-catalogue-tests.jsonl
             dependency-inventory.json
           retention-days: 14
@@ -282,12 +290,21 @@ jobs:
           go-version: '1.27.4'
           cache: true
       - run: bash -n tools/test_invitations.sh
-      - run: bash tools/test_invitations.sh
+      - name: Run complete invitation and provisioning race suites with country evidence
+        run: |
+          set -euo pipefail
+          GOFLAGS=-json bash tools/test_invitations.sh | tee exit-country-postgres-tests.jsonl
+          python3 tools/check_exit_country_evidence.py exit-country-postgres-tests.jsonl --stage postgres
       - run: python3 tools/check_invitation_coverage.py
       - name: Scan invitation evidence
         id: invitation-scan
         if: always()
         run: |
+          if test -f exit-country-postgres-tests.jsonl; then
+            test -s exit-country-postgres-tests.jsonl
+            python3 tools/check_public_data.py exit-country-postgres-tests.jsonl
+            bash tools/scan_secrets.sh exit-country-postgres-tests.jsonl
+          fi
           test -s invitation-coverage.out
           test -s provisioning-coverage.out
           python3 tools/check_public_data.py invitation-coverage.out provisioning-coverage.out
@@ -299,6 +316,7 @@ jobs:
           path: |
             invitation-coverage.out
             provisioning-coverage.out
+            exit-country-postgres-tests.jsonl
           if-no-files-found: error
           retention-days: 14
   enrollment:

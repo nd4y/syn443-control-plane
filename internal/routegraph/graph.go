@@ -347,6 +347,34 @@ func Decode(raw []byte, catalogue []string) (*Graph, error) {
 	return g, nil
 }
 
+// GroupInfo is an owned declaration view, never protocol/probe authority.
+type GroupInfo struct {
+	Intent              string
+	Features            []string
+	UpperBound, MaxHops int
+}
+
+func (GroupInfo) String() string     { return "RouteGroupInfo([redacted])" }
+func (i GroupInfo) GoString() string { return i.String() }
+
+func (g *Graph) GroupInfo(groupID string) (GroupInfo, bool) {
+	row, ok := g.groups[groupID]
+	if !ok {
+		return GroupInfo{}, false
+	}
+	info := GroupInfo{Intent: row.intent, UpperBound: row.bound, Features: make([]string, 0, len(row.features))}
+	for feature := range row.features {
+		info.Features = append(info.Features, feature)
+	}
+	sort.Strings(info.Features)
+	for _, id := range row.templates {
+		if hops := len(g.templates[id].slots); hops > info.MaxHops {
+			info.MaxHops = hops
+		}
+	}
+	return info, true
+}
+
 func (g *Graph) GroupIDs() []string {
 	out := make([]string, 0, len(g.groups))
 	for name := range g.groups {

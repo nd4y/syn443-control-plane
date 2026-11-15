@@ -1350,9 +1350,10 @@
       "status": "partial",
       "evidence": [
         "docs/implementation-status.md#evidence-index-and-register-semantics",
-        "docs/control-catalog.md"
+        "docs/control-catalog.md",
+        "docs/exit-country-probe.md"
       ],
-      "implementationScope": "Per-outbound check editor and compiler with exact IP evidence over an approved HTTPS endpoint, delivered only to compatible enrolled devices.",
+      "implementationScope": "Per-outbound check editor and compiler with exact IP evidence over an approved HTTPS endpoint, delivered only to compatible enrolled devices. Source adds separately negotiated root-only HTTPS exit-country predicates and addressed publication fences; exact-head CI and device acceptance remain pending.",
       "remainingScope": "Full traffic-rule plans, any/quorum/stages, geographic/provider exit attribution and autonomous public exit selection."
     },
     {
@@ -1360,9 +1361,10 @@
       "text": "Profile задаёт checkId/revision, method, target, DNS strategy, physical network/path binding, timeout, intervals, sample count, retries, payload/body limits, expected result, criticality и влияние на quality. Секреты headers/auth представлены secretRef. Параметры проверяются против hard limits, прав администратора и capabilities.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/exit-country-probe.md"
       ],
-      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel. Source adds separately negotiated root-only HTTPS exit-country predicates and addressed publication fences; exact-head CI and device acceptance remain pending.",
       "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
@@ -1370,9 +1372,10 @@
       "text": "Методы: ICMP при наличии IP/ICMP-capability полного пути; TCP connect; TLS handshake с обычной проверкой имени/сертификата; DNS с ожидаемым rcode/условием ответа; HTTP(S) с заданными method/status/body/header predicates; прикладной SSH banner; UDP echo/согласованный datagram probe только к назначенному поддержанному responder. Базовые HTTP методы GET/HEAD; POST с ограниченным телом допускается лишь явной политикой для предназначенного сервису endpoint и не считается безопасной универсальной пробой.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/exit-country-probe.md"
       ],
-      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel. Source adds separately negotiated root-only HTTPS exit-country predicates and addressed publication fences; exact-head CI and device acceptance remain pending.",
       "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
@@ -1390,9 +1393,10 @@
       "text": "Для разных задач можно назначить разные профили одному маршруту: быстрая проверка liveness, подтверждение доступа к домашнему сервису, качество latency, exit verification и глубокая диагностика. Не требуется один универсальный URL для всех путей. На default profile можно ссылаться из нескольких правил без копирования.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/exit-country-probe.md"
       ],
-      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
+      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel. Source adds separately negotiated root-only HTTPS exit-country predicates and addressed publication fences; exact-head CI and device acceptance remain pending.",
       "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
     },
     {
@@ -1400,8 +1404,10 @@
       "text": "Пробы маршрута обязаны использовать его фактическую цепочку и физическую сеть. ICMP напрямую к входной ноде не считается ICMP до назначения через TCP-only proxy chain. Если метод не проходит через этот путь, конфиг отклоняется как unsupported; замена на TCP/HTTP возможна только явно указанным профилем/веткой.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
-      ]
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/exit-country-probe.md"
+      ],
+      "implementationScope": "Source adds separately negotiated root-only HTTPS exit-country predicates and addressed publication fences; exact-head CI and device acceptance remain pending."
     },
     {
       "id": "CHK-07",

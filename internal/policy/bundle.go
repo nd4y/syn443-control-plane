@@ -69,6 +69,7 @@ func ascii(s string) bool {
 
 const ReserveProbeCooldown = "route.reserve-cooldown.v1"
 const RouteExitIP = "route.exit-ip.v1"
+const RouteExitCountry = "route.exit-country.v1"
 const RouteDecision = "route.decision.v1"
 const BaselineAlgorithm = "m1-local-v1"
 const ConfirmedFailoverAlgorithm = "m4-confirmed-v1"
@@ -90,7 +91,7 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	caps := map[string]bool{}
-	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteDecision: true}
+	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true}
 	if len(p.RequiredCapabilities) < 1 || len(p.RequiredCapabilities) > 16 ||
 		p.AlgorithmRevision != BaselineAlgorithm && p.AlgorithmRevision != ConfirmedFailoverAlgorithm {
 		return bad
@@ -121,12 +122,18 @@ func (p Payload) Validate(now time.Time) error {
 	}
 	configErr := json.Unmarshal(engine, &routeConfig)
 	hasExitCheck := false
+	hasExitCountry := false
 	for _, group := range routeConfig.Checks {
 		for _, check := range group.Checks {
 			hasExitCheck = hasExitCheck || check.Method == "https_exit_ip"
+			hasExitCountry = hasExitCountry || check.Method == "https_exit_country"
 		}
 	}
 	if hasExitCheck != caps[RouteExitIP] || hasExitCheck &&
+		(configErr != nil || p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"]) {
+		return bad
+	}
+	if hasExitCountry != caps[RouteExitCountry] || hasExitCountry &&
 		(configErr != nil || p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"]) {
 		return bad
 	}
