@@ -19,6 +19,12 @@ finish while their section is hidden, but cannot paint another device/session.
 Late cancelled requests cannot schedule another poll or overwrite newer data.
 An authorization withdrawal clears private buffers through the existing handler.
 
+The existing controller changes native button disabled state after the static
+React/PatternFly mount. It now synchronizes PatternFly's disabled styling class
+as well. Enabled controls cannot keep the disabled surface and low-contrast
+appearance inherited from their initial state. The existing contrast gate and
+explicit enabled/disabled class assertions cover this integration boundary.
+
 Five mandatory Chromium scenarios use controlled browser and fixture clocks to
 check real new-observation updates, immutable old receipt time, local staleness,
 empty-to-populated views, hidden/section/auth suspension, single in-flight work,
