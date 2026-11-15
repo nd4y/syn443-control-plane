@@ -51,6 +51,10 @@ func staticAsset(path string, console bool) (string, string) {
 		return path[1:], "text/javascript; charset=utf-8"
 	case "/style.css":
 		return "style.css", "text/css; charset=utf-8"
+	case "/support-controller.js":
+		if !console {
+			return "support-controller.js", "text/javascript; charset=utf-8"
+		}
 	}
 	if !console {
 		return "", ""

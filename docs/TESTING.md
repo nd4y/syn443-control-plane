@@ -1,5 +1,13 @@
 # Testing and release gates
 
+The PatternFly support workspace adds seven mandatory browser cases, bringing
+the required floor to79 without dropping any of the original72. They cover
+hostile text, a full25MiB upload/verified download, lost send acknowledgement,
+separate chat-role withdrawal, late response cancellation on logout, visible-only
+failure backoff and a narrow empty/oversize-file state. The standalone chat runs
+through the same controller and retains all five original transfer/access cases.
+Only syntax/diff inspection is local; executable suites and builds run in Actions.
+
 Console/chat integration adds actual proof/nonce HTTP boundaries for two pinned
 API origins and default-disabled chat forwarding. A separate80% owner-grant gate
 covers owner-only web accounts, zero-device enrollment denial, idempotent grant

@@ -19,6 +19,7 @@ import {
 import { BarsIcon, ShieldAltIcon } from '@patternfly/react-icons';
 import '@patternfly/react-core/dist/styles/base.css';
 import { Workspace } from './workspace.jsx';
+import { connectSupportChat } from './support.jsx';
 
 const groups = [
   { title: 'Главная', sections: [['inventory-title', 'Устройства']] },
@@ -31,6 +32,7 @@ const groups = [
     ],
   },
   { title: 'Наблюдение', sections: [['telemetry-title', 'Телеметрия']] },
+  { title: 'Поддержка', sections: [['support-title', 'Чат поддержки']] },
 ];
 
 function Brand() {
@@ -198,3 +200,4 @@ function Console() {
 const root = createRoot(document.getElementById('console-root'));
 flushSync(() => root.render(<Console />));
 await import('/app.js');
+connectSupportChat();

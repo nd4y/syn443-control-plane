@@ -6,6 +6,7 @@ let sources=new Map([['source-a',originalSource()]]),jobs=new Map();
 let shares=new Map();
 let layerDrafts=new Map(),discardedDrafts=new Set(),configurationJobs=new Map(),options={};
 let freshAssurance=false,assuranceRequests=[],authenticationStarts=0;
+let chatCalls=[];
 let runtimeSamples=new Map(),runtimeClockOffset=0;
 const runtimeNow=()=>Date.now()+runtimeClockOffset;
 const server=http.createServer(async(req,res)=>{
@@ -22,10 +23,10 @@ const server=http.createServer(async(req,res)=>{
   return;
  }
  const importing=req.url==='/control/source/import';
- const limit=importing?14*1024*1024+65536:278528;
+ const limit=req.url==='/chat/uploads/part'?352*1024:importing?14*1024*1024+65536:278528;
  let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>limit){send(413,{});return;}}
  let body;try{body=JSON.parse(raw||'{}');}catch{send(400,{});return;}
- if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];freshAssurance=false;assuranceRequests=[];authenticationStarts=0;runtimeSamples=new Map();runtimeClockOffset=0;const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();shares=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
+ if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];chatCalls=[];freshAssurance=false;assuranceRequests=[];authenticationStarts=0;runtimeSamples=new Map();runtimeClockOffset=0;const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();shares=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
  if(req.url==='/fixture/runtime-clock'){
   if(!Number.isSafeInteger(body.advanceMs)||body.advanceMs<0||body.advanceMs>3600000){send(400,{});return;}
   runtimeClockOffset+=body.advanceMs;send(200,{});return;
@@ -36,8 +37,10 @@ const server=http.createServer(async(req,res)=>{
   runtimeSamples.set(body.device,{at:runtimeNow(),sequence:(previous?.sequence||0)+1,phase:body.phase||'online'});
   options.runtime='recent';send(200,{});return;
  }
- if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],layerDrafts:[...layerDrafts.values()],sources:[...sources.values()],operations:operations.size,calls,assuranceRequests,authenticationStarts});return;}
+ if(req.url==='/fixture/state'){send(200,{drafts:[...drafts.values()],layerDrafts:[...layerDrafts.values()],sources:[...sources.values()],operations:operations.size,calls,chatCalls,assuranceRequests,authenticationStarts});return;}
  if(req.url==='/fixture/reauth-complete'){freshAssurance=true;send(200,{});return;}
+ if(req.url==='/fixture/chat-revoke'){options.chatDenied=true;send(200,{});return;}
+ if(req.url==='/fixture/chat-available'){options.chatUnavailable=false;send(200,{});return;}
  if(req.url==='/fixture/revoke'){denied=true;send(200,{});return;}
  if(req.url==='/fixture/expire'){auth=false;send(200,{});return;}
  if(req.url==='/fixture/advance'){options.remoteChanged=true;send(200,{});return;}
@@ -52,6 +55,14 @@ const server=http.createServer(async(req,res)=>{
  }
  if(req.url==='/logout'){auth=false;send(200,{ok:true});return;}
  if(denied){send(403,{});return;}
+ if(req.url.startsWith('/chat/')){
+  chatCalls.push(req.url);
+  if(options.chatDenied){send(403,{});return;}
+  if(options.chatUnavailable){send(503,{});return;}
+  if(options.chatEmpty&&req.url==='/chat/inbox'){send(200,[]);return;}
+  const response=await fetch('http://127.0.0.1:17850'+req.url,{method:'POST',headers:{'Content-Type':'application/json','X-Syn443-CSRF':'1',Origin:'http://127.0.0.1:17850'},body:raw,signal:AbortSignal.timeout(20000)});
+  send(response.status,await response.json());return;
+ }
  if((!importing&&req.url!=='/control/action')||body.version!==1){send(404,{});return;}
  if(importing!==(body.action==='source.import')){send(400,{});return;}
  calls.push(body.action);
