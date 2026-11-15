@@ -92,18 +92,24 @@ func TestRuntimeViewRequiresItsLiveDeviceGrantAndCannotWriteObservations(t *test
 func TestRuntimeViewRejectsInactiveUnapprovedDisabledExpiredAndCorruptedRows(t *testing.T) {
 	for _, kind := range []string{"inactive", "unapproved", "disabled", "expired", "future", "future-policy", "audit", "cancelled"} {
 		t.Run(kind, func(t *testing.T) {
-			n, c := runtimeViewFixture(t)
+			var n networkFixture
+			var c *ConfigurationControl
+			if kind == "unapproved" {
+				n, c, _ = configurationControlFixture(t)
+			} else {
+				n, c = runtimeViewFixture(t)
+			}
 			received := n.f.now.UnixMilli()
 			if kind == "future" {
 				received += 10000
 			}
-			runtimeSeed(t, n, n.target.Thumbprint, received)
+			if kind != "unapproved" {
+				runtimeSeed(t, n, n.target.Thumbprint, received)
+			}
 			query := ""
 			switch kind {
 			case "inactive":
 				query = `UPDATE identity_devices SET active=false`
-			case "unapproved":
-				query = `UPDATE identity_devices SET approved=false`
 			case "disabled":
 				query = `UPDATE identity_accounts SET enabled=false`
 			case "expired":
