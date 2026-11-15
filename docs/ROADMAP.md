@@ -1,5 +1,8 @@
 # Implementation roadmap
 
+Latest scoped acceptance: [Android77 device chat and accepted source](chat-acceptance-20261115.md).
+Earlier milestone counts below remain dated foundation evidence.
+
 Current evidence and remaining scope: [implementation snapshot](implementation-status.md).
 Current accepted source and USB/Wi-Fi checks: [2026-11-15 checkpoint](non-lte-acceptance-20261115.md).
 The normative specification remains0.9; all292 requirements and98 scenarios are retained.

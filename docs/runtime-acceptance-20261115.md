@@ -1,5 +1,8 @@
 # Runtime reporting acceptance - 2026-11-15
 
+Historical v75 scope. The [later v77 checkpoint](chat-acceptance-20261115.md)
+updates delivery and chat acceptance; measurements below retain their versions.
+
 This supersedes the runtime delivery status in the earlier dated checkpoint.
 Full M1-M5 and version1.0 remain open. The normative292 requirements and98
 scenarios are unchanged. No LTE, restricted LTE, natural Doze, unplugged battery

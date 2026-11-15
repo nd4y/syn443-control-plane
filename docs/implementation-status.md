@@ -1,10 +1,14 @@
 # Implementation and acceptance snapshot
 
-Snapshot: 2026-11-07. Specification0.9 contains292 requirements and98 acceptance
+Snapshot: 2026-11-15. Specification0.9 contains292 requirements and98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
 
 ## Current accepted checkpoint
+
+The [v77 chat/source checkpoint](chat-acceptance-20261115.md) records the latest
+installed APK, exact main CI and current device-only pilot scope. Administrator
+chat deployment and full adaptive routing remain open.
 
 See the [2026-11-15 source, CI and USB/Wi-Fi checkpoint](non-lte-acceptance-20261115.md)
 for the earlier Android v73 and Control Plane snapshots, delivery provenance,
