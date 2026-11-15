@@ -54,20 +54,35 @@ fixture boundaries. No skip, reset-guard relaxation or reduced gate was used.
 
 ## Source versus pilot deployment
 
-The isolated pilot enables only the existing device chat API. Its anonymous
-boundary, unchanged identity/ACLs and other six service containers were checked.
-The encrypted SQL backup passed decryption/readback and archive-list verification;
-a full restore was not tested. Rollback restores the prior compose/configuration
-while retaining SQL history. Credentials, backups and physical evidence stay
-outside public repositories and Actions.
+The accepted API and PatternFly support workspace are now deployed in the
+isolated pilot from [778f65c](https://github.com/nd4y/syn443-control-plane/commit/778f65c59b9e128994eff935ca342a659fbd8eb1).
+[Exact Actions43735156473](https://github.com/nd4y/syn443-control-plane/actions/runs/43735156473)
+passed all8 jobs and79 actual browser cases without skips. All13 UI asset bytes
+were independently matched inside the shipped binary and over trusted HTTPS.
+Anonymous API/BFF requests were denied. Device chat loaded freshly before and
+after a new Wi-Fi interruption with the original installed Android77 identity,
+configuration, intent generation and HTTPS204 preserved. No message was sent.
 
-The accepted administrator source separately pins its issuer and chat API origin.
-Owner-issued web-only accounts use device limit0, CAS updates, idempotent replay
-and atomic owner audit. Actual SQL tests denied VPN enrollment and stale grants,
-preserved existing VPN accounts, and rolled back an audit failure. The independent
-grant coverage gate passed86.8% against80%. These source changes have not yet
-been deployed or used to grant a real administrator chat account. The PatternFly
-support workspace is a later feature under separate CI/live acceptance.
+The owner CLI migrated the compatible zero-device constraint and owner audit
+schema. Its temporary container used the exact database network namespace,
+supported CPU-time/memory limits and a healthy-database dependency, then exited0
+and was removed. An earlier unsupported CPU quota and incorrect temporary network
+binding failed before SQL changes; both failures remain recorded. A compose
+restoration recreated all seven pilot containers; service configurations and data
+binds were checked separately from container IDs. No uninterrupted-process claim
+is made. Encrypted SQL backups passed decryption/readback and archive listing;
+a full restore remains untested. Rollback retains compatible schema and history.
+
+The API separately pins the web issuer and chat origin. An explicit grant for the
+existing administrator account has device limit0, an expiry of at most seven days
+and atomic owner audit. Existing device/account/ACL/admin fingerprints and chat
+history were preserved, runtime roles cannot insert owner audit, and no VPN device
+was enrolled by this web-only role. Source SQL tests also deny stale grants and
+VPN enrollment and roll back audit failures; the grant coverage gate passed86.8%
+against80%. Actual normal Keycloak login, the administrator conversation and
+phone/web text/file exchange remain open live gates. Source/browser tests and
+asset hashes cannot substitute for them. Credentials, private network/device
+identifiers, SQL backups and actual hardware evidence stay outside public repos.
 
 ## Adaptive routing remains open
 
