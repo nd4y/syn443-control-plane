@@ -385,7 +385,10 @@ test('console shell keeps the active section and keyboard focus visible on deskt
  await expect(page.locator('#inventory-report')).toHaveAttribute('data-tone','danger');
  for(const item of await nav.getByRole('link').all())expect(await rgbContrast(item,'#console-navigation')).toBeGreaterThanOrEqual(4.5);
  for(const heading of await nav.getByRole('heading').all())expect(await rgbContrast(heading,'#console-navigation')).toBeGreaterThanOrEqual(4.5);
- expect(await rgbContrast(page.locator('#logout'),'.masthead')).toBeGreaterThanOrEqual(4.5);
+ await expect(page.locator('#logout')).toBeEnabled();
+ // PatternFly animates the disabled-to-enabled surface. Measure its settled
+ // interactive state, retaining the same minimum contrast requirement.
+ await expect.poll(()=>rgbContrast(page.locator('#logout'),'.masthead')).toBeGreaterThanOrEqual(4.5);
  await page.screenshot({path:'test-results/console-visual/desktop.png',animations:'disabled'});
  const skip=page.getByRole('link',{name:'К рабочей области'});
  await skip.focus();

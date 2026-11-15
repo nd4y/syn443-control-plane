@@ -26,6 +26,8 @@ distinguish no observation, one received within180 seconds and an older observat
 The console labels this as **reported by the client**, with server receipt time;
 it does not independently attest to current traffic or route health. The UI ages
 the observation using elapsed time and removes it on a denied/changed selection.
+Its [bounded foreground refresh](runtime-console-refresh.md) fetches later reports
+while the selected card is visible. A read never renews the stored receipt.
 
 The Android sender must reuse the existing supervisor and account transport,
 send at most once per60 seconds, retain a single durable pending operation and
@@ -40,6 +42,9 @@ Required acceptance: strict positive/negative/boundary wire tests, actual SQL
 scope/replay/idempotency/rate/key/expiry/rollback/role tests, named browser
 fresh/stale/unknown/substitution/denial cases, Android durable queue and cancellation
 tests, exact Actions matrices and a private Xperia USB/Wi-Fi report/readback check.
-The additive schema and transport remain unaccepted until those checks pass.
+The backend f05/Actions43663317952 and Android75 c32/Actions43670328240 passed
+their exact suites and private end-to-end Xperia USB/Wi-Fi checks; see the
+[dated runtime acceptance](runtime-acceptance-20261115.md). The foreground
+console refresh has separate artifact and live rollout gates.
 Rollback restores prior executables; the additional bounded table can remain
 unused. The migration must not rewrite policy, account, session or activation data.
