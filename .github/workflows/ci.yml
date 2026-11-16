@@ -152,6 +152,26 @@ jobs:
           path: dist/route-fixture/
           if-no-files-found: error
           retention-days: 14
+      - name: Build and scan the separate configuration publication worker
+        # Keep the existing eight-binary runtime manifest unchanged.
+        id: configuration-worker-scan
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p dist/configuration-worker
+          go build -trimpath -ldflags='-s -w -buildid=' -o dist/configuration-worker/configuration-worker ./cmd/configuration-worker
+          git rev-parse HEAD > dist/configuration-worker/SOURCE.txt
+          (cd dist/configuration-worker && sha256sum configuration-worker > SHA256SUMS)
+          python3 tools/check_compiled_url_shapes.py dist/configuration-worker
+          python3 tools/check_public_data.py dist/configuration-worker
+          bash tools/scan_secrets.sh dist/configuration-worker
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.configuration-worker-scan.outcome == 'success'
+        with:
+          name: configuration-worker-linux-amd64
+          path: dist/configuration-worker/
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify and scan the bundled console assets
         run: |
           test -s internal/chatweb/assets/control/ui/console.js

@@ -10,6 +10,11 @@ REQUIRED['core']['TestConfigurationAdminVerifierPinsIndependentTLSIssuer'] = 'gi
 REQUIRED['postgres']['TestConfigurationPublisherCrossRealmAdminPreservesDeviceIdentity'] = 'github.com/nd4y/syn443-control-plane/internal/deviceprovisioning'
 
 
+# Independent administrative bootstrap worker keeps ordinary renewal separate.
+REQUIRED['core'].update({'TestConfigurationWorkerLoopUsesOnlyBoundedDatabaseClockAndSerialTicks': 'github.com/nd4y/syn443-control-plane/cmd/configuration-worker', 'TestConfigurationWorkerClockAndPublicationFailuresStayFiniteAndNeverFallBack': 'github.com/nd4y/syn443-control-plane/cmd/configuration-worker', 'TestConfigurationWorkerLoopCancellationJoinsActualStepAndWait': 'github.com/nd4y/syn443-control-plane/cmd/configuration-worker', 'TestConfigurationWorkerCLIReadsNoEnrollmentOrFallbackInputs': 'github.com/nd4y/syn443-control-plane/cmd/configuration-worker', 'TestConfigurationWorkerRuntimeClosedKeysAndExistingDSNGuards': 'github.com/nd4y/syn443-control-plane/internal/deviceprovisioning', 'TestConfigurationWorkerRuntimeOwnerOnlyFileAndSigningKeyMatch': 'github.com/nd4y/syn443-control-plane/internal/deviceprovisioning', 'TestConfigurationWorkerRuntimeRejectsWrongRoleAndCancellationBeforeAdminDiscovery': 'github.com/nd4y/syn443-control-plane/internal/deviceprovisioning', 'TestConfigurationWorkerRuntimeUsesLayerOnlyStoreAndPinnedAdminTLSProvider': 'github.com/nd4y/syn443-control-plane/internal/deviceprovisioning'})
+REQUIRED['postgres'].update({'TestConfigurationWorkerPostgresActualQueueAndUnassignedRenewalRemainIndependent': 'github.com/nd4y/syn443-control-plane/internal/deviceprovisioning', 'TestConfigurationWorkerPostgresOriginalReceiptsRequireLiveSourceACLAndMFA': 'github.com/nd4y/syn443-control-plane/internal/deviceprovisioning'})
+
+
 def verify(lines, stage):
     assert stage in REQUIRED, 'Unknown evidence stage'
     required = REQUIRED[stage]

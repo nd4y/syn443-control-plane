@@ -348,10 +348,13 @@ never receives the private preview key or an approved-result insertion method.
 
 After installing identity/catalog owner schemas and roles, the owner explicitly
 runs `enrollment-admin configuration-migrate` and `configuration-roles`. Runtime
-processes do not migrate or grant themselves access. Enable the same protected
-configuration in enrollment-worker, which independently verifies the control
+processes do not migrate or grant themselves access. During an initial migration,
+run the separate [configuration worker](configuration-worker.md) first. It can
+process normal administrative preview/publication without changing ordinary
+device renewal. Publish an approved head for every participating device before
+enabling the protected configuration in enrollment-worker, which verifies the control
 audience, compiles queued work and renews device policies using `SQLNetworkLayers`.
-Only that worker receives `SYN443_CONFIGURATION_SIGNING_KEY_FILE` and
+Only publication workers receive `SYN443_CONFIGURATION_SIGNING_KEY_FILE` and
 `SYN443_CONFIGURATION_KEY_ID`; startup checks the matching public root. Ordinary
 device publication runs before a separately bounded administrative step.
 
