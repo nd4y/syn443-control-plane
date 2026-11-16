@@ -6,6 +6,47 @@
     "description": "Key-bound device enrollment, sessions, addressed configuration/overlay delivery and independently approved capability declarations. Owner account grants remain authoritative; no caller-supplied approval flag or URL is trusted."
   },
   "paths": {
+    "/.well-known/syn443/bootstrap/{serviceId}": {
+      "get": {
+        "operationId": "discoverSignedServiceDescriptor",
+        "description": "Optional owner-configured anonymous bodyless GET on the already owned API origin. No query, encoded/absolute path, trailing slash, request body or credential authority. The returned envelope is untrusted until the client verifies its existing root, full ordinary Bootstrap projection, revision/hash floor and signed validity window. HTTP Date is not client trust authority. No redirect or automatic retry.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "serviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact original compact JWS without newline; Cache-Control no-store, X-Content-Type-Options nosniff and Referrer-Policy no-referrer.",
+            "content": {
+              "application/jose": {
+                "schema": {
+                  "type": "string",
+                  "minLength": 5,
+                  "maxLength": 6144,
+                  "pattern": "^[A-Za-z0-9_-]+[.][A-Za-z0-9_-]+[.][A-Za-z0-9_-]+$"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, malformed or expired service; empty body. Disabled modules retain their existing handler."
+          },
+          "429": {
+            "description": "Shared bounded admission exhausted or wall clock rolled back; empty body and no retry."
+          }
+        }
+      }
+    },
     "/v1/devices/enroll": {
       "post": {
         "operationId": "enroll",

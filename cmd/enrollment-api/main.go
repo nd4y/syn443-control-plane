@@ -23,6 +23,10 @@ import (
 )
 
 func run() error {
+	return withServiceDiscoveryStartup(os.Getenv, enrollment.PrivateFile, time.Now, runEnrollmentAPI)
+}
+
+func runEnrollmentAPI(discovery *bootstrap.ServiceDiscovery) error {
 	c, e := enrollment.ReadConfig(os.Getenv("SYN443_ENROLLMENT_CONFIG"))
 	if e != nil {
 		return e
@@ -134,7 +138,7 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	server := &http.Server{Addr: c.Listen, Handler: api, ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 16384}
+	server := &http.Server{Addr: c.Listen, Handler: discovery.Wrap(api), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 16384}
 	go func() {
 		<-ctx.Done()
 		shut, cancel := context.WithTimeout(context.Background(), 3*time.Second)
