@@ -4,11 +4,45 @@
 and publishes reviewed configuration heads. It does not enroll devices, issue
 VPN leases, acknowledge activation or create administrative access.
 
-Run this executable separately when bootstrapping managed configuration. Merely
-mounting configuration inputs into the ordinary `enrollment-worker` also enables
-its `NetworkAuthority`: approved devices without an assigned managed head then
-cannot renew their ordinary policy. This worker provides no unassigned fallback
-and does not change the enrollment worker's configuration or behavior.
+Run this executable separately when bootstrapping managed configuration. Mounting
+configuration inputs into `enrollment-worker` enables its `NetworkAuthority` in
+either queue mode: approved devices without an assigned managed head then cannot
+renew their ordinary policy. There is no unassigned fallback.
+
+When both executables run, set `SYN443_CONFIGURATION_QUEUE_MODE=external` on every
+enrollment worker that mounts `SYN443_CONFIGURATION_CONFIG`. The standalone
+configuration worker then owns administrative queue consumption; enrollment
+workers continue issuing device policies from independently approved heads.
+
+## Enrollment worker queue ownership
+
+`SYN443_CONFIGURATION_QUEUE_MODE` is an exact, optional startup setting:
+
+| Value | Configuration file | Administrative queue owner |
+| --- | --- | --- |
+| Omitted/empty | Absent | No configuration module; ordinary device-only behavior |
+| Omitted/empty | Present | Enrollment worker, preserving the existing default |
+| `embedded` | Required | Enrollment worker |
+| `external` | Required | Separately configured `configuration-worker` |
+
+An unknown value, whitespace/case variant, or explicit mode without the
+configuration file fails startup before the enrollment DB or device IdP is
+initialized. The real owner-only configuration reader still validates the file.
+External mode always constructs the guarded layer store, source store, public
+preview roots and `NetworkAuthority`. It skips administrative IdP discovery,
+configuration-signing private-key reads (including their environment variables)
+and the embedded `ConfigurationPublisher` queue loop. The ordinary
+`SYN443_POLICY_SIGNING_KEY_FILE` and device policy key ID remain required.
+
+Choose one queue-owning deployment deliberately. External mode does not disable
+another legacy process that still uses the embedded default. Both modes retain
+the existing SQL role, ACL, source/layer locks, signed preview, expiry and device
+capability checks. This setting does not relax clocks or signature validation.
+Embedded mode retains its legacy integer-second `Store.Now` queue path. It does
+not acquire the standalone worker's local millisecond/monotonic clock handling.
+Running embedded and standalone administrative consumers together is unsupported;
+use external mode on the enrollment processes. This slice does not repair the
+embedded clock or enforce ownership across independently configured processes.
 
 ## Inputs
 
@@ -96,3 +130,7 @@ encryption compartments, database-clock ordering, cancellation and serial loop
 ownership. Metadata-driver unit tests do not establish real PostgreSQL role,
 queue publication, device delivery or physical acceptance; existing PostgreSQL
 publisher tests and explicit deployment checks remain necessary.
+The enrollment queue-mode gate consumes the existing complete race-suite JSON;
+all eight package-bound startup/factory cases must run and pass without skips.
+These cases prove configuration wiring and excluded dependencies, not real SQL
+publication, deployment queue ownership or restored-device acceptance.
