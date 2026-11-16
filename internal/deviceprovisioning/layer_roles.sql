@@ -22,3 +22,9 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON managed_configuration_drafts TO syn443_cont
 GRANT SELECT,INSERT,DELETE ON managed_configuration_draft_ops TO syn443_control_api;
 REVOKE ALL ON FUNCTION managed_configuration_draft_invariants() FROM PUBLIC;
 REVOKE ALL ON FUNCTION managed_configuration_layer_head_invariants() FROM PUBLIC;
+GRANT SELECT ON managed_configuration_operations TO syn443_control_api;
+REVOKE INSERT ON managed_configuration_operations FROM syn443_control_api;
+REVOKE INSERT(recorded_xid) ON managed_configuration_operations FROM syn443_control_api;
+GRANT INSERT(actor,family,request_id,action,body_hash,protocol_version,target_kind,target_id,disposition,effect_id,effect_revision,recorded_ms,backfill) ON managed_configuration_operations TO syn443_control_api;
+REVOKE UPDATE,DELETE ON managed_configuration_operations FROM syn443_control_api;
+REVOKE ALL ON managed_configuration_operation_counters FROM syn443_control_api,syn443_identity_publisher;

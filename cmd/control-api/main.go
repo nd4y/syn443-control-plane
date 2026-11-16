@@ -85,6 +85,7 @@ func run() error {
 		}
 		service := &deviceprovisioning.ConfigurationControl{Store: layers, Verifier: providers, Origin: c.Origin, AssuranceACR: c.AssuranceACR}
 		api.Configurations = service.ControlAction
+		api.ConfigurationReconcile = service.ReconcileAction
 	}
 	if path := os.Getenv("SYN443_INVITATION_CONFIG"); path != "" {
 		ic, err := invitation.ReadConfig(path, time.Now())

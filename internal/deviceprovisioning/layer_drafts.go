@@ -77,6 +77,10 @@ func (c *ConfigurationControl) getDraft(ctx context.Context, actor, id string, u
 }
 
 func (c *ConfigurationControl) putDraft(ctx context.Context, actor, request, bodyHash string, draft ConfigurationDraft, until int64, now time.Time) (ConfigurationDraft, error) {
+	return c.putDraftVersion(ctx, actor, request, bodyHash, draft, until, now, 1)
+}
+
+func (c *ConfigurationControl) putDraftVersion(ctx context.Context, actor, request, bodyHash string, draft ConfigurationDraft, until int64, now time.Time, version int) (ConfigurationDraft, error) {
 	if !configurationObjectID.MatchString(draft.ID) || draft.Revision < 0 || draft.Revision >= 9007199254740991 || draft.SavedAtMs != 0 || draft.Proposal.DraftID != draft.ID || draft.Proposal.DraftRevision != draft.Revision+1 || !configurationTargetShape(draft.Proposal.TargetKind, draft.Proposal.TargetID) {
 		return draft, enrollment.ErrDenied
 	}
@@ -95,6 +99,11 @@ func (c *ConfigurationControl) putDraft(ctx context.Context, actor, request, bod
 	}
 	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, "configuration-private-drafts/"+actor); e != nil {
 		return draft, enrollment.ErrUnavailable
+	}
+	wantOperation := configurationOperation{Actor: actor, Request: request, Action: "configuration.layers.draft.put", Hash: bodyHash, Version: version, Kind: kind, Target: target, Disposition: "recorded", EffectID: draft.ID, EffectRevision: draft.Revision + 1}
+	previousOperation, e := operationAdmission(ctx, tx, wantOperation)
+	if e != nil {
+		return draft, e
 	}
 	if _, e = tx.ExecContext(ctx, `DELETE FROM managed_configuration_draft_ops WHERE actor=$1 AND expires_ms<=$2`, actor, current().UnixMilli()); e != nil {
 		return draft, enrollment.ErrUnavailable
@@ -139,6 +148,9 @@ func (c *ConfigurationControl) putDraft(ctx context.Context, actor, request, bod
 	if e != sql.ErrNoRows {
 		return draft, enrollment.ErrUnavailable
 	}
+	if previousOperation != nil {
+		return draft, enrollment.ErrConflict
+	}
 	if validateProposalShape(ctx, draft.Proposal, current()) != nil {
 		return draft, enrollment.ErrDenied
 	}
@@ -167,6 +179,9 @@ func (c *ConfigurationControl) putDraft(ctx context.Context, actor, request, bod
 		if count >= 64 {
 			return draft, enrollment.ErrDenied
 		}
+	}
+	if e = operationInsert(ctx, tx, wantOperation, current()); e != nil {
+		return draft, e
 	}
 	draft.Revision++
 	draft.SavedAtMs = current().UnixMilli()

@@ -41,7 +41,7 @@ func validateProposalShape(ctx context.Context, p LayerProposal, now time.Time) 
 // this does not widen the invitation or ordinary identity wire protocol.
 func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifier, receipt invitation.Receipt, origin, acr string, now time.Time) (string, invitation.Envelope, int64, error) {
 	var envelope invitation.Envelope
-	if ctx == nil || verifier == nil || len(receipt.Body) > 262144 || receipt.URI != origin+"/v1/control/action" || receipt.AcceptedAt > now.Unix() || receipt.AcceptedAt < now.Unix()-180 || len(receipt.Token) < 24 || len(receipt.Token) > 16384 || identity.DecodeConfiguration(receipt.Body, &envelope) != nil || envelope.Version != 1 || !configurationRequestID.MatchString(envelope.RequestID) {
+	if ctx == nil || verifier == nil || len(receipt.Body) > 262144 || receipt.URI != origin+"/v1/control/action" || receipt.AcceptedAt > now.Unix() || receipt.AcceptedAt < now.Unix()-180 || len(receipt.Token) < 24 || len(receipt.Token) > 16384 || identity.DecodeConfiguration(receipt.Body, &envelope) != nil || !configurationVersion(envelope.Version, envelope.Action) || !configurationRequestID.MatchString(envelope.RequestID) {
 		return "", envelope, 0, enrollment.ErrDenied
 	}
 	requiresFreshMFA := true
@@ -100,6 +100,8 @@ func (c *ConfigurationControl) ControlAction(ctx context.Context, token, proof s
 	switch {
 	case e == nil:
 		return v, nil
+	case errors.Is(e, catalog.ErrQuota):
+		return nil, catalog.ErrQuota
 	case errors.Is(e, catalog.ErrReauthentication):
 		return nil, catalog.ErrReauthentication
 	case errors.Is(e, enrollment.ErrDenied):
@@ -171,7 +173,7 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 		if identity.DecodeConfiguration(envelope.Payload, &input) != nil {
 			return nil, enrollment.ErrDenied
 		}
-		return c.discardDraft(ctx, actor, envelope.RequestID, configurationHash(raw), input, authorityUntil, now)
+		return c.discardDraftVersion(ctx, actor, envelope.RequestID, configurationHash(raw), input, authorityUntil, now, envelope.Version)
 	}
 	if envelope.Action == "configuration.layers.draft.put" {
 		var input struct {
@@ -180,7 +182,7 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 		if identity.DecodeConfiguration(envelope.Payload, &input) != nil {
 			return nil, enrollment.ErrDenied
 		}
-		return c.putDraft(ctx, actor, envelope.RequestID, configurationHash(raw), input.Draft, authorityUntil, now)
+		return c.putDraftVersion(ctx, actor, envelope.RequestID, configurationHash(raw), input.Draft, authorityUntil, now, envelope.Version)
 	}
 	if envelope.Action == "configuration.inventory.get" {
 		var input struct {
@@ -278,6 +280,11 @@ func (c *ConfigurationControl) queue(ctx context.Context, actor, kind, target st
 		return result, enrollment.ErrUnavailable
 	}
 	hash := configurationHash(receipt.Body)
+	wantOperation := configurationOperation{Actor: actor, Request: envelope.RequestID, Action: envelope.Action, Hash: hash, Version: envelope.Version, Kind: kind, Target: target, Disposition: "recorded", EffectID: result.ID}
+	previousOperation, e := operationAdmission(ctx, tx, wantOperation)
+	if e != nil {
+		return result, e
+	}
 	var previous string
 	var priorResult []byte
 	e = tx.QueryRowContext(ctx, `SELECT body_hash,state,error_code,result FROM managed_configuration_requests WHERE id=$1 AND actor=$2`, result.ID, actor).Scan(&previous, &result.State, &result.Error, &priorResult)
@@ -303,6 +310,9 @@ func (c *ConfigurationControl) queue(ctx context.Context, actor, kind, target st
 	if e != sql.ErrNoRows {
 		return result, enrollment.ErrUnavailable
 	}
+	if previousOperation != nil {
+		return result, enrollment.ErrConflict
+	}
 	var total, pending int
 	if e = tx.QueryRowContext(ctx, `SELECT count(*),count(*) FILTER(WHERE state IN('queued','running')) FROM managed_configuration_requests WHERE actor=$1`, actor).Scan(&total, &pending); e != nil {
 		return result, enrollment.ErrUnavailable
@@ -317,6 +327,9 @@ func (c *ConfigurationControl) queue(ctx context.Context, actor, kind, target st
 	deadline := time.Unix(receipt.AcceptedAt+180, 0).UnixMilli()
 	if current().UnixMilli() >= deadline || current().Unix() >= authorityUntil {
 		return result, enrollment.ErrDenied
+	}
+	if e = operationInsert(ctx, tx, wantOperation, current()); e != nil {
+		return result, e
 	}
 	if _, e = tx.ExecContext(ctx, `INSERT INTO managed_configuration_requests(id,actor,request_id,action,target_kind,target_id,created_ms,deadline_ms,body_hash,receipt) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, result.ID, actor, envelope.RequestID, envelope.Action, kind, target, now.UnixMilli(), deadline, hash, c.Store.Seal(protected, configurationRequestAAD(result.ID))); e != nil {
 		return result, enrollment.ErrUnavailable

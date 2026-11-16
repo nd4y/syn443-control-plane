@@ -42,6 +42,7 @@ jobs:
       - run: python3 -m unittest discover -s tools -p 'test_admin_bootstrap_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_enrollment_queue_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_service_discovery_evidence.py'
+      - run: python3 -m unittest discover -s tools -p 'test_operation_reconcile_evidence.py'
   go:
     needs: public-data
     runs-on: ubuntu-24.04
@@ -304,6 +305,7 @@ jobs:
           set -euo pipefail
           GOFLAGS=-json bash tools/test_catalog.sh | tee adaptive-catalog-postgres-tests.jsonl
           python3 tools/check_adaptive_runtime_evidence.py adaptive-catalog-postgres-tests.jsonl --stage catalog
+          python3 tools/check_operation_reconcile_evidence.py adaptive-catalog-postgres-tests.jsonl --stage catalog
       - run: python3 tools/check_catalog_coverage.py
       - name: Scan catalog evidence
         id: catalog-scan
@@ -413,6 +415,7 @@ jobs:
           GOFLAGS=-json bash tools/test_invitations.sh | tee exit-country-postgres-tests.jsonl
           python3 tools/check_exit_country_evidence.py exit-country-postgres-tests.jsonl --stage postgres
           python3 tools/check_adaptive_runtime_evidence.py exit-country-postgres-tests.jsonl --stage postgres
+          python3 tools/check_operation_reconcile_evidence.py exit-country-postgres-tests.jsonl --stage provisioning
       - run: python3 tools/check_invitation_coverage.py
       - name: Scan invitation evidence
         id: invitation-scan
