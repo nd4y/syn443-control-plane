@@ -132,6 +132,13 @@ jobs:
               'TestLayerFixtureEveryScenarioCompilesAndPreservesUneditedParents',
               'TestLayerFixtureDeterministicBoundedActionsOutputContainsOnlySyntheticData',
               'TestLayerFixtureRefusesUnownedExecutionAndFailedWrites',
+              'TestLayerProjectionActualMergeHashAndPermutationMatchEveryVector',
+              'TestLayerProjectionContainersOriginsGroupsAndPermissionOnlyChangesAreObservable',
+              'TestLayerProjectionNullDeleteInheritLexicalNumbersAndUnicodeStayDistinct',
+              'TestLayerProjectionRebaseChosenLayersAreExplicitAndCurrentRestrictionsStillApply',
+              'TestLayerProjectionActual4096LeafBoundaryIsSummarizedWithoutLargePayload',
+              'TestLayerProjectionDeterministicActionsOutputAndFailureGuardsStayBounded',
+              'TestLayerProjectionOracleRemainsBoundToActualDecodeMergeAndMarshal',
           }
           source = Path('cmd/layer-fixture/main_test.go').read_text(encoding='utf-8')
           names = re.findall(r'^func (Test[A-Za-z0-9_]+)\(t \*testing\.T\) \{', source, re.M)
@@ -156,7 +163,7 @@ jobs:
                   assert all(value == ['run', 'pass'] for value in states.values()), 'Incomplete layer fixture package'
                   completed.append(action)
           assert completed == ['pass'] and all(value == ['run', 'pass'] for value in states.values()), 'Missing or repeated layer fixture outcome'
-          print('6 actual source-bound layer wire fixture cases passed')
+          print('13 actual source-bound layer wire/projection fixture cases passed')
           PY
           mkdir -p dist/layer-wire
           go run ./cmd/layer-fixture > dist/layer-wire/fixture.json
@@ -170,6 +177,89 @@ jobs:
         with:
           name: layer-wire-evidence
           path: dist/layer-wire/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Generate and scan separate actual Go projection conformance evidence
+        id: layer-projection-scan
+        run: |
+          set -euo pipefail
+          mkdir -p dist/layer-projection
+          go run ./cmd/layer-fixture --projection > dist/layer-projection/projection-fixture.json
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          def closed_object(pairs):
+              value = {}
+              for key, item in pairs:
+                  assert key not in value, 'Duplicate projection artifact field'
+                  value[key] = item
+              return value
+          def parse(raw):
+              return json.loads(raw, object_pairs_hook=closed_object, parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite fixture value')))
+          def records(value, keys, count=None):
+              assert isinstance(value, list) and (count is None or len(value) == count)
+              seen = set()
+              for item in value:
+                  assert isinstance(item, dict) and set(item) == keys
+                  name = item['name']
+                  assert isinstance(name, str) and 0 < len(name) <= 128 and name not in seen
+                  seen.add(name)
+              return seen
+          raw = Path('dist/layer-projection/projection-fixture.json').read_bytes()
+          assert 0 < len(raw) <= 65536, 'Projection artifact byte bound'
+          doc = parse(raw.decode('utf-8'))
+          assert set(doc) == {'schemaVersion', 'hashAlgorithm', 'layers', 'projections', 'rebases', 'bounds'}
+          assert type(doc['schemaVersion']) is int and doc['schemaVersion'] == 1 and doc['hashAlgorithm'] == 'sha256-lowercase-hex'
+          names = records(doc['layers'], {'name', 'layerWire', 'globalLayerHash'})
+          for layer in doc['layers']:
+              assert isinstance(layer['layerWire'], str)
+              body = layer['layerWire'].encode('utf-8')
+              assert 0 < len(body) <= 8192 and hashlib.sha256(body).hexdigest() == layer['globalLayerHash']
+          codes = {'ok', 'configuration_invalid', 'configuration_field_locked', 'configuration_conflict'}
+          def refs(value, required=True):
+              assert isinstance(value, list) and int(required) <= len(value) <= 20
+              assert all(isinstance(name, str) and name in names for name in value) and len(value) == len(set(value))
+          def outcome(case):
+              assert case['expectedCode'] in codes and isinstance(case['effectiveWire'], str)
+              assert bool(case['effectiveWire']) == (case['expectedCode'] == 'ok')
+              if case['expectedCode'] == 'ok':
+                  effective = parse(case['effectiveWire'])
+                  assert set(effective) == {'document', 'fields', 'restrictions'}
+                  assert isinstance(effective['document'], dict) and isinstance(effective['fields'], dict) and isinstance(effective['restrictions'], list)
+          records(doc['projections'], {'name', 'layerNames', 'expectedCode', 'effectiveWire'}, 41)
+          for case in doc['projections']:
+              refs(case['layerNames'])
+              outcome(case)
+          records(doc['rebases'], {'name', 'baseLayerNames', 'localLayerNames', 'remoteLayerNames', 'chosenLayerNames', 'resolution', 'expectedCode', 'effectiveWire'}, 11)
+          for case in doc['rebases']:
+              for key in ('baseLayerNames', 'localLayerNames', 'remoteLayerNames'):
+                  refs(case[key])
+              assert case['resolution'] in ('merged', 'conflict')
+              refs(case['chosenLayerNames'], case['resolution'] == 'merged')
+              if case['resolution'] == 'conflict':
+                  assert not case['chosenLayerNames'] and case['expectedCode'] == 'configuration_conflict'
+              outcome(case)
+          records(doc['bounds'], {'name', 'generator', 'groups', 'leavesPerGroup', 'extraLeaves', 'globalLayerHash', 'expectedCode', 'expectedFieldCount'}, 2)
+          for index, case in enumerate(doc['bounds']):
+              assert all(type(case[key]) is int for key in ('groups', 'leavesPerGroup', 'extraLeaves', 'expectedFieldCount'))
+              assert (case['name'], case['generator'], case['groups'], case['leavesPerGroup'], case['extraLeaves']) == ('leaves-' + str(4096 + index), 'leaf-grid-v1', 64, 64, index)
+              assert (case['expectedCode'], case['expectedFieldCount']) == (('ok', 4096) if index == 0 else ('configuration_invalid', 0))
+              assert isinstance(case['globalLayerHash'], str) and len(case['globalLayerHash']) == 64 and all(ch in '0123456789abcdef' for ch in case['globalLayerHash'])
+          print('Bounded synthetic Go projection artifact and exact layer hashes verified')
+          PY
+          git rev-parse HEAD > dist/layer-projection/SOURCE.txt
+          (cd dist/layer-projection && sha256sum projection-fixture.json SOURCE.txt > SHA256SUMS)
+          python3 tools/check_public_data.py dist/layer-projection
+          bash tools/scan_secrets.sh dist/layer-projection
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.layer-projection-scan.outcome == 'success'
+        with:
+          name: layer-projection-evidence
+          path: |
+            dist/layer-projection/projection-fixture.json
+            dist/layer-projection/SOURCE.txt
+            dist/layer-projection/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
       - run: go build -o bin/syn443-api ./cmd/api
