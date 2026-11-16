@@ -172,3 +172,56 @@ class PublicDataTest(unittest.TestCase):
                 # either side of any binary control separator.
                 self.assertIn("credential-url", findings(metadata + public + separator + real + separator))
                 self.assertIn("credential-url", findings(metadata + separator + real + separator + public))
+
+    def test_only_exact_192_byte_go_rodata_literals_include_pre_match_prefix(self):
+        metadata = (
+            b"\x7fELF\x00go1.27.4\x00"
+            b"dep\tgithub.com/jackc/pgx/v5\tv5.11.0\tchecksum\n"
+            b"dep\tgithub.com/santhosh-tekuri/jsonschema/v6\tv6.0.3\tchecksum\n"
+        )
+        prefix = b"".join((
+            b"bad inst", b"https://", b"username", b"password", b"insecure",
+            b"short_id", b"security", b"protocol", b"settings", b"Settings",
+        ))
+        fields = (b"audience", b"ownerTag", b"deviceId", b"provider")
+        suffix = b"".join((
+            b"database", b"passfile", b"PGSSLKEY", b"PGSSLSNI", b"timezone",
+            b"DEK-Info", b"root.crt", b":xxxxxx@",
+        ))
+        real = b"https://" + b"synthetic:placeholder@" + b"example.invalid"
+        candidate = re.compile(r".+")
+        for host_key in (b"host-key", b"host_key"):
+            for order in permutations(fields):
+                public = prefix + host_key + b"short-id" + b"".join(order) + suffix
+                with self.subTest(host_key=host_key, order=order):
+                    self.assertEqual(192, len(public))
+                    text = public.decode("ascii")
+                    self.assertTrue(is_public_go_rodata_userinfo(text, candidate.match(text, 4)))
+                    self.assertNotIn("credential-url", findings(metadata + public))
+                    self.assertIn("credential-url", findings(public))
+                    self.assertIn("credential-url", findings(b"// public source literal: " + public))
+                    self.assertIn("credential-url", findings(metadata[4:] + public))
+                    for before, after in ((b"go1.27.4", b"go1.27.3"), (b"go1.27.4", b"go1.27.5"),
+                                          (b"v5.11.0", b"v5.10.0"), (b"v6.0.3", b"v6.0.4")):
+                        self.assertIn("credential-url", findings(metadata.replace(before, after) + public))
+                    for marker in (b"go1.27.4", b"dep\tgithub.com/jackc/pgx/v5\tv5.11.0\t",
+                                   b"dep\tgithub.com/santhosh-tekuri/jsonschema/v6\tv6.0.3\t"):
+                        self.assertIn("credential-url", findings(metadata.replace(marker, b"") + public))
+                    self.assertIn("credential-url", findings(metadata + public + b"extra@"))
+            public = prefix + host_key + b"short-id" + b"".join(fields) + suffix
+            duplicate = prefix + host_key + b"short-id" + fields[0] + fields[1] + fields[2] + fields[0] + suffix
+            self.assertIn("credential-url", findings(metadata + duplicate))
+            self.assertIn("credential-url", findings(metadata + public.replace(b"root.crt", b"root.key")))
+            # The match deliberately starts at 4. Mutating any of the four
+            # preceding bytes must fail even though they are outside match[0].
+            # This also checks all delimiter bytes when no URI would remain.
+            for offset in range(len(public)):
+                replacement = b"Z" if public[offset:offset + 1] != b"Z" else b"Y"
+                changed = (public[:offset] + replacement + public[offset + 1:]).decode("ascii")
+                with self.subTest(host_key=host_key, changed_offset=offset):
+                    self.assertFalse(is_public_go_rodata_userinfo(changed, candidate.match(changed, 4)))
+            for separator in (bytes([0]), bytes([1]), bytes([31]), bytes([127])):
+                broken = public[:40] + separator + public[40:]
+                self.assertNotIn("credential-url", findings(metadata + broken))
+                self.assertIn("credential-url", findings(metadata + public + separator + real + separator))
+                self.assertIn("credential-url", findings(metadata + separator + real + separator + public))

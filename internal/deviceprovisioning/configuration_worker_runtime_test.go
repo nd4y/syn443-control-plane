@@ -138,8 +138,9 @@ func TestConfigurationWorkerRuntimeOwnerOnlyFileAndSigningKeyMatch(t *testing.T)
 // This driver answers only fixed role/clock metadata. It cannot create a
 // transaction, read a receipt, compile a configuration or simulate publication.
 type configurationWorkerConnector struct {
-	role    string
-	queries atomic.Int32
+	role        string
+	queries     atomic.Int32
+	clockCancel context.CancelFunc
 }
 type configurationWorkerDriver struct{}
 type configurationWorkerConn struct{ owner *configurationWorkerConnector }
@@ -211,6 +212,9 @@ func (c *configurationWorkerConn) QueryContext(ctx context.Context, query string
 	case strings.Contains(query, "'identity_devices','publication_source_policy_revision'"):
 		return row(true, true, true)
 	case strings.HasPrefix(query, "UPDATE identity_clock SET second=GREATEST"):
+		if c.owner.clockCancel != nil {
+			c.owner.clockCancel()
+		}
 		return row(int64(1_800_000_001))
 	}
 	return nil, errors.New("fixture rejected nonmetadata query")
@@ -276,5 +280,89 @@ func TestConfigurationWorkerRuntimeUsesLayerOnlyStoreAndPinnedAdminTLSProvider(t
 	queries := connector.queries.Load()
 	if e := worker.RunOnce(ctx, now); e == nil || connector.queries.Load() != queries {
 		t.Fatal("cancelled tick reached a receipt")
+	}
+}
+
+func TestConfigurationWorkerClockPreservesSubsecondWallAndRapidPreviewOrdering(t *testing.T) {
+	var clock configurationWorkerClock
+	floor := time.Unix(1_800_000_000, 0).UTC()
+	wall := floor.Add(125 * time.Millisecond)
+	observed := time.Now() // Add preserves its monotonic component in these vectors.
+	first, e := clock.advance(floor, wall, observed)
+	if e != nil || !first.Equal(wall) {
+		t.Fatal("SQL second discarded current wall precision", e)
+	}
+	previewIssued := first.Add(37 * time.Millisecond)
+	// A nearly static/rolled-back wall still cannot rewind actual elapsed work.
+	second, e := clock.advance(floor, wall.Add(time.Millisecond), observed.Add(40*time.Millisecond))
+	if e != nil || !second.Equal(first.Add(40*time.Millisecond)) || second.Before(previewIssued) || !floor.Before(previewIssued) {
+		t.Fatal("rapid second tick moved before its already issued preview", e)
+	}
+}
+
+func TestConfigurationWorkerClockAnchorsFutureFloorAndContinuesAcrossWallAndDBRollback(t *testing.T) {
+	var clock configurationWorkerClock
+	floor := time.Unix(1_800_000_000, 0).UTC()
+	observed := time.Now()
+	first, e := clock.advance(floor, floor.Add(-time.Hour), observed)
+	if e != nil || !first.Equal(floor) {
+		t.Fatal("ahead-of-wall SQL floor did not anchor trusted time", e)
+	}
+	second, e := clock.advance(floor, floor.Add(-30*time.Minute), observed.Add(37*time.Millisecond))
+	if e != nil || !second.Equal(floor.Add(37*time.Millisecond)) {
+		t.Fatal("same SQL floor stopped elapsed time", e)
+	}
+	rolled := floor.Add(-10 * time.Second)
+	third, e := clock.advance(rolled, rolled.Add(500*time.Millisecond), observed.Add(42*time.Millisecond))
+	if e != nil || !third.Equal(floor.Add(42*time.Millisecond)) {
+		t.Fatal("wall/database rollback rewound time or invented elapsed time", e)
+	}
+	unchanged, e := clock.advance(rolled, rolled.Add(501*time.Millisecond), observed.Add(42*time.Millisecond))
+	if e != nil || !unchanged.Equal(third) {
+		t.Fatal("zero elapsed observation fabricated a clock increment", e)
+	}
+	forward := floor.Add(time.Hour)
+	jumped, e := clock.advance(forward, forward.Add(125*time.Millisecond), observed.Add(43*time.Millisecond))
+	if e != nil || !jumped.Equal(forward.Add(125*time.Millisecond)) {
+		t.Fatal("existing trusted wall-forward semantics changed", e)
+	}
+	continued, e := clock.advance(rolled, rolled, observed.Add(44*time.Millisecond))
+	if e != nil || !continued.Equal(jumped.Add(time.Millisecond)) {
+		t.Fatal("later rollback escaped the actual elapsed bound", e)
+	}
+}
+
+func TestConfigurationWorkerClockNegativeElapsedSealsAndCancelledDBNowDoesNotUpdate(t *testing.T) {
+	floor := time.Unix(1_800_000_001, 0).UTC()
+	observed := time.Now()
+	var clock configurationWorkerClock
+	if _, e := clock.advance(floor, floor.Add(125*time.Millisecond), observed); e != nil {
+		t.Fatal(e)
+	}
+	before := clock
+	if _, e := clock.advance(floor, floor, observed.Add(-time.Nanosecond)); e == nil || !clock.invalid || !clock.trusted.Equal(before.trusted) || !clock.observed.Equal(before.observed) {
+		t.Fatal("negative monotonic delta reset or extended a trusted clock")
+	}
+	if _, e := clock.advance(floor.Add(time.Hour), floor.Add(time.Hour), observed.Add(time.Hour)); e == nil {
+		t.Fatal("sealed clock was reset by a later valid observation")
+	}
+	connector := &configurationWorkerConnector{role: "syn443_identity_publisher"}
+	db := sql.OpenDB(connector)
+	defer db.Close()
+	store, e := enrollment.NewStore(db, bytes.Repeat([]byte{91}, 32))
+	if e != nil {
+		t.Fatal(e)
+	}
+	worker := &ConfigurationWorker{publisher: &ConfigurationPublisher{Store: store}, clock: before}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, e := worker.Now(ctx, floor.Add(time.Second)); e == nil || worker.clock != before || connector.queries.Load() != 0 {
+		t.Fatal("already cancelled DB observation mutated clock state")
+	}
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+	connector.clockCancel = cancel
+	if _, e := worker.Now(ctx, floor.Add(time.Second)); e == nil || worker.clock != before || connector.queries.Load() != 1 {
+		t.Fatal("cancellation during the SQL clock request committed local time")
 	}
 }

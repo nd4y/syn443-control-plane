@@ -1,6 +1,6 @@
 # Testing and release gates
 
-The [independent configuration worker](configuration-worker.md) adds eight named
+The [independent configuration worker](configuration-worker.md) adds eleven named
 core/runtime outcomes and two actual PostgreSQL roots to the mandatory adaptive
 evidence gate. PostgreSQL checks exercise original TLS/OIDC/DPoP/MFA receipts,
 wrong SQL roles, live source/ACL fences, unchanged approved-device lease renewal

@@ -74,6 +74,15 @@ serial loop obtains time from the existing database identity clock, then calls
 also retains its existing 18-second inner bound. A failed clock prevents that
 publication attempt. No wall-clock fallback or overlapping catch-up queue exists.
 
+SQL keeps an integer-second time floor; preview signatures use milliseconds.
+After every successful database observation the worker preserves same-second
+wall precision and carries the maximum trusted value forward by actual process
+monotonic elapsed time. Rapid successive ticks cannot precede their own newly
+signed preview. Cancellation cannot update this local clock, and a negative
+monotonic delta seals it. Signature/not-before checks are unchanged. This local
+anchor is not persistent: a cold restart combined with a rolled-back wall clock
+and an ahead-of-wall SQL floor still needs separate operational acceptance.
+
 The worker waits two seconds between completed steps. SIGINT/SIGTERM cancels
 startup, database/provider work, an active step and the idle wait; it joins the
 active synchronous operation and closes its DB pool. If a step fails, stderr

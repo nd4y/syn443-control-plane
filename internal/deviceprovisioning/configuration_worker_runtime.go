@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -67,7 +68,46 @@ func ReadConfigurationWorkerRuntime(path string) (ConfigurationWorkerRuntimeConf
 
 // ConfigurationWorker owns only its DB handle and the existing independent
 // administrative receipt consumer. It never creates enrollment.Publisher.
-type ConfigurationWorker struct{ publisher *ConfigurationPublisher }
+type ConfigurationWorker struct {
+	publisher *ConfigurationPublisher
+	clockMu   sync.Mutex
+	clock     configurationWorkerClock
+}
+
+// SQL persists seconds, while signed previews bind exact milliseconds. Keep a
+// private monotonic continuation between successful DB observations; neither a
+// subsecond second tick nor a wall/DB rollback may rewind a fresh signed ticket.
+// All access belongs to ConfigurationWorker.clockMu. There is no reset path.
+type configurationWorkerClock struct {
+	trusted, observed time.Time
+	invalid           bool
+}
+
+func (*configurationWorkerClock) String() string     { return "ConfigurationWorkerClock([redacted])" }
+func (c *configurationWorkerClock) GoString() string { return c.String() }
+
+func (c *configurationWorkerClock) advance(floor, wall, observed time.Time) (time.Time, error) {
+	if c.invalid || floor.IsZero() || wall.IsZero() || observed.IsZero() {
+		return time.Time{}, enrollment.ErrDenied
+	}
+	next := floor.UTC()
+	if floor.Unix() == wall.Unix() {
+		next = wall.UTC()
+	}
+	if !c.observed.IsZero() {
+		elapsed := observed.Sub(c.observed)
+		if elapsed < 0 {
+			c.invalid = true
+			return time.Time{}, enrollment.ErrDenied
+		}
+		continued := c.trusted.Add(elapsed)
+		if continued.After(next) {
+			next = continued
+		}
+	}
+	c.trusted, c.observed = next, observed
+	return next, nil
+}
 
 func (*ConfigurationWorker) String() string     { return "ConfigurationWorker([redacted])" }
 func (w *ConfigurationWorker) GoString() string { return w.String() }
@@ -142,7 +182,23 @@ func (w *ConfigurationWorker) Now(ctx context.Context, wall time.Time) (time.Tim
 	if ctx == nil || ctx.Err() != nil || w == nil || w.publisher == nil || w.publisher.Store == nil || wall.IsZero() {
 		return time.Time{}, enrollment.ErrDenied
 	}
-	return w.publisher.Store.Now(ctx, wall)
+	// Serialize the DB observation with its monotonic anchor. A later caller
+	// cannot publish its observation first and make an earlier one rewind it.
+	w.clockMu.Lock()
+	defer w.clockMu.Unlock()
+	if ctx.Err() != nil || w.clock.invalid {
+		return time.Time{}, enrollment.ErrDenied
+	}
+	floor, e := w.publisher.Store.Now(ctx, wall)
+	if e != nil {
+		return time.Time{}, e
+	}
+	if ctx.Err() != nil {
+		return time.Time{}, enrollment.ErrDenied
+	}
+	// time.Now retains Go's monotonic component. Only this private observation,
+	// never caller wall time or SQL seconds, measures elapsed continuation.
+	return w.clock.advance(floor, wall, time.Now())
 }
 
 func (w *ConfigurationWorker) RunOnce(ctx context.Context, now time.Time) error {

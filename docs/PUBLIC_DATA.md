@@ -28,7 +28,7 @@ Missing scanners fail closed. Hooks are a local safeguard, not a server-side acc
 CI tests that each exact digest exception accepts its reviewed value and rejects changed
 values or the same value at another path.
 
-The credential URL check recognizes two exact Go read-only data sequences in the
+The credential URL check recognizes finite exact Go read-only data layouts in the
 Linux ELF runtime. Their adjacent eight-byte literals come from Go 1.27.4
 (`regexp/backtrack.go:168`, `net/textproto/reader.go:838`,
 `crypto/internal/fips140/pbkdf2/cast.go:33`, `crypto/x509/pem_decrypt.go:105`),
@@ -40,13 +40,36 @@ including the prefix that begins before the URL match. Other credential matches
 and all other privacy and secret checks still run. Changes to the sequence or
 dependencies require fresh provenance before updating the rule.
 
+The enrollment worker has two separately bounded layouts. The 208-byte layout
+starts with the public HTTP status literals `Continue`, `Accepted`, `Conflict`
+(`net/http/status.go:84,96,146`). The 192-byte layout, observed in the original
+Actions 43842084651 compiled diagnostic, starts with `bad inst` and `https://`.
+Its URL regexp match starts at byte 4, so the predicate also verifies the four
+preceding bytes. Both layouts contain the exact public eight-byte literals
+`username`, `password`, `insecure`, `short_id`, `security`, `protocol`, `settings`,
+`Settings`, then `host-key` or `host_key`, then `short-id`, then each of
+`audience`, `ownerTag`, `deviceId`, `provider` exactly once, and the fixed pgx/Go
+suffix without a second `password`. In the 192-byte layout the prefix ends at 80,
+the host spelling at 88, `short-id` at 96, the overlay fields at 128 and the suffix
+at 192. No other bytes or lengths are accepted.
+
+The repository literals are defined in `internal/subscriptions/import.go`
+(`308,381,426,600`), `internal/subscriptions/xray.go` (`19,177`),
+`internal/subscriptions/yaml.go` (`137,180`) and `internal/overlay/identity.go:98`;
+`protocol` comes from Go's `net/http/internal/http2/server.go:2124`. The new
+layout reuses the same pinned dependency/toolchain provenance above. Tests cover
+all 48 host/overlay arrangements, mutation of each of the 192 bytes including the
+pre-match prefix, missing or wrong build markers, non-ELF/source text, duplicate
+fields and extra adjacent bytes. Separate real credential URIs remain detected
+on both sides of C0/DEL separators and of an accepted public sequence.
+
 APK payloads are additionally scanned as ZIP containers: Gitleaks otherwise skips the
 binary `.apk` file. The real scanner self-test checks both a clean APK and detection
 inside an embedded synthetic asset. Upload allowlists match the scanned report paths.
 
 Go 1.27.4 provenance was rechecked from the exact Actions compiled-URL
-diagnostic and the public source locations above. The complete allowed byte
-sequence and both dependency pins are unchanged. The single accepted toolchain
-marker moves to 1.27.4; both the previous 1.27.3 marker and future versions fail
+diagnostic and the public source locations above. All layouts retain both
+dependency pins and the single accepted toolchain marker, 1.27.4; both the
+previous 1.27.3 marker and future versions fail
 closed. Arbitrary userinfo, modified suffixes and extra adjacent bytes remain
 mandatory negative cases.

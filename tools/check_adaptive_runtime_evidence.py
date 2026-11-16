@@ -15,6 +15,14 @@ REQUIRED['core'].update({'TestConfigurationWorkerLoopUsesOnlyBoundedDatabaseCloc
 REQUIRED['postgres'].update({'TestConfigurationWorkerPostgresActualQueueAndUnassignedRenewalRemainIndependent': 'github.com/nd4y/syn443-control-plane/internal/deviceprovisioning', 'TestConfigurationWorkerPostgresOriginalReceiptsRequireLiveSourceACLAndMFA': 'github.com/nd4y/syn443-control-plane/internal/deviceprovisioning'})
 
 
+for name in (
+    'TestConfigurationWorkerClockPreservesSubsecondWallAndRapidPreviewOrdering',
+    'TestConfigurationWorkerClockAnchorsFutureFloorAndContinuesAcrossWallAndDBRollback',
+    'TestConfigurationWorkerClockNegativeElapsedSealsAndCancelledDBNowDoesNotUpdate',
+):
+    REQUIRED['core'][name] = 'github.com/nd4y/syn443-control-plane/internal/deviceprovisioning'
+
+
 def verify(lines, stage):
     assert stage in REQUIRED, 'Unknown evidence stage'
     required = REQUIRED[stage]

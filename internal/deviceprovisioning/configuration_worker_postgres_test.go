@@ -203,6 +203,19 @@ func TestConfigurationWorkerPostgresActualQueueAndUnassignedRenewalRemainIndepen
 	if _, e := configuration.VerifyPreview(ctx, preview.Ticket, f.worker.publisher.Roots, f.control.Origin, f.n.actor.ID, f.current()); e != nil {
 		t.Fatal("actual worker preview signature rejected", e)
 	}
+	// An immediate second actual DB clock observation must preserve the
+	// preview's issuance milliseconds. Do not hide this with a tick/sleep or
+	// relax VerifyPreview's exact future-time check.
+	checkedNow, e := f.worker.Now(ctx, f.current())
+	if e != nil || checkedNow.UnixMilli() < preview.Preview.IssuedAtMs {
+		t.Fatal("next worker clock rewound a freshly signed preview", e)
+	}
+	if _, e := configuration.VerifyPreview(ctx, preview.Ticket, f.worker.publisher.Roots, f.control.Origin, f.n.actor.ID, checkedNow); e != nil {
+		t.Fatal("immediate next worker time rejected its own fresh preview", e)
+	}
+	if _, e := configuration.VerifyPreview(ctx, preview.Ticket, f.worker.publisher.Roots, f.control.Origin, f.n.actor.ID, time.UnixMilli(preview.Preview.IssuedAtMs-1)); !errors.Is(e, configuration.ErrInvalid) {
+		t.Fatal("exact future-preview guard was weakened", e)
+	}
 	if e := fixtureOwner.QueryRow(`SELECT count(*) FROM managed_configuration_heads`).Scan(&heads); e != nil || heads != 0 {
 		t.Fatal("preview created a configuration head", e)
 	}
