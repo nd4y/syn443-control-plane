@@ -9,7 +9,7 @@ def shape(value):
 
 def public_literals():
     template='{{range .GoFiles}}{{printf "%s\\t%s\\t%s\\n" $.ImportPath $.Dir .}}{{end}}'
-    raw=subprocess.check_output(['go','list','-deps','-f',template,'./cmd/enrollment-admin','./cmd/overlay-worker'],stderr=subprocess.DEVNULL,timeout=30)
+    raw=subprocess.check_output(['go','list','-deps','-f',template,'./cmd/enrollment-admin','./cmd/enrollment-worker','./cmd/overlay-worker'],stderr=subprocess.DEVNULL,timeout=30)
     by_prefix={}
     for row in raw.decode().splitlines():
         if not row:continue
@@ -66,6 +66,6 @@ for path in sorted(Path(sys.argv[1]).iterdir()):
         regexp_suffix=value.endswith(b':['+b'^@]+@')
         print(f'  candidate{index}: bytes={len(value)}, scheme={safe_scheme}, printf={formatting}, pgx_suffix={regexp_suffix}')
         print(f'    scheme_mask={shape(scheme)} left_mask={shape(first)} right_mask={shape(last)}')
-        if not regexp_suffix and path.name in ('enrollment-admin','overlay-worker') and index<4 and len(value)<=512:
+        if not regexp_suffix and path.name in ('enrollment-admin','enrollment-worker','overlay-worker') and index<4 and len(value)<=512:
             if origins is None:origins=public_literals()
             source_origins(data,match,origins)

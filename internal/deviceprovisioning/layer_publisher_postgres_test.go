@@ -176,6 +176,11 @@ func TestConfigurationPublisherCrossRealmAdminPreservesDeviceIdentity(t *testing
 		t.Fatal(e)
 	}
 	access := oidc.token(t, runtime.Issuer, runtime.ClientIDs[0], n.f.v.p.Subject, thumb, n.f.now)
+	// The publisher advances its supplied epoch by actual monotonic work time.
+	// Requests and subsequent readback must use that same advancing test clock,
+	// rather than verify a freshly issued ticket at its earlier call-start time.
+	clockStarted := time.Now()
+	current := func() time.Time { return n.f.now.Add(time.Since(clockStarted)) }
 	dispatch := func(action, operation string, payload any) ConfigurationRequestView {
 		t.Helper()
 		body, err := json.Marshal(payload)
@@ -186,15 +191,16 @@ func TestConfigurationPublisherCrossRealmAdminPreservesDeviceIdentity(t *testing
 		if err != nil {
 			t.Fatal(err)
 		}
-		proof := signed(t, n.f.key, c.Origin+"/v1/control/action", access, "", raw, n.f.now)
-		result, err := c.Dispatch(ctx, access, proof, raw, n.f.now)
+		at := current()
+		proof := signed(t, n.f.key, c.Origin+"/v1/control/action", access, "", raw, at)
+		result, err := c.Dispatch(ctx, access, proof, raw, at)
 		if err != nil {
 			t.Fatal("actual cross-realm administrative action denied", err)
 		}
 		return result.(ConfigurationRequestView)
 	}
 	queued := dispatch("configuration.preview.request", "cross-realm preview", configurationPreviewInput{proposal})
-	if e = publisher.RunOnce(ctx, n.f.now); e != nil {
+	if e = publisher.RunOnce(ctx, current()); e != nil {
 		t.Fatal(e)
 	}
 	var state string
@@ -206,11 +212,14 @@ func TestConfigurationPublisherCrossRealmAdminPreservesDeviceIdentity(t *testing
 	if identity.DecodeConfiguration(raw, &preview) != nil || preview.Preview.Actor != actor || len(preview.Preview.Recipients) != 1 || preview.Preview.Recipients[0].Owner != originalOwner || preview.Preview.Recipients[0].Thumbprint != originalKey || preview.Preview.Recipients[0].GrantHash != originalGrant {
 		t.Fatal("admin identity substituted device recipient authority")
 	}
-	if _, e = configuration.VerifyPreview(ctx, preview.Ticket, publisher.Roots, c.Origin, actor, n.f.now); e != nil {
+	if _, e = configuration.VerifyPreview(ctx, preview.Ticket, publisher.Roots, c.Origin, actor, time.UnixMilli(preview.Preview.IssuedAtMs-1)); !errors.Is(e, configuration.ErrInvalid) {
+		t.Fatal("preview was accepted before its signed issuance time")
+	}
+	if _, e = configuration.VerifyPreview(ctx, preview.Ticket, publisher.Roots, c.Origin, actor, current()); e != nil {
 		t.Fatal("actual cross-realm preview signature rejected", e)
 	}
 	queued = dispatch("configuration.publish", "cross-realm publish", configurationPublishInput{preview.PreviewID, preview.Ticket})
-	if e = publisher.RunOnce(ctx, n.f.now.Add(time.Second)); e != nil {
+	if e = publisher.RunOnce(ctx, current()); e != nil {
 		t.Fatal(e)
 	}
 	if e = fixtureOwner.QueryRow(`SELECT state FROM managed_configuration_requests WHERE id=$1`, queued.ID).Scan(&state); e != nil || state != "published" {
