@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/deviceprovisioning"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
@@ -103,7 +102,7 @@ func run() error {
 	var configurationPublisher *deviceprovisioning.ConfigurationPublisher
 	if path := os.Getenv("SYN443_CONFIGURATION_CONFIG"); path != "" {
 		cc, err := deviceprovisioning.ReadConfigurationRuntime(path)
-		if err != nil || cc.Issuer != c.Issuer {
+		if err != nil {
 			return identity.ErrInvalid
 		}
 		check, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -121,13 +120,9 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		var admins catalog.VerifierGroup
-		for _, client := range cc.ClientIDs {
-			v, err := identity.NewProvider(ctx, cc.Issuer, cc.Audience, client, nil, c.FixtureHTTP)
-			if err != nil {
-				return err
-			}
-			admins = append(admins, v)
+		admins, err := cc.AdminVerifier(ctx, nil)
+		if err != nil {
+			return err
 		}
 		key, err := enrollment.PrivateKey(os.Getenv("SYN443_CONFIGURATION_SIGNING_KEY_FILE"))
 		if err != nil {

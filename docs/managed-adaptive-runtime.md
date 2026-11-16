@@ -36,7 +36,22 @@ prefixes. Direct NetBird remains compatible. These exclusions are explicit;
 source acceptance does not establish full four-mode runtime or physical routing
 acceptance. Those require the matching Android runtime and device verification.
 
-Actions requires26 new core, five real provisioning PostgreSQL and two real
+Actions requires27 new core, six real provisioning PostgreSQL and two real
 catalogue PostgreSQL outcomes, bound to exact packages and starts/completions.
 All earlier race, schema, privacy, browser and coverage gates remain mandatory.
 No private device/provider configuration is used in public fixtures.
+
+## Administrative issuer boundary
+
+The owner-only `SYN443_CONFIGURATION_CONFIG.issuer` pins the administrative OIDC
+issuer. It may differ from the enrollment worker's device issuer, for example
+when client devices and administrators use separate realms. The publisher uses
+only this explicit control issuer with the unchanged control audience, pinned
+clients, signed scope, DPoP and strong-authentication requirements. It never
+falls back to device tokens. Production discovery uses verified HTTPS; the
+device grant/issuer and control-API consistency checks remain independent.
+
+The new source tests exercise real TLS discovery and signed tokens whose realms
+share a key, kid and subject, plus normal SQL preview/publication and a renewed
+key-bound device policy without changing enrollment identity. These additions
+require exact-head Actions results; they do not establish live pilot acceptance.
