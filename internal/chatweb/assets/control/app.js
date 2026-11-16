@@ -70,6 +70,15 @@ function routeDraft(){
  const tags=new Set();
  for(const kind of ['profiles','chains','balancers'])for(const tag of Object.keys(graph[kind]||{}))if(/^[A-Za-z0-9_-]{1,64}$/.test(tag))tags.add(tag);
  if(typeof graph.netbird?.tag==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(graph.netbird.tag))tags.add(graph.netbird.tag);
+ if(value.adaptive){
+  const a=value.adaptive;
+  if(typeof a!=='object'||Array.isArray(a)||Object.keys(a).sort().join(',')!=='bindingsB64,groups,metadataB64'||
+    typeof a.metadataB64!=='string'||typeof a.bindingsB64!=='string'||!a.groups||typeof a.groups!=='object'||Array.isArray(a.groups))throw Error('invalid');
+  const managed=Object.values(a.groups);
+  if(managed.length<1||managed.length>16||new Set(managed).size!==managed.length||managed.some(tag=>typeof tag!=='string'||
+    !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(tag)||tag==='direct'||tag.startsWith('syn443_')||tags.has(tag)))throw Error('invalid');
+  for(const tag of managed)tags.add(tag);
+ }
  if(graph.final==='direct')tags.add('direct');
  const checks=network.routeChecks??[];
  if(!Array.isArray(checks)||checks.length>16||checks.some(row=>!row||typeof row.outbound!=='string'||!Array.isArray(row.checks)||row.checks.length>4))throw Error('invalid');
@@ -936,7 +945,7 @@ function firstDeviceLayer(){
    $('layer-proposal').value.trim()&&!layerUnchanged())throw Error('invalid');
  let plan;
  try{plan=routeDraft().value;}catch{throw Error('invalid');}
- if(plan.schemaVersion!==1||Object.keys(plan).sort().join(',')!=='activation,graph,network,schemaVersion'||
+ if(plan.schemaVersion!==1||!['activation,graph,network,schemaVersion','activation,adaptive,graph,network,schemaVersion'].includes(Object.keys(plan).sort().join(','))||
     !plan.activation||typeof plan.activation!=='object'||Array.isArray(plan.activation))throw Error('invalid');
  const changes=Object.entries(plan).map(([key,value])=>({path:'/'+key,operation:'set',value}));
  const template={id:crypto.randomUUID(),kind:'template',priority:0,revision:1,changes,permissions:[]};

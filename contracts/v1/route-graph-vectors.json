@@ -534,6 +534,1145 @@
           "paths": []
         }
       ]
+    },
+    {
+      "name": "public-candidate-shared-exit-class",
+      "catalogue": [
+        "public"
+      ],
+      "graph": {
+        "schemaVersion": 1,
+        "hops": [
+          {
+            "id": "public",
+            "entryModes": [
+              "HOME_WIFI",
+              "WIFI",
+              "CELLULAR_RESTRICTED",
+              "CELLULAR"
+            ],
+            "exitClass": "PUBLIC",
+            "features": [
+              "TCP",
+              "IPV4"
+            ]
+          }
+        ],
+        "edges": [],
+        "templates": [
+          {
+            "id": "public-one",
+            "slots": [
+              [
+                "public"
+              ]
+            ]
+          }
+        ],
+        "groups": [
+          {
+            "id": "ru",
+            "intent": "RU",
+            "features": [
+              "TCP",
+              "IPV4"
+            ],
+            "templates": [
+              "public-one"
+            ]
+          },
+          {
+            "id": "foreign",
+            "intent": "NON_RU",
+            "features": [
+              "TCP",
+              "IPV4"
+            ],
+            "templates": [
+              "public-one"
+            ]
+          },
+          {
+            "id": "inside",
+            "intent": "INTERNAL",
+            "features": [
+              "TCP",
+              "IPV4"
+            ],
+            "templates": [
+              "public-one"
+            ]
+          }
+        ]
+      },
+      "groupBounds": {
+        "ru": 1,
+        "foreign": 1,
+        "inside": 1
+      },
+      "intentBounds": {
+        "RU": 1,
+        "NON_RU": 1,
+        "INTERNAL": 1
+      },
+      "queries": [
+        {
+          "name": "same-public-hop-ru-home_wifi",
+          "group": "ru",
+          "mode": "HOME_WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "efa1f375d76194fa51a3556a97e641e61685f914d446979da50a551a4333ffd7"
+        },
+        {
+          "name": "same-public-hop-foreign-home_wifi",
+          "group": "foreign",
+          "mode": "HOME_WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "efa1f375d76194fa51a3556a97e641e61685f914d446979da50a551a4333ffd7"
+        },
+        {
+          "name": "same-public-hop-inside-home_wifi",
+          "group": "inside",
+          "mode": "HOME_WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "same-public-hop-ru-wifi",
+          "group": "ru",
+          "mode": "WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "efa1f375d76194fa51a3556a97e641e61685f914d446979da50a551a4333ffd7"
+        },
+        {
+          "name": "same-public-hop-foreign-wifi",
+          "group": "foreign",
+          "mode": "WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "efa1f375d76194fa51a3556a97e641e61685f914d446979da50a551a4333ffd7"
+        },
+        {
+          "name": "same-public-hop-inside-wifi",
+          "group": "inside",
+          "mode": "WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "same-public-hop-ru-cellular_restricted",
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "efa1f375d76194fa51a3556a97e641e61685f914d446979da50a551a4333ffd7"
+        },
+        {
+          "name": "same-public-hop-foreign-cellular_restricted",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "efa1f375d76194fa51a3556a97e641e61685f914d446979da50a551a4333ffd7"
+        },
+        {
+          "name": "same-public-hop-inside-cellular_restricted",
+          "group": "inside",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "same-public-hop-ru-cellular",
+          "group": "ru",
+          "mode": "CELLULAR",
+          "path": [
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "efa1f375d76194fa51a3556a97e641e61685f914d446979da50a551a4333ffd7"
+        },
+        {
+          "name": "same-public-hop-foreign-cellular",
+          "group": "foreign",
+          "mode": "CELLULAR",
+          "path": [
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "efa1f375d76194fa51a3556a97e641e61685f914d446979da50a551a4333ffd7"
+        },
+        {
+          "name": "same-public-hop-inside-cellular",
+          "group": "inside",
+          "mode": "CELLULAR",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        }
+      ],
+      "enumerations": [
+        {
+          "group": "ru",
+          "mode": "HOME_WIFI",
+          "paths": [
+            [
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "HOME_WIFI",
+          "paths": [
+            [
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "inside",
+          "mode": "HOME_WIFI",
+          "paths": []
+        },
+        {
+          "group": "ru",
+          "mode": "WIFI",
+          "paths": [
+            [
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "WIFI",
+          "paths": [
+            [
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "inside",
+          "mode": "WIFI",
+          "paths": []
+        },
+        {
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "paths": [
+            [
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "paths": [
+            [
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "inside",
+          "mode": "CELLULAR_RESTRICTED",
+          "paths": []
+        },
+        {
+          "group": "ru",
+          "mode": "CELLULAR",
+          "paths": [
+            [
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "CELLULAR",
+          "paths": [
+            [
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "inside",
+          "mode": "CELLULAR",
+          "paths": []
+        }
+      ]
+    },
+    {
+      "name": "public-candidate-transit-null-and-capability-fences",
+      "catalogue": [
+        "entry",
+        "public",
+        "no-tcp",
+        "transit",
+        "inside"
+      ],
+      "graph": {
+        "schemaVersion": 1,
+        "hops": [
+          {
+            "id": "entry",
+            "entryModes": [
+              "HOME_WIFI",
+              "WIFI",
+              "CELLULAR_RESTRICTED",
+              "CELLULAR"
+            ],
+            "exitClass": null,
+            "features": [
+              "TCP",
+              "IPV4"
+            ]
+          },
+          {
+            "id": "public",
+            "entryModes": [],
+            "exitClass": "PUBLIC",
+            "features": [
+              "TCP",
+              "IPV4"
+            ]
+          },
+          {
+            "id": "no-tcp",
+            "entryModes": [
+              "HOME_WIFI",
+              "WIFI",
+              "CELLULAR_RESTRICTED",
+              "CELLULAR"
+            ],
+            "exitClass": "PUBLIC",
+            "features": [
+              "UDP",
+              "IPV4"
+            ]
+          },
+          {
+            "id": "transit",
+            "entryModes": [
+              "HOME_WIFI",
+              "WIFI",
+              "CELLULAR_RESTRICTED",
+              "CELLULAR"
+            ],
+            "exitClass": null,
+            "features": [
+              "TCP",
+              "IPV4"
+            ]
+          },
+          {
+            "id": "inside",
+            "entryModes": [
+              "HOME_WIFI",
+              "WIFI",
+              "CELLULAR_RESTRICTED",
+              "CELLULAR"
+            ],
+            "exitClass": "INTERNAL",
+            "features": [
+              "TCP",
+              "IPV4"
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "from": "entry",
+            "to": "public",
+            "features": [
+              "TCP",
+              "IPV4"
+            ]
+          }
+        ],
+        "templates": [
+          {
+            "id": "one",
+            "slots": [
+              [
+                "public",
+                "no-tcp",
+                "transit",
+                "inside"
+              ]
+            ]
+          },
+          {
+            "id": "two",
+            "slots": [
+              [
+                "entry"
+              ],
+              [
+                "public"
+              ]
+            ]
+          }
+        ],
+        "groups": [
+          {
+            "id": "ru",
+            "intent": "RU",
+            "features": [
+              "TCP",
+              "IPV4"
+            ],
+            "templates": [
+              "one",
+              "two"
+            ]
+          },
+          {
+            "id": "foreign",
+            "intent": "NON_RU",
+            "features": [
+              "TCP",
+              "IPV4"
+            ],
+            "templates": [
+              "one",
+              "two"
+            ]
+          },
+          {
+            "id": "inside",
+            "intent": "INTERNAL",
+            "features": [
+              "TCP",
+              "IPV4"
+            ],
+            "templates": [
+              "one",
+              "two"
+            ]
+          }
+        ]
+      },
+      "groupBounds": {
+        "ru": 5,
+        "foreign": 5,
+        "inside": 5
+      },
+      "intentBounds": {
+        "RU": 5,
+        "NON_RU": 5,
+        "INTERNAL": 5
+      },
+      "queries": [
+        {
+          "name": "two-hop-public-ru-home_wifi",
+          "group": "ru",
+          "mode": "HOME_WIFI",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "5f7aa5e94e790b69e8b31f11825320200df8c31e36b8565de7b5f04ed043059a"
+        },
+        {
+          "name": "missing-tcp-ru-home_wifi",
+          "group": "ru",
+          "mode": "HOME_WIFI",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-ru-home_wifi",
+          "group": "ru",
+          "mode": "HOME_WIFI",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-ru-home_wifi",
+          "group": "ru",
+          "mode": "HOME_WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-ru-home_wifi",
+          "group": "ru",
+          "mode": "HOME_WIFI",
+          "path": [
+            "inside"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "two-hop-public-foreign-home_wifi",
+          "group": "foreign",
+          "mode": "HOME_WIFI",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "5f7aa5e94e790b69e8b31f11825320200df8c31e36b8565de7b5f04ed043059a"
+        },
+        {
+          "name": "missing-tcp-foreign-home_wifi",
+          "group": "foreign",
+          "mode": "HOME_WIFI",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-foreign-home_wifi",
+          "group": "foreign",
+          "mode": "HOME_WIFI",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-foreign-home_wifi",
+          "group": "foreign",
+          "mode": "HOME_WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-foreign-home_wifi",
+          "group": "foreign",
+          "mode": "HOME_WIFI",
+          "path": [
+            "inside"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "two-hop-public-inside-home_wifi",
+          "group": "inside",
+          "mode": "HOME_WIFI",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-tcp-inside-home_wifi",
+          "group": "inside",
+          "mode": "HOME_WIFI",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-inside-home_wifi",
+          "group": "inside",
+          "mode": "HOME_WIFI",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-inside-home_wifi",
+          "group": "inside",
+          "mode": "HOME_WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-inside-home_wifi",
+          "group": "inside",
+          "mode": "HOME_WIFI",
+          "path": [
+            "inside"
+          ],
+          "allowed": true,
+          "pathId": "106b086224a4d945eae25f7be3805a931a873270326dd868b0e41f71ee9fff72"
+        },
+        {
+          "name": "two-hop-public-ru-wifi",
+          "group": "ru",
+          "mode": "WIFI",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "5f7aa5e94e790b69e8b31f11825320200df8c31e36b8565de7b5f04ed043059a"
+        },
+        {
+          "name": "missing-tcp-ru-wifi",
+          "group": "ru",
+          "mode": "WIFI",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-ru-wifi",
+          "group": "ru",
+          "mode": "WIFI",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-ru-wifi",
+          "group": "ru",
+          "mode": "WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-ru-wifi",
+          "group": "ru",
+          "mode": "WIFI",
+          "path": [
+            "inside"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "two-hop-public-foreign-wifi",
+          "group": "foreign",
+          "mode": "WIFI",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "5f7aa5e94e790b69e8b31f11825320200df8c31e36b8565de7b5f04ed043059a"
+        },
+        {
+          "name": "missing-tcp-foreign-wifi",
+          "group": "foreign",
+          "mode": "WIFI",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-foreign-wifi",
+          "group": "foreign",
+          "mode": "WIFI",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-foreign-wifi",
+          "group": "foreign",
+          "mode": "WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-foreign-wifi",
+          "group": "foreign",
+          "mode": "WIFI",
+          "path": [
+            "inside"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "two-hop-public-inside-wifi",
+          "group": "inside",
+          "mode": "WIFI",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-tcp-inside-wifi",
+          "group": "inside",
+          "mode": "WIFI",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-inside-wifi",
+          "group": "inside",
+          "mode": "WIFI",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-inside-wifi",
+          "group": "inside",
+          "mode": "WIFI",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-inside-wifi",
+          "group": "inside",
+          "mode": "WIFI",
+          "path": [
+            "inside"
+          ],
+          "allowed": true,
+          "pathId": "106b086224a4d945eae25f7be3805a931a873270326dd868b0e41f71ee9fff72"
+        },
+        {
+          "name": "two-hop-public-ru-cellular_restricted",
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "5f7aa5e94e790b69e8b31f11825320200df8c31e36b8565de7b5f04ed043059a"
+        },
+        {
+          "name": "missing-tcp-ru-cellular_restricted",
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-ru-cellular_restricted",
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-ru-cellular_restricted",
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-ru-cellular_restricted",
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "inside"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "two-hop-public-foreign-cellular_restricted",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "5f7aa5e94e790b69e8b31f11825320200df8c31e36b8565de7b5f04ed043059a"
+        },
+        {
+          "name": "missing-tcp-foreign-cellular_restricted",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-foreign-cellular_restricted",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-foreign-cellular_restricted",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-foreign-cellular_restricted",
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "inside"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "two-hop-public-inside-cellular_restricted",
+          "group": "inside",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-tcp-inside-cellular_restricted",
+          "group": "inside",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-inside-cellular_restricted",
+          "group": "inside",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-inside-cellular_restricted",
+          "group": "inside",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-inside-cellular_restricted",
+          "group": "inside",
+          "mode": "CELLULAR_RESTRICTED",
+          "path": [
+            "inside"
+          ],
+          "allowed": true,
+          "pathId": "106b086224a4d945eae25f7be3805a931a873270326dd868b0e41f71ee9fff72"
+        },
+        {
+          "name": "two-hop-public-ru-cellular",
+          "group": "ru",
+          "mode": "CELLULAR",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "5f7aa5e94e790b69e8b31f11825320200df8c31e36b8565de7b5f04ed043059a"
+        },
+        {
+          "name": "missing-tcp-ru-cellular",
+          "group": "ru",
+          "mode": "CELLULAR",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-ru-cellular",
+          "group": "ru",
+          "mode": "CELLULAR",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-ru-cellular",
+          "group": "ru",
+          "mode": "CELLULAR",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-ru-cellular",
+          "group": "ru",
+          "mode": "CELLULAR",
+          "path": [
+            "inside"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "two-hop-public-foreign-cellular",
+          "group": "foreign",
+          "mode": "CELLULAR",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": true,
+          "pathId": "5f7aa5e94e790b69e8b31f11825320200df8c31e36b8565de7b5f04ed043059a"
+        },
+        {
+          "name": "missing-tcp-foreign-cellular",
+          "group": "foreign",
+          "mode": "CELLULAR",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-foreign-cellular",
+          "group": "foreign",
+          "mode": "CELLULAR",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-foreign-cellular",
+          "group": "foreign",
+          "mode": "CELLULAR",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-foreign-cellular",
+          "group": "foreign",
+          "mode": "CELLULAR",
+          "path": [
+            "inside"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "two-hop-public-inside-cellular",
+          "group": "inside",
+          "mode": "CELLULAR",
+          "path": [
+            "entry",
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-tcp-inside-cellular",
+          "group": "inside",
+          "mode": "CELLULAR",
+          "path": [
+            "no-tcp"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "null-exit-inside-cellular",
+          "group": "inside",
+          "mode": "CELLULAR",
+          "path": [
+            "transit"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "missing-entry-mode-inside-cellular",
+          "group": "inside",
+          "mode": "CELLULAR",
+          "path": [
+            "public"
+          ],
+          "allowed": false
+        },
+        {
+          "name": "explicit-internal-inside-cellular",
+          "group": "inside",
+          "mode": "CELLULAR",
+          "path": [
+            "inside"
+          ],
+          "allowed": true,
+          "pathId": "106b086224a4d945eae25f7be3805a931a873270326dd868b0e41f71ee9fff72"
+        }
+      ],
+      "enumerations": [
+        {
+          "group": "ru",
+          "mode": "HOME_WIFI",
+          "paths": [
+            [
+              "entry",
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "HOME_WIFI",
+          "paths": [
+            [
+              "entry",
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "inside",
+          "mode": "HOME_WIFI",
+          "paths": [
+            [
+              "inside"
+            ]
+          ]
+        },
+        {
+          "group": "ru",
+          "mode": "WIFI",
+          "paths": [
+            [
+              "entry",
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "WIFI",
+          "paths": [
+            [
+              "entry",
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "inside",
+          "mode": "WIFI",
+          "paths": [
+            [
+              "inside"
+            ]
+          ]
+        },
+        {
+          "group": "ru",
+          "mode": "CELLULAR_RESTRICTED",
+          "paths": [
+            [
+              "entry",
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "CELLULAR_RESTRICTED",
+          "paths": [
+            [
+              "entry",
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "inside",
+          "mode": "CELLULAR_RESTRICTED",
+          "paths": [
+            [
+              "inside"
+            ]
+          ]
+        },
+        {
+          "group": "ru",
+          "mode": "CELLULAR",
+          "paths": [
+            [
+              "entry",
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "foreign",
+          "mode": "CELLULAR",
+          "paths": [
+            [
+              "entry",
+              "public"
+            ]
+          ]
+        },
+        {
+          "group": "inside",
+          "mode": "CELLULAR",
+          "paths": [
+            [
+              "inside"
+            ]
+          ]
+        }
+      ]
     }
   ],
   "invalidCases": [
@@ -1191,6 +2330,48 @@
         "home"
       ],
       "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"entry\",\"\\u0069d\":\"entry\",\"entryModes\":[\"CELLULAR_RESTRICTED\"],\"exitClass\":\"RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"transit\",\"entryModes\":[],\"exitClass\":null,\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-a\",\"entryModes\":[],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"id\":\"exit-b\",\"entryModes\":[\"WIFI\",\"CELLULAR\"],\"exitClass\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"]},{\"id\":\"home\",\"entryModes\":[\"HOME_WIFI\"],\"exitClass\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"]}],\"edges\":[{\"from\":\"entry\",\"to\":\"transit\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"exit-a\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]},{\"from\":\"entry\",\"to\":\"exit-b\",\"features\":[\"TCP\",\"IPV4\"]},{\"from\":\"transit\",\"to\":\"entry\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"]}],\"templates\":[{\"id\":\"simple\",\"slots\":[[\"entry\",\"exit-b\"]]},{\"id\":\"direct\",\"slots\":[[\"exit-a\",\"exit-b\"]]},{\"id\":\"two\",\"slots\":[[\"entry\"],[\"exit-b\"]]},{\"id\":\"three\",\"slots\":[[\"entry\"],[\"transit\"],[\"exit-a\"]]},{\"id\":\"loop\",\"slots\":[[\"entry\"],[\"transit\"],[\"entry\"]]},{\"id\":\"home\",\"slots\":[[\"home\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"simple\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"direct\",\"two\",\"three\",\"loop\"]},{\"id\":\"foreign-udp\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"UDP\",\"IPV4\"],\"templates\":[\"two\",\"three\"]},{\"id\":\"foreign-three\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"three\"]},{\"id\":\"home\",\"intent\":\"INTERNAL\",\"features\":[\"ICMP\",\"IPV4\"],\"templates\":[\"home\"]}]}"
+    },
+    {
+      "name": "public-not-group-intent",
+      "catalogue": [
+        "public"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"public\",\"entryModes\":[\"HOME_WIFI\",\"WIFI\",\"CELLULAR_RESTRICTED\",\"CELLULAR\"],\"exitClass\":\"PUBLIC\",\"features\":[\"TCP\",\"IPV4\"]}],\"edges\":[],\"templates\":[{\"id\":\"public-one\",\"slots\":[[\"public\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"PUBLIC\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"inside\",\"intent\":\"INTERNAL\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]}]}"
+    },
+    {
+      "name": "public-unknown-exit-class",
+      "catalogue": [
+        "public"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"public\",\"entryModes\":[\"HOME_WIFI\",\"WIFI\",\"CELLULAR_RESTRICTED\",\"CELLULAR\"],\"exitClass\":\"PUBLIC_INTERNAL\",\"features\":[\"TCP\",\"IPV4\"]}],\"edges\":[],\"templates\":[{\"id\":\"public-one\",\"slots\":[[\"public\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"inside\",\"intent\":\"INTERNAL\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]}]}"
+    },
+    {
+      "name": "public-ambiguous-null-candidate-field",
+      "catalogue": [
+        "public"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"public\",\"entryModes\":[\"HOME_WIFI\",\"WIFI\",\"CELLULAR_RESTRICTED\",\"CELLULAR\"],\"exitClass\":null,\"features\":[\"TCP\",\"IPV4\"],\"publicCandidate\":true}],\"edges\":[],\"templates\":[{\"id\":\"public-one\",\"slots\":[[\"public\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"inside\",\"intent\":\"INTERNAL\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]}]}"
+    },
+    {
+      "name": "public-ambiguous-class-array",
+      "catalogue": [
+        "public"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"public\",\"entryModes\":[\"HOME_WIFI\",\"WIFI\",\"CELLULAR_RESTRICTED\",\"CELLULAR\"],\"exitClass\":[\"RU\",\"NON_RU\"],\"features\":[\"TCP\",\"IPV4\"]}],\"edges\":[],\"templates\":[{\"id\":\"public-one\",\"slots\":[[\"public\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"inside\",\"intent\":\"INTERNAL\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]}]}"
+    },
+    {
+      "name": "public-lowercase-class",
+      "catalogue": [
+        "public"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"public\",\"entryModes\":[\"HOME_WIFI\",\"WIFI\",\"CELLULAR_RESTRICTED\",\"CELLULAR\"],\"exitClass\":\"public\",\"features\":[\"TCP\",\"IPV4\"]}],\"edges\":[],\"templates\":[{\"id\":\"public-one\",\"slots\":[[\"public\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":\"RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"inside\",\"intent\":\"INTERNAL\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]}]}"
+    },
+    {
+      "name": "public-null-group-intent",
+      "catalogue": [
+        "public"
+      ],
+      "raw": "{\"schemaVersion\":1,\"hops\":[{\"id\":\"public\",\"entryModes\":[\"HOME_WIFI\",\"WIFI\",\"CELLULAR_RESTRICTED\",\"CELLULAR\"],\"exitClass\":\"PUBLIC\",\"features\":[\"TCP\",\"IPV4\"]}],\"edges\":[],\"templates\":[{\"id\":\"public-one\",\"slots\":[[\"public\"]]}],\"groups\":[{\"id\":\"ru\",\"intent\":null,\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"foreign\",\"intent\":\"NON_RU\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]},{\"id\":\"inside\",\"intent\":\"INTERNAL\",\"features\":[\"TCP\",\"IPV4\"],\"templates\":[\"public-one\"]}]}"
     }
   ]
 }

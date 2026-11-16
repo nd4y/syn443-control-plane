@@ -37,6 +37,7 @@ jobs:
       - run: python3 tools/check_contracts.py
       - run: python3 -m unittest discover -s tools -p 'test_enrollment_site.py'
       - run: python3 -m unittest discover -s tools -p 'test_exit_country_evidence.py'
+      - run: python3 -m unittest discover -s tools -p 'test_adaptive_runtime_evidence.py'
   go:
     needs: public-data
     runs-on: ubuntu-24.04
@@ -68,6 +69,7 @@ jobs:
           set -euo pipefail
           go test -race -count=1 -json -coverprofile=coverage.out ./... | tee exit-country-core-tests.jsonl
           python3 tools/check_exit_country_evidence.py exit-country-core-tests.jsonl --stage core
+          python3 tools/check_adaptive_runtime_evidence.py exit-country-core-tests.jsonl --stage core
       - name: Require actual adaptive catalogue snapshot outcomes
         run: |
           set -euo pipefail
@@ -188,20 +190,26 @@ jobs:
           go-version: '1.27.4'
           cache: true
       - run: bash -n tools/test_catalog.sh
-      - run: bash tools/test_catalog.sh
+      - name: Run complete catalog race suite with adaptive actual outcomes
+        run: |
+          set -euo pipefail
+          GOFLAGS=-json bash tools/test_catalog.sh | tee adaptive-catalog-postgres-tests.jsonl
+          python3 tools/check_adaptive_runtime_evidence.py adaptive-catalog-postgres-tests.jsonl --stage catalog
       - run: python3 tools/check_catalog_coverage.py
       - name: Scan catalog evidence
         id: catalog-scan
         if: always()
         run: |
           test -s catalog-coverage.out
-          python3 tools/check_public_data.py catalog-coverage.out
-          bash tools/scan_secrets.sh catalog-coverage.out
+          python3 tools/check_public_data.py catalog-coverage.out adaptive-catalog-postgres-tests.jsonl adaptive-catalog-postgres-tests.jsonl
+          bash tools/scan_secrets.sh catalog-coverage.out adaptive-catalog-postgres-tests.jsonl adaptive-catalog-postgres-tests.jsonl
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always() && steps.catalog-scan.outcome == 'success'
         with:
           name: catalog-test-evidence
-          path: catalog-coverage.out
+          path: |
+            catalog-coverage.out
+            adaptive-catalog-postgres-tests.jsonl
           retention-days: 14
   keycloak:
     needs: public-data
@@ -295,6 +303,7 @@ jobs:
           set -euo pipefail
           GOFLAGS=-json bash tools/test_invitations.sh | tee exit-country-postgres-tests.jsonl
           python3 tools/check_exit_country_evidence.py exit-country-postgres-tests.jsonl --stage postgres
+          python3 tools/check_adaptive_runtime_evidence.py exit-country-postgres-tests.jsonl --stage postgres
       - run: python3 tools/check_invitation_coverage.py
       - name: Scan invitation evidence
         id: invitation-scan

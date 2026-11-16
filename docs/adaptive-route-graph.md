@@ -8,8 +8,9 @@ The [closed metadata contract](../contracts/v1/route-graph.schema.json) describe
 at most 500 profiles,4096 directed edges,64 templates and 16 destination/check
 groups. Each template has 1-4 slots. A group fixes its exit intent and comparison
 features. Physical entry mode is determined locally. All hops and edges must
-support the requested capabilities and the last hop must have the exact exit
-class. A valid graph may have no eligible path on the current network; that is
+support the requested capabilities and the last hop must declare the group's exit
+class, or `PUBLIC` eligibility for RU/NON_RU only. A valid graph may have no
+eligible path on the current network; that is
 not permission to fall back to direct traffic.
 
 Metadata IDs bind one-to-one to an independently authorized immutable catalogue.
@@ -79,10 +80,42 @@ failure/recovery on Xperia. Required Actions and original-state restoration rema
 mandatory. No physical LTE, natural Doze, unplugged energy or endurance gate is
 closed by this stage's synthetic network-mode cases.
 
-The current source adds shared positive vectors, 21 path queries, 60 closed-failure
+The original source added shared positive vectors, 21 path queries, 60 closed-failure
 fixtures, exact byte/catalogue/combinatorial bounds, concurrent-read ownership,
 redacted diagnostics and fuzzing. Kotlin also checks deterministic bounded cursor
 results against the same paths and cross-language identities. These passed exact Actions [43701539388](https://github.com/nd4y/syn443-android/actions/runs/43701539388)
 and [43700009850](https://github.com/nd4y/syn443-control-plane/actions/runs/43700009850).
 The private constructor has separate [accepted evidence](https://github.com/nd4y/syn443-android/actions/runs/43715523260).
 No graph policy decoder or capability is enabled.
+
+## Public candidate metadata extension
+
+The unactivated schemaVersion 1 metadata extension permits `exitClass: "PUBLIC"`
+on a hop. It allows one normalized, authorized profile to be considered for both
+RU and NON_RU groups without duplicating that proxy under aliases. It never
+matches INTERNAL. Group intents and observed runtime `ExitClass` values remain
+exactly RU, NON_RU and INTERNAL. `null` remains a transit declaration with no
+terminal eligibility; unknown classes and ambiguous extra fields are rejected.
+
+Kotlin represents this declaration as `RouteHop(publicCandidate = true, exit = null)`.
+A public candidate with a non-null explicit exit is rejected by its constructor.
+`publicCandidate` is an internal model field, not an additional wire property.
+Entry-mode, complete-path feature/edge, simple-path, template and conservative
+per-intent cardinality checks are unchanged. For example, a PUBLIC hop without
+TCP cannot satisfy a TCP group; PUBLIC never supplies missing capabilities.
+
+This is eligibility, not country evidence, cached authority or a direct fallback.
+Each public group's immutable HTTPS country check must independently confirm its
+requested class through the exact native candidate before a fresh bound receipt
+can authorize selection. The same hop/path ID in two groups does not make their
+check receipts interchangeable. No claim is made about an observed country here.
+
+Older strict decoders reject PUBLIC. Assignment must require the separately
+implemented `route.adaptive-tcp.v1` capability before this extension can activate;
+this metadata change alone does not advertise that capability or accept policy.
+The shared source fixtures now contain 3 valid graphs, 93 queries, 32 frontier
+enumerations and 66 invalid graphs. All original 60 negative fixtures retain their
+contents. The added cases cover all four modes, RU/NON_RU sharing, INTERNAL/null
+denial, missing TCP, unknown/group/lowercase classes and closed ambiguous inputs.
+New Go/Kotlin tests and existing shared conformance suites require GitHub Actions
+acceptance; editing files and recomputing public hashes is not execution evidence.

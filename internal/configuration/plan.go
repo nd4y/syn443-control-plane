@@ -19,6 +19,7 @@ type NetworkPlan struct {
 	Graph         Graph           `json:"graph"`
 	Network       NetworkSettings `json:"network"`
 	Activation    policy.Gate     `json:"activation"`
+	Adaptive      *AdaptivePlan   `json:"adaptive,omitempty"`
 }
 
 type CompiledNetworkPlan struct {
@@ -26,6 +27,7 @@ type CompiledNetworkPlan struct {
 	ContentHash            string
 	Activation             policy.Gate
 	RequiredEngineFeatures []string
+	AlgorithmRevision      string
 }
 
 func (NetworkPlan) String() string           { return "NetworkPlan([redacted])" }
@@ -41,6 +43,24 @@ func DecodeNetworkPlan(raw []byte) (NetworkPlan, error) {
 	value, e := subscriptions.DecodeJSON(raw)
 	if e != nil || !boundedNumbers(value) {
 		return NetworkPlan{}, ErrInvalid
+	}
+	// Preserve method-specific member presence before an omitempty roundtrip
+	// could discard an explicit empty foreign predicate in nested settings.
+	root, ok := value.(map[string]any)
+	if !ok {
+		return NetworkPlan{}, ErrInvalid
+	}
+	networkRaw, e := json.Marshal(root["network"])
+	if e != nil {
+		return NetworkPlan{}, ErrInvalid
+	}
+	if _, e = DecodeNetworkSettings(networkRaw); e != nil {
+		return NetworkPlan{}, ErrInvalid
+	}
+	if plan.Adaptive != nil {
+		if _, e := DecodeAdaptivePlan(*plan.Adaptive, plan.Graph); e != nil {
+			return NetworkPlan{}, ErrInvalid
+		}
 	}
 	return plan, nil
 }
@@ -65,6 +85,9 @@ func CompileNetworkPlan(ctx context.Context, plan NetworkPlan, resolve func(Prof
 	owned, e := DecodeNetworkPlan(raw)
 	if e != nil {
 		return CompiledNetworkPlan{}, e
+	}
+	if owned.Adaptive != nil {
+		return compileAdaptiveNetworkPlan(ctx, owned, resolve)
 	}
 	graph, e := CompileGraph(owned.Graph, func(ref ProfileReference) (subscriptions.Profile, error) {
 		if e := ctx.Err(); e != nil {

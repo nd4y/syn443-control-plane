@@ -71,8 +71,10 @@ const ReserveProbeCooldown = "route.reserve-cooldown.v1"
 const RouteExitIP = "route.exit-ip.v1"
 const RouteExitCountry = "route.exit-country.v1"
 const RouteDecision = "route.decision.v1"
+const RouteAdaptiveTCP = "route.adaptive-tcp.v1"
 const BaselineAlgorithm = "m1-local-v1"
 const ConfirmedFailoverAlgorithm = "m4-confirmed-v1"
+const AdaptiveTCPAlgorithm = "m4-graph-tcp-v1"
 
 func (p Payload) Validate(now time.Time) error {
 	bad := errors.New("invalid policy")
@@ -91,9 +93,9 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	caps := map[string]bool{}
-	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true}
+	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true, RouteAdaptiveTCP: true}
 	if len(p.RequiredCapabilities) < 1 || len(p.RequiredCapabilities) > 16 ||
-		p.AlgorithmRevision != BaselineAlgorithm && p.AlgorithmRevision != ConfirmedFailoverAlgorithm {
+		p.AlgorithmRevision != BaselineAlgorithm && p.AlgorithmRevision != ConfirmedFailoverAlgorithm && p.AlgorithmRevision != AdaptiveTCPAlgorithm {
 		return bad
 	}
 	for _, c := range p.RequiredCapabilities {
@@ -137,10 +139,23 @@ func (p Payload) Validate(now time.Time) error {
 		(configErr != nil || p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"]) {
 		return bad
 	}
-	if (p.AlgorithmRevision == ConfirmedFailoverAlgorithm) != caps[RouteDecision] {
+	if (p.AlgorithmRevision == ConfirmedFailoverAlgorithm || p.AlgorithmRevision == AdaptiveTCPAlgorithm) != caps[RouteDecision] {
 		return bad
 	}
-	if caps[ReserveProbeCooldown] || caps[RouteDecision] {
+	var extensions map[string]json.RawMessage
+	if json.Unmarshal(engine, &extensions) != nil {
+		return bad
+	}
+	adaptive, hasAdaptive := extensions["adaptive_routes"]
+	if hasAdaptive != caps[RouteAdaptiveTCP] || hasAdaptive != (p.AlgorithmRevision == AdaptiveTCPAlgorithm) {
+		return bad
+	}
+	_, legacyFailover := extensions["route_failover"]
+	if hasAdaptive && (p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"] ||
+		caps["route.failover.v1"] || caps[ReserveProbeCooldown] || legacyFailover || len(adaptive) == 0 || strings.TrimSpace(string(adaptive)) == "null") {
+		return bad
+	}
+	if caps[ReserveProbeCooldown] || p.AlgorithmRevision == ConfirmedFailoverAlgorithm {
 		var config struct {
 			Failover map[string]json.RawMessage `json:"route_failover"`
 		}
