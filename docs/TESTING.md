@@ -1,5 +1,13 @@
 # Testing and release gates
 
+The [independent configuration worker](configuration-worker.md) adds eleven named
+core/runtime outcomes and two actual PostgreSQL roots to the mandatory adaptive
+evidence gate. PostgreSQL checks exercise original TLS/OIDC/DPoP/MFA receipts,
+wrong SQL roles, live source/ACL fences, unchanged approved-device lease renewal
+and separate desired-head publication. The separate worker binary has its own
+Actions artifact, source/hash manifest and privacy/secret payload gates. Synthetic
+tests do not establish a deployed administrator session or phone activation.
+
 The PatternFly support workspace adds seven mandatory browser cases, bringing
 the required floor to79 without dropping any of the original72. They cover
 hostile text, a full25MiB upload/verified download, lost send acknowledgement,

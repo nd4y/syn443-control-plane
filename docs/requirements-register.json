@@ -25,8 +25,10 @@
         "contracts/README.md",
         "docs/managed-policy.md",
         "docs/implementation-status.md#evidence-index-and-register-semantics",
-        "docs/adaptive-catalogue-snapshot.md"
-      ]
+        "docs/adaptive-catalogue-snapshot.md",
+        "docs/configuration-worker.md"
+      ],
+      "remainingScope": "Independent configuration-queue worker source retains original receipt/ACL/MFA/source guards and ordinary lease renewal. Exact CI, owned deployment, normal administrator publication and actual device activation remain separate gates; this is not full provisioning acceptance."
     },
     {
       "id": "ARC-04",
@@ -589,9 +591,11 @@
         "internal/deviceprovisioning/network_postgres_test.go",
         "internal/deviceprovisioning/layer_inventory_postgres_test.go",
         "docs/device-activation-report.md",
-        "docs/adaptive-catalogue-snapshot.md"
+        "docs/adaptive-catalogue-snapshot.md",
+        "docs/configuration-worker.md"
       ],
-      "implementationScope": "Bounded portable network layers, private SQL drafts, persistent approvals and independent source-to-publisher composition. The signed issuance is atomically linked to the exact approved desired revision. Full settings and final device acceptance remain open."
+      "implementationScope": "Bounded portable network layers, private SQL drafts, persistent approvals and independent source-to-publisher composition. The signed issuance is atomically linked to the exact approved desired revision. Full settings and final device acceptance remain open.",
+      "remainingScope": "Independent configuration-queue worker source retains original receipt/ACL/MFA/source guards and ordinary lease renewal. Exact CI, owned deployment, normal administrator publication and actual device activation remain separate gates; this is not full provisioning acceptance."
     },
     {
       "id": "PROV-01",

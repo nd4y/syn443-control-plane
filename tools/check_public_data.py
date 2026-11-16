@@ -39,6 +39,10 @@ GO_RODATA_ENROLLMENT_USERINFO_PREFIX = "".join((
 ))
 # This larger run already contains the single password literal in its prefix.
 GO_RODATA_ENROLLMENT_USERINFO_SUFFIX = GO_RODATA_USERINFO_SUFFIX[len("password"):]
+GO_RODATA_ENROLLMENT_BACKTRACK_USERINFO_PREFIX = GO_RODATA_USERINFO_PREFIX + "".join((
+    "username", "password", "insecure", "short_id", "security", "protocol",
+    "settings", "Settings",
+))
 
 
 def is_public_go_rodata_userinfo(text, match):
@@ -55,7 +59,27 @@ def is_public_go_rodata_userinfo(text, match):
         return True
     # The regexp begins at "inst", after the space in the first source literal.
     start = match.start() - len("bad ")
-    if start < 0 or not text.startswith(GO_RODATA_USERINFO_PREFIX, start):
+    if start < 0:
+        return False
+    # The same enrollment literals also have one reviewed 192-byte layout that
+    # starts with the public regexp panic string rather than HTTP status names.
+    # Include the four bytes before the regexp match in this exact closure.
+    full = text[start:match.end()]
+    if (len(full) == 192 and full.startswith(GO_RODATA_ENROLLMENT_BACKTRACK_USERINFO_PREFIX)
+            and full[80:88] in {"host-key", "host_key"}
+            and full[88:96] == "short-id"
+            and {full[i:i + 8] for i in range(96, 128, 8)} == OVERLAY_IDENTITY_FIELDS
+            and full[128:] == GO_RODATA_ENROLLMENT_USERINFO_SUFFIX):
+        return True
+    # The independent configuration worker dead-strips the overlay identity
+    # fields. Its separately reviewed 160-byte run joins the same exact 80-byte
+    # prefix, host spelling and short-id directly to the exact 64-byte suffix.
+    if (len(full) == 160 and full.startswith(GO_RODATA_ENROLLMENT_BACKTRACK_USERINFO_PREFIX)
+            and full[80:88] in {"host-key", "host_key"}
+            and full[88:96] == "short-id"
+            and full[96:] == GO_RODATA_ENROLLMENT_USERINFO_SUFFIX):
+        return True
+    if not text.startswith(GO_RODATA_USERINFO_PREFIX, start):
         return False
     end = match.end() - len(GO_RODATA_USERINFO_SUFFIX)
     if not text.startswith(GO_RODATA_USERINFO_SUFFIX, end, match.end()):

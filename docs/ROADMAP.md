@@ -1,6 +1,6 @@
 # Implementation roadmap
 
-Latest scoped acceptance: [Android77 device chat and accepted source](chat-acceptance-20261115.md).
+Latest scoped acceptance: [Android79 USB/Wi-Fi and accepted main](non-lte-acceptance-20261116.md).
 Earlier milestone counts below remain dated foundation evidence.
 
 Current evidence and remaining scope: [implementation snapshot](implementation-status.md).
