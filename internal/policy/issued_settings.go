@@ -70,7 +70,7 @@ func (p Payload) ConsoleSettings() *IssuedSettings {
 	}
 	for _, outbound := range engine.Outbounds {
 		switch outbound.Type {
-		case "direct", "block", "http", "socks", "ssh", "vless", "netbird", "selector", "urltest", "dns":
+		case "direct", "block", "http", "socks", "ssh", "vless", "netbird", "selector", "urltest", "dns", "syn443-adaptive":
 		default:
 			continue
 		}

@@ -2337,6 +2337,21 @@
           "schemaVersion": {
             "const": 1
           },
+          "adaptive": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["metadataB64", "bindingsB64", "groups"],
+            "description": "Protected credential-free adaptive graph and source references. Dedicated closed decoders enforce 196608 UTF-8 bytes, canonical base64url, up to500 actual authorized profiles and16 managed TCP groups. Metadata never authorizes an observed exit.",
+            "properties": {
+              "metadataB64": {"type": "string", "minLength": 1, "maxLength": 196608, "pattern": "^[A-Za-z0-9_-]+$"},
+              "bindingsB64": {"type": "string", "minLength": 1, "maxLength": 196608, "pattern": "^[A-Za-z0-9_-]+$"},
+              "groups": {
+                "type": "object", "minProperties": 1, "maxProperties": 16,
+                "propertyNames": {"pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
+                "additionalProperties": {"type": "string", "pattern": "^(?!direct$)(?!syn443_)[a-z0-9][a-z0-9_-]{0,63}$"}
+              }
+            }
+          },
           "graph": {
             "$ref": "#/components/schemas/PlanGraph"
           },

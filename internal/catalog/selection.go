@@ -32,13 +32,14 @@ type SelectionDependency struct {
 // its final publication transaction, after its account/config authority fence.
 // Credentials remain process-private and never enter ordinary inventory/diff.
 type PreparedSelection struct {
-	store        *Store
-	target       SelectionTarget
-	mode         string
-	refs         []ProfileReference
-	dependencies []SelectionDependency
-	profiles     map[ProfileReference]subscriptions.Profile
-	until        int64
+	store           *Store
+	target          SelectionTarget
+	mode            string
+	refs            []ProfileReference
+	dependencies    []SelectionDependency
+	profiles        map[ProfileReference]subscriptions.Profile
+	until           int64
+	validationLimit int
 }
 
 func (SelectionTarget) String() string      { return "SelectionTarget([redacted])" }
@@ -137,7 +138,13 @@ func (s *Store) selectionSource(ctx context.Context, tx *sql.Tx, target Selectio
 	return SelectionDependency{id, source.Revision, snapshot.ID, snapshot.Hash, shares, snapshot.ResourceRevision, until}, nil
 }
 func validSelection(target SelectionTarget, refs []ProfileReference, mode string, until int64, now time.Time) error {
-	if !identifier.MatchString(target.Owner) || !identifier.MatchString(target.Device) || len(refs) < 1 || len(refs) > 64 || until <= now.Unix() || until > now.Unix()+604800 {
+	return validSelectionBound(target, refs, mode, until, now, 64)
+}
+
+// Only the ordinary selection and the bounded static32/adaptive500 union are
+// supported. No exported arbitrary-limit API can widen a publication permit.
+func validSelectionBound(target SelectionTarget, refs []ProfileReference, mode string, until int64, now time.Time, limit int) error {
+	if limit != 64 && limit != 532 || !identifier.MatchString(target.Owner) || !identifier.MatchString(target.Device) || len(refs) < 1 || len(refs) > limit || until <= now.Unix() || until > now.Unix()+604800 {
 		return ErrInvalid
 	}
 	if mode != "home_wifi" && mode != "wifi" && mode != "cellular_restricted" && mode != "cellular" {
@@ -158,12 +165,26 @@ func validSelection(target SelectionTarget, refs []ProfileReference, mode string
 	return nil
 }
 func (s *Store) PrepareSelection(ctx context.Context, target SelectionTarget, refs []ProfileReference, mode string, until int64, now time.Time) (*PreparedSelection, error) {
-	if e := validSelection(target, refs, mode, until, now); e != nil {
+	return s.prepareSelection(ctx, target, refs, mode, until, now, 64)
+}
+
+// PrepareAdaptiveSelection selects a union of at most32 ordinary and500
+// adaptive references. Its caller separately validates both plan components;
+// source/grant/snapshot authority is identical to the ordinary selection path.
+func (s *Store) PrepareAdaptiveSelection(ctx context.Context, target SelectionTarget, refs []ProfileReference, mode string, until int64, now time.Time) (*PreparedSelection, error) {
+	return s.prepareSelection(ctx, target, refs, mode, until, now, 532)
+}
+
+func (s *Store) prepareSelection(ctx context.Context, target SelectionTarget, refs []ProfileReference, mode string, until int64, now time.Time, limit int) (*PreparedSelection, error) {
+	if e := validSelectionBound(target, refs, mode, until, now, limit); e != nil {
 		return nil, e
 	}
-	p := &PreparedSelection{store: s, target: target, mode: mode, refs: append([]ProfileReference{}, refs...), until: until, profiles: map[ProfileReference]subscriptions.Profile{}}
+	if ctx == nil || s == nil || s.DB == nil {
+		return nil, ErrInvalid
+	}
+	p := &PreparedSelection{store: s, target: target, mode: mode, refs: append([]ProfileReference{}, refs...), until: until, profiles: map[ProfileReference]subscriptions.Profile{}, validationLimit: limit}
 	bySource := map[string][]ProfileReference{}
-	for _, ref := range refs {
+	for _, ref := range p.refs {
 		bySource[ref.SourceID] = append(bySource[ref.SourceID], ref)
 	}
 	sources := make([]string, 0, len(bySource))
@@ -236,7 +257,10 @@ func (s *Store) PrepareSelection(ctx context.Context, target SelectionTarget, re
 	return p, nil
 }
 func (p *PreparedSelection) Lock(ctx context.Context, tx *sql.Tx, now time.Time) error {
-	if p == nil || p.store == nil || tx == nil || p.until <= now.Unix() {
+	if p == nil || p.store == nil || ctx == nil || tx == nil || p.until <= now.Unix() {
+		return ErrDenied
+	}
+	if validSelectionBound(p.target, p.refs, p.mode, p.until, now, p.validationLimit) != nil {
 		return ErrDenied
 	}
 	for _, old := range p.dependencies {

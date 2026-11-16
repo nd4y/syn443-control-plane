@@ -43,6 +43,76 @@ type NetworkAuthority struct {
 	Sources *catalog.Store
 }
 
+const adaptiveNetworkCapability = "route.adaptive-tcp.v1"
+
+// These are availability claims from the actual independently bound device,
+// never from a grant, draft or metadata declaration. Policy checks remain local.
+func adaptiveNetworkAvailable(plan configuration.NetworkPlan, target enrollment.ConfigurationTarget) error {
+	if plan.Adaptive == nil {
+		return nil
+	}
+	if plan.Network.RouteFailover != nil {
+		return configuration.ErrInvalid
+	}
+	for _, required := range []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2", "route.health.v1", policy.RouteDecision, adaptiveNetworkCapability} {
+		if !slices.Contains(target.Capabilities, required) {
+			return enrollment.ErrDenied
+		}
+	}
+	for _, group := range plan.Network.RouteChecks {
+		for _, check := range group.Checks {
+			if check.Method == "https_exit_country" && !slices.Contains(target.Capabilities, policy.RouteExitCountry) ||
+				check.Method == "https_exit_ip" && !slices.Contains(target.Capabilities, policy.RouteExitIP) {
+				return enrollment.ErrDenied
+			}
+		}
+	}
+	return nil
+}
+
+// Own and sort one selection for the entire compilation. The separate532
+// lane is only used with a validated <=500 adaptive and <=32 static plan.
+func networkSelectionReferences(plan configuration.NetworkPlan) ([]catalog.ProfileReference, error) {
+	if len(plan.Graph.Profiles) > 32 {
+		return nil, configuration.ErrInvalid
+	}
+	refs := []catalog.ProfileReference{}
+	seen := map[catalog.ProfileReference]bool{}
+	add := func(ref configuration.ProfileReference) {
+		value := catalog.ProfileReference{SourceID: ref.SourceID, ProfileID: ref.ProfileID}
+		if !seen[value] {
+			refs = append(refs, value)
+			seen[value] = true
+		}
+	}
+	for _, ref := range plan.Graph.Profiles {
+		add(ref)
+	}
+	if plan.Adaptive != nil {
+		decoded, err := configuration.DecodeAdaptivePlan(*plan.Adaptive, plan.Graph)
+		if err != nil {
+			return nil, err
+		}
+		for _, ref := range decoded.Bindings() {
+			add(ref)
+		}
+	}
+	limit := 64
+	if plan.Adaptive != nil {
+		limit = 532
+	}
+	if len(refs) > limit {
+		return nil, configuration.ErrInvalid
+	}
+	sort.Slice(refs, func(i, j int) bool {
+		if refs[i].SourceID == refs[j].SourceID {
+			return refs[i].ProfileID < refs[j].ProfileID
+		}
+		return refs[i].SourceID < refs[j].SourceID
+	})
+	return refs, nil
+}
+
 func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.ConfigurationTarget, now time.Time) (*enrollment.PreparedConfiguration, error) {
 	if ctx == nil || a == nil || a.Layers == nil || a.Sources == nil || target.Device == "" || target.Owner == "" || target.Thumbprint == "" || target.GrantHash == "" || target.CurrentRevision < 0 {
 		return nil, enrollment.ErrDenied
@@ -73,6 +143,9 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	if e != nil {
 		return nil, e
 	}
+	if e := adaptiveNetworkAvailable(plan, target); e != nil {
+		return nil, e
+	}
 	if plan.Network.RouteFailover != nil && (approved.Mode != "wifi" || !slices.Contains(target.Capabilities, "route.failover.v1")) {
 		return nil, enrollment.ErrDenied
 	}
@@ -96,25 +169,18 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	}
 	// Duplicate graph aliases may address one immutable source profile. Sort
 	// and deduplicate before SQL selection to keep lock acquisition stable.
-	refs := []catalog.ProfileReference{}
-	seen := map[catalog.ProfileReference]bool{}
-	for _, ref := range plan.Graph.Profiles {
-		value := catalog.ProfileReference{SourceID: ref.SourceID, ProfileID: ref.ProfileID}
-		if !seen[value] {
-			refs = append(refs, value)
-			seen[value] = true
-		}
+	refs, e := networkSelectionReferences(plan)
+	if e != nil {
+		return nil, e
 	}
-	sort.Slice(refs, func(i, j int) bool {
-		if refs[i].SourceID == refs[j].SourceID {
-			return refs[i].ProfileID < refs[j].ProfileID
-		}
-		return refs[i].SourceID < refs[j].SourceID
-	})
 	until := approved.UntilMs
 	var selection *catalog.PreparedSelection
 	if len(refs) > 0 {
-		selection, e = a.Sources.PrepareSelection(ctx, catalog.SelectionTarget{Owner: target.Owner, Device: target.Device}, refs, approved.Mode, until/1000, now)
+		if plan.Adaptive != nil {
+			selection, e = a.Sources.PrepareAdaptiveSelection(ctx, catalog.SelectionTarget{Owner: target.Owner, Device: target.Device}, refs, approved.Mode, until/1000, now)
+		} else {
+			selection, e = a.Sources.PrepareSelection(ctx, catalog.SelectionTarget{Owner: target.Owner, Device: target.Device}, refs, approved.Mode, until/1000, now)
+		}
 		if e != nil {
 			return nil, e
 		}
@@ -131,7 +197,18 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	if e != nil {
 		return nil, e
 	}
+	if plan.Adaptive != nil {
+		if compiled.AlgorithmRevision != configuration.AdaptiveTCPAlgorithm || algorithmRevision != "" {
+			return nil, configuration.ErrInvalid
+		}
+		algorithmRevision = compiled.AlgorithmRevision
+	} else if compiled.AlgorithmRevision != "" {
+		return nil, configuration.ErrInvalid
+	}
 	required := []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}
+	if plan.Adaptive != nil {
+		required = append(required, adaptiveNetworkCapability)
+	}
 	if len(plan.Network.RouteChecks) > 0 {
 		if !slices.Contains(target.Capabilities, "route.health.v1") {
 			return nil, enrollment.ErrDenied

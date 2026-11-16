@@ -99,8 +99,20 @@ func graphProfile(m map[string]any, features map[string]bool) GraphCapability {
 // CompileGraph has no signing, network or SQL authority. resolve must read from
 // a signer-owned source selection whose final SQL fence will still be checked.
 func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile, error)) (CompiledGraph, error) {
+	return compileGraphWithAdaptive(g, resolve, nil)
+}
+
+// Declarations here are derived from the already decoded adaptive graph. They
+// reserve actual managed tags before final/rule validation, not500 standalone
+// profile outbounds. The ordinary public compiler never supplies declarations.
+type adaptiveGroupDeclaration struct {
+	Tag     string
+	MaxHops int
+}
+
+func compileGraphWithAdaptive(g Graph, resolve func(ProfileReference) (subscriptions.Profile, error), adaptive map[string]adaptiveGroupDeclaration) (CompiledGraph, error) {
 	result := CompiledGraph{Final: g.Final, Capabilities: map[string]GraphCapability{"direct": {TCP: true, UDP: true}}, Outbounds: []json.RawMessage{json.RawMessage(`{"type":"direct","tag":"direct"}`)}}
-	if len(g.Profiles) > 32 || len(g.Chains) > 16 || len(g.Balancers) > 16 || !id.MatchString(g.Final) {
+	if len(g.Profiles) > 32 || len(g.Chains) > 16 || len(g.Balancers) > 16 || len(adaptive) > 16 || !id.MatchString(g.Final) {
 		return CompiledGraph{}, ErrInvalid
 	}
 	features := map[string]bool{}
@@ -132,6 +144,22 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 	if g.NetBird != nil && (g.NetBird.validate() != nil || !add(g.NetBird.Tag)) {
 		return CompiledGraph{}, ErrInvalid
 	}
+	managed := make(map[string]string, len(adaptive))
+	for group, declaration := range adaptive {
+		if !adaptiveHopID.MatchString(group) || !adaptivePlanTag(declaration.Tag) || declaration.MaxHops < 1 || declaration.MaxHops > 4 || !add(declaration.Tag) {
+			return CompiledGraph{}, ErrInvalid
+		}
+		managed[declaration.Tag] = group
+		result.Capabilities[declaration.Tag] = GraphCapability{TCP: true, UDP: false, Hops: declaration.MaxHops}
+	}
+	if len(adaptive) > 0 {
+		for _, group := range g.Balancers {
+			if group.Type == "urltest" {
+				return CompiledGraph{}, ErrInvalid
+			}
+		}
+		features["adaptive-tcp"] = true
+	}
 	if !defined[g.Final] {
 		return CompiledGraph{}, ErrInvalid
 	}
@@ -150,6 +178,12 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 		return nil
 	}
 	for _, tag := range keys {
+		if group, ok := managed[tag]; ok {
+			if e := emit(map[string]any{"type": "syn443-adaptive", "tag": tag, "group": group}); e != nil {
+				return CompiledGraph{}, e
+			}
+			continue
+		}
 		ref, ok := g.Profiles[tag]
 		if !ok {
 			continue
@@ -193,6 +227,11 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 	var attach func(string, string, GraphCapability, string, int) (GraphCapability, error)
 	attach = func(member, previous string, prefix GraphCapability, target string, depth int) (GraphCapability, error) {
 		if depth > 16 {
+			return GraphCapability{}, ErrInvalid
+		}
+		// A managed group owns its complete private prefix. Cloning it behind
+		// an existing detour would discard that detour or borrow another scope.
+		if _, ok := managed[member]; ok {
 			return GraphCapability{}, ErrInvalid
 		}
 		if member == "direct" {
@@ -400,6 +439,11 @@ func CompileGraph(g Graph, resolve func(ProfileReference) (subscriptions.Profile
 		}
 	}
 	if g.NetBird != nil && g.NetBird.Mode == "vless" && netbirdVLESSDetour(result.Outbounds, g.NetBird.Detour) != nil {
+		return CompiledGraph{}, ErrInvalid
+	}
+	if len(adaptive) > 0 && g.NetBird != nil && g.NetBird.Mode == "vless" && adaptiveGraphDependency(result.Outbounds, g.NetBird.Detour) {
+		// SDK emergency transport does not yet share the managed route owner.
+		// A terminal VLESS must not conceal a managed group in its detour.
 		return CompiledGraph{}, ErrInvalid
 	}
 	for feature := range features {

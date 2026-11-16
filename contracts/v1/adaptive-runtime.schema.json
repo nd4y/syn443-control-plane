@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.example.invalid/syn443/adaptive-runtime.schema.json",
+  "title": "SYN443 protected adaptive TCP runtime input",
+  "description": "In-progress, not an activated policy capability. The complete UTF-8 object is limited to 196608 bytes and the complete engine document to 262144 bytes. Dedicated bounded decoders must validate both opaque JSON payloads before construction; this outer schema alone does not validate their contents or grant route authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "graphB64", "catalogueB64", "groups"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "graphB64": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 196608,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Canonical unpadded base64url of the closed route-graph JSON. After decoding, enforce the shared graph schema, exact catalogue binding, depth/node/byte limits and duplicate/case/UTF-8 rules. PUBLIC is eligibility for a public intent, never observed exit proof."
+    },
+    "catalogueB64": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 196608,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Canonical unpadded base64url of the canonical normalized outbound map keyed by local hop ID. At most 500 unique profiles, each at most 65536 bytes, with a decoded aggregate ceiling of 262144 bytes and the stricter complete wire/engine limits. The dedicated decoder, normalized profile validator and actual context-bound constructor are all required. This protected payload contains credentials and must not enter inventory, logs, telemetry or ordinary diff DTOs."
+    },
+    "groups": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 16,
+      "propertyNames": {"pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
+      "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$", "not": {"anyOf": [{"const": "direct"}, {"pattern": "^syn443_"}]}},
+      "description": "Exact graph group ID to unique managed outbound tag mapping. Reject missing/extra groups, duplicate tags, reserved tags and conflicts with configured static outbounds. Each tag must have the exact approved route_checks and actual TCP capabilities; public intents require a matching fresh country predicate."
+    }
+  }
+}

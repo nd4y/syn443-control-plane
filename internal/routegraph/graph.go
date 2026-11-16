@@ -20,6 +20,7 @@ var ErrInvalid = errors.New("invalid route graph")
 var identifier = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 var modes = map[string]bool{"HOME_WIFI": true, "WIFI": true, "CELLULAR_RESTRICTED": true, "CELLULAR": true}
 var intents = map[string]bool{"RU": true, "NON_RU": true, "INTERNAL": true}
+var terminalExits = map[string]bool{"RU": true, "NON_RU": true, "INTERNAL": true, "PUBLIC": true}
 var features = map[string]bool{"TCP": true, "UDP": true, "IPV4": true, "IPV6": true, "ICMP": true}
 
 type hop struct {
@@ -222,7 +223,7 @@ func Decode(raw []byte, catalogue []string) (*Graph, error) {
 		if row["exitClass"] != nil {
 			var ok bool
 			exit, ok = row["exitClass"].(string)
-			if !ok || !intents[exit] {
+			if !ok || !terminalExits[exit] {
 				return bad()
 			}
 		}
@@ -392,6 +393,11 @@ func (g *Graph) IntentUpperBound(intent string) (int, bool) {
 	return value, ok
 }
 
+// A public candidate is metadata eligibility for either public intent only.
+func declaresExit(exit, intent string) bool {
+	return exit == intent || exit == "PUBLIC" && (intent == "RU" || intent == "NON_RU")
+}
+
 // Allows is a static declaration predicate. It cannot grant a selection proof.
 func (g *Graph) Allows(groupID, mode string, path []string) bool {
 	row, ok := g.groups[groupID]
@@ -408,7 +414,7 @@ func (g *Graph) Allows(groupID, mode string, path []string) bool {
 				return false
 			}
 		}
-		if i == 0 && !current.modes[mode] || i == len(path)-1 && current.exit != row.intent {
+		if i == 0 && !current.modes[mode] || i == len(path)-1 && !declaresExit(current.exit, row.intent) {
 			return false
 		}
 		if i > 0 && !contains(g.edges[edgeKey{path[i-1], name}], row.features) {

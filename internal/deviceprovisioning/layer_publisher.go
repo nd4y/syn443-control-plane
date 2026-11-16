@@ -53,6 +53,45 @@ type compiledLayerProposal struct {
 	until                                    int64
 }
 
+// This is the actual preview dependency record, not a display DTO. Even equal
+// engine bytes cannot authorize an unreviewed decision-algorithm replacement.
+type configurationLayerDependency struct {
+	Device, EngineHash, ActivationHash, AlgorithmRevision string
+	Capabilities                                          []string
+	Sources                                               []catalog.SelectionDependency
+}
+
+func layerDependency(target enrollment.ConfigurationTarget, prepared *enrollment.PreparedConfiguration) (configurationLayerDependency, error) {
+	if prepared == nil || target.Device == "" {
+		return configurationLayerDependency{}, enrollment.ErrDenied
+	}
+	f, ok := prepared.Fence.(*networkFence)
+	if !ok || f == nil {
+		return configurationLayerDependency{}, enrollment.ErrDenied
+	}
+	activation, e := json.Marshal(prepared.Activation)
+	if e != nil {
+		return configurationLayerDependency{}, enrollment.ErrDenied
+	}
+	d := configurationLayerDependency{Device: target.Device, EngineHash: configurationHash(prepared.EngineConfig), ActivationHash: configurationHash(activation),
+		AlgorithmRevision: prepared.AlgorithmRevision, Capabilities: append([]string(nil), prepared.RequiredCapabilities...), Sources: []catalog.SelectionDependency{}}
+	if f.sources != nil {
+		d.Sources = f.sources.Dependencies()
+	}
+	return d, nil
+}
+
+func layerDependencyHash(layers string, dependencies []configurationLayerDependency) (string, error) {
+	raw, e := json.Marshal(struct {
+		Layers       string
+		Dependencies []configurationLayerDependency
+	}{layers, dependencies})
+	if e != nil {
+		return "", enrollment.ErrDenied
+	}
+	return configurationHash(raw), nil
+}
+
 func (p *ConfigurationPublisher) compile(ctx context.Context, actor, action string, proposal LayerProposal, now time.Time) (*compiledLayerProposal, error) {
 	snapshot, e := prepareConfigurationLayers(ctx, p.Store, actor, action, proposal, now)
 	if e != nil {
@@ -60,12 +99,7 @@ func (p *ConfigurationPublisher) compile(ctx context.Context, actor, action stri
 	}
 	proposal = snapshot.proposal
 	authority := NetworkAuthority{Layers: proposedNetworkLayers{snapshot}, Sources: p.Sources}
-	type dependency struct {
-		Device, EngineHash, ActivationHash string
-		Capabilities                       []string
-		Sources                            []catalog.SelectionDependency
-	}
-	dependencies := []dependency{}
+	dependencies := []configurationLayerDependency{}
 	c := &compiledLayerProposal{snapshot: snapshot, until: proposal.ApprovalUntilMs}
 	for _, target := range snapshot.Targets {
 		prepared, e := authority.Prepare(ctx, target, now)
@@ -81,31 +115,23 @@ func (p *ConfigurationPublisher) compile(ctx context.Context, actor, action stri
 		if !ok || f == nil {
 			return nil, enrollment.ErrDenied
 		}
-		activation, e := json.Marshal(prepared.Activation)
+		d, e := layerDependency(target, prepared)
 		if e != nil {
-			return nil, enrollment.ErrDenied
-		}
-		d := dependency{Device: target.Device, EngineHash: configurationHash(prepared.EngineConfig), ActivationHash: configurationHash(activation), Capabilities: prepared.RequiredCapabilities, Sources: []catalog.SelectionDependency{}}
-		if f.sources != nil {
-			d.Sources = f.sources.Dependencies()
+			return nil, e
 		}
 		dependencies = append(dependencies, d)
 		c.fences = append(c.fences, f)
 		c.until = min(c.until, prepared.UntilMs)
 	}
-	raw, e := json.Marshal(struct {
-		Layers       string
-		Dependencies []dependency
-	}{snapshot.Hash, dependencies})
+	c.dependencyHash, e = layerDependencyHash(snapshot.Hash, dependencies)
 	if e != nil {
-		return nil, enrollment.ErrDenied
+		return nil, e
 	}
-	c.dependencyHash = configurationHash(raw)
 	c.effectiveHash, e = effectiveProposalHash(ctx, proposal)
 	if e != nil {
 		return nil, e
 	}
-	raw, e = json.Marshal(proposal)
+	raw, e := json.Marshal(proposal)
 	if e != nil {
 		return nil, enrollment.ErrDenied
 	}
