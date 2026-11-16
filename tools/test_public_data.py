@@ -1,9 +1,11 @@
 from pathlib import Path
+from itertools import permutations
+import re
 import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
-from check_public_data import findings, scan_history
+from check_public_data import findings, is_public_go_rodata_userinfo, scan_history
 
 
 class PublicDataTest(unittest.TestCase):
@@ -121,3 +123,52 @@ class PublicDataTest(unittest.TestCase):
                 self.assertIn("credential-url", findings(metadata + public + b"\x00" + real))
                 self.assertIn("credential-url", findings(metadata + public + b"extra@"))
         self.assertIn("credential-url", findings(metadata + prefix + b"audienceownerTagdeviceIdaudience" + suffix))
+
+    def test_only_exact_208_byte_go_rodata_literals_are_exempt(self):
+        metadata = (
+            b"\x7fELF\x00go1.27.4\x00"
+            b"dep\tgithub.com/jackc/pgx/v5\tv5.11.0\tchecksum\n"
+            b"dep\tgithub.com/santhosh-tekuri/jsonschema/v6\tv6.0.3\tchecksum\n"
+        )
+        prefix = b"".join((
+            b"Continue", b"Accepted", b"Conflict", b"https://", b"username", b"password",
+            b"insecure", b"short_id", b"security", b"protocol", b"settings", b"Settings",
+        ))
+        fields = (b"audience", b"ownerTag", b"deviceId", b"provider")
+        suffix = b"".join((
+            b"database", b"passfile", b"PGSSLKEY", b"PGSSLSNI", b"timezone",
+            b"DEK-Info", b"root.crt", b":xxxxxx@",
+        ))
+        real = b"https://" + b"synthetic:placeholder@" + b"example.invalid"
+        for host_key in (b"host-key", b"host_key"):
+            for order in permutations(fields):
+                public = prefix + host_key + b"short-id" + b"".join(order) + suffix
+                with self.subTest(host_key=host_key, order=order):
+                    self.assertEqual(208, len(public))
+                    self.assertNotIn("credential-url", findings(metadata + public))
+                    self.assertIn("credential-url", findings(public))
+                    self.assertIn("credential-url", findings(b"// public source literal: " + public))
+                    self.assertIn("credential-url", findings(metadata[4:] + public))
+                    for before, after in ((b"go1.27.4", b"go1.27.3"), (b"v5.11.0", b"v5.10.0"), (b"v6.0.3", b"v6.0.4")):
+                        self.assertIn("credential-url", findings(metadata.replace(before, after) + public))
+                    self.assertIn("credential-url", findings(metadata + public + b"extra@"))
+                    self.assertIn("credential-url", findings(metadata + public + b"\x00" + real))
+            public = prefix + host_key + b"short-id" + b"".join(fields) + suffix
+            duplicate = prefix + host_key + b"short-id" + fields[0] + fields[1] + fields[2] + fields[0] + suffix
+            self.assertIn("credential-url", findings(metadata + duplicate))
+            self.assertIn("credential-url", findings(metadata + public.replace(b"root.crt", b"root.key")))
+            # Directly exercise the exact-shape predicate for every changed
+            # byte, including delimiters whose mutation stops being a URI.
+            # The integration assertions above use the real credential regexp.
+            for offset in range(len(public)):
+                replacement = b"Z" if public[offset:offset + 1] != b"Z" else b"Y"
+                changed = (public[:offset] + replacement + public[offset + 1:]).decode("ascii")
+                with self.subTest(host_key=host_key, changed_offset=offset):
+                    self.assertFalse(is_public_go_rodata_userinfo(changed, re.fullmatch(r".*", changed)))
+            for separator in (bytes([0]), bytes([1]), bytes([31]), bytes([127])):
+                broken = public[:40] + separator + public[40:]
+                self.assertNotIn("credential-url", findings(metadata + broken))
+                # An approved public run cannot hide a separate real URI on
+                # either side of any binary control separator.
+                self.assertIn("credential-url", findings(metadata + public + separator + real + separator))
+                self.assertIn("credential-url", findings(metadata + separator + real + separator + public))

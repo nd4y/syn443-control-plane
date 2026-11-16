@@ -33,9 +33,26 @@ GO_RODATA_USERINFO_SUFFIX = "".join((
     "DEK-Info", "root.crt", ":xxxxxx@",
 ))
 OVERLAY_IDENTITY_FIELDS = {"audience", "ownerTag", "deviceId", "provider"}
+GO_RODATA_ENROLLMENT_USERINFO_PREFIX = "".join((
+    "Continue", "Accepted", "Conflict", "https://", "username", "password",
+    "insecure", "short_id", "security", "protocol", "settings", "Settings",
+))
+# This larger run already contains the single password literal in its prefix.
+GO_RODATA_ENROLLMENT_USERINFO_SUFFIX = GO_RODATA_USERINFO_SUFFIX[len("password"):]
 
 
 def is_public_go_rodata_userinfo(text, match):
+    value = match[0]
+    # Go1.27.4 can concatenate these exact public eight-byte constants in the
+    # enrollment worker. Only one source-map field has two reviewed spellings;
+    # the four public overlay keys may each appear once in any order. This is
+    # not an exemption for other bytes, longer matches or non-ELF source text.
+    if (len(value) == 208 and value.startswith(GO_RODATA_ENROLLMENT_USERINFO_PREFIX)
+            and value[96:104] in {"host-key", "host_key"}
+            and value[104:112] == "short-id"
+            and {value[i:i + 8] for i in range(112, 144, 8)} == OVERLAY_IDENTITY_FIELDS
+            and value[144:] == GO_RODATA_ENROLLMENT_USERINFO_SUFFIX):
+        return True
     # The regexp begins at "inst", after the space in the first source literal.
     start = match.start() - len("bad ")
     if start < 0 or not text.startswith(GO_RODATA_USERINFO_PREFIX, start):
