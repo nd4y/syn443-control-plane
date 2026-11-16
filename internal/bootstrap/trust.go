@@ -30,6 +30,35 @@ var digestID = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 
 const MaxManifest = 6144
 
+// Fixed administrative OAuth protocol, never selected by descriptor fields.
+const (
+	AdminClientID     = "syn443-control-mobile"
+	AdminAudience     = "syn443-control-api"
+	AdminAssuranceACR = "urn:syn443:loa:2"
+	AdminScope        = "openid syn443.control"
+	AdminCallback     = "syn443://admin/oauth/callback"
+)
+
+// Signed navigation/bootstrap authority only. This metadata grants no user,
+// device, role or session, and never changes the ordinary device projection.
+type AdminBootstrap struct {
+	Issuer       string `json:"issuer"`
+	ClientID     string `json:"clientId"`
+	Audience     string `json:"audience"`
+	APIOrigin    string `json:"apiOrigin"`
+	AssuranceACR string `json:"assuranceAcr"`
+}
+
+func (AdminBootstrap) String() string     { return "AdminBootstrap([redacted])" }
+func (a AdminBootstrap) GoString() string { return a.String() }
+
+func (a AdminBootstrap) validate() error {
+	if strings.Contains(a.Issuer, "#") || strings.Contains(a.APIOrigin, "#") || !secureURL(a.Issuer, true) || !ValidOrigin(a.APIOrigin) || a.ClientID != AdminClientID || a.Audience != AdminAudience || a.AssuranceACR != AdminAssuranceACR {
+		return ErrUntrusted
+	}
+	return nil
+}
+
 type Anchor struct {
 	ID             string `json:"id"`
 	SPKI           string `json:"spki"`
@@ -51,6 +80,7 @@ type Descriptor struct {
 	ClientID           string            `json:"clientId"`
 	APIOrigin          string            `json:"apiOrigin"`
 	ControlPanelOrigin string            `json:"controlPanelOrigin,omitempty"`
+	AdminBootstrap     *AdminBootstrap   `json:"adminBootstrap,omitempty"`
 	Roots              map[string]string `json:"roots"`
 	IssuedAt           int64             `json:"issuedAt"`
 	NotBefore          int64             `json:"notBefore"`
@@ -122,6 +152,9 @@ func (a Anchor) Validate() error {
 	return e
 }
 func (d Descriptor) validate(anchor Anchor, now time.Time) error {
+	if d.AdminBootstrap != nil && d.AdminBootstrap.validate() != nil {
+		return ErrUntrusted
+	}
 	if d.ControlPanelOrigin != "" && !secureURL(d.ControlPanelOrigin, false) {
 		return ErrUntrusted
 	}

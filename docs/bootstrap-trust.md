@@ -33,6 +33,38 @@ fuzzing and an85% package gate. This is the Go trust component. Shared wire vect
 Android persistence/scanning, the one-time SQL invitation service, admin approval
 and final phone acceptance remain required before the M2 flow is complete.
 
+## Optional signed administrative bootstrap
+
+A service descriptor may contain one `adminBootstrap` object with exactly
+`issuer`, `clientId`, `audience`, `apiOrigin` and `assuranceAcr`. The administrative
+issuer is an explicitly signed canonical HTTPS issuer and may differ from the
+device issuer. `apiOrigin` is an explicitly signed canonical HTTPS origin; it is
+never derived from `controlPanelOrigin`, a browser callback or the device API.
+
+The fixed wire values are `clientId: syn443-control-mobile`,
+`audience: syn443-control-api` and `assuranceAcr: urn:syn443:loa:2`. The fixed OAuth
+scope `openid syn443.control` and callback `syn443://admin/oauth/callback` are
+protocol constants, not configurable descriptor fields. Present null, empty,
+incomplete, duplicate, unknown or case-variant objects are rejected, including
+objects carried in an otherwise valid offline signature.
+
+Absent metadata stays absent: `omitempty` leaves old descriptor serialization,
+canonical payloads and existing signed wire vectors unchanged. Adding, replacing
+or removing it requires the ordinary signed service revision/hash progression.
+The existing 4,096-byte payload and 6,144-byte manifest bounds remain unchanged.
+Device issuer/client/API/root projection and device identity are not replaced by
+administrative metadata.
+
+`contracts/v1/bootstrap-admin-vectors.json` adds deterministic shared JSON
+vectors for old absence, separate administrative issuer/API, alternate ports and
+closed negative syntax/semantics. Existing signed Go/Kotlin certificates remain
+unchanged. Go tests sign these descriptors in Actions and check tampering,
+revision fences, strict fields and aggregate limits.
+
+This is a metadata foundation only. It does not implement a mobile administrative
+session, register a Keycloak client, grant access, perform API mutations or prove
+live authentication/MFA. Those remain separate work and acceptance stages.
+
 ## HTTPS invitation landing page
 
 An installation can publish a public invitation host and bind it to its signed

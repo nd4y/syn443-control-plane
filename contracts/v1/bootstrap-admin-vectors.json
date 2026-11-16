@@ -1,0 +1,241 @@
+{
+  "version": 1,
+  "now": 1800000000,
+  "legacyDescriptorJson": "{\"apiOrigin\":\"https://api.example.invalid\",\"audience\":\"syn443-client-bootstrap\",\"clientId\":\"syn443-android\",\"expires\":1800003600,\"issuedAt\":1800000000,\"issuer\":\"https://identity.example.invalid/realms/test\",\"notBefore\":1800000000,\"revision\":1,\"rootEpoch\":1,\"roots\":{\"online-fixture-a\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmIjh41PyzheJRQm2Fh5sL1i7ZdkeIhzcCXFDV2EWQdQi/BmaWNfWv2DprhW0vO62WFRWKFowUiZS01nkPgbS8g==\"},\"schemaVersion\":1,\"serviceId\":\"fixture-service\"}",
+  "valid": [
+    {
+      "name": "legacy-absent",
+      "descriptorJson": "{\"apiOrigin\":\"https://api.example.invalid\",\"audience\":\"syn443-client-bootstrap\",\"clientId\":\"syn443-android\",\"expires\":1800003600,\"issuedAt\":1800000000,\"issuer\":\"https://identity.example.invalid/realms/test\",\"notBefore\":1800000000,\"revision\":1,\"rootEpoch\":1,\"roots\":{\"online-fixture-a\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmIjh41PyzheJRQm2Fh5sL1i7ZdkeIhzcCXFDV2EWQdQi/BmaWNfWv2DprhW0vO62WFRWKFowUiZS01nkPgbS8g==\"},\"schemaVersion\":1,\"serviceId\":\"fixture-service\"}"
+    },
+    {
+      "name": "distinct-admin-issuer-and-api",
+      "descriptorJson": "{\"adminBootstrap\":{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"},\"apiOrigin\":\"https://api.example.invalid\",\"audience\":\"syn443-client-bootstrap\",\"clientId\":\"syn443-android\",\"expires\":1800003600,\"issuedAt\":1800000000,\"issuer\":\"https://identity.example.invalid/realms/test\",\"notBefore\":1800000000,\"revision\":2,\"rootEpoch\":1,\"roots\":{\"online-fixture-a\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmIjh41PyzheJRQm2Fh5sL1i7ZdkeIhzcCXFDV2EWQdQi/BmaWNfWv2DprhW0vO62WFRWKFowUiZS01nkPgbS8g==\"},\"schemaVersion\":1,\"serviceId\":\"fixture-service\"}"
+    },
+    {
+      "name": "explicit-alternate-ports",
+      "descriptorJson": "{\"adminBootstrap\":{\"apiOrigin\":\"https://admin-api.example.invalid:9443\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid:8443/realms/control\"},\"apiOrigin\":\"https://api.example.invalid\",\"audience\":\"syn443-client-bootstrap\",\"clientId\":\"syn443-android\",\"expires\":1800003600,\"issuedAt\":1800000000,\"issuer\":\"https://identity.example.invalid/realms/test\",\"notBefore\":1800000000,\"revision\":3,\"rootEpoch\":1,\"roots\":{\"online-fixture-a\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmIjh41PyzheJRQm2Fh5sL1i7ZdkeIhzcCXFDV2EWQdQi/BmaWNfWv2DprhW0vO62WFRWKFowUiZS01nkPgbS8g==\"},\"schemaVersion\":1,\"serviceId\":\"fixture-service\"}"
+    },
+    {
+      "name": "explicit-same-issuer-still-separate-client",
+      "descriptorJson": "{\"adminBootstrap\":{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://identity.example.invalid/realms/test\"},\"apiOrigin\":\"https://api.example.invalid\",\"audience\":\"syn443-client-bootstrap\",\"clientId\":\"syn443-android\",\"expires\":1800003600,\"issuedAt\":1800000000,\"issuer\":\"https://identity.example.invalid/realms/test\",\"notBefore\":1800000000,\"revision\":4,\"rootEpoch\":1,\"roots\":{\"online-fixture-a\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmIjh41PyzheJRQm2Fh5sL1i7ZdkeIhzcCXFDV2EWQdQi/BmaWNfWv2DprhW0vO62WFRWKFowUiZS01nkPgbS8g==\"},\"schemaVersion\":1,\"serviceId\":\"fixture-service\"}"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "present-null",
+      "adminBootstrapJson": "null"
+    },
+    {
+      "name": "empty-object",
+      "adminBootstrapJson": "{}"
+    },
+    {
+      "name": "array",
+      "adminBootstrapJson": "[]"
+    },
+    {
+      "name": "string",
+      "adminBootstrapJson": "\"metadata\""
+    },
+    {
+      "name": "number",
+      "adminBootstrapJson": "1"
+    },
+    {
+      "name": "boolean",
+      "adminBootstrapJson": "true"
+    },
+    {
+      "name": "missing-issuer",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\"}"
+    },
+    {
+      "name": "empty-issuer",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"\"}"
+    },
+    {
+      "name": "missing-clientId",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "empty-clientId",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "missing-audience",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "empty-audience",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "missing-apiOrigin",
+      "adminBootstrapJson": "{\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "empty-apiOrigin",
+      "adminBootstrapJson": "{\"apiOrigin\":\"\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "missing-assuranceAcr",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "empty-assuranceAcr",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "wrong-client",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-android\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "wrong-audience",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "wrong-assurance",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:1\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "unknown-scope",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\",\"scope\":\"openid syn443.control\"}"
+    },
+    {
+      "name": "unknown-callback",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"callback\":\"syn443://admin/oauth/callback\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "unknown-root",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\",\"roots\":{}}"
+    },
+    {
+      "name": "case-variant-client",
+      "adminBootstrapJson": "{\"ClientId\":\"syn443-control-mobile\",\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "duplicate-client",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\",\"clientId\":\"syn443-control-mobile\"}"
+    },
+    {
+      "name": "escaped-duplicate-client",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\",\"client\\u0049d\":\"syn443-control-mobile\"}"
+    },
+    {
+      "name": "null-issuer",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":null}"
+    },
+    {
+      "name": "numeric-client",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":1,\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "http-issuer",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"http://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "trailing-issuer-slash",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control/\"}"
+    },
+    {
+      "name": "issuer-userinfo",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://user@admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "issuer-query",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control?foreign=1\"}"
+    },
+    {
+      "name": "issuer-empty-query",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control?\"}"
+    },
+    {
+      "name": "issuer-fragment",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control#foreign\"}"
+    },
+    {
+      "name": "issuer-uppercase-host",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://ADMIN-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "issuer-default-port",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid:443/realms/control\"}"
+    },
+    {
+      "name": "issuer-dot-segment",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/../control\"}"
+    },
+    {
+      "name": "issuer-escaped-path",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/%63ontrol\"}"
+    },
+    {
+      "name": "issuer-malformed",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://[invalid/realms/control\"}"
+    },
+    {
+      "name": "http-api",
+      "adminBootstrapJson": "{\"apiOrigin\":\"http://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "trailing-api-slash",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid/\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-path",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid/path\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-userinfo",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://user@admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-query",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid?foreign=1\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-empty-query",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid?\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-fragment",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid#foreign\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-uppercase-host",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://ADMIN-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-default-port",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid:443\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-padded-default-port",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid:0443\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-trailing-dot",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid.\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-port-zero",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid:0\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-port-overflow",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid:65536\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "api-malformed",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://[invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    },
+    {
+      "name": "issuer-empty-fragment",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control#\"}"
+    },
+    {
+      "name": "apiOrigin-empty-fragment",
+      "adminBootstrapJson": "{\"apiOrigin\":\"https://admin-api.example.invalid#\",\"assuranceAcr\":\"urn:syn443:loa:2\",\"audience\":\"syn443-control-api\",\"clientId\":\"syn443-control-mobile\",\"issuer\":\"https://admin-id.example.invalid/realms/control\"}"
+    }
+  ]
+}

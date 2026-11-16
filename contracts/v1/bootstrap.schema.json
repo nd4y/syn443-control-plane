@@ -202,6 +202,9 @@
               "pattern": "^https://[^/?#@]+$"
             }
           ]
+        },
+        "adminBootstrap": {
+          "$ref": "#/$defs/AdminBootstrap"
         }
       }
     },
@@ -307,6 +310,41 @@
           ]
         }
       }
+    },
+    "AdminBootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issuer",
+        "clientId",
+        "audience",
+        "apiOrigin",
+        "assuranceAcr"
+      ],
+      "properties": {
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^https://[^?#@]+$"
+        },
+        "clientId": {
+          "const": "syn443-control-mobile"
+        },
+        "audience": {
+          "const": "syn443-control-api"
+        },
+        "apiOrigin": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^https://[^/?#@]+$"
+        },
+        "assuranceAcr": {
+          "const": "urn:syn443:loa:2"
+        }
+      },
+      "description": "Optional signed administrative metadata only. Runtime verifies canonical secure issuer/origin. Scope openid syn443.control and callback syn443://admin/oauth/callback are fixed protocol constants, not fields. This object grants no session or role and never replaces the device issuer/client/API."
     }
   }
 }

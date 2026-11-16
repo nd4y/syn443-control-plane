@@ -13,13 +13,14 @@
     "policy-device-signature.json": "08d74647c816787c85ddd00a9089e3efdaa278b48848723f51a71e26ce5bf15e",
     "chat-openapi.json": "505800fd34c456c86c31345ec18b20be5009e233b1e69f4d637c6688b9b5e3ed",
     "control-openapi.json": "3a03695d8da6fa63a4a34b45fa3a9ae32fe4d628152ce2fdb1808c54435e124b",
-    "bootstrap.schema.json": "57a45444510439dc01bc7717cff1dcce1ac3f31a463d7320601d873d9171f051",
+    "bootstrap.schema.json": "694da88729da43385252603f120f2c85eacd7283e119ec3986968f136437918b",
     "bootstrap-wire-vectors.json": "e7ed68b385ba61d0788b74680f3b8d41117f5acc960150a651a5eb2c30f9af19",
     "invitation-openapi.json": "0aaf6cf59826265613ce522c7789ea14ec4a00d0392b42a34728911394cf9d2f",
     "overlay-namespace-vectors.json": "f8fea5472818e3438b600a0d6e51cb9e1e4bc7957bdf150d75e27241a44aebac",
     "overlay-credential.schema.json": "4228df5c2b78542393f9b22b4576b9243c221708226510442a7315507c14e44d",
     "route-graph.schema.json": "c1a0a53af3a8015a6bdee140c8d992b6289ff3b1cf29660d9fcd4a3e61cfdade",
     "route-graph-vectors.json": "901e71135c197a887dfae0b048d99ab9bdf34c8e1677ca653971dc6ac459accb",
-    "adaptive-runtime.schema.json": "2a94d23f71de9a0bd5eed655bbc99c75c390cc2ad6a113b22a02640019a8fc65"
+    "adaptive-runtime.schema.json": "2a94d23f71de9a0bd5eed655bbc99c75c390cc2ad6a113b22a02640019a8fc65",
+    "bootstrap-admin-vectors.json": "8f3a19ba5c35888b6ab05a216500af47223cda96e4a00f263841222f1f83f0ee"
   }
 }
