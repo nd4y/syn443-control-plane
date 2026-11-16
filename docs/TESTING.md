@@ -1,5 +1,11 @@
 # Testing and release gates
 
+The [public Go layer-wire fixture](layer-wire-fixture.md) adds six mandatory
+source-bound race outcomes before generating a separate synthetic artifact.
+Actual Go Marshal/production hash and merge/decode/compile results preserve raw
+parent layer bytes for native-editor interoperability; no live API, user rights
+or configuration changes are included. New fixture execution is pending Actions.
+
 The optional [public signed-service discovery](service-discovery.md) source adds
 five bootstrap and two enrollment-API roots. Both the complete race JSON stream
 and a separate ordinary targeted JSON stream must contain each exact package/test

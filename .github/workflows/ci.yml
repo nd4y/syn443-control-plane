@@ -116,6 +116,62 @@ jobs:
           path: dist/bootstrap-wire/bootstrap-wire-vectors.json
           if-no-files-found: error
           retention-days: 14
+      - name: Require, generate and scan actual Go global-layer wire evidence
+        id: layer-wire-scan
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import re
+          package = 'github.com/nd4y/syn443-control-plane/cmd/layer-fixture'
+          required = {
+              'TestLayerFixturePublisherHashFormulaAndMarshalSiteRemainSourceBound',
+              'TestLayerFixtureRawMessagesRetainOrderLexemesAndGoEscaping',
+              'TestLayerFixtureGenericReencodingCannotReplaceAuthoritativeLayerBytes',
+              'TestLayerFixtureEveryScenarioCompilesAndPreservesUneditedParents',
+              'TestLayerFixtureDeterministicBoundedActionsOutputContainsOnlySyntheticData',
+              'TestLayerFixtureRefusesUnownedExecutionAndFailedWrites',
+          }
+          source = Path('cmd/layer-fixture/main_test.go').read_text(encoding='utf-8')
+          names = re.findall(r'^func (Test[A-Za-z0-9_]+)\(t \*testing\.T\) \{', source, re.M)
+          assert len(names) == len(set(names)) and set(names) == required, 'Layer fixture source gate mismatch'
+          evidence = Path('exit-country-core-tests.jsonl')
+          assert evidence.is_file() and 0 < evidence.stat().st_size <= 64*1024*1024, 'Missing bounded actual Go outcomes'
+          states = {name: [] for name in required}
+          completed = []
+          for line in evidence.read_text(encoding='utf-8').splitlines():
+              if not line.strip():
+                  continue
+              row = json.loads(line)
+              assert isinstance(row, dict), 'Invalid Go outcome'
+              if row.get('Package') != package:
+                  continue
+              action, name = row.get('Action'), row.get('Test')
+              assert action not in ('fail', 'skip'), 'Failed or skipped layer fixture outcome'
+              if name is not None and action in ('run', 'pass'):
+                  assert name in required and not completed, 'Unknown or late layer fixture outcome'
+                  states[name].append(action)
+              elif name is None and action == 'pass':
+                  assert all(value == ['run', 'pass'] for value in states.values()), 'Incomplete layer fixture package'
+                  completed.append(action)
+          assert completed == ['pass'] and all(value == ['run', 'pass'] for value in states.values()), 'Missing or repeated layer fixture outcome'
+          print('6 actual source-bound layer wire fixture cases passed')
+          PY
+          mkdir -p dist/layer-wire
+          go run ./cmd/layer-fixture > dist/layer-wire/fixture.json
+          test -s dist/layer-wire/fixture.json
+          git rev-parse HEAD > dist/layer-wire/SOURCE.txt
+          (cd dist/layer-wire && sha256sum fixture.json SOURCE.txt > SHA256SUMS)
+          python3 tools/check_public_data.py dist/layer-wire
+          bash tools/scan_secrets.sh dist/layer-wire
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.layer-wire-scan.outcome == 'success'
+        with:
+          name: layer-wire-evidence
+          path: dist/layer-wire/
+          if-no-files-found: error
+          retention-days: 14
       - run: go build -o bin/syn443-api ./cmd/api
       - run: python3 tools/smoke_api.py bin/syn443-api
       - run: go build -o bin/syn443-policy-sign ./cmd/policy-sign && go build -o bin/syn443-policy-serve ./cmd/policy-serve
