@@ -58,8 +58,9 @@ represented by its changes, including nested object changes. A scenario lists
 all four effective paths. The device edit changes the DNS strategy; the local
 edit changes the timeout. These fixture paths do not grant editing rights.
 
-The existing complete Actions race suite runs six exact fixture test methods.
-The generation step additionally requires their actual run/pass outcomes and one
+The existing complete Actions race suite retains six exact wire fixture methods;
+the separate [projection fixture](layer-projection-fixture.md) adds seven more.
+The generation step requires all thirteen actual run/pass outcomes and one
 successful package completion, rejecting skips, failures, duplicates, renamed
 roots and missing outcomes. Only then does Actions generate
 `dist/layer-wire/fixture.json`, record exact checkout `SOURCE.txt`, and hash both
