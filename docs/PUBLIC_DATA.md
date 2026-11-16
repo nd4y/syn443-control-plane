@@ -63,6 +63,23 @@ pre-match prefix, missing or wrong build markers, non-ELF/source text, duplicate
 fields and extra adjacent bytes. Separate real credential URIs remain detected
 on both sides of C0/DEL separators and of an accepted public sequence.
 
+The independent configuration-worker artifact has one additional exact 160-byte
+layout, observed in the sanitized compiled diagnostic from
+[Actions 43846630571](https://github.com/nd4y/syn443-control-plane/actions/runs/43846630571).
+Its 156-byte regexp match is preceded by the four public bytes `bad `, giving the
+same complete 80-byte `bad inst`/`https://`/subscription-field prefix used above.
+After `host-key` or `host_key` and `short-id`, it joins directly to the same fixed
+64-byte pgx/Go suffix. The overlay identity fields are dead-stripped in this
+separate executable; no optional fields or unspecified bytes are accepted by
+the 160-byte alternative. The complete span is checked from four bytes before
+the match through its end: prefix 0..80, host 80..88, short-id 88..96, suffix 96..160.
+Every byte has the same public source provenance listed above; toolchain and
+both dependency markers remain mandatory and unchanged. Tests cover both host
+spellings, mutation of all 160 positions including the pre-match prefix,
+missing/wrong markers, non-ELF/source text, inserted fields, modified suffix and
+extra `@` text. Separate real credential URIs remain detected on both sides of
+every C0/DEL separator. The 208-byte and 192-byte rules are unchanged.
+
 APK payloads are additionally scanned as ZIP containers: Gitleaks otherwise skips the
 binary `.apk` file. The real scanner self-test checks both a clean APK and detection
 inside an embedded synthetic asset. Upload allowlists match the scanned report paths.

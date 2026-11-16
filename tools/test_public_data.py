@@ -225,3 +225,59 @@ class PublicDataTest(unittest.TestCase):
                 self.assertNotIn("credential-url", findings(metadata + broken))
                 self.assertIn("credential-url", findings(metadata + public + separator + real + separator))
                 self.assertIn("credential-url", findings(metadata + separator + real + separator + public))
+
+    def test_only_exact_160_byte_configuration_worker_literals_without_overlay_fields(self):
+        metadata = (
+            b"\x7fELF\x00go1.27.4\x00"
+            b"dep\tgithub.com/jackc/pgx/v5\tv5.11.0\tchecksum\n"
+            b"dep\tgithub.com/santhosh-tekuri/jsonschema/v6\tv6.0.3\tchecksum\n"
+        )
+        prefix = b"".join((
+            b"bad inst", b"https://", b"username", b"password", b"insecure",
+            b"short_id", b"security", b"protocol", b"settings", b"Settings",
+        ))
+        suffix = b"".join((
+            b"database", b"passfile", b"PGSSLKEY", b"PGSSLSNI", b"timezone",
+            b"DEK-Info", b"root.crt", b":xxxxxx@",
+        ))
+        real = b"https://" + b"synthetic:placeholder@" + b"example.invalid"
+        candidate = re.compile(r".+")
+        for host_key in (b"host-key", b"host_key"):
+            public = prefix + host_key + b"short-id" + suffix
+            with self.subTest(host_key=host_key):
+                self.assertEqual(80, len(prefix))
+                self.assertEqual(64, len(suffix))
+                self.assertEqual(160, len(public))
+                text = public.decode("ascii")
+                self.assertTrue(is_public_go_rodata_userinfo(text, candidate.match(text, 4)))
+                self.assertNotIn("credential-url", findings(metadata + public))
+                self.assertIn("credential-url", findings(public))
+                self.assertIn("credential-url", findings(b"// public source literal: " + public))
+                self.assertIn("credential-url", findings(metadata[4:] + public))
+                for before, after in ((b"go1.27.4", b"go1.27.3"), (b"go1.27.4", b"go1.27.5"),
+                                      (b"v5.11.0", b"v5.10.0"), (b"v6.0.3", b"v6.0.4")):
+                    self.assertIn("credential-url", findings(metadata.replace(before, after) + public))
+                for marker in (b"go1.27.4", b"dep\tgithub.com/jackc/pgx/v5\tv5.11.0\t",
+                               b"dep\tgithub.com/santhosh-tekuri/jsonschema/v6\tv6.0.3\t"):
+                    self.assertIn("credential-url", findings(metadata.replace(marker, b"") + public))
+                self.assertIn("credential-url", findings(metadata + public + b"extra@"))
+                self.assertIn("credential-url", findings(metadata + public.replace(b"root.crt", b"root.key")))
+                # No optional/unknown middle bytes or overlay member belongs to
+                # this 160-byte alternative. The separately reviewed 192-byte
+                # complete four-field form retains its existing tests above.
+                for extra in (b"audience", b"ownerTag", b"deviceId", b"provider", b"unknown!"):
+                    changed = prefix + host_key + b"short-id" + extra + suffix
+                    self.assertIn("credential-url", findings(metadata + changed))
+            # Test all 160 positions, including the four bytes preceding match[0]
+            # and URI delimiters whose mutation can remove the regexp match.
+            for offset in range(len(public)):
+                replacement = b"Z" if public[offset:offset + 1] != b"Z" else b"Y"
+                changed = (public[:offset] + replacement + public[offset + 1:]).decode("ascii")
+                with self.subTest(host_key=host_key, changed_offset=offset):
+                    self.assertFalse(is_public_go_rodata_userinfo(changed, candidate.match(changed, 4)))
+            for value in (*range(32), 127):
+                separator = bytes([value])
+                broken = public[:40] + separator + public[40:]
+                self.assertNotIn("credential-url", findings(metadata + broken))
+                self.assertIn("credential-url", findings(metadata + public + separator + real + separator))
+                self.assertIn("credential-url", findings(metadata + separator + real + separator + public))

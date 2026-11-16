@@ -71,6 +71,14 @@ def is_public_go_rodata_userinfo(text, match):
             and {full[i:i + 8] for i in range(96, 128, 8)} == OVERLAY_IDENTITY_FIELDS
             and full[128:] == GO_RODATA_ENROLLMENT_USERINFO_SUFFIX):
         return True
+    # The independent configuration worker dead-strips the overlay identity
+    # fields. Its separately reviewed 160-byte run joins the same exact 80-byte
+    # prefix, host spelling and short-id directly to the exact 64-byte suffix.
+    if (len(full) == 160 and full.startswith(GO_RODATA_ENROLLMENT_BACKTRACK_USERINFO_PREFIX)
+            and full[80:88] in {"host-key", "host_key"}
+            and full[88:96] == "short-id"
+            and full[96:] == GO_RODATA_ENROLLMENT_USERINFO_SUFFIX):
+        return True
     if not text.startswith(GO_RODATA_USERINFO_PREFIX, start):
         return False
     end = match.end() - len(GO_RODATA_USERINFO_SUFFIX)
