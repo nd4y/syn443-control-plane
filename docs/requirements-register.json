@@ -1853,10 +1853,11 @@
         "internal/chatweb/reauthentication_test.go",
         "internal/deviceprovisioning/reauthentication_authority_postgres_test.go",
         "web-tests/control-reauthentication.spec.js",
-        "docs/non-lte-acceptance-20261115.md"
+        "docs/non-lte-acceptance-20261115.md",
+        "docs/service-discovery.md"
       ],
       "implementationScope": " Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. Actions43655979806 passed all8 jobs including59 browser cases and actual isolated Keycloak OTP. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial.",
-      "remainingScope": " Real configured Keycloak MFA acceptance and the complete native administration flow remain open. Full normative clauses and excluded physical/operational gates remain required."
+      "remainingScope": " Real configured Keycloak MFA acceptance and the complete native administration flow remain open. Optional anonymous signed-service discovery is source-pending Actions and deployment, not an administrative session or grant. Full normative clauses and excluded physical/operational gates remain required."
     },
     {
       "id": "MOB-05",
@@ -2346,8 +2347,13 @@
       "evidence": [
         "docs/bootstrap-trust.md#installation-profile-for-first-launch",
         "cmd/enrollment-admin/bootstrap_profile_test.go",
-        "internal/bootstrap/trust_test.go"
-      ]
+        "internal/bootstrap/trust_test.go",
+        "docs/service-discovery.md",
+        "internal/bootstrap/service_discovery_test.go",
+        "cmd/enrollment-api/service_discovery_startup_test.go",
+        "tools/check_service_discovery_evidence.py"
+      ],
+      "remainingScope": "Optional public signed-service discovery source and seven mandatory ordinary/race outcomes await Actions. Live deployment, Android metadata-only integration and production root custody remain separate acceptance gates; no requirement is promoted by this source contribution."
     },
     {
       "id": "BOOT-13",
@@ -2473,8 +2479,10 @@
         "docs/managed-policy.md",
         "docs/enrollment-pilot.md",
         "docs/identity-lifecycle.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
-      ]
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/service-discovery.md"
+      ],
+      "remainingScope": "The optional discovery module's normalized wall-time high-water/rate and signed descriptor validity checks are source-pending Actions. It supplies no signing key, root installation, lease extension or administrative authority; complete security and operational acceptance remains required."
     },
     {
       "id": "SEC-07",

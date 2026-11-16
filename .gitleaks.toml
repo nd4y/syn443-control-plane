@@ -300,3 +300,10 @@ regexes = [
   '''^\s*"control-openapi\.json": "262771b44ec37a774f87459855fbbed125d2d22a3d7f909c5fa26d1b5d482018",?\s*$''',
   '''^\s*"enrollment-openapi\.json": "e80eb6d39cc9556a5c06fb4ad0e7c1866a82f9fcdbbbf0714df93261b0250e9c",?\s*$''',
 ]
+
+[[rules.allowlists]]
+description = "Recomputed public anonymous service discovery API content digest"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"enrollment-openapi\.json": "8cc3c19c0eadb630d204206f1f37668d861ea3463edf3744c405929684134fc8",?\s*$''']

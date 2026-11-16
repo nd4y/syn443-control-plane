@@ -41,6 +41,7 @@ jobs:
       - run: python3 -m unittest discover -s tools -p 'test_route_fixture_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_admin_bootstrap_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_enrollment_queue_evidence.py'
+      - run: python3 -m unittest discover -s tools -p 'test_service_discovery_evidence.py'
   go:
     needs: public-data
     runs-on: ubuntu-24.04
@@ -76,6 +77,12 @@ jobs:
           python3 tools/check_route_fixture_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_admin_bootstrap_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_enrollment_queue_evidence.py exit-country-core-tests.jsonl
+          python3 tools/check_service_discovery_evidence.py exit-country-core-tests.jsonl
+      - name: Require actual ordinary signed-service discovery outcomes
+        run: |
+          set -euo pipefail
+          go test -count=1 -json ./internal/bootstrap ./cmd/enrollment-api -run '^TestServiceDiscovery' | tee service-discovery-ordinary-tests.jsonl
+          python3 tools/check_service_discovery_evidence.py service-discovery-ordinary-tests.jsonl
       - name: Require actual adaptive catalogue snapshot outcomes
         run: |
           set -euo pipefail
@@ -200,7 +207,7 @@ jobs:
         id: evidence-scan
         if: always()
         run: |
-          for evidence in exit-country-core-tests.jsonl adaptive-catalogue-tests.jsonl; do
+          for evidence in exit-country-core-tests.jsonl adaptive-catalogue-tests.jsonl service-discovery-ordinary-tests.jsonl; do
             if test -f "$evidence"; then
               test -s "$evidence"
               python3 tools/check_public_data.py "$evidence"
@@ -219,6 +226,7 @@ jobs:
             coverage.out
             exit-country-core-tests.jsonl
             adaptive-catalogue-tests.jsonl
+            service-discovery-ordinary-tests.jsonl
             dependency-inventory.json
           retention-days: 14
   catalog:

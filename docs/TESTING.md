@@ -1,5 +1,15 @@
 # Testing and release gates
 
+The optional [public signed-service discovery](service-discovery.md) source adds
+five bootstrap and two enrollment-API roots. Both the complete race JSON stream
+and a separate ordinary targeted JSON stream must contain each exact package/test
+run and pass once, both package completions, and no failure or skip in either
+package. The checker locks its required names to the two source files; negative
+checker cases run in the documents job. Both evidence payloads retain the
+existing always scan/archive flow, and the bootstrap85% coverage gate remains
+unchanged. Source is pending Actions, deployment and Android integration; these
+tests do not establish production root custody, native SSO, MFA or role grants.
+
 The [independent configuration worker](configuration-worker.md) adds eleven named
 core/runtime outcomes and two actual PostgreSQL roots to the mandatory adaptive
 evidence gate. PostgreSQL checks exercise original TLS/OIDC/DPoP/MFA receipts,
