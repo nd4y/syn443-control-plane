@@ -40,6 +40,7 @@ jobs:
       - run: python3 -m unittest discover -s tools -p 'test_adaptive_runtime_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_route_fixture_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_admin_bootstrap_evidence.py'
+      - run: python3 -m unittest discover -s tools -p 'test_enrollment_queue_evidence.py'
   go:
     needs: public-data
     runs-on: ubuntu-24.04
@@ -74,6 +75,7 @@ jobs:
           python3 tools/check_adaptive_runtime_evidence.py exit-country-core-tests.jsonl --stage core
           python3 tools/check_route_fixture_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_admin_bootstrap_evidence.py exit-country-core-tests.jsonl
+          python3 tools/check_enrollment_queue_evidence.py exit-country-core-tests.jsonl
       - name: Require actual adaptive catalogue snapshot outcomes
         run: |
           set -euo pipefail

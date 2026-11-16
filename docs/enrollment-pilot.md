@@ -26,6 +26,15 @@ Create an empty, separately owned database. The owner runs `enrollment-admin mig
 
 Each process reads its own owner-only JSON file through `SYN443_ENROLLMENT_CONFIG`: `listen`, `origin`, `issuer`, `audience`, `clientId`, `database`, `encryptionKey` (base64, 32 random bytes), `roots` (key ID to base64 DER P-256 public key), and API `certificate`/`certificateKey`. Fixture-only `fixtureHttp` defaults false. The worker/owner CLI additionally use `SYN443_ENROLLMENT_GRANTS`, a private JSON array of grants; the worker also uses `SYN443_POLICY_SIGNING_KEY_FILE` (PKCS8 P-256) and `SYN443_POLICY_KEY_ID`. The worker key and grant file must be unreadable by the API service identity. Owner `authorize` writes the permitted assignment hash; it does not register real users by itself. Set operator-controlled absolute paths, never caller-supplied paths.
 
+With `SYN443_CONFIGURATION_CONFIG`, the worker always enforces managed
+`NetworkAuthority`. Its optional `SYN443_CONFIGURATION_QUEUE_MODE` defaults to
+`embedded`; use exact `external` when the independent configuration worker owns
+the administrative queue. External mode requires the configuration file but no
+preview private key or administrative IdP discovery in this process. The ordinary
+device policy signer remains mandatory. Explicit modes without a configuration
+and unknown values fail before unrelated startup. See
+[configuration queue ownership](configuration-worker.md#enrollment-worker-queue-ownership).
+
 This initial schema targets a fresh pilot database; upgrades from an existing production identity schema, key rotation, retention/maintenance under prolonged load, full RBAC/admin sessions, offline logout reconciliation and invitation enrollment are pending. Do not deploy the pilot publicly as a complete service.
 
 ## Reproducible evidence
