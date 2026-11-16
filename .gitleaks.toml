@@ -4,6 +4,13 @@ useDefault = true
 
 [[rules]]
 id = "generic-api-key"
+[[rules.allowlists]]
+description = "Recomputed public managed control contract SHA-256 after RE2 schema correction"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "3a03695d8da6fa63a4a34b45fa3a9ae32fe4d628152ce2fdb1808c54435e124b",?\s*$''']
+
 
 [[rules.allowlists]]
 description = "Recomputed SHA-256 of the public managed adaptive control contract"

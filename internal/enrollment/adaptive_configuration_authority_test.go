@@ -27,7 +27,7 @@ func compiledAdaptivePreparation(t *testing.T) (*PreparedConfiguration, policy.P
 		"templates": []any{map[string]any{"id": "single", "slots": [][]string{{"hop"}}}},
 		"groups":    []any{map[string]any{"id": "external", "intent": "NON_RU", "features": []string{"TCP"}, "templates": []string{"single"}}}})
 	bindings, _ := json.Marshal(map[string]map[string]string{"hop": {"profileId": "source_profile", "sourceId": "source-a"}})
-	plan := configuration.NetworkPlan{SchemaVersion: 1, Graph: configuration.Graph{Final: "managed"},
+	plan := configuration.NetworkPlan{SchemaVersion: 1, Graph: configuration.Graph{Profiles: map[string]configuration.ProfileReference{}, Chains: map[string]configuration.Chain{}, Balancers: map[string]configuration.Balancer{}, Final: "managed"},
 		Network:    configuration.NetworkSettings{SchemaVersion: 1, RequiredNetworks: []string{"tcp"}, DNSFinal: "system", DNSStrategy: "prefer_ipv4", RouteChecks: []configuration.OutboundCheckPlan{{Outbound: "managed", Checks: []configuration.OutboundCheck{{Method: "https_exit_country", Target: "https://country.example.invalid/", ExpectedExitClass: "NON_RU"}}}}},
 		Activation: policy.Gate{TimeoutSeconds: 30, Checks: []policy.Check{{ID: "internet", Type: "https_204", Target: "https://health.example.invalid/generate_204", Required: true}}},
 		Adaptive:   &configuration.AdaptivePlan{MetadataB64: base64.RawURLEncoding.EncodeToString(metadata), BindingsB64: base64.RawURLEncoding.EncodeToString(bindings), Groups: map[string]string{"external": "managed"}}}

@@ -201,8 +201,8 @@ jobs:
         if: always()
         run: |
           test -s catalog-coverage.out
-          python3 tools/check_public_data.py catalog-coverage.out adaptive-catalog-postgres-tests.jsonl
-          bash tools/scan_secrets.sh catalog-coverage.out adaptive-catalog-postgres-tests.jsonl
+          python3 tools/check_public_data.py catalog-coverage.out adaptive-catalog-postgres-tests.jsonl adaptive-catalog-postgres-tests.jsonl
+          bash tools/scan_secrets.sh catalog-coverage.out adaptive-catalog-postgres-tests.jsonl adaptive-catalog-postgres-tests.jsonl
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always() && steps.catalog-scan.outcome == 'success'
         with:
