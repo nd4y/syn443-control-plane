@@ -140,8 +140,14 @@ jobs:
               'TestLayerProjectionActual4096LeafBoundaryIsSummarizedWithoutLargePayload',
               'TestLayerProjectionDeterministicActionsOutputAndFailureGuardsStayBounded',
               'TestLayerProjectionOracleRemainsBoundToActualDecodeMergeAndMarshal',
+              'TestOperationFixtureActualEnvelopeBytesHashesAndDerivedJobIDsAreSourceBound',
+              'TestOperationFixtureEightMutationOriginalsUseActualClosedServerSchemas',
+              'TestOperationFixtureEveryOutcomeUsesActualDTOAndCorrectOptionalJobShape',
+              'TestOperationFixtureEphemeralPreviewTicketsVerifyOnlyWithPublicSyntheticRoot',
+              'TestOperationFixturePublishBodiesRetainExactProposalAndPreviewContext',
+              'TestOperationFixtureBoundedActionsOutputPreservesExistingModesAndRejectsFailedWrites',
           }
-          source = Path('cmd/layer-fixture/main_test.go').read_text(encoding='utf-8')
+          source = '\n'.join(Path(path).read_text(encoding='utf-8') for path in ('cmd/layer-fixture/main_test.go', 'cmd/layer-fixture/operations_test.go'))
           names = re.findall(r'^func (Test[A-Za-z0-9_]+)\(t \*testing\.T\) \{', source, re.M)
           assert len(names) == len(set(names)) and set(names) == required, 'Layer fixture source gate mismatch'
           evidence = Path('exit-country-core-tests.jsonl')
@@ -164,7 +170,7 @@ jobs:
                   assert all(value == ['run', 'pass'] for value in states.values()), 'Incomplete layer fixture package'
                   completed.append(action)
           assert completed == ['pass'] and all(value == ['run', 'pass'] for value in states.values()), 'Missing or repeated layer fixture outcome'
-          print('13 actual source-bound layer wire/projection fixture cases passed')
+          print('19 actual source-bound layer wire/projection/operation fixture cases passed')
           PY
           mkdir -p dist/layer-wire
           go run ./cmd/layer-fixture > dist/layer-wire/fixture.json
@@ -261,6 +267,116 @@ jobs:
             dist/layer-projection/projection-fixture.json
             dist/layer-projection/SOURCE.txt
             dist/layer-projection/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+      - name: Generate and scan separate actual Go operation reconciliation wire evidence
+        id: layer-operation-scan
+        run: |
+          set -euo pipefail
+          mkdir -p dist/layer-operation
+          go run ./cmd/layer-fixture --operations > dist/layer-operation/operations-fixture.json
+          python3 - <<'PY'
+          import base64
+          import hashlib
+          import json
+          from pathlib import Path
+          import re
+          def closed_object(pairs):
+              value = {}
+              for key, item in pairs:
+                  assert key not in value, 'Duplicate operation artifact field'
+                  value[key] = item
+              return value
+          def parse(raw):
+              return json.loads(raw, object_pairs_hook=closed_object, parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite fixture value')))
+          def digest(raw):
+              return hashlib.sha256(raw).hexdigest()
+          def opaque(raw):
+              return base64.urlsafe_b64encode(hashlib.sha256(raw).digest()).decode('ascii').rstrip('=')
+          def decoded(raw):
+              assert isinstance(raw, str) and re.fullmatch(r'[A-Za-z0-9_-]+', raw), 'Non-rawurl fixture bytes'
+              value = base64.b64decode(raw + '=' * (-len(raw) % 4), altchars=b'-_', validate=True)
+              assert base64.urlsafe_b64encode(value).decode('ascii').rstrip('=') == raw, 'Noncanonical original bytes'
+              return value
+          raw = Path('dist/layer-operation/operations-fixture.json').read_bytes()
+          assert 0 < len(raw) <= 65536, 'Operation artifact byte bound'
+          doc = parse(raw.decode('utf-8'))
+          assert isinstance(doc, dict) and set(doc) == {'schemaVersion', 'syntheticOnly', 'nowMs', 'actor', 'apiOrigin', 'proposalWire', 'previewKeyId', 'previewRootSpkiB64', 'originals'}
+          assert type(doc['schemaVersion']) is int and doc['schemaVersion'] == 1 and doc['syntheticOnly'] is True
+          assert type(doc['nowMs']) is int and doc['nowMs'] == 1800000000000
+          assert doc['apiOrigin'] == 'https://control.example.invalid' and doc['previewKeyId'] == 'synthetic-operation-root'
+          assert doc['actor'] == opaque(b'https://identity.example.invalid/realms/fixture\x00synthetic-admin')
+          public_der = base64.b64decode(doc['previewRootSpkiB64'], validate=True)
+          assert len(public_der) == 91 and base64.b64encode(public_der).decode('ascii') == doc['previewRootSpkiB64'], 'Bounded canonical public P256 SPKI'
+          assert isinstance(doc['proposalWire'], str) and isinstance(parse(doc['proposalWire']), dict)
+          expected = [name + '-v' + str(version) for version in (1, 2) for name in ('draft-put', 'draft-discard', 'preview', 'publish')]
+          assert isinstance(doc['originals'], list) and len(doc['originals']) == 8
+          total = 0
+          action_names = {'draft-put': 'configuration.layers.draft.put', 'draft-discard': 'configuration.layers.draft.discard', 'preview': 'configuration.preview.request', 'publish': 'configuration.publish'}
+          for index, case in enumerate(doc['originals']):
+              assert isinstance(case, dict) and set(case) == {'name', 'originalBody64', 'bodyHash', 'jobId', 'lookupWire', 'sealWire', 'outcomes'}
+              assert case['name'] == expected[index]
+              version = 1 if index < 4 else 2
+              name = ('draft-put', 'draft-discard', 'preview', 'publish')[index % 4]
+              original_raw = decoded(case['originalBody64'])
+              assert 0 < len(original_raw) <= 262144 and digest(original_raw) == case['bodyHash']
+              original = parse(original_raw.decode('utf-8'))
+              assert isinstance(original, dict) and set(original) == {'version', 'action', 'requestId', 'payload'}
+              assert type(original['version']) is int and original['version'] == version and original['action'] == action_names[name]
+              assert original['requestId'] == opaque(('synthetic-operation/v' + str(version) + '/' + name).encode('ascii'))
+              is_job = name in ('preview', 'publish')
+              job_id = opaque((doc['actor'] + '\x00' + original['requestId']).encode('ascii')) if is_job else ''
+              assert case['jobId'] == job_id
+              for key, intent in (('lookupWire', 'lookup'), ('sealWire', 'seal_if_absent')):
+                  reconcile = parse(case[key])
+                  assert isinstance(reconcile, dict) and set(reconcile) == {'version', 'requestId', 'intent', 'originalBody64'}
+                  assert type(reconcile['version']) is int and reconcile['version'] == 1 and reconcile['intent'] == intent and reconcile['originalBody64'] == case['originalBody64']
+                  assert reconcile['requestId'] == opaque(('synthetic-reconcile/' + case['name'] + '/' + intent).encode('ascii'))
+              outcome_names = ['UNKNOWN', 'RECORDED', 'RECORDED_RESULT_UNAVAILABLE']
+              if version == 2:
+                  outcome_names.append('NO_EFFECT')
+              if is_job:
+                  outcome_names += ['RECORDED_RUNNING', 'RECORDED_READY' if name == 'preview' else 'RECORDED_PUBLISHED']
+              assert isinstance(case['outcomes'], list) and len(case['outcomes']) == len(outcome_names)
+              for outcome_index, entry in enumerate(case['outcomes']):
+                  assert isinstance(entry, dict) and set(entry) == {'name', 'wire'} and entry['name'] == outcome_names[outcome_index]
+                  value = parse(entry['wire'])
+                  fields = {'version', 'actor', 'action', 'requestId', 'bodyHash', 'targetKind', 'targetId', 'outcome', 'recordedAtMs', 'effectKind', 'effectId', 'effectRevision'}
+                  assert isinstance(value, dict) and set(value) in (fields, fields | {'job'})
+                  assert type(value['version']) is int and value['version'] == 1
+                  assert (value['actor'], value['action'], value['requestId'], value['bodyHash']) == (doc['actor'], original['action'], original['requestId'], case['bodyHash'])
+                  assert (value['targetKind'], value['targetId']) == ('device', 'synthetic-device')
+                  label = entry['name']
+                  assert value['outcome'] == (label if label in ('UNKNOWN', 'NO_EFFECT', 'RECORDED_RESULT_UNAVAILABLE') else 'RECORDED')
+                  assert type(value['recordedAtMs']) is int and value['recordedAtMs'] == (0 if label == 'UNKNOWN' else doc['nowMs'] + 1)
+                  assert type(value['effectRevision']) is int
+                  if label in ('UNKNOWN', 'NO_EFFECT'):
+                      assert (value['effectKind'], value['effectId'], value['effectRevision']) == ('', '', 0) and 'job' not in value
+                  else:
+                      assert (value['effectKind'], value['effectId'], value['effectRevision']) == (('job', job_id, 0) if is_job else ('draft', 'synthetic-operation-draft', 1))
+                      has_job = is_job and label != 'RECORDED_RESULT_UNAVAILABLE'
+                      assert ('job' in value) == has_job
+                      if has_job:
+                          job = value['job']
+                          terminal = label in ('RECORDED_READY', 'RECORDED_PUBLISHED')
+                          assert isinstance(job, dict) and set(job) == ({'id', 'state', 'result'} if terminal else {'id', 'state'})
+                          assert job['id'] == job_id and job['state'] == {'RECORDED': 'queued', 'RECORDED_RUNNING': 'running', 'RECORDED_READY': 'ready', 'RECORDED_PUBLISHED': 'published'}[label]
+                  total += 1
+          assert total == 36, 'Operation outcome matrix changed'
+          print('Bounded synthetic actual Go operation wire: 8 originals, 36 outcomes, exact hashes and job identities')
+          PY
+          git rev-parse HEAD > dist/layer-operation/SOURCE.txt
+          (cd dist/layer-operation && sha256sum operations-fixture.json SOURCE.txt > SHA256SUMS)
+          python3 tools/check_public_data.py dist/layer-operation
+          bash tools/scan_secrets.sh dist/layer-operation
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.layer-operation-scan.outcome == 'success'
+        with:
+          name: layer-operation-evidence
+          path: |
+            dist/layer-operation/operations-fixture.json
+            dist/layer-operation/SOURCE.txt
+            dist/layer-operation/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
       - run: go build -o bin/syn443-api ./cmd/api

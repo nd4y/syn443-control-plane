@@ -60,7 +60,9 @@ edit changes the timeout. These fixture paths do not grant editing rights.
 
 The existing complete Actions race suite retains six exact wire fixture methods;
 the separate [projection fixture](layer-projection-fixture.md) adds seven more.
-The generation step requires all thirteen actual run/pass outcomes and one
+The [operation reconciliation fixture](operation-wire-fixture.md) adds six
+source-bound cases through its separate `--operations` mode and artifact.
+The generation step requires all nineteen actual run/pass outcomes and one
 successful package completion, rejecting skips, failures, duplicates, renamed
 roots and missing outcomes. Only then does Actions generate
 `dist/layer-wire/fixture.json`, record exact checkout `SOURCE.txt`, and hash both
