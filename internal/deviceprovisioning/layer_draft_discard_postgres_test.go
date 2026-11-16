@@ -101,7 +101,7 @@ func TestPrivateDraftDiscardScopeExpiryQuotaAndReceiptIntegrity(t *testing.T) {
 			input := ConfigurationDraftDiscard{ID: p.DraftID, Revision: 1, TargetKind: p.TargetKind, TargetID: p.TargetID}
 			actor, until := n.actor.ID, n.f.now.Unix()+60
 			want := enrollment.ErrDenied
-			op, hash := "guarded-discard", "first-body"
+			op, hash := identity.Hash([]byte("guarded-discard")), configurationHash([]byte("first-body"))
 			switch name {
 			case "stale":
 				input.Revision = 2
@@ -169,7 +169,7 @@ func TestPrivateDraftDiscardStorageCancellationMalformedAndConcurrentCAS(t *test
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			_, e := c.discardDraft(context.Background(), n.actor.ID, fmt.Sprint("race-", i), fmt.Sprint("hash-", i), input, n.f.now.Unix()+60, n.f.now)
+			_, e := c.discardDraft(context.Background(), n.actor.ID, identity.Hash([]byte(fmt.Sprint("race-", i))), configurationHash([]byte(fmt.Sprint("hash-", i))), input, n.f.now.Unix()+60, n.f.now)
 			errorsCh <- e
 		}(i)
 	}
@@ -197,7 +197,7 @@ func TestPrivateDraftDiscardRechecksAuthorityAfterActorLockWait(t *testing.T) {
 	}
 	done := make(chan error, 1)
 	go func() {
-		_, e := c.discardDraft(context.Background(), n.actor.ID, "delayed-discard", "body", ConfigurationDraftDiscard{ID: p.DraftID, Revision: 1, TargetKind: p.TargetKind, TargetID: p.TargetID}, n.f.now.Unix()+1, n.f.now)
+		_, e := c.discardDraft(context.Background(), n.actor.ID, identity.Hash([]byte("delayed-discard")), configurationHash([]byte("body")), ConfigurationDraftDiscard{ID: p.DraftID, Revision: 1, TargetKind: p.TargetKind, TargetID: p.TargetID}, n.f.now.Unix()+1, n.f.now)
 		done <- e
 	}()
 	deadline := time.Now().Add(time.Second)
@@ -245,7 +245,7 @@ func TestPrivateDraftDiscardSQLFailuresStayUnavailableAndRollBack(t *testing.T) 
 					t.Error(e)
 				}
 			})
-			if _, e := c.discardDraft(context.Background(), n.actor.ID, "storage-discard", "body", ConfigurationDraftDiscard{ID: p.DraftID, Revision: 1, TargetKind: p.TargetKind, TargetID: p.TargetID}, n.f.now.Unix()+60, n.f.now); !errors.Is(e, enrollment.ErrUnavailable) {
+			if _, e := c.discardDraft(context.Background(), n.actor.ID, identity.Hash([]byte("storage-discard")), configurationHash([]byte("body")), ConfigurationDraftDiscard{ID: p.DraftID, Revision: 1, TargetKind: p.TargetKind, TargetID: p.TargetID}, n.f.now.Unix()+60, n.f.now); !errors.Is(e, enrollment.ErrUnavailable) {
 				t.Fatal("storage error became success or denial", e)
 			}
 			var discarded bool

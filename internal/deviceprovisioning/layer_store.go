@@ -127,6 +127,10 @@ func ConfigurationRuntimeRole(ctx context.Context, db *sql.DB, publisher bool) e
 		}
 	}
 	var reportMetadata, unsafeReportAccess bool
+	var operationRead, operationInsert, operationUpdate, operationDelete, counterRead, counterWrite, operationXidInsert bool
+	if e := db.QueryRowContext(ctx, `SELECT has_table_privilege(current_user,'managed_configuration_operations','SELECT'),has_any_column_privilege(current_user,'managed_configuration_operations','INSERT'),has_any_column_privilege(current_user,'managed_configuration_operations','UPDATE'),has_table_privilege(current_user,'managed_configuration_operations','DELETE') OR has_table_privilege(current_user,'managed_configuration_operations','TRUNCATE') OR has_table_privilege(current_user,'managed_configuration_operations','TRIGGER'),has_table_privilege(current_user,'managed_configuration_operation_counters','SELECT'),has_any_column_privilege(current_user,'managed_configuration_operation_counters','INSERT') OR has_any_column_privilege(current_user,'managed_configuration_operation_counters','UPDATE') OR has_table_privilege(current_user,'managed_configuration_operation_counters','DELETE') OR has_table_privilege(current_user,'managed_configuration_operation_counters','TRUNCATE') OR has_table_privilege(current_user,'managed_configuration_operation_counters','TRIGGER'),has_column_privilege(current_user,'managed_configuration_operations','recorded_xid','INSERT')`).Scan(&operationRead, &operationInsert, &operationUpdate, &operationDelete, &counterRead, &counterWrite, &operationXidInsert); e != nil || operationRead == publisher || operationInsert == publisher || operationUpdate || operationDelete || counterRead || counterWrite || operationXidInsert {
+		return enrollment.ErrDenied
+	}
 	if e := db.QueryRowContext(ctx, `SELECT has_column_privilege(current_user,'identity_policy_activation','outcome','SELECT'),
 	 has_column_privilege(current_user,'identity_policy_activation','envelope_hash','SELECT') OR
 	 has_any_column_privilege(current_user,'identity_policy_activation','INSERT') OR

@@ -51,16 +51,19 @@ type Verifier interface {
 type ExternalAction func(context.Context, string, string, []byte, time.Time) (any, error)
 
 type API struct {
-	Invitations          ExternalAction
-	Configurations       ExternalAction
-	TelemetrySummary     func(context.Context, time.Time, time.Time) (telemetry.HourReport, error)
-	Store                *Store
-	Verifier             Verifier
-	Origin, AssuranceACR string
-	Clock                func() time.Time
-	slots                chan struct{}
-	mu                   sync.Mutex
-	rates                map[string]rate
+	Invitations            ExternalAction
+	Configurations         ExternalAction
+	ConfigurationReconcile ExternalAction
+	TelemetrySummary       func(context.Context, time.Time, time.Time) (telemetry.HourReport, error)
+	Store                  *Store
+	Verifier               Verifier
+	Origin, AssuranceACR   string
+	Clock                  func() time.Time
+	slots                  chan struct{}
+	normalSlots            chan struct{}
+	reconcileSlots         chan struct{}
+	mu                     sync.Mutex
+	rates                  map[string]rate
 }
 type rate struct {
 	Minute int64
@@ -75,7 +78,7 @@ func NewAPI(store *Store, verifier Verifier, origin, acr string, fixture bool) (
 	if _, e := loadControlSchema(); e != nil {
 		return nil, ErrUnavailable
 	}
-	return &API{Store: store, Verifier: verifier, Origin: origin, AssuranceACR: acr, Clock: time.Now, slots: make(chan struct{}, 4), rates: map[string]rate{}}, nil
+	return &API{Store: store, Verifier: verifier, Origin: origin, AssuranceACR: acr, Clock: time.Now, slots: make(chan struct{}, 4), normalSlots: make(chan struct{}, 3), reconcileSlots: make(chan struct{}, 1), rates: map[string]rate{}}, nil
 }
 func (a *API) admit(ip string, now time.Time) bool {
 	a.mu.Lock()
@@ -159,6 +162,10 @@ func apiFailure(w http.ResponseWriter, e error) {
 	json.NewEncoder(w).Encode(map[string]string{"code": code})
 }
 func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == configurationReconcilePath {
+		a.serveConfigurationReconcile(w, r)
+		return
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Type", "application/json")
@@ -173,6 +180,13 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ip, _, e := net.SplitHostPort(r.RemoteAddr)
 	if e != nil || !a.admit(ip, a.Clock()) {
 		apiFailure(w, ErrQuota)
+		return
+	}
+	select {
+	case a.normalSlots <- struct{}{}:
+		defer func() { <-a.normalSlots }()
+	default:
+		apiFailure(w, ErrUnavailable)
 		return
 	}
 	select {
@@ -216,7 +230,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var action Action
-	if identity.DecodeSourceUpload(raw, &action) != nil || action.Version != 1 {
+	if identity.DecodeSourceUpload(raw, &action) != nil || !controlActionVersion(action.Version, action.Action) {
 		apiFailure(w, ErrInvalid)
 		return
 	}
@@ -249,6 +263,20 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if json.NewEncoder(w).Encode(value) != nil {
 		return
 	}
+}
+
+func controlActionVersion(version int, action string) bool {
+	if version == 1 {
+		return true
+	}
+	if version != 2 {
+		return false
+	}
+	switch action {
+	case "configuration.layers.draft.put", "configuration.layers.draft.discard", "configuration.preview.request", "configuration.publish":
+		return true
+	}
+	return false
 }
 
 type Action struct {

@@ -1,5 +1,7 @@
 # Testing and release gates
 
+Operation-reconciliation candidate: the existing disposable catalogue and provisioning PostgreSQL jobs must provide all28 named outcomes (5 catalogue,23 provisioning), checked by `tools/check_operation_reconcile_evidence.py`. Its6 validator unit cases run in the existing documents job. These are pending source gates. Existing race, coverage, privacy, quota, HTTP and worker checks remain mandatory; no live database or client activation runs in CI. See [operation outcome reconciliation](operation-outcome-reconciliation.md).
+
 The [public Go layer-wire fixture](layer-wire-fixture.md) adds six mandatory
 source-bound race outcomes before generating a separate synthetic artifact.
 Actual Go Marshal/production hash and merge/decode/compile results preserve raw

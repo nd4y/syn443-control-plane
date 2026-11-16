@@ -6,6 +6,30 @@
     "description": "Distinct syn443-control-api audience, pinned mobile/web clients, DPoP body/key/token binding with durable replay rejection, live object-scoped ACL and signed fresh MFA. No browser bearer tokens, URL query, source-supplied signing authority or implicit broad publication. Mutations use stable requestId and expected revision; retry with a new DPoP proof and the same operation body. Source/profile secrets are omitted from inventory. M2/M3 remain incomplete until full acceptance. Actor-private network drafts are encrypted proposals, never independently approved assignments or publication authority."
   },
   "paths": {
+    "/v1/control/configuration/reconcile": {
+      "post": {
+        "operationId": "reconcileConfigurationOperation",
+        "description": "Fixed query-free route for an explicit owned unknown-operation lookup or atomic seal. Requires the current independent administrative DPoP token, scope syn443.control, exact-byte req_hash, htu equal to the configured origin plus this exact path, matching token/key and fresh one-use proof, current action-specific target ACL and fresh MFA. No Origin header, redirect, alternate path, query, encoded path or fallback endpoint. A seal never replays an original mutation, compiles/publishes settings, renews a preview or cancels an existing job. One reserved reconciliation handler shares the existing four total handlers; admission remains held until actual callback exit. This separate 524288-byte bound does not widen the ordinary/source action route's existing 14 MiB plus 65536-byte outer limit or 65536-byte ordinary payload limit.",
+        "security": [{"adminDPoP": []}],
+        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string"}, "description": "Fresh ES256 proof bound to this request's exact UTF-8 bytes, current token and this route. Duplicate Authorization or DPoP headers are rejected."}],
+        "requestBody": {
+          "required": true,
+          "description": "At most 524288 exact UTF-8 bytes, application/json only. Closed duplicate-free object; the retained original action body is not parsed/re-encoded by the client.",
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationReconcile"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Current-authority checked operation identity and disposition, never an invented proposal or activation receipt. UNKNOWN cannot release pending ownership. Only NO_EFFECT for a version-two original action atomically fences that exact original identity before absence is returned. RECORDED_RESULT_UNAVAILABLE retains the committed fence while the old result is missing. Retained job state/result is observation, not permission to publish or infer device activation.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationOutcome"}}}
+          },
+          "400": {"description": "Malformed or over-512KiB reconciliation request. No conclusion about an earlier mutation.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationError"}}}},
+          "403": {"description": "Current proof, identity, target ACL or MFA denied; catalog_reauthentication_required requires explicit administrative reauthentication. No absence proof and no automatic retry.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationError"}}}},
+          "409": {"description": "Original request ID/action/version/body or immutable target conflicts. Does not undo or disprove an existing effect.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationError"}}}},
+          "429": {"description": "Bounded handler admission or atomic ledger quota exhausted. Existing recorded lookups do not spend new-entry quota. No absence proof.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationError"}}}},
+          "503": {"description": "Unavailable, cancelled or uncertain; pending ownership remains. No durable success or no-effect conclusion is implied.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationError"}}}}
+        }
+      }
+    },
     "/v1/control/action": {
       "post": {
         "operationId": "controlAction",
@@ -59,6 +83,70 @@
       }
     },
     "schemas": {
+      "ConfigurationOperationReconcile": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {"const": 1},
+          "requestId": {"type": "string", "minLength": 24, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]{24,128}$", "description": "This reconciliation request's identity; it is not used in place of the retained original action requestId."},
+          "intent": {"enum": ["lookup", "seal_if_absent"]},
+          "originalBody64": {"type": "string", "minLength": 1, "maxLength": 349526, "pattern": "^[A-Za-z0-9_-]+$", "description": "Canonical unpadded base64url of the exact original UTF-8 action body, decoded length 1..262144 bytes. Strict decode plus re-encode equality rejects padding, whitespace and noncanonical pad bits. The original closed Action is one of draft.put, draft.discard, preview.request or publish and has version1 or2. Do not reconstruct it from parsed JSON."}
+        },
+        "required": ["version", "requestId", "intent", "originalBody64"],
+        "description": "lookup is observational for either original version. Missing version-one history stays UNKNOWN even for seal_if_absent; version-two lookup also stays UNKNOWN when absent. Only explicit seal_if_absent for an absent version-two original can commit NO_EFFECT under the same actor/family lock and exact body hash. Later dispatch of that original is then fenced. Retained version-one effects may be returned or checked-backfilled; historical absence is never upgraded to proof. Separate normal/backfill quotas cannot be supplied or reset by the caller."
+      },
+      "ConfigurationOperationOutcome": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {"const": 1, "description": "Reply schema version, not the retained original action version."},
+          "actor": {"type": "string", "minLength": 43, "maxLength": 43, "pattern": "^[A-Za-z0-9_-]{43}$", "description": "Current verified issuer/subject-derived identity hash; caller-supplied bytes confer no authority."},
+          "action": {"enum": ["configuration.layers.draft.put", "configuration.layers.draft.discard", "configuration.preview.request", "configuration.publish"]},
+          "requestId": {"type": "string", "minLength": 24, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]{24,128}$", "description": "The retained original action request ID, not the outer reconciliation ID."},
+          "bodyHash": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 lowercase hexadecimal of the exact original action body; distinct from DPoP req_hash encoding."},
+          "targetKind": {"enum": ["template", "group", "user", "device"]},
+          "targetId": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9_-]{1,64}$"},
+          "outcome": {"enum": ["UNKNOWN", "NO_EFFECT", "RECORDED", "RECORDED_RESULT_UNAVAILABLE"]},
+          "recordedAtMs": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "effectKind": {"enum": ["", "draft", "job"]},
+          "effectId": {"type": "string", "maxLength": 128, "pattern": "^[A-Za-z0-9_-]{0,128}$"},
+          "effectRevision": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "job": {"$ref": "#/components/schemas/ConfigurationOperationJob"}
+        },
+        "required": ["version", "actor", "action", "requestId", "bodyHash", "targetKind", "targetId", "outcome", "recordedAtMs", "effectKind", "effectId", "effectRevision"],
+        "allOf": [
+          {"if": {"properties": {"outcome": {"enum": ["UNKNOWN", "NO_EFFECT"]}}}, "then": {"properties": {"effectKind": {"const": ""}, "effectId": {"const": ""}, "effectRevision": {"const": 0}}, "not": {"required": ["job"]}}},
+          {"if": {"properties": {"outcome": {"const": "UNKNOWN"}}}, "then": {"properties": {"recordedAtMs": {"const": 0}}}},
+          {"if": {"properties": {"outcome": {"enum": ["NO_EFFECT", "RECORDED", "RECORDED_RESULT_UNAVAILABLE"]}}}, "then": {"properties": {"recordedAtMs": {"minimum": 1}}}},
+          {"if": {"properties": {"outcome": {"enum": ["RECORDED", "RECORDED_RESULT_UNAVAILABLE"]}}}, "then": {"properties": {"effectKind": {"enum": ["draft", "job"]}}}},
+          {"if": {"properties": {"action": {"enum": ["configuration.layers.draft.put", "configuration.layers.draft.discard"]}}}, "then": {"properties": {"effectKind": {"enum": ["", "draft"]}}}},
+          {"if": {"properties": {"action": {"enum": ["configuration.preview.request", "configuration.publish"]}}}, "then": {"properties": {"effectKind": {"enum": ["", "job"]}}}},
+          {"if": {"properties": {"outcome": {"const": "RECORDED_RESULT_UNAVAILABLE"}}}, "then": {"not": {"required": ["job"]}}},
+          {"if": {"properties": {"effectKind": {"const": "draft"}}}, "then": {"properties": {"effectId": {"minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9_-]{1,64}$"}, "effectRevision": {"minimum": 1}}, "not": {"required": ["job"]}}},
+          {"if": {"properties": {"effectKind": {"const": "job"}}}, "then": {"properties": {"effectId": {"minLength": 24, "pattern": "^[A-Za-z0-9_-]{24,128}$"}, "effectRevision": {"const": 0}}}},
+          {"if": {"properties": {"outcome": {"const": "RECORDED"}, "effectKind": {"const": "job"}}}, "then": {"required": ["job"]}}
+        ],
+        "description": "Identity is bound to current actor, exact original action/version/request/body and immutable scoped target. No copied proposal or fabricated raw result is returned. NO_EFFECT only follows a committed version-two absence fence, never an HTTP rejection, timeout, v1 absence or a mere lookup. Missing retained result remains explicitly RECORDED_RESULT_UNAVAILABLE; that state does not erase the committed identity."
+      },
+      "ConfigurationOperationJob": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "minLength": 24, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]{24,128}$"},
+          "state": {"enum": ["queued", "running", "ready", "published", "applied", "rejected", "expired", "cancelled"], "description": "Actual managed_configuration_requests SQL state enum. Legacy applied is retained history, not a new device-activation acknowledgement."},
+          "error": {"type": "string", "enum": ["configuration_denied", "configuration_conflict", "deadline_or_retry_limit"], "description": "Existing fixed worker error code; omitted when empty."},
+          "result": {"description": "Optional unchanged retained JSON from the existing job: at most100000 database UTF-8 bytes before HTTP JSON encoding and json.Valid. Omitted when absent. No new preview/publication shape or authority is inferred from this opaque value; the caller must use the separately checked original typed workflow."}
+        },
+        "required": ["id", "state"],
+        "description": "Existing ConfigurationRequestView only, supplied for an actual retained job. ID must equal the enclosing effectId. The closed outer shape does not independently authenticate arbitrary result contents or mint publication rights."
+      },
+      "ConfigurationOperationError": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {"code": {"enum": ["catalog_invalid", "catalog_denied", "catalog_reauthentication_required", "catalog_revision_conflict", "catalog_quota", "catalog_unavailable"]}},
+        "required": ["code"],
+        "description": "Finite HTTP failure only; never a receipt of absence or proof that a previous dispatch did not commit."
+      },
       "SecretPatch": {
         "oneOf": [
           {
@@ -1195,7 +1283,7 @@
             "additionalProperties": false,
             "properties": {
               "version": {
-                "const": 1
+                "enum": [1, 2]
               },
               "action": {
                 "const": "configuration.preview.request"
@@ -1231,7 +1319,7 @@
             "additionalProperties": false,
             "properties": {
               "version": {
-                "const": 1
+                "enum": [1, 2]
               },
               "action": {
                 "const": "configuration.publish"
@@ -1428,7 +1516,7 @@
             "additionalProperties": false,
             "properties": {
               "version": {
-                "const": 1
+                "enum": [1, 2]
               },
               "action": {
                 "const": "configuration.layers.draft.put"
@@ -1597,7 +1685,7 @@
             "additionalProperties": false,
             "properties": {
               "version": {
-                "const": 1
+                "enum": [1, 2]
               },
               "action": {
                 "const": "configuration.layers.draft.discard"

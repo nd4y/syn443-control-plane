@@ -1758,7 +1758,11 @@
       "id": "EDIT-10",
       "text": "Пока панель недоступна, разрешённый локальный эксперимент может работать в границах действующей политики и lease; очередь публикации хранит черновик. При восстановлении сети администратор видит итоговый diff и актуальные права до публикации. Неактуальное административное право или lease не продлевается офлайн-черновиком.",
       "status": "planned",
-      "evidence": []
+      "evidence": [
+        "docs/operation-outcome-reconciliation.md"
+      ],
+      "implementationScope": "Source-pending compact immutable operation ledger and fixed authenticated reconciliation distinguish v1 UNKNOWN, v2 atomic NO_EFFECT, RECORDED and recorded result unavailable.28 exact PostgreSQL/HTTP roots and unchanged role/race/coverage gates require Actions; no deployment or authority activation is claimed.",
+      "remainingScope": "Android pending-CAS receipt handling, compatibility/consumer activation, live migration/restore and physical reconciliation acceptance remain open."
     },
     {
       "id": "EDIT-11",
@@ -2143,8 +2147,11 @@
         "cmd/source-worker/main.go",
         "cmd/control-api/main.go",
         "docs/overlay-broker.md",
-        "docs/private-draft-inventory.md"
-      ]
+        "docs/private-draft-inventory.md",
+        "docs/operation-outcome-reconciliation.md"
+      ],
+      "implementationScope": "Source-pending compact immutable operation ledger and fixed authenticated reconciliation distinguish v1 UNKNOWN, v2 atomic NO_EFFECT, RECORDED and recorded result unavailable.28 exact PostgreSQL/HTTP roots and unchanged role/race/coverage gates require Actions; no deployment or authority activation is claimed.",
+      "remainingScope": "Android pending-CAS receipt handling, compatibility/consumer activation, live migration/restore and physical reconciliation acceptance remain open."
     },
     {
       "id": "SVC-03",

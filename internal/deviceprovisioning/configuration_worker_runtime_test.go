@@ -207,6 +207,10 @@ func (c *configurationWorkerConn) QueryContext(ctx context.Context, query string
 		}
 	case strings.Contains(query, "'managed_configuration_requests','INSERT'"):
 		return row(false, true, false, false)
+	case strings.HasPrefix(query, "SELECT has_table_privilege(current_user,'managed_configuration_operations','SELECT')") && len(args) == 0:
+		// The independent publisher has no ledger/counter authority, including
+		// no column-level transaction-ID insertion permission.
+		return row(false, false, false, false, false, false, false)
 	case strings.Contains(query, "'identity_policy_activation','outcome'"):
 		return row(false, false)
 	case strings.Contains(query, "'identity_devices','publication_source_policy_revision'"):

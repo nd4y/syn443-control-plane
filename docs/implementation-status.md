@@ -4,6 +4,9 @@ Snapshot: 2026-11-16. Specification0.9 contains292 requirements and98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
 
+
+The operation-reconciliation source candidate adds an immutable SQL ledger, same-transaction native-effect guards and a fixed authenticated endpoint; see [the contract and limits](operation-outcome-reconciliation.md). Its28 new actual PostgreSQL/HTTP outcomes (23 provisioning,5 catalogue) and6 evidence-validator unit cases remain pending GitHub Actions. No migration, live service activation, client reconciliation or restore/import acceptance is claimed. Shared IP/DPoP admission can still transiently throttle recovery.
+
 ## Current accepted checkpoint
 
 The [v79 USB/Wi-Fi checkpoint](non-lte-acceptance-20261116.md) records accepted

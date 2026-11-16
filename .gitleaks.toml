@@ -5,6 +5,13 @@ useDefault = true
 [[rules]]
 id = "generic-api-key"
 [[rules.allowlists]]
+description = "Recomputed SHA-256 of the public configuration operation reconciliation contract"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "0086edba1e52f8960ef3fc29e22731263e02d65d13c98c8c0ddec31138566900",?\s*$''']
+
+[[rules.allowlists]]
 description = "Recomputed public managed control contract SHA-256 after RE2 schema correction"
 condition = "AND"
 paths = ['''^contracts/lock\.json$''']

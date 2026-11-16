@@ -31,6 +31,10 @@ func (ConfigurationDraftDiscarded) GoString() string { return "PrivateDraftDisca
 // Only actor-private mutable storage changes. A tombstone fences old save
 // replies and ID reuse; it grants no authority over approvals or active heads.
 func (c *ConfigurationControl) discardDraft(ctx context.Context, actor, request, bodyHash string, input ConfigurationDraftDiscard, until int64, now time.Time) (ConfigurationDraftDiscarded, error) {
+	return c.discardDraftVersion(ctx, actor, request, bodyHash, input, until, now, 1)
+}
+
+func (c *ConfigurationControl) discardDraftVersion(ctx context.Context, actor, request, bodyHash string, input ConfigurationDraftDiscard, until int64, now time.Time, version int) (ConfigurationDraftDiscarded, error) {
 	result := ConfigurationDraftDiscarded{ID: input.ID, Revision: input.Revision, Discarded: true}
 	if ctx == nil || c == nil || c.Store == nil || c.Store.DB == nil {
 		return result, enrollment.ErrUnavailable
@@ -52,6 +56,11 @@ func (c *ConfigurationControl) discardDraft(ctx context.Context, actor, request,
 	}
 	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, "configuration-private-drafts/"+actor); e != nil {
 		return result, enrollment.ErrUnavailable
+	}
+	wantOperation := configurationOperation{Actor: actor, Request: request, Action: "configuration.layers.draft.discard", Hash: bodyHash, Version: version, Kind: input.TargetKind, Target: input.TargetID, Disposition: "recorded", EffectID: input.ID, EffectRevision: input.Revision}
+	previousOperation, e := operationAdmission(ctx, tx, wantOperation)
+	if e != nil {
+		return result, e
 	}
 	if _, e = tx.ExecContext(ctx, `DELETE FROM managed_configuration_draft_ops WHERE actor=$1 AND expires_ms<=$2`, actor, current().UnixMilli()); e != nil {
 		return result, enrollment.ErrUnavailable
@@ -88,6 +97,9 @@ func (c *ConfigurationControl) discardDraft(ctx context.Context, actor, request,
 		if e != sql.ErrNoRows {
 			return result, enrollment.ErrUnavailable
 		}
+		if previousOperation != nil {
+			return result, enrollment.ErrConflict
+		}
 		var count int
 		if e = tx.QueryRowContext(ctx, `SELECT count(*) FROM managed_configuration_draft_ops WHERE actor=$1`, actor).Scan(&count); e != nil {
 			return result, enrollment.ErrUnavailable
@@ -98,6 +110,9 @@ func (c *ConfigurationControl) discardDraft(ctx context.Context, actor, request,
 		raw, err := json.Marshal(result)
 		if err != nil {
 			return result, enrollment.ErrUnavailable
+		}
+		if e = operationInsert(ctx, tx, wantOperation, current()); e != nil {
+			return result, e
 		}
 		if !discarded {
 			// Overwrite the encrypted proposal with a small encrypted receipt. Old
