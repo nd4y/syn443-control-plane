@@ -17,6 +17,10 @@ import (
 )
 
 func run() error {
+	configuration, e := readConfigurationStartup(os.Getenv, deviceprovisioning.ReadConfigurationRuntime)
+	if e != nil {
+		return e
+	}
 	c, e := enrollment.ReadConfig(os.Getenv("SYN443_ENROLLMENT_CONFIG"))
 	if e != nil {
 		return e
@@ -99,41 +103,9 @@ func run() error {
 		invites = &deviceprovisioning.Invitations{Identity: store, Invitations: is, Verification: verification, Grants: p.Grants}
 		p.InvitationApproval = invites
 	}
-	var configurationPublisher *deviceprovisioning.ConfigurationPublisher
-	if path := os.Getenv("SYN443_CONFIGURATION_CONFIG"); path != "" {
-		cc, err := deviceprovisioning.ReadConfigurationRuntime(path)
-		if err != nil {
-			return identity.ErrInvalid
-		}
-		check, cancel := context.WithTimeout(ctx, 10*time.Second)
-		layers, err := cc.LayerStore(check, store.DB, true)
-		if err != nil {
-			cancel()
-			return err
-		}
-		sources, err := cc.SourceStore(check, store.DB)
-		cancel()
-		if err != nil {
-			return err
-		}
-		roots, err := cc.PublicRoots()
-		if err != nil {
-			return err
-		}
-		admins, err := cc.AdminVerifier(ctx, nil)
-		if err != nil {
-			return err
-		}
-		key, err := enrollment.PrivateKey(os.Getenv("SYN443_CONFIGURATION_SIGNING_KEY_FILE"))
-		if err != nil {
-			return err
-		}
-		keyID := os.Getenv("SYN443_CONFIGURATION_KEY_ID")
-		if root := roots[keyID]; root == nil || !root.Equal(&key.PublicKey) {
-			return identity.ErrInvalid
-		}
-		configurationPublisher = &deviceprovisioning.ConfigurationPublisher{Store: layers, Sources: sources, Verifier: admins, Origin: cc.ControlOrigin, AssuranceACR: cc.AssuranceACR, KeyID: keyID, Key: key, Roots: roots}
-		p.Configurations = &deviceprovisioning.NetworkAuthority{Sources: sources, Layers: &deviceprovisioning.SQLNetworkLayers{Store: layers, ControlOrigin: cc.ControlOrigin, Roots: roots}}
+	configurationPublisher, e := configuration.install(ctx, &p, os.Getenv, defaultConfigurationStartupDependencies())
+	if e != nil {
+		return e
 	}
 	for {
 		step, cancel := context.WithTimeout(ctx, 10*time.Second)
