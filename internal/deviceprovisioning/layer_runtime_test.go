@@ -60,6 +60,14 @@ func TestConfigurationRuntimeRejectsAuthorityAndSecretCompartmentMixing(t *testi
 	if _, e := c.SourceStore(nil, nil); e == nil {
 		t.Fatal("nil source scope")
 	}
+	for _, issuer := range []string{"http://id.example.invalid/realms/admin", "https://user@id.example.invalid/realms/admin", "https://id.example.invalid/realms/admin?other=issuer", "https://id.example.invalid/realms/admin#fragment", "https://id.example.invalid/realms/admin/"} {
+		bad := runtimeConfiguration(t)
+		bad.Issuer = issuer
+		raw, _ := json.Marshal(bad)
+		if _, e := ParseConfigurationRuntime(raw); e == nil {
+			t.Fatal("noncanonical or non-HTTPS administrative issuer admitted")
+		}
+	}
 }
 func TestConfigurationRuntimeFileRequiresOwnerOnlyRegularFile(t *testing.T) {
 	if runtime.GOOS == "windows" {

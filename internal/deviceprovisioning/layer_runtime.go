@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -19,7 +20,7 @@ import (
 // connections retain the role of their owning API/publication process.
 type ConfigurationRuntimeConfig struct {
 	ControlOrigin       string            `json:"controlOrigin"`
-	Issuer              string            `json:"issuer"`
+	Issuer              string            `json:"issuer"` // Pinned administrative issuer, independent of device enrollment.
 	Audience            string            `json:"audience"`
 	ClientIDs           []string          `json:"clientIds"`
 	AssuranceACR        string            `json:"assuranceAcr"`
@@ -42,6 +43,10 @@ func ParseConfigurationRuntime(raw []byte) (ConfigurationRuntimeConfig, error) {
 	}
 	admin := catalog.RuntimeConfig{Issuer: c.Issuer, Audience: c.Audience, ClientIDs: c.ClientIDs, AssuranceACR: c.AssuranceACR}
 	if admin.ValidateAdmin() != nil {
+		return c, enrollment.ErrDenied
+	}
+	issuer, e := url.Parse(c.Issuer)
+	if e != nil || issuer.Scheme != "https" || issuer.Host == "" || issuer.User != nil || issuer.RawQuery != "" || issuer.ForceQuery || issuer.Fragment != "" || strings.HasSuffix(c.Issuer, "/") || len(c.Issuer) > 2048 {
 		return c, enrollment.ErrDenied
 	}
 	for _, key := range []string{c.LayerEncryptionKey, c.SourceEncryptionKey} {
@@ -74,6 +79,28 @@ func ReadConfigurationRuntime(path string) (ConfigurationRuntimeConfig, error) {
 
 func (c ConfigurationRuntimeConfig) PublicRoots() (map[string]*ecdsa.PublicKey, error) {
 	return enrollment.PublicRoots(enrollment.Config{Roots: c.Roots})
+}
+
+// AdminVerifier uses only the owner-pinned control issuer and clients. It never
+// borrows device-enrollment authority or tries a second issuer on rejection.
+// A nil transport retains ordinary verified HTTPS; tests can inject their TLS
+// client's trust store without enabling an HTTP/insecure production mode.
+func (c ConfigurationRuntimeConfig) AdminVerifier(ctx context.Context, transport http.RoundTripper) (catalog.VerifierGroup, error) {
+	if ctx == nil {
+		return nil, enrollment.ErrDenied
+	}
+	if e := c.validate(); e != nil {
+		return nil, e
+	}
+	var providers catalog.VerifierGroup
+	for _, client := range c.ClientIDs {
+		provider, e := identity.NewProvider(ctx, c.Issuer, c.Audience, client, transport, false)
+		if e != nil {
+			return nil, e
+		}
+		providers = append(providers, provider)
+	}
+	return providers, nil
 }
 
 func (c ConfigurationRuntimeConfig) LayerStore(ctx context.Context, db *sql.DB, publisher bool) (*enrollment.Store, error) {

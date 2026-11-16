@@ -3,9 +3,12 @@
 package deviceprovisioning
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"crypto/x509"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +21,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
+	"github.com/nd4y/syn443-control-plane/internal/policy"
 )
 
 func layerPublisherFixture(t *testing.T) (networkFixture, *ConfigurationControl, LayerProposal, *ConfigurationPublisher) {
@@ -126,6 +130,119 @@ func TestConfigurationPublisherProducesAndAtomicallyPublishesActualCompiledLayer
 	}
 	if strings.Contains(fmt.Sprintf("%v %#v %v %#v", publisher, publisher, r, r), n.target.Device) {
 		t.Fatal("diagnostic leaked configuration scope")
+	}
+}
+
+func TestConfigurationPublisherCrossRealmAdminPreservesDeviceIdentity(t *testing.T) {
+	n, c, proposal, publisher := layerPublisherFixture(t)
+	ctx := context.Background()
+	var originalOwner, originalKey, originalIssuer, originalGrant string
+	var originalRequest []byte
+	if e := fixtureOwner.QueryRow(`SELECT d.owner,d.jkt,d.request_body,a.issuer,a.grant_hash FROM identity_devices d JOIN identity_accounts a ON a.owner=d.owner WHERE d.id=$1`, n.target.Device).Scan(&originalOwner, &originalKey, &originalRequest, &originalIssuer, &originalGrant); e != nil {
+		t.Fatal(e)
+	}
+	oidc := newConfigurationAdminOIDCFixture(t)
+	runtime := runtimeConfiguration(t)
+	runtime.Issuer, runtime.ControlOrigin = oidc.adminIssuer, c.Origin
+	public, e := x509.MarshalPKIXPublicKey(&n.f.key.PublicKey)
+	if e != nil {
+		t.Fatal(e)
+	}
+	runtime.Roots = map[string]string{"fixture-root": base64.StdEncoding.EncodeToString(public)}
+	admins, e := runtime.AdminVerifier(ctx, oidc.server.Client().Transport)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if originalIssuer == runtime.Issuer || originalOwner != enrollment.Owner(originalIssuer, "synthetic-user") || originalOwner == enrollment.Owner(runtime.Issuer, "synthetic-user") {
+		t.Fatal("fixture did not retain a separately bound device realm")
+	}
+	// Seed the existing SQL fixture's exact admin actor in its independent realm.
+	// No account, device, source ownership, key or grant is changed by this setup.
+	actor := enrollment.Owner(runtime.Issuer, n.f.v.p.Subject)
+	if actor == n.actor.ID {
+		t.Fatal("independent realms aliased their administrative actor")
+	}
+	if _, e = fixtureOwner.Exec(`UPDATE catalog_acl SET actor=$1 WHERE actor=$2`, actor, n.actor.ID); e != nil {
+		t.Fatal(e)
+	}
+	n.actor.ID = actor
+	c.Verifier, publisher.Verifier = admins, admins
+	publisher.Roots, e = runtime.PublicRoots()
+	if e != nil {
+		t.Fatal(e)
+	}
+	thumb, e := identity.PublicJWK(&n.f.key.PublicKey).Thumbprint()
+	if e != nil {
+		t.Fatal(e)
+	}
+	access := oidc.token(t, runtime.Issuer, runtime.ClientIDs[0], n.f.v.p.Subject, thumb, n.f.now)
+	dispatch := func(action, operation string, payload any) ConfigurationRequestView {
+		t.Helper()
+		body, err := json.Marshal(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := json.Marshal(invitation.Envelope{Version: 1, Action: action, RequestID: identity.Hash([]byte(operation)), Payload: body})
+		if err != nil {
+			t.Fatal(err)
+		}
+		proof := signed(t, n.f.key, c.Origin+"/v1/control/action", access, "", raw, n.f.now)
+		result, err := c.Dispatch(ctx, access, proof, raw, n.f.now)
+		if err != nil {
+			t.Fatal("actual cross-realm administrative action denied", err)
+		}
+		return result.(ConfigurationRequestView)
+	}
+	queued := dispatch("configuration.preview.request", "cross-realm preview", configurationPreviewInput{proposal})
+	if e = publisher.RunOnce(ctx, n.f.now); e != nil {
+		t.Fatal(e)
+	}
+	var state string
+	var raw []byte
+	if e = fixtureOwner.QueryRow(`SELECT state,result FROM managed_configuration_requests WHERE id=$1`, queued.ID).Scan(&state, &raw); e != nil || state != "ready" {
+		t.Fatal("independent admin preview did not complete", e)
+	}
+	var preview ConfigurationPreviewResult
+	if identity.DecodeConfiguration(raw, &preview) != nil || preview.Preview.Actor != actor || len(preview.Preview.Recipients) != 1 || preview.Preview.Recipients[0].Owner != originalOwner || preview.Preview.Recipients[0].Thumbprint != originalKey || preview.Preview.Recipients[0].GrantHash != originalGrant {
+		t.Fatal("admin identity substituted device recipient authority")
+	}
+	if _, e = configuration.VerifyPreview(ctx, preview.Ticket, publisher.Roots, c.Origin, actor, n.f.now); e != nil {
+		t.Fatal("actual cross-realm preview signature rejected", e)
+	}
+	queued = dispatch("configuration.publish", "cross-realm publish", configurationPublishInput{preview.PreviewID, preview.Ticket})
+	if e = publisher.RunOnce(ctx, n.f.now.Add(time.Second)); e != nil {
+		t.Fatal(e)
+	}
+	if e = fixtureOwner.QueryRow(`SELECT state FROM managed_configuration_requests WHERE id=$1`, queued.ID).Scan(&state); e != nil || state != "published" {
+		t.Fatal("actual cross-realm configuration was not published", e)
+	}
+	// Renew through the ordinary device publisher and approved-artifact reader,
+	// after the short admin token has expired. Device grant authority stays put.
+	n.publisher.Configurations = &NetworkAuthority{Sources: publisher.Sources, Layers: &SQLNetworkLayers{Store: publisher.Store, ControlOrigin: c.Origin, Roots: publisher.Roots}}
+	renewedAt := n.f.now.Add(10 * time.Minute)
+	if e = n.publisher.RunOnce(ctx, renewedAt); e != nil {
+		t.Fatal(e)
+	}
+	var owner, key, issuer, grant string
+	var request, ciphertext []byte
+	var revision, sourceRevision int64
+	if e = fixtureOwner.QueryRow(`SELECT d.owner,d.jkt,d.request_body,a.issuer,a.grant_hash,d.revision,d.publication,d.publication_source_revision FROM identity_devices d JOIN identity_accounts a ON a.owner=d.owner WHERE d.id=$1`, n.target.Device).Scan(&owner, &key, &request, &issuer, &grant, &revision, &ciphertext, &sourceRevision); e != nil {
+		t.Fatal(e)
+	}
+	if owner != originalOwner || key != originalKey || issuer != originalIssuer || grant != originalGrant || !bytes.Equal(request, originalRequest) || revision != 2 || sourceRevision != 1 {
+		t.Fatal("administrative publication changed device enrollment or bypassed its approved head")
+	}
+	plain, e := n.publisher.Store.Open(ciphertext, "publication/v1/"+n.target.Device+"/"+fmt.Sprint(revision))
+	if e != nil {
+		t.Fatal(e)
+	}
+	verified, e := policy.VerifyBound(string(plain), publisher.Roots, n.target.Device, originalKey, renewedAt)
+	if e != nil || verified.Revision != 2 || verified.TargetDevice != n.target.Device || verified.KeyThumbprint != originalKey {
+		t.Fatal("ordinary device publisher did not issue a key-bound policy", e)
+	}
+	engine, e := base64.RawURLEncoding.DecodeString(verified.EngineConfigB64)
+	if e != nil || !strings.Contains(string(engine), "proxy.example.invalid") {
+		t.Fatal("published device policy substituted the approved source graph")
 	}
 }
 
