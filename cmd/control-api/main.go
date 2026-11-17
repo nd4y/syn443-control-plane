@@ -83,7 +83,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		service := &deviceprovisioning.ConfigurationControl{Store: layers, Verifier: providers, Origin: c.Origin, AssuranceACR: c.AssuranceACR}
+		service := &deviceprovisioning.ConfigurationControl{Store: layers, Verifier: providers, Origin: c.Origin, AssuranceACR: c.AssuranceACR, ConfigurationRequestVersion: cc.ConfigurationRequestVersion}
 		api.Configurations = service.ControlAction
 		api.ConfigurationReconcile = service.ReconcileAction
 	}

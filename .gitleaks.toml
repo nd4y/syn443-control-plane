@@ -6,7 +6,7 @@ useDefault = true
 id = "generic-api-key"
 
 [[rules.allowlists]]
-description = "Verified public protocol contract SHA-256 in shared all-branch history"
+description = "Recomputed SHA-256 of the public configuration protocol eligibility contract"
 condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"

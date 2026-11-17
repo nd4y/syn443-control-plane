@@ -1,6 +1,7 @@
 package deviceprovisioning
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"database/sql"
@@ -8,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/nd4y/syn443-control-plane/internal/catalog"
@@ -27,6 +29,9 @@ type ConfigurationRuntimeConfig struct {
 	LayerEncryptionKey  string            `json:"layerEncryptionKey"`
 	SourceEncryptionKey string            `json:"sourceEncryptionKey"`
 	Roots               map[string]string `json:"roots"`
+	// Owner declaration after a coordinated schema/all-consumer upgrade only.
+	// It is eligibility metadata, not an attestation of worker deployment.
+	ConfigurationRequestVersion int `json:"configurationRequestVersion,omitempty"`
 }
 
 func (ConfigurationRuntimeConfig) String() string   { return "ConfigurationRuntimeConfig([redacted])" }
@@ -35,6 +40,17 @@ func (ConfigurationRuntimeConfig) GoString() string { return "ConfigurationRunti
 func ParseConfigurationRuntime(raw []byte) (ConfigurationRuntimeConfig, error) {
 	var c ConfigurationRuntimeConfig
 	if len(raw) > 65536 || identity.Decode(raw, &c, true) != nil {
+		return c, enrollment.ErrDenied
+	}
+	if _, e := declaredConfigurationRequestVersion(c.ConfigurationRequestVersion); e != nil {
+		return c, enrollment.ErrDenied
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil {
+		return c, enrollment.ErrDenied
+	}
+	if value, present := fields["configurationRequestVersion"]; present && !bytes.Equal(bytes.TrimSpace(value), []byte(strconv.Itoa(c.ConfigurationRequestVersion))) {
+		// encoding/json otherwise treats a present null integer as zero.
 		return c, enrollment.ErrDenied
 	}
 	u, e := url.Parse(c.ControlOrigin)

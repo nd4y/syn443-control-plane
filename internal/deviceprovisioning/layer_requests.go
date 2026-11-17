@@ -46,7 +46,7 @@ func verifyConfigurationReceipt(ctx context.Context, verifier invitation.Verifie
 	}
 	requiresFreshMFA := true
 	switch envelope.Action {
-	case "configuration.inventory.get", "configuration.devices.list", "configuration.runtime.get", "configuration.layers.drafts.list":
+	case "configuration.inventory.get", "configuration.devices.list", "configuration.runtime.get", "configuration.layers.drafts.list", "configuration.protocol.get":
 		requiresFreshMFA = false
 	case "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.draft.discard", "configuration.history.get":
 	default:
@@ -85,9 +85,10 @@ func (ConfigurationRequestView) GoString() string { return "ConfigurationRequest
 // ConfigurationControl queues original receipts only. It has no signing key or
 // head mutation method. A response describes queue state, never VPN activation.
 type ConfigurationControl struct {
-	Store                *enrollment.Store
-	Verifier             invitation.Verifier
-	Origin, AssuranceACR string
+	Store                       *enrollment.Store
+	Verifier                    invitation.Verifier
+	Origin, AssuranceACR        string
+	ConfigurationRequestVersion int
 }
 
 func (*ConfigurationControl) String() string   { return "ConfigurationControl([redacted])" }
@@ -124,6 +125,7 @@ type configurationPreviewInput struct {
 func configurationRequestAAD(id string) string { return "configuration-request/v1/" + id }
 
 func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string, raw []byte, now time.Time) (any, error) {
+	started := time.Now()
 	if c == nil || c.Store == nil {
 		return nil, enrollment.ErrDenied
 	}
@@ -139,6 +141,9 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 			}
 		}
 		return nil, e
+	}
+	if envelope.Action == "configuration.protocol.get" {
+		return c.protocolInformation(ctx, envelope.Payload, authorityUntil, func() time.Time { return now.Add(time.Since(started)) })
 	}
 	if envelope.Action == "configuration.layers.drafts.list" {
 		var input struct {
