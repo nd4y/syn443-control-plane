@@ -43,6 +43,7 @@ jobs:
       - run: python3 -m unittest discover -s tools -p 'test_enrollment_queue_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_service_discovery_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_operation_reconcile_evidence.py'
+      - run: python3 -m unittest discover -s tools -p 'test_secret_findings_summary.py'
   go:
     needs: public-data
     runs-on: ubuntu-24.04
