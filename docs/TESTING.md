@@ -5,8 +5,9 @@ adds six exact CLI roots to the existing complete Go race JSON stream. The
 source-bound gate requires every run/pass and one CLI-package completion without
 failure, skip, substitution or duplicate roots. Five validator negative unit
 cases run in the existing documents job. The existing Go log scans, artifact,
-eight runtime binaries and all limits are unchanged. Source is pending Actions
-and operator preflight; the command never authorizes accounts or runs migrations.
+eight runtime binaries and all limits are unchanged. Source and resulting main
+passed Actions44010317494 and44013627735 respectively. A separate operator
+preflight remains unverified; the command never authorizes accounts or runs migrations.
 
 The [refresh-family boundary correction](session-refresh-boundary.md) adds six
 mandatory PostgreSQL roots in the existing enrollment job. Its actual Go JSON
@@ -14,11 +15,13 @@ stream must contain each exact enrollment-package run and pass once, one package
 completion, and no failure, skip or error. Five validator unit cases run in the
 existing documents job. JSON and coverage evidence retain the privacy/secret
 scans before upload; race, timeout, role and coverage limits are unchanged.
-Source is ready; execution, deployment and client recovery remain pending.
+Source, resulting main, scoped device API deployment and natural scheduled
+phone refresh are accepted in the [current checkpoint](non-lte-acceptance-20261117.md).
+The final-family boundary has PostgreSQL evidence, not a physical24-hour wait.
 
-Operation-reconciliation candidate: the existing disposable catalogue and provisioning PostgreSQL jobs must provide all28 named outcomes (5 catalogue,23 provisioning), checked by `tools/check_operation_reconcile_evidence.py`. Its6 validator unit cases run in the existing documents job. These are pending source gates. Existing race, coverage, privacy, quota, HTTP and worker checks remain mandatory; no live database or client activation runs in CI. See [operation outcome reconciliation](operation-outcome-reconciliation.md).
+Operation reconciliation: the existing disposable catalogue and provisioning PostgreSQL jobs provide all28 named outcomes (5 catalogue,23 provisioning), checked by `tools/check_operation_reconcile_evidence.py`. Its6 validator unit cases run in the existing documents job. These source gates passed Actions43973718639 and resulting main43975423153. Existing race, coverage, privacy, quota, HTTP and worker checks remain mandatory; no live database or client activation runs in CI. See [operation outcome reconciliation](operation-outcome-reconciliation.md).
 
-Protocol eligibility source candidate: `tools/check_operation_version_evidence.py` requires14 exact package/source-bound outcomes:7 normal roots from the existing complete Go race JSON,4 provisioning PostgreSQL roots and3 catalogue HTTP/PostgreSQL roots from their existing JSON streams. Each root needs one `run` then one `pass`, and its package must complete successfully once; failure, skip, error, missing/renamed/duplicate/late outcome or foreign package cannot substitute. Six validator unit cases run in the existing documents job, including source-name drift and malformed evidence negatives. No job, product test command, runtime limit, upload or privacy/coverage guard is relaxed. All14 actual outcomes and validator cases remain pending Actions. The read's owner declaration is eligibility only, never deployment proof or permission; retained pending versions stay immutable. See [service protocol eligibility](operation-outcome-reconciliation.md#service-protocol-eligibility---source-pending).
+Protocol eligibility: `tools/check_operation_version_evidence.py` requires14 exact package/source-bound outcomes:7 normal roots from the existing complete Go race JSON,4 provisioning PostgreSQL roots and3 catalogue HTTP/PostgreSQL roots from their existing JSON streams. Each root needs one `run` then one `pass`, and its package must complete successfully once; failure, skip, error, missing/renamed/duplicate/late outcome or foreign package cannot substitute. Six validator unit cases run in the existing documents job, including source-name drift and malformed evidence negatives. No job, product test command, runtime limit, upload or privacy/coverage guard is relaxed. All14 actual outcomes and validator cases passed Actions44006215112; resulting main44009146272 passed all8 mandatory jobs. The read's owner declaration is eligibility only, never deployment proof or permission; retained pending versions stay immutable. See [service protocol eligibility](operation-outcome-reconciliation.md#service-protocol-eligibility---source-and-main-accepted).
 
 The [public Go layer-wire fixture](layer-wire-fixture.md) adds six mandatory
 source-bound race outcomes before generating a separate synthetic artifact.

@@ -58,6 +58,10 @@ source-name drift.
 
 The existing JSON privacy/secret scans, artifact flow, eight runtime builds,
 resource limits and all other CI gates are unchanged. No new job or operator
-output artifact is added. Current status is source-pending: Actions, the exact
-built binary and the separate read-only operator preflight still require their
-own evidence. This command does not establish a deployment or account change.
+output artifact is added. Exact source
+`38a8577d06f28274341dd320dc8f64df9fd19c92` passed all8 mandatory jobs in
+Actions44010317494, including the six actual CLI outcomes and five validator
+cases. Protected main656cfc5c passed all8 jobs in44013627735 with the same
+source tree. A separate actual operator preflight remains unverified. This
+command does not establish a deployment or account change; see the
+[current checkpoint](non-lte-acceptance-20261117.md).

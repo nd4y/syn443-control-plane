@@ -9,7 +9,7 @@ worker action or client publication. Compatibility, protected integration and
 device acceptance remain required. The existing client keeps an uncertain
 operation pending.
 
-## Service protocol eligibility - source pending
+## Service protocol eligibility - source and main accepted
 
 The existing `POST /v1/control/action` accepts a separate version-one read:
 `configuration.protocol.get`, with a normal24..128-character request ID and
@@ -49,8 +49,11 @@ projection and administrative/device session bindings are unchanged. Adding
 this action does not turn service eligibility into a role, MFA proof, preview,
 publication grant or device activation. The14 new actual-outcome roots
 (7 normal,4 provisioning PostgreSQL and3 catalogue HTTP/PostgreSQL) and6
-validator unit cases are source-pending GitHub Actions. No live API, owner
-declaration, migration or client activation has been performed by this change.
+validator unit cases passed Actions44006215112 on exact source
+`e8c120f7973e38ecc72d09964266abd61b22e25e`. Protected integration
+`28f58cdda37d0f24309d59cabac2ba1a30436fdb` passed all8 mandatory jobs in
+main44009146272 with the same source tree. No live API, owner declaration,
+migration or client activation has been performed by this change.
 
 ## Problem and evidence boundary
 

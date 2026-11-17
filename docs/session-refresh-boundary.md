@@ -51,7 +51,10 @@ The JSON log and ordinary coverage file pass the existing public-data and
 secret scans before the existing artifact is uploaded. No new job or relaxed
 resource, race, timeout, role or coverage limit is introduced.
 
-Current status: source inspection and formatting only. Actions execution,
-server deployment and supported client recovery are separate pending stages.
-These synthetic tests do not establish the delivery or rejection history of
-any particular refresh response.
+The six actual PostgreSQL outcomes passed Actions43994599921 on source
+`54893d535ccba1aee1e1c52744f84b714838de5a`; protected main477856b7 passed
+all8 mandatory jobs in43997830289. The scoped device API deployment and
+subsequent natural phone refresh are recorded in the
+[current checkpoint](non-lte-acceptance-20261117.md). These results do not
+establish the delivery or rejection history of any particular earlier response
+or a physical24-hour family-expiry test.

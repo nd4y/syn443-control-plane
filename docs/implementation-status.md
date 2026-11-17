@@ -7,13 +7,16 @@ This document supersedes repository-wide readiness claims in historical stage no
 
 The accepted operation-reconciliation source adds an immutable SQL ledger, same-transaction native-effect guards and a fixed authenticated endpoint; see [the contract and limits](operation-outcome-reconciliation.md). Its28 new actual PostgreSQL/HTTP outcomes (23 provisioning,5 catalogue) and6 evidence-validator unit cases passed Actions43973718639 and resulting main43975423153. The separate safe Go-wire producer passed19 roots in43988560182 and resulting main43991701436; its public artifact contains only a bounded report, never signed specimens. No migration, live service activation, client reconciliation or restore/import acceptance is claimed. Shared IP/DPoP admission can still transiently throttle recovery.
 
-The [service protocol eligibility source](operation-outcome-reconciliation.md#service-protocol-eligibility---source-pending) adds only `configuration.protocol.get` with an empty payload and a closed two-field reply. Its optional owner declaration defaults to version1; explicit2 is a coordinated schema/consumer declaration, not proof of deployment or an authorization grant. Fourteen new source tests (7 normal,4 provisioning PostgreSQL,3 catalogue HTTP/PostgreSQL) and6 validator unit cases still require Actions. No signed administrative metadata/bootstrap/device-key/session binding or old pending bytes/version is changed. No live enablement or full M3 acceptance is claimed.
+The [service protocol eligibility source](operation-outcome-reconciliation.md#service-protocol-eligibility---source-and-main-accepted) adds only `configuration.protocol.get` with an empty payload and a closed two-field reply. Its optional owner declaration defaults to version1; explicit2 is a coordinated schema/consumer declaration, not proof of deployment or an authorization grant. Fourteen new outcomes (7 normal,4 provisioning PostgreSQL,3 catalogue HTTP/PostgreSQL) and6 validator unit cases passed Actions44006215112; resulting main44009146272 passed all8 mandatory jobs with the same source tree. No signed administrative metadata/bootstrap/device-key/session binding or old pending bytes/version is changed. No live enablement or full M3 acceptance is claimed.
 
 ## Current accepted checkpoint
 
-The [v79 USB/Wi-Fi checkpoint](non-lte-acceptance-20261116.md) records accepted
-source/main, the installed APK and pilot binary rollout. Managed publication,
-authenticated administrator readback and full adaptive routing remain open. The
+The [2026-11-17 checkpoint](non-lte-acceptance-20261117.md) records the accepted
+v89 source/main, its68 scoped physical USB/Wi-Fi outcomes and the deployed
+session-refresh boundary correction. Real native administrator SSO/editing/
+publication and full adaptive routing remain open. The earlier
+[v79 USB/Wi-Fi checkpoint](non-lte-acceptance-20261116.md) retains its historical
+scope. The
 [v77 chat/source checkpoint](chat-acceptance-20261115.md) retains its earlier scope.
 
 See the [2026-11-15 source, CI and USB/Wi-Fi checkpoint](non-lte-acceptance-20261115.md)
