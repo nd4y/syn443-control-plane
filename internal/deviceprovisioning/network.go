@@ -60,7 +60,7 @@ func adaptiveNetworkAvailable(plan configuration.NetworkPlan, target enrollment.
 		}
 	}
 	for _, group := range plan.Network.RouteChecks {
-		for _, check := range group.Checks {
+		for _, check := range group.AllChecks() {
 			if check.Method == "https_exit_country" && !slices.Contains(target.Capabilities, policy.RouteExitCountry) ||
 				check.Method == "https_exit_ip" && !slices.Contains(target.Capabilities, policy.RouteExitIP) {
 				return enrollment.ErrDenied
@@ -143,6 +143,11 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	if e != nil {
 		return nil, e
 	}
+	for _, checks := range plan.Network.RouteChecks {
+		if checks.Profile != nil && !slices.Contains(target.Capabilities, policy.RouteCheckPlanV2) {
+			return nil, enrollment.ErrDenied
+		}
+	}
 	if e := adaptiveNetworkAvailable(plan, target); e != nil {
 		return nil, e
 	}
@@ -214,11 +219,20 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 			return nil, enrollment.ErrDenied
 		}
 		required = append(required, "route.health.v1")
+		for _, group := range plan.Network.RouteChecks {
+			if group.Profile != nil {
+				if !slices.Contains(target.Capabilities, policy.RouteCheckPlanV2) {
+					return nil, enrollment.ErrDenied
+				}
+				required = append(required, policy.RouteCheckPlanV2)
+				break
+			}
+		}
 		for _, method := range []struct{ name, capability string }{
 			{"https_exit_ip", policy.RouteExitIP}, {"https_exit_country", policy.RouteExitCountry},
 		} {
 			for _, group := range plan.Network.RouteChecks {
-				if !slices.ContainsFunc(group.Checks, func(check configuration.OutboundCheck) bool { return check.Method == method.name }) {
+				if !slices.ContainsFunc(group.AllChecks(), func(check configuration.OutboundCheck) bool { return check.Method == method.name }) {
 					continue
 				}
 				if !slices.Contains(target.Capabilities, method.capability) {

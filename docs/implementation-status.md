@@ -1,5 +1,12 @@
 # Implementation and acceptance snapshot
 
+The [bounded check-profile v2 component](route-check-profiles-v2.md) adds source
+support for all/any/quorum and sequential stages while preserving legacy checks,
+mandatory transport/exit gates and local proof/resource limits. Its Actions,
+integration and physical regression gates must be recorded separately. Normal
+enrollment still advertises the previous capability set; this source component
+does not activate a managed profile or close the full CHK-04 / AC58 requirement.
+
 Snapshot: 2026-11-17. Specification0.9 contains292 requirements and98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.

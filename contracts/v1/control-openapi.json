@@ -10,23 +10,94 @@
       "post": {
         "operationId": "reconcileConfigurationOperation",
         "description": "Fixed query-free route for an explicit owned unknown-operation lookup or atomic seal. Requires the current independent administrative DPoP token, scope syn443.control, exact-byte req_hash, htu equal to the configured origin plus this exact path, matching token/key and fresh one-use proof, current action-specific target ACL and fresh MFA. No Origin header, redirect, alternate path, query, encoded path or fallback endpoint. A seal never replays an original mutation, compiles/publishes settings, renews a preview or cancels an existing job. One reserved reconciliation handler shares the existing four total handlers; admission remains held until actual callback exit. This separate 524288-byte bound does not widen the ordinary/source action route's existing 14 MiB plus 65536-byte outer limit or 65536-byte ordinary payload limit.",
-        "security": [{"adminDPoP": []}],
-        "parameters": [{"name": "DPoP", "in": "header", "required": true, "schema": {"type": "string"}, "description": "Fresh ES256 proof bound to this request's exact UTF-8 bytes, current token and this route. Duplicate Authorization or DPoP headers are rejected."}],
+        "security": [
+          {
+            "adminDPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DPoP",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh ES256 proof bound to this request's exact UTF-8 bytes, current token and this route. Duplicate Authorization or DPoP headers are rejected."
+          }
+        ],
         "requestBody": {
           "required": true,
           "description": "At most 524288 exact UTF-8 bytes, application/json only. Closed duplicate-free object; the retained original action body is not parsed/re-encoded by the client.",
-          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationReconcile"}}}
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigurationOperationReconcile"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
             "description": "Current-authority checked operation identity and disposition, never an invented proposal or activation receipt. UNKNOWN cannot release pending ownership. Only NO_EFFECT for a version-two original action atomically fences that exact original identity before absence is returned. RECORDED_RESULT_UNAVAILABLE retains the committed fence while the old result is missing. Retained job state/result is observation, not permission to publish or infer device activation.",
-            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationOutcome"}}}
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationOperationOutcome"
+                }
+              }
+            }
           },
-          "400": {"description": "Malformed or over-512KiB reconciliation request. No conclusion about an earlier mutation.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationError"}}}},
-          "403": {"description": "Current proof, identity, target ACL or MFA denied; catalog_reauthentication_required requires explicit administrative reauthentication. No absence proof and no automatic retry.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationError"}}}},
-          "409": {"description": "Original request ID/action/version/body or immutable target conflicts. Does not undo or disprove an existing effect.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationError"}}}},
-          "429": {"description": "Bounded handler admission or atomic ledger quota exhausted. Existing recorded lookups do not spend new-entry quota. No absence proof.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationError"}}}},
-          "503": {"description": "Unavailable, cancelled or uncertain; pending ownership remains. No durable success or no-effect conclusion is implied.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigurationOperationError"}}}}
+          "400": {
+            "description": "Malformed or over-512KiB reconciliation request. No conclusion about an earlier mutation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationOperationError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current proof, identity, target ACL or MFA denied; catalog_reauthentication_required requires explicit administrative reauthentication. No absence proof and no automatic retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationOperationError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Original request ID/action/version/body or immutable target conflicts. Does not undo or disprove an existing effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationOperationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Bounded handler admission or atomic ledger quota exhausted. Existing recorded lookups do not spend new-entry quota. No absence proof.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationOperationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable, cancelled or uncertain; pending ownership remains. No durable success or no-effect conclusion is implied.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationOperationError"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -87,54 +158,371 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "version": {"type": "integer", "const": 1},
-          "configurationRequestVersion": {"type": "integer", "enum": [1, 2]}
+          "version": {
+            "type": "integer",
+            "const": 1
+          },
+          "configurationRequestVersion": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ]
+          }
         },
-        "required": ["version", "configurationRequestVersion"],
+        "required": [
+          "version",
+          "configurationRequestVersion"
+        ],
         "description": "Closed reply to version-one configuration.protocol.get with an empty object payload. Current control JWT, exact DPoP and the restricted runtime role remain required. This is nonsecret service eligibility, not object/tenant data, ACL, fresh MFA, a preview, publication or device activation authority. Omitted/zero/one owner configuration advertises one; only an explicit owner declaration after a coordinated schema and all-consumer upgrade advertises two. The declaration does not attest deployment. Existing signed five-field administrative metadata, bootstrap, device/key projection and sessions do not change. Original pending bytes/versions are never rewritten."
       },
       "ConfigurationOperationReconcile": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "version": {"const": 1},
-          "requestId": {"type": "string", "minLength": 24, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]{24,128}$", "description": "This reconciliation request's identity; it is not used in place of the retained original action requestId."},
-          "intent": {"enum": ["lookup", "seal_if_absent"]},
-          "originalBody64": {"type": "string", "minLength": 1, "maxLength": 349526, "pattern": "^[A-Za-z0-9_-]+$", "description": "Canonical unpadded base64url of the exact original UTF-8 action body, decoded length 1..262144 bytes. Strict decode plus re-encode equality rejects padding, whitespace and noncanonical pad bits. The original closed Action is one of draft.put, draft.discard, preview.request or publish and has version1 or2. Do not reconstruct it from parsed JSON."}
+          "version": {
+            "const": 1
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 24,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]{24,128}$",
+            "description": "This reconciliation request's identity; it is not used in place of the retained original action requestId."
+          },
+          "intent": {
+            "enum": [
+              "lookup",
+              "seal_if_absent"
+            ]
+          },
+          "originalBody64": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 349526,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Canonical unpadded base64url of the exact original UTF-8 action body, decoded length 1..262144 bytes. Strict decode plus re-encode equality rejects padding, whitespace and noncanonical pad bits. The original closed Action is one of draft.put, draft.discard, preview.request or publish and has version1 or2. Do not reconstruct it from parsed JSON."
+          }
         },
-        "required": ["version", "requestId", "intent", "originalBody64"],
+        "required": [
+          "version",
+          "requestId",
+          "intent",
+          "originalBody64"
+        ],
         "description": "lookup is observational for either original version. Missing version-one history stays UNKNOWN even for seal_if_absent; version-two lookup also stays UNKNOWN when absent. Only explicit seal_if_absent for an absent version-two original can commit NO_EFFECT under the same actor/family lock and exact body hash. Later dispatch of that original is then fenced. Retained version-one effects may be returned or checked-backfilled; historical absence is never upgraded to proof. Separate normal/backfill quotas cannot be supplied or reset by the caller."
       },
       "ConfigurationOperationOutcome": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "version": {"const": 1, "description": "Reply schema version, not the retained original action version."},
-          "actor": {"type": "string", "minLength": 43, "maxLength": 43, "pattern": "^[A-Za-z0-9_-]{43}$", "description": "Current verified issuer/subject-derived identity hash; caller-supplied bytes confer no authority."},
-          "action": {"enum": ["configuration.layers.draft.put", "configuration.layers.draft.discard", "configuration.preview.request", "configuration.publish"]},
-          "requestId": {"type": "string", "minLength": 24, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]{24,128}$", "description": "The retained original action request ID, not the outer reconciliation ID."},
-          "bodyHash": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 lowercase hexadecimal of the exact original action body; distinct from DPoP req_hash encoding."},
-          "targetKind": {"enum": ["template", "group", "user", "device"]},
-          "targetId": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9_-]{1,64}$"},
-          "outcome": {"enum": ["UNKNOWN", "NO_EFFECT", "RECORDED", "RECORDED_RESULT_UNAVAILABLE"]},
-          "recordedAtMs": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
-          "effectKind": {"enum": ["", "draft", "job"]},
-          "effectId": {"type": "string", "maxLength": 128, "pattern": "^[A-Za-z0-9_-]{0,128}$"},
-          "effectRevision": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
-          "job": {"$ref": "#/components/schemas/ConfigurationOperationJob"}
+          "version": {
+            "const": 1,
+            "description": "Reply schema version, not the retained original action version."
+          },
+          "actor": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "description": "Current verified issuer/subject-derived identity hash; caller-supplied bytes confer no authority."
+          },
+          "action": {
+            "enum": [
+              "configuration.layers.draft.put",
+              "configuration.layers.draft.discard",
+              "configuration.preview.request",
+              "configuration.publish"
+            ]
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 24,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]{24,128}$",
+            "description": "The retained original action request ID, not the outer reconciliation ID."
+          },
+          "bodyHash": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "SHA-256 lowercase hexadecimal of the exact original action body; distinct from DPoP req_hash encoding."
+          },
+          "targetKind": {
+            "enum": [
+              "template",
+              "group",
+              "user",
+              "device"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "outcome": {
+            "enum": [
+              "UNKNOWN",
+              "NO_EFFECT",
+              "RECORDED",
+              "RECORDED_RESULT_UNAVAILABLE"
+            ]
+          },
+          "recordedAtMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "effectKind": {
+            "enum": [
+              "",
+              "draft",
+              "job"
+            ]
+          },
+          "effectId": {
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]{0,128}$"
+          },
+          "effectRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "job": {
+            "$ref": "#/components/schemas/ConfigurationOperationJob"
+          }
         },
-        "required": ["version", "actor", "action", "requestId", "bodyHash", "targetKind", "targetId", "outcome", "recordedAtMs", "effectKind", "effectId", "effectRevision"],
+        "required": [
+          "version",
+          "actor",
+          "action",
+          "requestId",
+          "bodyHash",
+          "targetKind",
+          "targetId",
+          "outcome",
+          "recordedAtMs",
+          "effectKind",
+          "effectId",
+          "effectRevision"
+        ],
         "allOf": [
-          {"if": {"properties": {"outcome": {"enum": ["UNKNOWN", "NO_EFFECT"]}}}, "then": {"properties": {"effectKind": {"const": ""}, "effectId": {"const": ""}, "effectRevision": {"const": 0}}, "not": {"required": ["job"]}}},
-          {"if": {"properties": {"outcome": {"const": "UNKNOWN"}}}, "then": {"properties": {"recordedAtMs": {"const": 0}}}},
-          {"if": {"properties": {"outcome": {"enum": ["NO_EFFECT", "RECORDED", "RECORDED_RESULT_UNAVAILABLE"]}}}, "then": {"properties": {"recordedAtMs": {"minimum": 1}}}},
-          {"if": {"properties": {"outcome": {"enum": ["RECORDED", "RECORDED_RESULT_UNAVAILABLE"]}}}, "then": {"properties": {"effectKind": {"enum": ["draft", "job"]}}}},
-          {"if": {"properties": {"action": {"enum": ["configuration.layers.draft.put", "configuration.layers.draft.discard"]}}}, "then": {"properties": {"effectKind": {"enum": ["", "draft"]}}}},
-          {"if": {"properties": {"action": {"enum": ["configuration.preview.request", "configuration.publish"]}}}, "then": {"properties": {"effectKind": {"enum": ["", "job"]}}}},
-          {"if": {"properties": {"outcome": {"const": "RECORDED_RESULT_UNAVAILABLE"}}}, "then": {"not": {"required": ["job"]}}},
-          {"if": {"properties": {"effectKind": {"const": "draft"}}}, "then": {"properties": {"effectId": {"minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9_-]{1,64}$"}, "effectRevision": {"minimum": 1}}, "not": {"required": ["job"]}}},
-          {"if": {"properties": {"effectKind": {"const": "job"}}}, "then": {"properties": {"effectId": {"minLength": 24, "pattern": "^[A-Za-z0-9_-]{24,128}$"}, "effectRevision": {"const": 0}}}},
-          {"if": {"properties": {"outcome": {"const": "RECORDED"}, "effectKind": {"const": "job"}}}, "then": {"required": ["job"]}}
+          {
+            "if": {
+              "properties": {
+                "outcome": {
+                  "enum": [
+                    "UNKNOWN",
+                    "NO_EFFECT"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "effectKind": {
+                  "const": ""
+                },
+                "effectId": {
+                  "const": ""
+                },
+                "effectRevision": {
+                  "const": 0
+                }
+              },
+              "not": {
+                "required": [
+                  "job"
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "outcome": {
+                  "const": "UNKNOWN"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "recordedAtMs": {
+                  "const": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "outcome": {
+                  "enum": [
+                    "NO_EFFECT",
+                    "RECORDED",
+                    "RECORDED_RESULT_UNAVAILABLE"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "recordedAtMs": {
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "outcome": {
+                  "enum": [
+                    "RECORDED",
+                    "RECORDED_RESULT_UNAVAILABLE"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "effectKind": {
+                  "enum": [
+                    "draft",
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "enum": [
+                    "configuration.layers.draft.put",
+                    "configuration.layers.draft.discard"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "effectKind": {
+                  "enum": [
+                    "",
+                    "draft"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "enum": [
+                    "configuration.preview.request",
+                    "configuration.publish"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "effectKind": {
+                  "enum": [
+                    "",
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "outcome": {
+                  "const": "RECORDED_RESULT_UNAVAILABLE"
+                }
+              }
+            },
+            "then": {
+              "not": {
+                "required": [
+                  "job"
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "effectKind": {
+                  "const": "draft"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "effectId": {
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                },
+                "effectRevision": {
+                  "minimum": 1
+                }
+              },
+              "not": {
+                "required": [
+                  "job"
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "effectKind": {
+                  "const": "job"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "effectId": {
+                  "minLength": 24,
+                  "pattern": "^[A-Za-z0-9_-]{24,128}$"
+                },
+                "effectRevision": {
+                  "const": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "outcome": {
+                  "const": "RECORDED"
+                },
+                "effectKind": {
+                  "const": "job"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "job"
+              ]
+            }
+          }
         ],
         "description": "Identity is bound to current actor, exact original action/version/request/body and immutable scoped target. No copied proposal or fabricated raw result is returned. NO_EFFECT only follows a committed version-two absence fence, never an HTTP rejection, timeout, v1 absence or a mere lookup. Missing retained result remains explicitly RECORDED_RESULT_UNAVAILABLE; that state does not erase the committed identity."
       },
@@ -142,19 +530,62 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "id": {"type": "string", "minLength": 24, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]{24,128}$"},
-          "state": {"enum": ["queued", "running", "ready", "published", "applied", "rejected", "expired", "cancelled"], "description": "Actual managed_configuration_requests SQL state enum. Legacy applied is retained history, not a new device-activation acknowledgement."},
-          "error": {"type": "string", "enum": ["configuration_denied", "configuration_conflict", "deadline_or_retry_limit"], "description": "Existing fixed worker error code; omitted when empty."},
-          "result": {"description": "Optional unchanged retained JSON from the existing job: at most100000 database UTF-8 bytes before HTTP JSON encoding and json.Valid. Omitted when absent. No new preview/publication shape or authority is inferred from this opaque value; the caller must use the separately checked original typed workflow."}
+          "id": {
+            "type": "string",
+            "minLength": 24,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]{24,128}$"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "ready",
+              "published",
+              "applied",
+              "rejected",
+              "expired",
+              "cancelled"
+            ],
+            "description": "Actual managed_configuration_requests SQL state enum. Legacy applied is retained history, not a new device-activation acknowledgement."
+          },
+          "error": {
+            "type": "string",
+            "enum": [
+              "configuration_denied",
+              "configuration_conflict",
+              "deadline_or_retry_limit"
+            ],
+            "description": "Existing fixed worker error code; omitted when empty."
+          },
+          "result": {
+            "description": "Optional unchanged retained JSON from the existing job: at most100000 database UTF-8 bytes before HTTP JSON encoding and json.Valid. Omitted when absent. No new preview/publication shape or authority is inferred from this opaque value; the caller must use the separately checked original typed workflow."
+          }
         },
-        "required": ["id", "state"],
+        "required": [
+          "id",
+          "state"
+        ],
         "description": "Existing ConfigurationRequestView only, supplied for an actual retained job. ID must equal the enclosing effectId. The closed outer shape does not independently authenticate arbitrary result contents or mint publication rights."
       },
       "ConfigurationOperationError": {
         "type": "object",
         "additionalProperties": false,
-        "properties": {"code": {"enum": ["catalog_invalid", "catalog_denied", "catalog_reauthentication_required", "catalog_revision_conflict", "catalog_quota", "catalog_unavailable"]}},
-        "required": ["code"],
+        "properties": {
+          "code": {
+            "enum": [
+              "catalog_invalid",
+              "catalog_denied",
+              "catalog_reauthentication_required",
+              "catalog_revision_conflict",
+              "catalog_quota",
+              "catalog_unavailable"
+            ]
+          }
+        },
+        "required": [
+          "code"
+        ],
         "description": "Finite HTTP failure only; never a receipt of absence or proof that a previous dispatch did not commit."
       },
       "SecretPatch": {
@@ -456,12 +887,31 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "version": {"const": 1},
-              "action": {"const": "configuration.protocol.get"},
-              "requestId": {"type": "string", "minLength": 24, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]{24,128}$"},
-              "payload": {"type": "object", "additionalProperties": false, "properties": {}, "maxProperties": 0}
+              "version": {
+                "const": 1
+              },
+              "action": {
+                "const": "configuration.protocol.get"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 24,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]{24,128}$"
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "maxProperties": 0
+              }
             },
-            "required": ["version", "action", "requestId", "payload"],
+            "required": [
+              "version",
+              "action",
+              "requestId",
+              "payload"
+            ],
             "description": "Read-only service eligibility on the existing control action route; reply uses ConfigurationProtocol. Fresh MFA/object ACL are not required for this nonsecret read, but current control token, scope, exact one-use DPoP and runtime role are. The request envelope remains version one; version two is still restricted to the existing four mutations. A known unsupported old server may require conservative version-one creation of a NEW mutation. Authentication/MFA denial, quota, uncertainty or transport failure is not unsupported, and retained pending operations keep their original exact bytes and version."
           },
           {
@@ -1305,7 +1755,10 @@
             "additionalProperties": false,
             "properties": {
               "version": {
-                "enum": [1, 2]
+                "enum": [
+                  1,
+                  2
+                ]
               },
               "action": {
                 "const": "configuration.preview.request"
@@ -1341,7 +1794,10 @@
             "additionalProperties": false,
             "properties": {
               "version": {
-                "enum": [1, 2]
+                "enum": [
+                  1,
+                  2
+                ]
               },
               "action": {
                 "const": "configuration.publish"
@@ -1538,7 +1994,10 @@
             "additionalProperties": false,
             "properties": {
               "version": {
-                "enum": [1, 2]
+                "enum": [
+                  1,
+                  2
+                ]
               },
               "action": {
                 "const": "configuration.layers.draft.put"
@@ -1707,7 +2166,10 @@
             "additionalProperties": false,
             "properties": {
               "version": {
-                "enum": [1, 2]
+                "enum": [
+                  1,
+                  2
+                ]
               },
               "action": {
                 "const": "configuration.layers.draft.discard"
@@ -2191,35 +2653,96 @@
           "routeChecks": {
             "type": "array",
             "maxItems": 16,
-            "items": {"$ref": "#/components/schemas/PlanOutboundChecks"}
+            "items": {
+              "$ref": "#/components/schemas/PlanOutboundChecks"
+            }
           },
           "routeFailover": {
-            "type": "object", "additionalProperties": false,
-            "required": ["selector", "networkMode", "intent"],
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "selector",
+              "networkMode",
+              "intent"
+            ],
             "properties": {
-              "selector": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
-              "networkMode": {"const": "wifi"},
-              "intent": {"const": "INTERNAL"},
-              "decisionRevision": {"const": "m4-confirmed-v1"},
+              "selector": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-z0-9][a-z0-9._-]*$"
+              },
+              "networkMode": {
+                "const": "wifi"
+              },
+              "intent": {
+                "const": "INTERNAL"
+              },
+              "decisionRevision": {
+                "const": "m4-confirmed-v1"
+              },
               "decisionRollout": {
-                "type": "object", "additionalProperties": false, "required": ["id", "basisPoints"],
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "basisPoints"
+                ],
                 "properties": {
-                  "id": {"type": "string", "minLength": 1, "maxLength": 48, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
-                  "basisPoints": {"type": "integer", "minimum": 0, "maximum": 10000}
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 48,
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$"
+                  },
+                  "basisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  }
                 }
               },
-              "probeCooldown": {"type": "boolean"},
+              "probeCooldown": {
+                "type": "boolean"
+              },
               "probeCooldownRollout": {
-                "type": "object", "additionalProperties": false, "required": ["id", "basisPoints"],
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "basisPoints"
+                ],
                 "properties": {
-                  "id": {"type": "string", "minLength": 1, "maxLength": 48, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
-                  "basisPoints": {"type": "integer", "minimum": 0, "maximum": 10000}
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 48,
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$"
+                  },
+                  "basisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  }
                 }
               }
             },
             "dependentSchemas": {
-              "decisionRollout": {"required": ["decisionRevision"]},
-              "probeCooldownRollout": {"required": ["probeCooldown"], "properties": {"probeCooldown": {"const": true}}}
+              "decisionRollout": {
+                "required": [
+                  "decisionRevision"
+                ]
+              },
+              "probeCooldownRollout": {
+                "required": [
+                  "probeCooldown"
+                ],
+                "properties": {
+                  "probeCooldown": {
+                    "const": true
+                  }
+                }
+              }
             }
           },
           "rules": {
@@ -2274,10 +2797,20 @@
       "PlanOutboundChecks": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["outbound", "required", "checks"],
+        "required": [
+          "outbound",
+          "required"
+        ],
         "properties": {
-          "outbound": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9_-]+$"},
-          "required": {"type": "boolean"},
+          "outbound": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "required": {
+            "type": "boolean"
+          },
           "checks": {
             "type": "array",
             "minItems": 1,
@@ -2285,28 +2818,111 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["method", "target"],
+              "required": [
+                "method",
+                "target"
+              ],
               "properties": {
-                "method": {"enum": ["tcp", "tls", "https_204", "ssh_banner", "https_exit_ip", "https_exit_country"]},
-                "target": {"type": "string", "minLength": 1, "maxLength": 2048},
-                "expected_ip": {"type": "string", "minLength": 2, "maxLength": 45, "pattern": "^[0-9a-fA-F:.]+$"},
-                "expected_exit_class": {"enum": ["RU", "NON_RU"]}
+                "method": {
+                  "enum": [
+                    "tcp",
+                    "tls",
+                    "https_204",
+                    "ssh_banner",
+                    "https_exit_ip",
+                    "https_exit_country"
+                  ]
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "expected_ip": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 45,
+                  "pattern": "^[0-9a-fA-F:.]+$"
+                },
+                "expected_exit_class": {
+                  "enum": [
+                    "RU",
+                    "NON_RU"
+                  ]
+                }
               },
               "allOf": [
                 {
-                  "if": {"properties": {"method": {"const": "https_exit_ip"}}},
-                  "then": {"required": ["expected_ip"]},
-                  "else": {"not": {"required": ["expected_ip"]}}
+                  "if": {
+                    "properties": {
+                      "method": {
+                        "const": "https_exit_ip"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "expected_ip"
+                    ]
+                  },
+                  "else": {
+                    "not": {
+                      "required": [
+                        "expected_ip"
+                      ]
+                    }
+                  }
                 },
                 {
-                  "if": {"properties": {"method": {"const": "https_exit_country"}}},
-                  "then": {"required": ["expected_exit_class"]},
-                  "else": {"not": {"required": ["expected_exit_class"]}}
+                  "if": {
+                    "properties": {
+                      "method": {
+                        "const": "https_exit_country"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "expected_exit_class"
+                    ]
+                  },
+                  "else": {
+                    "not": {
+                      "required": [
+                        "expected_exit_class"
+                      ]
+                    }
+                  }
                 }
               ]
             }
+          },
+          "profile": {
+            "$ref": "#/components/schemas/RouteCheckProfileV2"
           }
-        }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "checks"
+            ],
+            "not": {
+              "required": [
+                "profile"
+              ]
+            }
+          },
+          {
+            "required": [
+              "profile"
+            ],
+            "not": {
+              "required": [
+                "checks"
+              ]
+            }
+          }
+        ]
       },
       "PlanActivationCheck": {
         "type": "object",
@@ -2450,15 +3066,46 @@
           "adaptive": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["metadataB64", "bindingsB64", "groups"],
+            "required": [
+              "metadataB64",
+              "bindingsB64",
+              "groups"
+            ],
             "description": "Protected credential-free adaptive graph and source references. Dedicated closed decoders enforce 196608 UTF-8 bytes, canonical base64url, up to500 actual authorized profiles and16 managed TCP groups. Metadata never authorizes an observed exit.",
             "properties": {
-              "metadataB64": {"type": "string", "minLength": 1, "maxLength": 196608, "pattern": "^[A-Za-z0-9_-]+$"},
-              "bindingsB64": {"type": "string", "minLength": 1, "maxLength": 196608, "pattern": "^[A-Za-z0-9_-]+$"},
+              "metadataB64": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 196608,
+                "pattern": "^[A-Za-z0-9_-]+$"
+              },
+              "bindingsB64": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 196608,
+                "pattern": "^[A-Za-z0-9_-]+$"
+              },
               "groups": {
-                "type": "object", "minProperties": 1, "maxProperties": 16,
-                "propertyNames": {"pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
-                "additionalProperties": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$", "not": {"anyOf": [{"const": "direct"}, {"pattern": "^syn443_"}]}}
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 16,
+                "propertyNames": {
+                  "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+                  "not": {
+                    "anyOf": [
+                      {
+                        "const": "direct"
+                      },
+                      {
+                        "pattern": "^syn443_"
+                      }
+                    ]
+                  }
+                }
               }
             }
           },
@@ -2962,6 +3609,277 @@
           "state"
         ],
         "description": "Same live scoped read ACL as the card. No independent traffic attestation. None omits report; recent/stale requires report. Freshness ends at min(sampledAtMs,receivedAtMs)+180000."
+      },
+      "RouteCheckProfileV2": {
+        "title": "Bounded sequential route check profile v2",
+        "$comment": "Semantic validators additionally require canonical unique checks; exactly one reference per declared leaf; all references used; TLS/exit leaves only in unconditional gates; at most seven expression nodes total and depth four; k <= of.length; strict integer JSON tokens; existing method-specific target rules. Four leaves bound total admission cost regardless of short circuit. Unsupported parallel/conditional/fallback fields are rejected.",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": 2
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "deadlineMs": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12000
+          },
+          "leaves": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/RouteCheckProfileV2Leaf"
+            }
+          },
+          "gates": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 4,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+            },
+            "uniqueItems": true
+          },
+          "stages": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/RouteCheckProfileV2Expr"
+            }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "id",
+          "revision",
+          "deadlineMs",
+          "leaves",
+          "gates",
+          "stages"
+        ],
+        "anyOf": [
+          {
+            "properties": {
+              "gates": {
+                "minItems": 1
+              }
+            }
+          },
+          {
+            "properties": {
+              "stages": {
+                "minItems": 1
+              }
+            }
+          }
+        ]
+      },
+      "RouteCheckProfileV2Check": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "method": {
+                "enum": [
+                  "tcp",
+                  "ssh_banner"
+                ]
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              }
+            },
+            "required": [
+              "method",
+              "target"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "method": {
+                "enum": [
+                  "tls",
+                  "https_204"
+                ]
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              }
+            },
+            "required": [
+              "method",
+              "target"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "method": {
+                "const": "https_exit_ip"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "expected_ip": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 45
+              }
+            },
+            "required": [
+              "method",
+              "target",
+              "expected_ip"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "method": {
+                "const": "https_exit_country"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "expected_exit_class": {
+                "enum": [
+                  "RU",
+                  "NON_RU"
+                ]
+              }
+            },
+            "required": [
+              "method",
+              "target",
+              "expected_exit_class"
+            ]
+          }
+        ]
+      },
+      "RouteCheckProfileV2Leaf": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+          },
+          "check": {
+            "$ref": "#/components/schemas/RouteCheckProfileV2Check"
+          }
+        },
+        "required": [
+          "id",
+          "check"
+        ]
+      },
+      "RouteCheckProfileV2Expr": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "leaf": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+              }
+            },
+            "required": [
+              "leaf"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "all": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 4,
+                "items": {
+                  "$ref": "#/components/schemas/RouteCheckProfileV2Expr"
+                }
+              }
+            },
+            "required": [
+              "all"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "any": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 4,
+                "items": {
+                  "$ref": "#/components/schemas/RouteCheckProfileV2Expr"
+                }
+              }
+            },
+            "required": [
+              "any"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "quorum": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "k": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4
+                  },
+                  "of": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 4,
+                    "items": {
+                      "$ref": "#/components/schemas/RouteCheckProfileV2Expr"
+                    }
+                  }
+                },
+                "required": [
+                  "k",
+                  "of"
+                ]
+              }
+            },
+            "required": [
+              "quorum"
+            ]
+          }
+        ]
       }
     }
   }

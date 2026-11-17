@@ -46,7 +46,7 @@ func (g Grant) Validate(now time.Time) error {
 	// A shared grant cannot bypass rollout selection or exit-check approval.
 	if hasCapability(g.Template.RequiredCapabilities, policy.ReserveProbeCooldown) || hasCapability(g.Template.RequiredCapabilities, policy.RouteExitIP) ||
 		hasCapability(g.Template.RequiredCapabilities, policy.RouteExitCountry) || hasCapability(g.Template.RequiredCapabilities, policy.RouteDecision) ||
-		hasCapability(g.Template.RequiredCapabilities, policy.RouteAdaptiveTCP) {
+		hasCapability(g.Template.RequiredCapabilities, policy.RouteAdaptiveTCP) || hasCapability(g.Template.RequiredCapabilities, policy.RouteCheckPlanV2) {
 		return identity.ErrInvalid
 	}
 	if g.Issuer == "" || g.Subject == "" || g.DeviceLimit < 1 || g.DeviceLimit > 16 || g.Until <= now.Unix() || g.Until > now.Unix()+604800 {

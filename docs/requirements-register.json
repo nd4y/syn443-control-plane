@@ -1387,10 +1387,11 @@
       "text": "Комбинации задаются явным деревом условий all/any/quorum(k,n), последовательными или параллельными этапами, conditional/fallback branches, общим deadline и пределом стоимости. Правила короткого замыкания и критичность описаны, чтобы успешная необязательная проба не скрывала провал обязательной. Несовместимые или всегда недостижимые условия отклоняются компилятором.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/route-check-profiles-v2.md"
       ],
-      "implementationScope": "Per-outbound TCP/SSH/TLS/HTTPS all-of profiles and bounded scoped status/check/cancel.",
-      "remainingScope": "Full traffic-rule plans, any/quorum/stages, exit attribution and profile editor."
+      "implementationScope": "Legacy all-of checks are retained. The current source component adds negotiated bounded all/any/quorum and sequential stages with mandatory security gates; its Actions, integration and rollout evidence are tracked separately.",
+      "remainingScope": "Parallel stages, explicit conditional/fallback branches, reusable traffic-rule profiles/editor, ordinary variable/overlay paths and capability-approved managed physical acceptance remain open."
     },
     {
       "id": "CHK-05",

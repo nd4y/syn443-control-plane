@@ -18,6 +18,9 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/routecheck"
 )
 
 const MaxBundle = 524288
@@ -70,6 +73,7 @@ func ascii(s string) bool {
 const ReserveProbeCooldown = "route.reserve-cooldown.v1"
 const RouteExitIP = "route.exit-ip.v1"
 const RouteExitCountry = "route.exit-country.v1"
+const RouteCheckPlanV2 = "route.check-plan.v2"
 const RouteDecision = "route.decision.v1"
 const RouteAdaptiveTCP = "route.adaptive-tcp.v1"
 const BaselineAlgorithm = "m1-local-v1"
@@ -93,7 +97,7 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	caps := map[string]bool{}
-	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true, RouteAdaptiveTCP: true}
+	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true, RouteAdaptiveTCP: true, RouteCheckPlanV2: true}
 	if len(p.RequiredCapabilities) < 1 || len(p.RequiredCapabilities) > 16 ||
 		p.AlgorithmRevision != BaselineAlgorithm && p.AlgorithmRevision != ConfirmedFailoverAlgorithm && p.AlgorithmRevision != AdaptiveTCPAlgorithm {
 		return bad
@@ -115,21 +119,28 @@ func (p Payload) Validate(now time.Time) error {
 	if err != nil || len(engine) < 1 || len(engine) > 262144 || !utf8.Valid(engine) || !json.Valid(engine) || hex.EncodeToString(sum[:]) != p.ContentHash {
 		return bad
 	}
-	var routeConfig struct {
-		Checks []struct {
-			Checks []struct {
-				Method string `json:"method"`
-			} `json:"checks"`
-		} `json:"route_checks"`
+	var extensions map[string]json.RawMessage
+	if identity.DecodeConfiguration(engine, &extensions) != nil || extensions == nil {
+		return bad
 	}
-	configErr := json.Unmarshal(engine, &routeConfig)
-	hasExitCheck := false
-	hasExitCountry := false
-	for _, group := range routeConfig.Checks {
-		for _, check := range group.Checks {
+	var routePlans []routecheck.Plan
+	var configErr error
+	if raw, present := extensions["route_checks"]; present {
+		routePlans, configErr = routecheck.DecodePlans(raw)
+	}
+	if configErr != nil {
+		return bad
+	}
+	hasExitCheck, hasExitCountry, hasProfile := false, false, false
+	for _, group := range routePlans {
+		hasProfile = hasProfile || group.Profile != nil
+		for _, check := range group.AllChecks() {
 			hasExitCheck = hasExitCheck || check.Method == "https_exit_ip"
 			hasExitCountry = hasExitCountry || check.Method == "https_exit_country"
 		}
+	}
+	if hasProfile != caps[RouteCheckPlanV2] || hasProfile && (p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"]) {
+		return bad
 	}
 	if hasExitCheck != caps[RouteExitIP] || hasExitCheck &&
 		(configErr != nil || p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"]) {
@@ -142,15 +153,14 @@ func (p Payload) Validate(now time.Time) error {
 	if (p.AlgorithmRevision == ConfirmedFailoverAlgorithm || p.AlgorithmRevision == AdaptiveTCPAlgorithm) != caps[RouteDecision] {
 		return bad
 	}
-	var extensions map[string]json.RawMessage
-	if json.Unmarshal(engine, &extensions) != nil {
-		return bad
-	}
 	adaptive, hasAdaptive := extensions["adaptive_routes"]
 	if hasAdaptive != caps[RouteAdaptiveTCP] || hasAdaptive != (p.AlgorithmRevision == AdaptiveTCPAlgorithm) {
 		return bad
 	}
 	_, legacyFailover := extensions["route_failover"]
+	if hasProfile && legacyFailover {
+		return bad
+	}
 	if hasAdaptive && (p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"] ||
 		caps["route.failover.v1"] || caps[ReserveProbeCooldown] || legacyFailover || len(adaptive) == 0 || strings.TrimSpace(string(adaptive)) == "null") {
 		return bad

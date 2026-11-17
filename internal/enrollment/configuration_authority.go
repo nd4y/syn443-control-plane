@@ -13,6 +13,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/configuration"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/policy"
+	"github.com/nd4y/syn443-control-plane/internal/routecheck"
 )
 
 // ConfigurationAuthority is installed only in the independent publisher. The
@@ -67,12 +68,25 @@ func applyPreparedConfiguration(payload *policy.Payload, prepared *PreparedConfi
 		return ErrDenied
 	}
 	raw := append([]byte(nil), prepared.EngineConfig...)
-	if validatePreparedNetwork(raw) != nil {
+	if validatePreparedNetwork(raw) != nil || configuration.ValidateIssuedCheckPlans(raw) != nil {
 		return identity.ErrInvalid
 	}
 	var root map[string]json.RawMessage
 	if json.Unmarshal(raw, &root) != nil {
 		return identity.ErrInvalid
+	}
+	hasProfile := false
+	if checks, present := root["route_checks"]; present {
+		plans, e := routecheck.DecodePlans(checks)
+		if e != nil {
+			return identity.ErrInvalid
+		}
+		for _, plan := range plans {
+			hasProfile = hasProfile || plan.Profile != nil
+		}
+	}
+	if hasProfile != slices.Contains(prepared.RequiredCapabilities, policy.RouteCheckPlanV2) {
+		return ErrDenied
 	}
 	_, adaptive := root["adaptive_routes"]
 	if adaptive != (prepared.AlgorithmRevision == policy.AdaptiveTCPAlgorithm) || adaptive != slices.Contains(prepared.RequiredCapabilities, policy.RouteAdaptiveTCP) {

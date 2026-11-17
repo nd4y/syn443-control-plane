@@ -160,22 +160,7 @@ func compileAdaptiveNetworkPlan(ctx context.Context, plan NetworkPlan, resolve f
 				checks = &plan.Network.RouteChecks[i]
 			}
 		}
-		if checks == nil || len(checks.Checks) < 1 || len(checks.Checks) > 4 {
-			return bad()
-		}
-		country := false
-		for _, check := range checks.Checks {
-			if !outboundCheckTarget(check) {
-				return bad()
-			}
-			if check.Method == "https_exit_country" {
-				if info.Intent == "INTERNAL" || check.ExpectedExitClass != info.Intent {
-					return bad()
-				}
-				country = true
-			}
-		}
-		if info.Intent != "INTERNAL" && !country {
+		if checks == nil || checks.ValidateIntent(info.Intent) != nil {
 			return bad()
 		}
 		declarations[group] = adaptiveGroupDeclaration{Tag: tag, MaxHops: info.MaxHops}
