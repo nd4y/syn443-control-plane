@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.syn443.example.invalid/v1/route-check-profile-v2.schema.json",
+  "title": "Bounded sequential route check profile v2",
+  "$comment": "Semantic validators additionally require canonical unique checks; exactly one reference per declared leaf; all references used; TLS/exit leaves only in unconditional gates; at most seven expression nodes total and depth four; k <= of.length; strict integer JSON tokens; existing method-specific target rules. Four leaves bound total admission cost regardless of short circuit. Unsupported parallel/conditional/fallback fields are rejected.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 2
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "deadlineMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12000
+    },
+    "leaves": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/leaf"
+      }
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 4,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+      },
+      "uniqueItems": true
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/expr"
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "revision",
+    "deadlineMs",
+    "leaves",
+    "gates",
+    "stages"
+  ],
+  "anyOf": [
+    {
+      "properties": {
+        "gates": {
+          "minItems": 1
+        }
+      }
+    },
+    {
+      "properties": {
+        "stages": {
+          "minItems": 1
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "check": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "enum": [
+                "tcp",
+                "ssh_banner"
+              ]
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "method",
+            "target"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "enum": [
+                "tls",
+                "https_204"
+              ]
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "method",
+            "target"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "const": "https_exit_ip"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "expected_ip": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 45
+            }
+          },
+          "required": [
+            "method",
+            "target",
+            "expected_ip"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "const": "https_exit_country"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "expected_exit_class": {
+              "enum": [
+                "RU",
+                "NON_RU"
+              ]
+            }
+          },
+          "required": [
+            "method",
+            "target",
+            "expected_exit_class"
+          ]
+        }
+      ]
+    },
+    "leaf": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+        },
+        "check": {
+          "$ref": "#/$defs/check"
+        }
+      },
+      "required": [
+        "id",
+        "check"
+      ]
+    },
+    "expr": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "leaf": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+            }
+          },
+          "required": [
+            "leaf"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 4,
+              "items": {
+                "$ref": "#/$defs/expr"
+              }
+            }
+          },
+          "required": [
+            "all"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 4,
+              "items": {
+                "$ref": "#/$defs/expr"
+              }
+            }
+          },
+          "required": [
+            "any"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "quorum": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "k": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "of": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 4,
+                  "items": {
+                    "$ref": "#/$defs/expr"
+                  }
+                }
+              },
+              "required": [
+                "k",
+                "of"
+              ]
+            }
+          },
+          "required": [
+            "quorum"
+          ]
+        }
+      ]
+    }
+  }
+}

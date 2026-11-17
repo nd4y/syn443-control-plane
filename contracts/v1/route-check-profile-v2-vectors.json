@@ -1,0 +1,5012 @@
+{
+  "schemaVersion": 1,
+  "validCases": [
+    {
+      "name": "any-two",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "sha256": "fc3f152fd03ee8e9bc2f7b45e87985c0e2b7c82716158cb3582fa6621106c782"
+    },
+    {
+      "name": "all-two",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "sha256": "84c68955062b485b88ec3ca7c320d634076a97637320403bcd76a2eec79e64e1"
+    },
+    {
+      "name": "quorum-two-of-three",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "sha256": "834c5b71ecac9fcf39660d51c44259314729f584c04bc553b507025b5ee87248"
+    },
+    {
+      "name": "sequential-stages",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "leaf": "a"
+          },
+          {
+            "any": [
+              {
+                "leaf": "b"
+              },
+              {
+                "leaf": "c"
+              }
+            ]
+          }
+        ]
+      },
+      "sha256": "b4645450602b1ad7ad499d0900ba546290f1a64bc8874c56991c40b6872f613e"
+    },
+    {
+      "name": "nested-any-under-all",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          },
+          {
+            "id": "d",
+            "check": {
+              "method": "tcp",
+              "target": "d.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "any": [
+                  {
+                    "leaf": "a"
+                  },
+                  {
+                    "leaf": "b"
+                  }
+                ]
+              },
+              {
+                "any": [
+                  {
+                    "leaf": "c"
+                  },
+                  {
+                    "leaf": "d"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "sha256": "389389e9378f4a1fe4785504fcfb1e1093d6437cfe93207c19b9a74869d5d658"
+    },
+    {
+      "name": "unconditional-security-gates",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "public-ru",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "transport",
+            "check": {
+              "method": "tls",
+              "target": "https://transport.example.invalid/"
+            }
+          },
+          {
+            "id": "exit",
+            "check": {
+              "method": "https_exit_country",
+              "target": "https://exit.example.invalid/",
+              "expected_exit_class": "RU"
+            }
+          },
+          {
+            "id": "a",
+            "check": {
+              "method": "https_204",
+              "target": "https://a.example.invalid/"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "https_204",
+              "target": "https://b.example.invalid/"
+            }
+          }
+        ],
+        "gates": [
+          "transport",
+          "exit"
+        ],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "sha256": "08613efec087690f0addd206e3acb47bbb6a38be1b07d3302e75dec90c974656"
+    },
+    {
+      "name": "gates-only",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [
+          "a"
+        ],
+        "stages": []
+      },
+      "sha256": "5b5cdba8698d4706b83e6d6030383ba65b833d61579048cee333f0b9782dd399"
+    },
+    {
+      "name": "unordered-leaves-ordered-branches",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "b"
+              },
+              {
+                "leaf": "a"
+              }
+            ]
+          }
+        ]
+      },
+      "sha256": "09809faa9c60a81cf107880cd2fd3d84021aa620af1af27c06a125490d38a9bb"
+    },
+    {
+      "name": "html-escape-canonical-hash",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "https_204",
+              "target": "https://a.example.invalid/probe?a=1&b=2"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "leaf": "a"
+          }
+        ]
+      },
+      "sha256": "bb2ff98c8d941b74e3cbdddea3452e47c6c439c32233fd4f0a20e3ececf95f56"
+    }
+  ],
+  "invalidCases": [
+    {
+      "name": "unknown-root-field",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ],
+        "parallel": true
+      }
+    },
+    {
+      "name": "wrong-version",
+      "profile": {
+        "schemaVersion": 1,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "null-version",
+      "profile": {
+        "schemaVersion": null,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "zero-revision",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 0,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "unsafe-revision",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 9007199254740992,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "string-revision",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": "1",
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "zero-deadline",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 0,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "large-deadline",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12001,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bool-deadline",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": true,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "null-deadline",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": null,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "invalid-id",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "Invalid",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "duplicate-leaf-id",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "duplicate-canonical-check",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown-leaf-field",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            },
+            "timeout": 1000
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown-check-field",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443",
+              "expected_ip": null
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown-leaf-reference",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "missing"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "duplicate-reference",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "a"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "unused-leaf",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "leaf": "a"
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty-program",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": []
+      }
+    },
+    {
+      "name": "empty-all",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "unary-any",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              }
+            ]
+          },
+          {
+            "leaf": "b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "invalid-quorum-zero",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 0,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "invalid-quorum-large",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 4,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ambiguous-expression",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ],
+            "leaf": "a"
+          }
+        ]
+      }
+    },
+    {
+      "name": "tls-in-alternative",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tls",
+              "target": "https://a.example.invalid/"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "country-in-alternative",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "https_exit_country",
+              "target": "https://a.example.invalid/",
+              "expected_exit_class": "RU"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ip-in-alternative",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "https_exit_ip",
+              "target": "https://a.example.invalid/",
+              "expected_ip": "192.0.2.1"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "duplicate-gate-reference",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [
+          "a",
+          "a"
+        ],
+        "stages": []
+      }
+    },
+    {
+      "name": "gate-stage-double-reference",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [
+          "a"
+        ],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "conditional-unsupported",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "if": {
+              "leaf": "a"
+            },
+            "then": {
+              "leaf": "b"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "five-leaves",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          },
+          {
+            "id": "d",
+            "check": {
+              "method": "tcp",
+              "target": "d.example.invalid:443"
+            }
+          },
+          {
+            "id": "e",
+            "check": {
+              "method": "tcp",
+              "target": "e.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e"
+        ],
+        "stages": []
+      }
+    },
+    {
+      "name": "bad-target",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "uppercase-dns-target",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "UPPER.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "trailing-dot-target",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid.:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "scoped-ipv6-target",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "[fe80::1%wlan0]:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "overlong-port-target",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:000443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "backslash-https-target",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "https_204",
+              "target": "https://a.example.invalid/a\\b"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "invalidRawCases": [
+    {
+      "name": "duplicate-json-key",
+      "raw": "{\"schemaVersion\":2,\"schemaVersion\":2,\"id\":\"connectivity\",\"revision\":1,\"deadlineMs\":12000,\"leaves\":[{\"id\":\"a\",\"check\":{\"method\":\"tcp\",\"target\":\"a.example.invalid:443\"}},{\"id\":\"b\",\"check\":{\"method\":\"tcp\",\"target\":\"b.example.invalid:443\"}}],\"gates\":[],\"stages\":[{\"any\":[{\"leaf\":\"a\"},{\"leaf\":\"b\"}]}]}"
+    },
+    {
+      "name": "fractional-integer-token",
+      "raw": "{\"schemaVersion\":2,\"id\":\"connectivity\",\"revision\":1.0,\"deadlineMs\":12000,\"leaves\":[{\"id\":\"a\",\"check\":{\"method\":\"tcp\",\"target\":\"a.example.invalid:443\"}},{\"id\":\"b\",\"check\":{\"method\":\"tcp\",\"target\":\"b.example.invalid:443\"}}],\"gates\":[],\"stages\":[{\"any\":[{\"leaf\":\"a\"},{\"leaf\":\"b\"}]}]}"
+    },
+    {
+      "name": "exponent-integer-token",
+      "raw": "{\"schemaVersion\":2,\"id\":\"connectivity\",\"revision\":1,\"deadlineMs\":12e3,\"leaves\":[{\"id\":\"a\",\"check\":{\"method\":\"tcp\",\"target\":\"a.example.invalid:443\"}},{\"id\":\"b\",\"check\":{\"method\":\"tcp\",\"target\":\"b.example.invalid:443\"}}],\"gates\":[],\"stages\":[{\"any\":[{\"leaf\":\"a\"},{\"leaf\":\"b\"}]}]}"
+    },
+    {
+      "name": "trailing-json",
+      "raw": "{\"schemaVersion\":2,\"id\":\"connectivity\",\"revision\":1,\"deadlineMs\":12000,\"leaves\":[{\"id\":\"a\",\"check\":{\"method\":\"tcp\",\"target\":\"a.example.invalid:443\"}},{\"id\":\"b\",\"check\":{\"method\":\"tcp\",\"target\":\"b.example.invalid:443\"}}],\"gates\":[],\"stages\":[{\"any\":[{\"leaf\":\"a\"},{\"leaf\":\"b\"}]}]}{}"
+    },
+    {
+      "name": "case-variant-json-field",
+      "raw": "{\"SchemaVersion\":2,\"id\":\"connectivity\",\"revision\":1,\"deadlineMs\":12000,\"leaves\":[{\"id\":\"a\",\"check\":{\"method\":\"tcp\",\"target\":\"a.example.invalid:443\"}},{\"id\":\"b\",\"check\":{\"method\":\"tcp\",\"target\":\"b.example.invalid:443\"}}],\"gates\":[],\"stages\":[{\"any\":[{\"leaf\":\"a\"},{\"leaf\":\"b\"}]}]}"
+    },
+    {
+      "name": "null-gates",
+      "raw": "{\"schemaVersion\":2,\"id\":\"connectivity\",\"revision\":1,\"deadlineMs\":12000,\"leaves\":[{\"id\":\"a\",\"check\":{\"method\":\"tcp\",\"target\":\"a.example.invalid:443\"}},{\"id\":\"b\",\"check\":{\"method\":\"tcp\",\"target\":\"b.example.invalid:443\"}}],\"gates\":null,\"stages\":[{\"any\":[{\"leaf\":\"a\"},{\"leaf\":\"b\"}]}]}"
+    }
+  ],
+  "truthCases": [
+    {
+      "name": "all-TT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "TRUE"
+      }
+    },
+    {
+      "name": "all-TF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "FALSE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "name": "all-TU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "UNKNOWN"
+      }
+    },
+    {
+      "name": "all-FT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "TRUE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "SKIPPED"
+      }
+    },
+    {
+      "name": "all-FF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "FALSE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "SKIPPED"
+      }
+    },
+    {
+      "name": "all-FU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "UNKNOWN"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "SKIPPED"
+      }
+    },
+    {
+      "name": "all-UT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "TRUE"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "TRUE"
+      }
+    },
+    {
+      "name": "all-UF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "FALSE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "FALSE"
+      }
+    },
+    {
+      "name": "all-UU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "UNKNOWN"
+      }
+    },
+    {
+      "name": "any-TT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "SKIPPED"
+      }
+    },
+    {
+      "name": "any-TF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "FALSE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "SKIPPED"
+      }
+    },
+    {
+      "name": "any-TU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "UNKNOWN"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "SKIPPED"
+      }
+    },
+    {
+      "name": "any-FT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "TRUE"
+      }
+    },
+    {
+      "name": "any-FF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "FALSE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "name": "any-FU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "UNKNOWN"
+      }
+    },
+    {
+      "name": "any-UT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "TRUE"
+      }
+    },
+    {
+      "name": "any-UF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "FALSE"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "FALSE"
+      }
+    },
+    {
+      "name": "any-UU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "UNKNOWN"
+      }
+    },
+    {
+      "name": "quorum-TTT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "TRUE",
+        "c": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "TRUE",
+        "c": "SKIPPED"
+      }
+    },
+    {
+      "name": "quorum-TTF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "TRUE",
+        "c": "FALSE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "TRUE",
+        "c": "SKIPPED"
+      }
+    },
+    {
+      "name": "quorum-TTU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "TRUE",
+        "c": "UNKNOWN"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "TRUE",
+        "c": "SKIPPED"
+      }
+    },
+    {
+      "name": "quorum-TFT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "FALSE",
+        "c": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "FALSE",
+        "c": "TRUE"
+      }
+    },
+    {
+      "name": "quorum-TFF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "FALSE",
+        "c": "FALSE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "FALSE",
+        "c": "FALSE"
+      }
+    },
+    {
+      "name": "quorum-TFU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "FALSE",
+        "c": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "FALSE",
+        "c": "UNKNOWN"
+      }
+    },
+    {
+      "name": "quorum-TUT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "UNKNOWN",
+        "c": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "UNKNOWN",
+        "c": "TRUE"
+      }
+    },
+    {
+      "name": "quorum-TUF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "UNKNOWN",
+        "c": "FALSE"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "UNKNOWN",
+        "c": "FALSE"
+      }
+    },
+    {
+      "name": "quorum-TUU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "TRUE",
+        "b": "UNKNOWN",
+        "c": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "TRUE",
+        "b": "UNKNOWN",
+        "c": "UNKNOWN"
+      }
+    },
+    {
+      "name": "quorum-FTT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "TRUE",
+        "c": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "TRUE",
+        "c": "TRUE"
+      }
+    },
+    {
+      "name": "quorum-FTF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "TRUE",
+        "c": "FALSE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "TRUE",
+        "c": "FALSE"
+      }
+    },
+    {
+      "name": "quorum-FTU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "TRUE",
+        "c": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "TRUE",
+        "c": "UNKNOWN"
+      }
+    },
+    {
+      "name": "quorum-FFT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "FALSE",
+        "c": "TRUE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "FALSE",
+        "c": "SKIPPED"
+      }
+    },
+    {
+      "name": "quorum-FFF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "FALSE",
+        "c": "FALSE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "FALSE",
+        "c": "SKIPPED"
+      }
+    },
+    {
+      "name": "quorum-FFU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "FALSE",
+        "c": "UNKNOWN"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "FALSE",
+        "c": "SKIPPED"
+      }
+    },
+    {
+      "name": "quorum-FUT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "UNKNOWN",
+        "c": "TRUE"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "UNKNOWN",
+        "c": "TRUE"
+      }
+    },
+    {
+      "name": "quorum-FUF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "UNKNOWN",
+        "c": "FALSE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "UNKNOWN",
+        "c": "FALSE"
+      }
+    },
+    {
+      "name": "quorum-FUU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "UNKNOWN",
+        "c": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "UNKNOWN",
+        "c": "UNKNOWN"
+      }
+    },
+    {
+      "name": "quorum-UTT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "TRUE",
+        "c": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "TRUE",
+        "c": "TRUE"
+      }
+    },
+    {
+      "name": "quorum-UTF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "TRUE",
+        "c": "FALSE"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "TRUE",
+        "c": "FALSE"
+      }
+    },
+    {
+      "name": "quorum-UTU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "TRUE",
+        "c": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "TRUE",
+        "c": "UNKNOWN"
+      }
+    },
+    {
+      "name": "quorum-UFT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "FALSE",
+        "c": "TRUE"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "FALSE",
+        "c": "TRUE"
+      }
+    },
+    {
+      "name": "quorum-UFF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "FALSE",
+        "c": "FALSE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "FALSE",
+        "c": "FALSE"
+      }
+    },
+    {
+      "name": "quorum-UFU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "FALSE",
+        "c": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "FALSE",
+        "c": "UNKNOWN"
+      }
+    },
+    {
+      "name": "quorum-UUT",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "UNKNOWN",
+        "c": "TRUE"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "UNKNOWN",
+        "c": "TRUE"
+      }
+    },
+    {
+      "name": "quorum-UUF",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "UNKNOWN",
+        "c": "FALSE"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "UNKNOWN",
+        "c": "FALSE"
+      }
+    },
+    {
+      "name": "quorum-UUU",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "quorum": {
+              "k": 2,
+              "of": [
+                {
+                  "leaf": "a"
+                },
+                {
+                  "leaf": "b"
+                },
+                {
+                  "leaf": "c"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "UNKNOWN",
+        "c": "UNKNOWN"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "UNKNOWN",
+        "c": "UNKNOWN"
+      }
+    },
+    {
+      "name": "stages-stop-on-first-false",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "leaf": "a"
+          },
+          {
+            "any": [
+              {
+                "leaf": "b"
+              },
+              {
+                "leaf": "c"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "TRUE",
+        "c": "TRUE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "SKIPPED",
+        "c": "SKIPPED"
+      }
+    },
+    {
+      "name": "stages-unknown-not-false",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "leaf": "a"
+          },
+          {
+            "any": [
+              {
+                "leaf": "b"
+              },
+              {
+                "leaf": "c"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "UNKNOWN",
+        "b": "FALSE",
+        "c": "TRUE"
+      },
+      "expected": "UNKNOWN",
+      "visited": [
+        "a",
+        "b",
+        "c"
+      ],
+      "leafStates": {
+        "a": "UNKNOWN",
+        "b": "FALSE",
+        "c": "TRUE"
+      }
+    },
+    {
+      "name": "nested-fallback-pass",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          },
+          {
+            "id": "d",
+            "check": {
+              "method": "tcp",
+              "target": "d.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "any": [
+                  {
+                    "leaf": "a"
+                  },
+                  {
+                    "leaf": "b"
+                  }
+                ]
+              },
+              {
+                "any": [
+                  {
+                    "leaf": "c"
+                  },
+                  {
+                    "leaf": "d"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "TRUE",
+        "c": "FALSE",
+        "d": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "TRUE",
+        "c": "FALSE",
+        "d": "TRUE"
+      }
+    },
+    {
+      "name": "nested-false-skips-later-tree",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "connectivity",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "a",
+            "check": {
+              "method": "tcp",
+              "target": "a.example.invalid:443"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "tcp",
+              "target": "b.example.invalid:443"
+            }
+          },
+          {
+            "id": "c",
+            "check": {
+              "method": "tcp",
+              "target": "c.example.invalid:443"
+            }
+          },
+          {
+            "id": "d",
+            "check": {
+              "method": "tcp",
+              "target": "d.example.invalid:443"
+            }
+          }
+        ],
+        "gates": [],
+        "stages": [
+          {
+            "all": [
+              {
+                "any": [
+                  {
+                    "leaf": "a"
+                  },
+                  {
+                    "leaf": "b"
+                  }
+                ]
+              },
+              {
+                "any": [
+                  {
+                    "leaf": "c"
+                  },
+                  {
+                    "leaf": "d"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "a": "FALSE",
+        "b": "FALSE",
+        "c": "TRUE",
+        "d": "TRUE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "a": "FALSE",
+        "b": "FALSE",
+        "c": "SKIPPED",
+        "d": "SKIPPED"
+      }
+    },
+    {
+      "name": "mandatory-country-fails-optional-skipped",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "public-ru",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "transport",
+            "check": {
+              "method": "tls",
+              "target": "https://transport.example.invalid/"
+            }
+          },
+          {
+            "id": "exit",
+            "check": {
+              "method": "https_exit_country",
+              "target": "https://exit.example.invalid/",
+              "expected_exit_class": "RU"
+            }
+          },
+          {
+            "id": "a",
+            "check": {
+              "method": "https_204",
+              "target": "https://a.example.invalid/"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "https_204",
+              "target": "https://b.example.invalid/"
+            }
+          }
+        ],
+        "gates": [
+          "transport",
+          "exit"
+        ],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "transport": "TRUE",
+        "exit": "FALSE",
+        "a": "TRUE",
+        "b": "TRUE"
+      },
+      "expected": "FALSE",
+      "visited": [
+        "transport",
+        "exit"
+      ],
+      "leafStates": {
+        "transport": "TRUE",
+        "exit": "FALSE",
+        "a": "SKIPPED",
+        "b": "SKIPPED"
+      }
+    },
+    {
+      "name": "security-gates-with-endpoint-fallback",
+      "profile": {
+        "schemaVersion": 2,
+        "id": "public-ru",
+        "revision": 1,
+        "deadlineMs": 12000,
+        "leaves": [
+          {
+            "id": "transport",
+            "check": {
+              "method": "tls",
+              "target": "https://transport.example.invalid/"
+            }
+          },
+          {
+            "id": "exit",
+            "check": {
+              "method": "https_exit_country",
+              "target": "https://exit.example.invalid/",
+              "expected_exit_class": "RU"
+            }
+          },
+          {
+            "id": "a",
+            "check": {
+              "method": "https_204",
+              "target": "https://a.example.invalid/"
+            }
+          },
+          {
+            "id": "b",
+            "check": {
+              "method": "https_204",
+              "target": "https://b.example.invalid/"
+            }
+          }
+        ],
+        "gates": [
+          "transport",
+          "exit"
+        ],
+        "stages": [
+          {
+            "any": [
+              {
+                "leaf": "a"
+              },
+              {
+                "leaf": "b"
+              }
+            ]
+          }
+        ]
+      },
+      "results": {
+        "transport": "TRUE",
+        "exit": "TRUE",
+        "a": "FALSE",
+        "b": "TRUE"
+      },
+      "expected": "TRUE",
+      "visited": [
+        "transport",
+        "exit",
+        "a",
+        "b"
+      ],
+      "leafStates": {
+        "transport": "TRUE",
+        "exit": "TRUE",
+        "a": "FALSE",
+        "b": "TRUE"
+      }
+    }
+  ],
+  "legacyCases": [
+    {
+      "name": "legacy-ordered-all",
+      "checks": [
+        {
+          "method": "tcp",
+          "target": "a.example.invalid:443"
+        },
+        {
+          "method": "https_204",
+          "target": "https://a.example.invalid/"
+        }
+      ],
+      "sha256": "13e996e1be0a00462e788708fbf2ec92bc5e580c8d66a6980613f8c00bbd7d4e"
+    }
+  ]
+}

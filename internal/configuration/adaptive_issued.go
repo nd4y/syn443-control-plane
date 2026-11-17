@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/routecheck"
 	"github.com/nd4y/syn443-control-plane/internal/routegraph"
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
 )
@@ -499,13 +500,31 @@ func adaptiveIssuedNetBird(node map[string]any) error {
 }
 
 func adaptiveIssuedChecks(raw []byte, nodes map[string]map[string]any, caps map[string]GraphCapability, graph *routegraph.Graph, groups map[string]string) error {
-	if len(raw) < 1 || len(raw) > 24000 {
+	plans, e := routecheck.DecodePlans(raw)
+	if e != nil {
 		return ErrInvalid
 	}
+	// Adaptive issuance has always required an explicit boolean required field.
+	// The general legacy policy decoder's omission compatibility is not an
+	// authority to weaken this independent raw-engine envelope boundary.
 	value, e := subscriptions.DecodeJSON(raw)
-	plans, ok := value.([]any)
-	if e != nil || !ok || len(plans) < 1 || len(plans) > 16 {
+	rows, ok := value.([]any)
+	if e != nil || !ok || len(rows) != len(plans) {
 		return ErrInvalid
+	}
+	for _, value := range rows {
+		row, ok := value.(map[string]any)
+		if !ok || len(row) != 3 || !adaptiveIssuedFields(row, "outbound required checks profile") {
+			return ErrInvalid
+		}
+		if _, ok := row["required"].(bool); !ok {
+			return ErrInvalid
+		}
+		_, legacy := row["checks"]
+		_, composed := row["profile"]
+		if legacy == composed {
+			return ErrInvalid
+		}
 	}
 	seen := map[string]bool{}
 	intents := map[string]string{}
@@ -513,66 +532,13 @@ func adaptiveIssuedChecks(raw []byte, nodes map[string]map[string]any, caps map[
 		info, _ := graph.GroupInfo(group)
 		intents[tag] = info.Intent
 	}
-	for _, value := range plans {
-		plan, ok := value.(map[string]any)
-		if !ok || len(plan) != 3 || !adaptiveIssuedFields(plan, "outbound required checks") {
-			return ErrInvalid
-		}
-		tag, ok := adaptiveIssuedString(plan, "outbound", true)
-		if !ok || nodes[tag] == nil || !caps[tag].TCP || seen[tag] {
+	for _, plan := range plans {
+		tag := plan.Outbound
+		if nodes[tag] == nil || !caps[tag].TCP || seen[tag] {
 			return ErrInvalid
 		}
 		seen[tag] = true
-		if _, ok := plan["required"].(bool); !ok {
-			return ErrInvalid
-		}
-		checks, ok := plan["checks"].([]any)
-		if !ok || len(checks) < 1 || len(checks) > 4 {
-			return ErrInvalid
-		}
-		country := false
-		for _, v := range checks {
-			c, ok := v.(map[string]any)
-			if !ok || !adaptiveIssuedFields(c, "method target expected_ip expected_exit_class") {
-				return ErrInvalid
-			}
-			check := OutboundCheck{}
-			check.Method, ok = adaptiveIssuedString(c, "method", true)
-			if !ok {
-				return ErrInvalid
-			}
-			check.Target, ok = adaptiveIssuedString(c, "target", true)
-			if !ok {
-				return ErrInvalid
-			}
-			_, ip := c["expected_ip"]
-			_, exit := c["expected_exit_class"]
-			if ip != (check.Method == "https_exit_ip") || exit != (check.Method == "https_exit_country") {
-				return ErrInvalid
-			}
-			if ip {
-				check.ExpectedIP, ok = adaptiveIssuedString(c, "expected_ip", true)
-				if !ok {
-					return ErrInvalid
-				}
-			}
-			if exit {
-				check.ExpectedExitClass, ok = adaptiveIssuedString(c, "expected_exit_class", true)
-				if !ok {
-					return ErrInvalid
-				}
-			}
-			if !outboundCheckTarget(check) {
-				return ErrInvalid
-			}
-			if intent, managed := intents[tag]; managed && exit {
-				if intent == "INTERNAL" || check.ExpectedExitClass != intent {
-					return ErrInvalid
-				}
-				country = true
-			}
-		}
-		if intent, managed := intents[tag]; managed && intent != "INTERNAL" && !country {
+		if intent, managed := intents[tag]; managed && plan.ValidateIntent(intent) != nil {
 			return ErrInvalid
 		}
 	}
@@ -581,7 +547,19 @@ func adaptiveIssuedChecks(raw []byte, nodes map[string]map[string]any, caps map[
 			return ErrInvalid
 		}
 	}
-	return nil
+	rawNodes := make([]json.RawMessage, 0, len(nodes))
+	for _, node := range nodes {
+		raw, e := json.Marshal(node)
+		if e != nil {
+			return ErrInvalid
+		}
+		rawNodes = append(rawNodes, raw)
+	}
+	managed := map[string]bool{}
+	for _, tag := range groups {
+		managed[tag] = true
+	}
+	return validateConcreteCheckPaths(rawNodes, plans, managed)
 }
 
 func adaptiveIssuedList(node map[string]any, key string, max int) ([]string, bool) {

@@ -21,6 +21,8 @@
     "route-graph.schema.json": "c1a0a53af3a8015a6bdee140c8d992b6289ff3b1cf29660d9fcd4a3e61cfdade",
     "route-graph-vectors.json": "901e71135c197a887dfae0b048d99ab9bdf34c8e1677ca653971dc6ac459accb",
     "adaptive-runtime.schema.json": "2a94d23f71de9a0bd5eed655bbc99c75c390cc2ad6a113b22a02640019a8fc65",
-    "bootstrap-admin-vectors.json": "ca41ae2241bb2dd87fb8eb0a9ab262147dd49023c5b4d76c315fc4065c7d6c8a"
+    "bootstrap-admin-vectors.json": "ca41ae2241bb2dd87fb8eb0a9ab262147dd49023c5b4d76c315fc4065c7d6c8a",
+    "route-check-profile-v2.schema.json": "6215af7c9729ad25f8f09caa4fbf9289f775dceb5ee961920a8084b0dbdd12da",
+    "route-check-profile-v2-vectors.json": "d5fc690b3570afc9a83703cbef49d9721ab9ac48bf2921e1bc70d5f46462d319"
   }
 }

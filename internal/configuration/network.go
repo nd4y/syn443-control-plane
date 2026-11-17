@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net"
 	"net/netip"
-	"net/url"
 	"regexp"
 	"slices"
 	"sort"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/policy"
+	"github.com/nd4y/syn443-control-plane/internal/routecheck"
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
 )
 
@@ -53,17 +53,12 @@ type DNSRule struct {
 	QueryTypes []string `json:"queryTypes,omitempty"`
 	Server     string   `json:"server"`
 }
-type OutboundCheck struct {
-	Method            string `json:"method"`
-	Target            string `json:"target"`
-	ExpectedIP        string `json:"expected_ip,omitempty"`
-	ExpectedExitClass string `json:"expected_exit_class,omitempty"`
-}
-type OutboundCheckPlan struct {
-	Outbound string          `json:"outbound"`
-	Required bool            `json:"required"`
-	Checks   []OutboundCheck `json:"checks"`
-}
+type OutboundCheck = routecheck.Check
+type OutboundCheckPlan = routecheck.Plan
+type OutboundCheckProfile = routecheck.Profile
+type OutboundCheckLeaf = routecheck.Leaf
+type OutboundCheckExpr = routecheck.Expr
+type OutboundCheckQuorum = routecheck.Quorum
 
 // Initial failover is explicit and scoped to an internal destination rule.
 // Public exit classes require independent exit evidence before adoption.
@@ -88,19 +83,14 @@ type NetworkSettings struct {
 	RouteFailover    *RouteFailoverPlan   `json:"routeFailover,omitempty"`
 }
 
-func (NetworkSettings) String() string     { return "NetworkSettings([redacted])" }
-func (NetworkSettings) GoString() string   { return "NetworkSettings([redacted])" }
-func (RouteRule) String() string           { return "RouteRule([redacted])" }
-func (RouteRule) GoString() string         { return "RouteRule([redacted])" }
-func (DNSServer) String() string           { return "DNSServer([redacted])" }
-func (DNSServer) GoString() string         { return "DNSServer([redacted])" }
-func (DNSRule) String() string             { return "DNSRule([redacted])" }
-func (DNSRule) GoString() string           { return "DNSRule([redacted])" }
-func (OutboundCheck) String() string       { return "OutboundCheck([redacted])" }
-func (OutboundCheck) GoString() string     { return "OutboundCheck([redacted])" }
-func (OutboundCheckPlan) String() string   { return "OutboundCheckPlan([redacted])" }
-func (OutboundCheckPlan) GoString() string { return "OutboundCheckPlan([redacted])" }
-
+func (NetworkSettings) String() string   { return "NetworkSettings([redacted])" }
+func (NetworkSettings) GoString() string { return "NetworkSettings([redacted])" }
+func (RouteRule) String() string         { return "RouteRule([redacted])" }
+func (RouteRule) GoString() string       { return "RouteRule([redacted])" }
+func (DNSServer) String() string         { return "DNSServer([redacted])" }
+func (DNSServer) GoString() string       { return "DNSServer([redacted])" }
+func (DNSRule) String() string           { return "DNSRule([redacted])" }
+func (DNSRule) GoString() string         { return "DNSRule([redacted])" }
 func DecodeNetworkSettings(raw []byte) (NetworkSettings, error) {
 	var value NetworkSettings
 	if len(raw) > 262144 || identity.DecodeConfiguration(raw, &value) != nil {
@@ -110,23 +100,7 @@ func DecodeNetworkSettings(raw []byte) (NetworkSettings, error) {
 	if err != nil || !boundedNumbers(parsed) {
 		return NetworkSettings{}, ErrInvalid
 	}
-	// Presence is part of the closed wire contract. A plain string field would
-	// otherwise collapse an explicit null/empty foreign-method predicate into
-	// its zero value before the compiler can reject the extra field.
-	root, _ := parsed.(map[string]any)
-	plans, _ := root["routeChecks"].([]any)
-	for _, plan := range plans {
-		object, _ := plan.(map[string]any)
-		checks, _ := object["checks"].([]any)
-		for _, rawCheck := range checks {
-			check, _ := rawCheck.(map[string]any)
-			_, hasIP := check["expected_ip"]
-			_, hasCountry := check["expected_exit_class"]
-			if hasIP != (check["method"] == "https_exit_ip") || hasCountry != (check["method"] == "https_exit_country") {
-				return NetworkSettings{}, ErrInvalid
-			}
-		}
-	}
+	// routecheck.Plan owns exact XOR, null and primitive-field presence checks.
 	return value, nil
 }
 
@@ -332,52 +306,7 @@ func emitDNSServer(tag string, server DNSServer, graph CompiledGraph) (map[strin
 
 // CompileNetwork produces the narrow engine network document. It neither
 // flattens source-layer provenance nor exports subscription URLs or SDK keys.
-func outboundCheckHost(host string) bool {
-	ip, err := netip.ParseAddr(host)
-	return err == nil && ip.Zone() == "" || networkHost(host, false)
-}
-
-func outboundCheckPort(port string) bool {
-	n, err := strconv.Atoi(port)
-	return err == nil && n > 0 && n <= 65535 && len(port) <= 5 &&
-		strings.IndexFunc(port, func(r rune) bool { return r < '0' || r > '9' }) < 0
-}
-
-func outboundCheckTarget(check OutboundCheck) bool {
-	raw := check.Target
-	if len(raw) < 1 || len(raw) > 2048 || strings.IndexFunc(raw, func(r rune) bool { return r <= 32 || r > 126 }) >= 0 {
-		return false
-	}
-	if check.Method == "https_exit_ip" {
-		address, err := netip.ParseAddr(check.ExpectedIP)
-		if len(check.ExpectedIP) > 45 || err != nil || address.Zone() != "" || address.Is4In6() {
-			return false
-		}
-	} else if check.ExpectedIP != "" {
-		return false
-	}
-	if check.Method == "https_exit_country" {
-		if check.ExpectedExitClass != "RU" && check.ExpectedExitClass != "NON_RU" {
-			return false
-		}
-	} else if check.ExpectedExitClass != "" {
-		return false
-	}
-	switch check.Method {
-	case "tcp", "ssh_banner":
-		host, port, err := net.SplitHostPort(raw)
-		return err == nil && outboundCheckHost(host) && outboundCheckPort(port)
-	case "tls", "https_204", "https_exit_ip", "https_exit_country":
-		target, err := url.Parse(raw)
-		return err == nil && target.Scheme == "https" && target.User == nil && target.Opaque == "" &&
-			!strings.Contains(raw, "#") && !strings.HasSuffix(target.Host, ":") && outboundCheckHost(target.Hostname()) &&
-			(target.Port() == "" || outboundCheckPort(target.Port())) &&
-			(check.Method != "https_exit_country" || (target.Path == "" || target.Path == "/") &&
-				target.RawPath == "" && target.RawQuery == "" && !target.ForceQuery)
-	default:
-		return false
-	}
-}
+func outboundCheckTarget(check OutboundCheck) bool { return routecheck.ValidTarget(check) }
 
 func routeChecks(graph CompiledGraph, plans []OutboundCheckPlan) (json.RawMessage, error) {
 	if len(plans) == 0 {
@@ -386,14 +315,30 @@ func routeChecks(graph CompiledGraph, plans []OutboundCheckPlan) (json.RawMessag
 	if len(plans) > 16 {
 		return nil, ErrInvalid
 	}
+	managed := map[string]bool{}
+	for _, raw := range graph.Outbounds {
+		var n struct {
+			Type string `json:"type"`
+			Tag  string `json:"tag"`
+		}
+		if json.Unmarshal(raw, &n) != nil {
+			return nil, ErrInvalid
+		}
+		if n.Type == "syn443-adaptive" {
+			managed[n.Tag] = true
+		}
+	}
+	if validateConcreteCheckPaths(graph.Outbounds, plans, managed) != nil {
+		return nil, ErrInvalid
+	}
 	seen := make(map[string]bool, len(plans))
 	for _, plan := range plans {
 		path, ok := graph.Capabilities[plan.Outbound]
-		if !ok || !path.TCP || seen[plan.Outbound] || len(plan.Checks) < 1 || len(plan.Checks) > 4 {
+		if !ok || !path.TCP || seen[plan.Outbound] || plan.Validate() != nil {
 			return nil, ErrInvalid
 		}
 		seen[plan.Outbound] = true
-		for _, check := range plan.Checks {
+		for _, check := range plan.AllChecks() {
 			if !outboundCheckTarget(check) {
 				return nil, ErrInvalid
 			}
@@ -420,6 +365,11 @@ func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]an
 	plan := settings.RouteFailover
 	if plan == nil {
 		return nil, nil
+	}
+	for _, checks := range settings.RouteChecks {
+		if checks.Profile != nil {
+			return nil, ErrInvalid
+		}
 	}
 	if plan.ProbeCooldownRollout != nil && (!plan.ProbeCooldown || !plan.ProbeCooldownRollout.valid()) {
 		return nil, ErrInvalid
@@ -471,10 +421,10 @@ func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]an
 		byOutbound[check.Outbound] = check
 	}
 	base := byOutbound[plan.Selector]
-	if !base.Required || len(base.Checks) == 0 {
+	if !base.Required || base.Profile != nil || base.Validate() != nil {
 		return nil, ErrInvalid
 	}
-	for _, check := range base.Checks {
+	for _, check := range base.AllChecks() {
 		if check.Method == "https_exit_ip" || check.Method == "https_exit_country" {
 			return nil, ErrInvalid
 		}

@@ -24,3 +24,30 @@ route_names=[c["name"] for c in route_graph["validCases"]+route_graph["invalidCa
 assert len(route_names)==len(set(route_names)) and len(route_graph["invalidCases"])>=60
 assert {"route-graph.schema.json","route-graph-vectors.json"} <= lock["files"].keys()
 print("Closed route graph: shared positive/negative contract fixtures locked")
+
+profile_name="route-check-profile-v2"
+assert {profile_name+".schema.json",profile_name+"-vectors.json"} <= lock["files"].keys()
+profiles=json.loads((root/"contracts/v1"/(profile_name+"-vectors.json")).read_text())
+assert profiles["schemaVersion"]==1
+groups=("validCases","invalidCases","invalidRawCases","truthCases","legacyCases")
+profile_names=[case["name"] for group in groups for case in profiles[group]]
+assert len(profile_names)==len(set(profile_names))
+assert all(re.fullmatch(r"[A-Za-z0-9-]{1,100}",name) for name in profile_names)
+assert len(profiles["validCases"])>=9 and len(profiles["invalidCases"])>=37
+assert len(profiles["invalidRawCases"])>=6 and len(profiles["truthCases"])>=51
+assert {"any-two","all-two","quorum-two-of-three","sequential-stages",
+        "unconditional-security-gates","unordered-leaves-ordered-branches",
+        "html-escape-canonical-hash"} <= {case["name"] for case in profiles["validCases"]}
+for case in profiles["validCases"]+profiles["legacyCases"]:
+    assert re.fullmatch(r"[0-9a-f]{64}",case["sha256"])
+for case in profiles["invalidRawCases"]:
+    assert isinstance(case["raw"],str) and 0<len(case["raw"].encode())<=24000
+for case in profiles["truthCases"]:
+    leaves={leaf["id"] for leaf in case["profile"]["leaves"]}
+    assert set(case["results"])==set(case["leafStates"])==leaves
+    assert len(case["visited"])==len(set(case["visited"]))
+    assert set(case["visited"])<=leaves and case["expected"] in {"TRUE","FALSE","UNKNOWN"}
+    assert set(case["results"].values())<={"TRUE","FALSE","UNKNOWN"}
+    assert set(case["leafStates"].values())<={"TRUE","FALSE","UNKNOWN","SKIPPED"}
+    assert {key for key,value in case["leafStates"].items() if value!="SKIPPED"}==set(case["visited"])
+print("Bounded route check profile: common syntax, truth and legacy-hash fixtures locked")
