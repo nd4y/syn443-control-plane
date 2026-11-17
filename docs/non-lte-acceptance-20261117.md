@@ -24,7 +24,8 @@ The later v90 operation-reconciliation candidate is not covered by that receipt.
 PR61 adds fourteen actual Go/PostgreSQL/HTTP outcomes and six validator cases.
 PR62 adds six actual CLI outcomes and five validator cases while retaining the
 fourteen eligibility outcomes. Its fingerprint command reads bounded owner
-input and returns hashes only; it does not authorize an account, load runtime
+input and returns closed metadata including native owner and grant hashes;
+it does not authorize an account, load runtime
 configuration, connect to SQL or prove live ownership. It has not been executed
 against the pilot. Neither PR61 nor PR62 is claimed as a deployed feature.
 
