@@ -472,7 +472,7 @@ func (s *Store) Refresh(ctx context.Context, b Binding, token, id, bodyHash stri
 		}
 		return result, ErrReuse
 	}
-	result = Session{b.Device, random(), random(), min(now.Unix()+600, a.Until) * 1000, current.RefreshUntil * 1000, current.Generation + 1, random()}
+	result = Session{b.Device, random(), random(), min(now.Unix()+600, a.Until, current.RefreshUntil) * 1000, current.RefreshUntil * 1000, current.Generation + 1, random()}
 	_, e = tx.ExecContext(ctx, `UPDATE identity_sessions SET access_hash=$2,refresh_hash=$3,access_until=$4,generation=$5,nonce=$6 WHERE id=$1`, b.Session, identity.Hash([]byte(result.AccessToken)), identity.Hash([]byte(result.RefreshToken)), result.AccessUntilMs/1000, result.Generation, result.Nonce)
 	if e != nil {
 		return result, e

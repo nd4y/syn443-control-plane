@@ -1,5 +1,13 @@
 # Testing and release gates
 
+The [refresh-family boundary correction](session-refresh-boundary.md) adds six
+mandatory PostgreSQL roots in the existing enrollment job. Its actual Go JSON
+stream must contain each exact enrollment-package run and pass once, one package
+completion, and no failure, skip or error. Five validator unit cases run in the
+existing documents job. JSON and coverage evidence retain the privacy/secret
+scans before upload; race, timeout, role and coverage limits are unchanged.
+Source is ready; execution, deployment and client recovery remain pending.
+
 Operation-reconciliation candidate: the existing disposable catalogue and provisioning PostgreSQL jobs must provide all28 named outcomes (5 catalogue,23 provisioning), checked by `tools/check_operation_reconcile_evidence.py`. Its6 validator unit cases run in the existing documents job. These are pending source gates. Existing race, coverage, privacy, quota, HTTP and worker checks remain mandatory; no live database or client activation runs in CI. See [operation outcome reconciliation](operation-outcome-reconciliation.md).
 
 The [public Go layer-wire fixture](layer-wire-fixture.md) adds six mandatory
