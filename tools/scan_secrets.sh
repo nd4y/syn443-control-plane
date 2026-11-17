@@ -15,6 +15,13 @@ if [ "$#" -eq 0 ]; then
 else
   python3 tools/check_apk_secrets.py "$task_dir/gitleaks" "$@"
   for path in "$@"; do
-    "$task_dir/gitleaks" dir "$path" --config .gitleaks.toml --redact=100 --no-banner --max-archive-depth=3
+    if "$task_dir/gitleaks" dir "$path" --config .gitleaks.toml --redact=100 --no-banner --max-archive-depth=3 \
+      --report-format json --report-path "$task_dir/findings.json"; then
+      :
+    else
+      status=$?
+      python3 tools/summarize_secret_findings.py "$task_dir/findings.json" || true
+      exit "$status"
+    fi
   done
 fi
