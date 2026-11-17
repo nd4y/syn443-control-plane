@@ -41,7 +41,7 @@ class CheckPlanEvidenceTest(unittest.TestCase):
         return root
 
     def test_twenty_five_roots_and_fifty_six_named_subcases_need_actual_complete_packages(self):
-        for stage, counts in {'core': dict(roots=21, subcases=52, outcomes=73, packages=4),
+        for stage, counts in {'core': dict(roots=22, subcases=52, outcomes=74, packages=4),
                               'postgres': dict(roots=4, subcases=4, outcomes=8, packages=1)}.items():
             self.assertEqual(counts, self.run_rows(self.rows(stage), stage))
             self.assertEqual(counts['outcomes'], len(expected_cases(ROOT, stage)))
@@ -53,7 +53,7 @@ class CheckPlanEvidenceTest(unittest.TestCase):
                         frames.append(dict(Action='output', Package=row['Package'], Test=row['Test'],
                                            Output='synthetic public test output', OutputType=kind))
             self.assertEqual(counts, self.run_rows(frames, stage))
-        self.assertEqual(25, sum(len(names) for names in REQUIRED.values()))
+        self.assertEqual(26, sum(len(names) for names in REQUIRED.values()))
 
     def test_every_required_root_child_run_pass_and_package_start_completion_is_mandatory(self):
         for stage in REQUIRED:
@@ -171,7 +171,7 @@ class CheckPlanEvidenceTest(unittest.TestCase):
             verify([], 'unknown')
         # Successful build diagnostics are neither starts nor test outcomes.
         build = dict(Action='build-output', ImportPath=package, Output='synthetic public build output')
-        self.assertEqual(21, self.run_rows([build] + self.rows('core'), 'core')['roots'])
+        self.assertEqual(22, self.run_rows([build] + self.rows('core'), 'core')['roots'])
         for action in ('run', 'pass'):
             wanted = dict(Action=action, Package=package, Test=COMMON_ROOT)
             frame = dict(wanted, Action='output', Output='synthetic public frame', OutputType='frame')
@@ -235,7 +235,7 @@ class CheckPlanEvidenceTest(unittest.TestCase):
                 with self.assertRaises(AssertionError):
                     self.run_rows(self.rows('core'), 'core', root)
             path.write_text(original, encoding='utf-8')
-            self.assertEqual(73, self.run_rows(self.rows('core'), 'core', root)['outcomes'])
+            self.assertEqual(74, self.run_rows(self.rows('core'), 'core', root)['outcomes'])
 
     def test_existing_workflow_runs_one_documents_gate_and_both_existing_json_stages(self):
         workflow = (ROOT / '.github/workflows/ci.yml').read_text(encoding='utf-8')

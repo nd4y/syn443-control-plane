@@ -27,6 +27,7 @@ SOURCE_REQUIRED = {
         'TestCheckPlanV2ActualPlanOwnsProfileBeforeSourceResolverMutation',
         'TestCheckPlanV2MetadataBudgetCountsEveryDeclaredLeafAndAllRows',
         'TestCheckPlanV2DoesNotOptLegacySelectorFailoverIntoMixedObservations',
+        'TestCheckPlanV2EmbeddedOpenAPIAndActualCompilerPreserveClosedRows',
     },
     'internal/policy/check_plan_test.go': {
         'TestCheckPlanV2PolicyRequiresIffCapabilityKeyBoundConfigureAndHealth',
@@ -52,7 +53,7 @@ SOURCES = {
 REQUIRED = {stage: {name: PREFIX + Path(path).parent.as_posix()
                     for path in paths for name in SOURCE_REQUIRED[path]}
             for stage, paths in SOURCES.items()}
-assert {stage: len(names) for stage, names in REQUIRED.items()} == {'core': 21, 'postgres': 4}
+assert {stage: len(names) for stage, names in REQUIRED.items()} == {'core': 22, 'postgres': 4}
 COMMON_ROOT = 'TestCheckPlanV2SharedContractValidInvalidAndRawVectors'
 PG_ROOT = 'TestSQLCheckPlanV2FinalSourceLayerExpiryAndCancellationFencesPreserveBaseline'
 VECTOR_PATH = 'contracts/v1/route-check-profile-v2-vectors.json'
@@ -140,7 +141,7 @@ def expected_cases(root, stage):
             else:
                 assert type(case['profile']) is dict, 'Invalid shared profile payload'
             result[COMMON_ROOT + '/' + prefix + name] = REQUIRED[stage][COMMON_ROOT]
-    assert len(result) == 73, 'Missing shared check-plan execution identities'
+    assert len(result) == 74, 'Missing shared check-plan execution identities'
     return result
 
 

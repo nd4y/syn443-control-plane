@@ -51,3 +51,22 @@ for case in profiles["truthCases"]:
     assert set(case["leafStates"].values())<={"TRUE","FALSE","UNKNOWN","SKIPPED"}
     assert {key for key,value in case["leafStates"].items() if value!="SKIPPED"}==set(case["visited"])
 print("Bounded route check profile: common syntax, truth and legacy-hash fixtures locked")
+
+# Keep the actual authenticated HTTP Action schema in sync without external refs.
+profile_schema=json.loads((root/"contracts/v1/route-check-profile-v2.schema.json").read_text())
+profile_api=json.loads((root/"contracts/v1/control-openapi.json").read_text())["components"]["schemas"]
+profile_refs={"check":"RouteCheckProfileV2Check","leaf":"RouteCheckProfileV2Leaf","expr":"RouteCheckProfileV2Expr"}
+def profile_api_value(value):
+    if isinstance(value,dict):return {key:profile_api_value(item) for key,item in value.items()}
+    if isinstance(value,list):return [profile_api_value(item) for item in value]
+    if isinstance(value,str) and value.startswith("#/$defs/"):
+        return "#/components/schemas/"+profile_refs[value.removeprefix("#/$defs/")]
+    return value
+assert profile_api["RouteCheckProfileV2"]==profile_api_value({key:value for key,value in profile_schema.items() if key not in {"$schema","$id","$defs"}})
+for key,value in profile_schema["$defs"].items():
+    assert profile_api[profile_refs[key]]==profile_api_value(value)
+profile_row=profile_api["PlanOutboundChecks"]
+assert profile_row["additionalProperties"] is False and profile_row["required"]==["outbound","required"]
+assert profile_row["properties"]["profile"]=={"$ref":"#/components/schemas/RouteCheckProfileV2"}
+assert profile_row["oneOf"]==[{"required":["checks"],"not":{"required":["profile"]}},{"required":["profile"],"not":{"required":["checks"]}}]
+print("HTTP control Action uses the same closed check profile and exact XOR row")

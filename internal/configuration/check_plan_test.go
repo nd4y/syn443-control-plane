@@ -8,7 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nd4y/syn443-control-plane/contracts"
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 func v2Profile(checks ...OutboundCheck) *OutboundCheckProfile {
@@ -237,4 +239,169 @@ func TestCheckPlanV2DoesNotOptLegacySelectorFailoverIntoMixedObservations(t *tes
 	if ValidateIssuedCheckPlans(forged) == nil {
 		t.Fatal("forged mixed failover bypassed independent boundary")
 	}
+}
+
+func TestCheckPlanV2EmbeddedOpenAPIAndActualCompilerPreserveClosedRows(t *testing.T) {
+	raw, e := contracts.Files.ReadFile("v1/control-openapi.json")
+	if e != nil {
+		t.Fatal(e)
+	}
+	var document any
+	if json.Unmarshal(raw, &document) != nil {
+		t.Fatal("invalid embedded OpenAPI")
+	}
+	compiler := jsonschema.NewCompiler()
+	const base = "https://contracts.example.invalid/control-openapi.json"
+	if e := compiler.AddResource(base, document); e != nil {
+		t.Fatal(e)
+	}
+	rowSchema, e := compiler.Compile(base + "#/components/schemas/PlanOutboundChecks")
+	if e != nil {
+		t.Fatal(e)
+	}
+	// This is the same embedded Action root used by catalog.loadControlSchema,
+	// not a standalone replacement schema that bypasses the actual HTTP gate.
+	actionSchema, e := compiler.Compile(base + "#/components/schemas/Action")
+	if e != nil {
+		t.Fatal(e)
+	}
+	vectorsRaw, e := contracts.Files.ReadFile("v1/route-check-profile-v2-vectors.json")
+	if e != nil {
+		t.Fatal(e)
+	}
+	var vectors struct {
+		Valid []struct {
+			Name    string          `json:"name"`
+			Profile json.RawMessage `json:"profile"`
+		} `json:"validCases"`
+	}
+	if json.Unmarshal(vectorsRaw, &vectors) != nil || len(vectors.Valid) != 9 {
+		t.Fatal("shared positive profile scope changed")
+	}
+	graph := networkGraph(t)
+	compileRow := func(row map[string]any) (OutboundCheckPlan, []byte, error) {
+		wire, err := json.Marshal(row)
+		if err != nil {
+			return OutboundCheckPlan{}, nil, err
+		}
+		var plan OutboundCheckPlan
+		if err = json.Unmarshal(wire, &plan); err != nil {
+			return OutboundCheckPlan{}, nil, err
+		}
+		settings := networkBase()
+		settings.RouteChecks = []OutboundCheckPlan{plan}
+		engine, err := CompileNetwork(graph, settings)
+		return plan, engine, err
+	}
+	for _, vector := range vectors.Valid {
+		var profile any
+		if json.Unmarshal(vector.Profile, &profile) != nil {
+			t.Fatal("invalid positive vector")
+		}
+		row := map[string]any{"outbound": "entry", "required": true, "profile": profile}
+		if e := rowSchema.Validate(row); e != nil {
+			t.Fatal("embedded row rejected valid shared profile", vector.Name, e)
+		}
+		decoded, engine, e := compileRow(row)
+		if e != nil || decoded.Profile == nil || ValidateIssuedCheckPlans(engine) != nil {
+			t.Fatal("actual compiler rejected OpenAPI profile", vector.Name, e)
+		}
+		var root struct {
+			Plans []OutboundCheckPlan `json:"route_checks"`
+		}
+		if json.Unmarshal(engine, &root) != nil || len(root.Plans) != 1 || root.Plans[0].Checks != nil || root.Plans[0].Profile == nil {
+			t.Fatal("schema/codec handoff flattened profile")
+		}
+		before, _ := json.Marshal(decoded.Profile)
+		after, _ := json.Marshal(root.Plans[0].Profile)
+		if !bytes.Equal(before, after) {
+			t.Fatal("compiler rewrote the accepted program")
+		}
+		portable := planBase()
+		portable.Network.RouteChecks = []OutboundCheckPlan{decoded}
+		planWire, e := json.Marshal(portable)
+		var planValue any
+		if e != nil || json.Unmarshal(planWire, &planValue) != nil {
+			t.Fatal("portable fixture")
+		}
+		action := map[string]any{"version": 1, "action": "configuration.draft.put", "requestId": "check-plan-openapi-request-0001", "payload": map[string]any{"draft": map[string]any{"id": "check-plan-draft", "revision": 0, "targetKind": "device", "targetId": "synthetic-device", "baseRevision": 0, "baseHash": "", "plan": planValue, "savedAt": 0}}}
+		if e := actionSchema.Validate(action); e != nil {
+			t.Fatal("actual HTTP Action schema rejected portable profile", vector.Name, e)
+		}
+		owned, e := DecodeNetworkPlan(planWire)
+		if e != nil {
+			t.Fatal(e)
+		}
+		compiled, e := CompileNetworkPlan(context.Background(), owned, defaultGraphResolver())
+		if e != nil || !bytes.Contains(compiled.EngineConfig, []byte(`"profile":`)) {
+			t.Fatal("full compiler dropped schema-accepted profile", e)
+		}
+	}
+	legacy := map[string]any{"outbound": "entry", "required": false, "checks": []any{map[string]any{"method": "tcp", "target": "a.example.invalid:443"}}}
+	if rowSchema.Validate(legacy) != nil {
+		t.Fatal("legacy row contract changed")
+	}
+	if p, _, e := compileRow(legacy); e != nil || p.Profile != nil || len(p.Checks) != 1 {
+		t.Fatal("legacy row no longer compiles", e)
+	}
+	var firstProfile map[string]any
+	if json.Unmarshal(vectors.Valid[0].Profile, &firstProfile) != nil {
+		t.Fatal("fixture")
+	}
+	for _, kind := range []string{"both", "neither", "null-profile", "null-checks", "unknown", "unknown-profile", "missing-required", "wrong-required", "null-required", "wrong-outbound", "empty-outbound", "invalid-outbound"} {
+		row := map[string]any{"outbound": "entry", "required": true, "profile": firstProfile}
+		switch kind {
+		case "both":
+			row["checks"] = legacy["checks"]
+		case "neither":
+			delete(row, "profile")
+		case "null-profile":
+			row["profile"] = nil
+		case "null-checks":
+			delete(row, "profile")
+			row["checks"] = nil
+		case "unknown":
+			row["unknown"] = false
+		case "unknown-profile":
+			changed := map[string]any{}
+			for key, value := range firstProfile {
+				changed[key] = value
+			}
+			changed["unknown"] = false
+			row["profile"] = changed
+		case "missing-required":
+			delete(row, "required")
+		case "wrong-required":
+			row["required"] = "true"
+		case "null-required":
+			row["required"] = nil
+		case "wrong-outbound":
+			row["outbound"] = false
+		case "empty-outbound":
+			row["outbound"] = ""
+		case "invalid-outbound":
+			row["outbound"] = "not/a/tag"
+		}
+		if rowSchema.Validate(row) == nil {
+			t.Fatal("OpenAPI accepted ambiguous/invalid row", kind)
+		}
+		if _, _, e := compileRow(row); e == nil {
+			t.Fatal("codec/compiler accepted ambiguous/invalid row", kind)
+		}
+	}
+	unknown := map[string]any{"outbound": "unresolved", "required": true, "profile": firstProfile}
+	if rowSchema.Validate(unknown) != nil {
+		t.Fatal("shape schema inferred graph authority")
+	}
+	if _, _, e := compileRow(unknown); e == nil {
+		t.Fatal("shape-valid row inferred an actual outbound")
+	}
+	rowWire, _ := json.Marshal(map[string]any{"outbound": "entry", "required": true, "profile": firstProfile})
+	fractional := bytes.Replace(rowWire, []byte(`"revision":1`), []byte(`"revision":1.0`), 1)
+	var decoded OutboundCheckPlan
+	if bytes.Equal(fractional, rowWire) || json.Unmarshal(fractional, &decoded) == nil {
+		t.Fatal("codec discarded exact integer-token guard")
+	}
+	// Standard JSON Schema may regard1.0 as an integer. The typed codec above,
+	// not a fabricated JSON Schema claim, enforces the lexical wire boundary.
 }
