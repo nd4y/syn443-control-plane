@@ -19,6 +19,9 @@ func run() error {
 	if len(os.Args) != 2 {
 		return identity.ErrInvalid
 	}
+	if os.Args[1] == "fingerprint-grants" {
+		return fingerprintGrants(os.Stdin, os.Stdout, time.Now)
+	}
 	if os.Args[1] == "bootstrap-profile" {
 		return runBootstrapProfile()
 	}
