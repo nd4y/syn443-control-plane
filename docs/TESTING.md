@@ -1,5 +1,13 @@
 # Testing and release gates
 
+The [read-only native owner-grant fingerprint command](owner-grant-fingerprint.md)
+adds six exact CLI roots to the existing complete Go race JSON stream. The
+source-bound gate requires every run/pass and one CLI-package completion without
+failure, skip, substitution or duplicate roots. Five validator negative unit
+cases run in the existing documents job. The existing Go log scans, artifact,
+eight runtime binaries and all limits are unchanged. Source is pending Actions
+and operator preflight; the command never authorizes accounts or runs migrations.
+
 The [refresh-family boundary correction](session-refresh-boundary.md) adds six
 mandatory PostgreSQL roots in the existing enrollment job. Its actual Go JSON
 stream must contain each exact enrollment-package run and pass once, one package

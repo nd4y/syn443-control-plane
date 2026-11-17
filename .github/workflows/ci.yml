@@ -45,6 +45,7 @@ jobs:
       - run: python3 -m unittest discover -s tools -p 'test_operation_reconcile_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_operation_version_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_session_boundary_evidence.py'
+      - run: python3 -m unittest discover -s tools -p 'test_grant_fingerprint_evidence.py'
       - run: python3 -m unittest discover -s tools -p 'test_secret_findings_summary.py'
   go:
     needs: public-data
@@ -82,6 +83,7 @@ jobs:
           python3 tools/check_admin_bootstrap_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_enrollment_queue_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_service_discovery_evidence.py exit-country-core-tests.jsonl
+          python3 tools/check_grant_fingerprint_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_operation_version_evidence.py exit-country-core-tests.jsonl --stage core
       - name: Require actual ordinary signed-service discovery outcomes
         run: |
