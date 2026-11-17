@@ -1,5 +1,13 @@
 # Testing and release gates
 
+The [refresh-family boundary correction](session-refresh-boundary.md) adds six
+mandatory PostgreSQL roots in the existing enrollment job. Its actual Go JSON
+stream must contain each exact enrollment-package run and pass once, one package
+completion, and no failure, skip or error. Five validator unit cases run in the
+existing documents job. JSON and coverage evidence retain the privacy/secret
+scans before upload; race, timeout, role and coverage limits are unchanged.
+Source is ready; execution, deployment and client recovery remain pending.
+
 Operation-reconciliation candidate: the existing disposable catalogue and provisioning PostgreSQL jobs must provide all28 named outcomes (5 catalogue,23 provisioning), checked by `tools/check_operation_reconcile_evidence.py`. Its6 validator unit cases run in the existing documents job. These are pending source gates. Existing race, coverage, privacy, quota, HTTP and worker checks remain mandatory; no live database or client activation runs in CI. See [operation outcome reconciliation](operation-outcome-reconciliation.md).
 
 Protocol eligibility source candidate: `tools/check_operation_version_evidence.py` requires14 exact package/source-bound outcomes:7 normal roots from the existing complete Go race JSON,4 provisioning PostgreSQL roots and3 catalogue HTTP/PostgreSQL roots from their existing JSON streams. Each root needs one `run` then one `pass`, and its package must complete successfully once; failure, skip, error, missing/renamed/duplicate/late outcome or foreign package cannot substitute. Six validator unit cases run in the existing documents job, including source-name drift and malformed evidence negatives. No job, product test command, runtime limit, upload or privacy/coverage guard is relaxed. All14 actual outcomes and validator cases remain pending Actions. The read's owner declaration is eligibility only, never deployment proof or permission; retained pending versions stay immutable. See [service protocol eligibility](operation-outcome-reconciliation.md#service-protocol-eligibility---source-pending).
