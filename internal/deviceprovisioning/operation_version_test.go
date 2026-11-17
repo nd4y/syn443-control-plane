@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
-	"go/token"
+	gotoken "go/token"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -242,7 +242,7 @@ func TestOperationVersionOwnerFileAndActualApiWiringCannotInferOrOverrideEligibi
 		t.Fatal("world-readable owner declaration")
 	}
 	_, here, _, _ := runtime.Caller(0)
-	set := token.NewFileSet()
+	set := gotoken.NewFileSet()
 	source, e := parser.ParseFile(set, filepath.Join(filepath.Dir(here), "../../cmd/control-api/main.go"), nil, 0)
 	if e != nil {
 		t.Fatal(e)

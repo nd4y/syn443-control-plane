@@ -23,6 +23,12 @@ rights. Mutation authorization remains unchanged. Existing HTTP clock/proof
 bookkeeping remains; the read creates no configuration, provider, publication,
 draft, ledger or worker effect.
 
+On the public HTTP route, the existing outer catalogue admission still requires
+an unexpired catalogue permission for that control account. An unrelated source
+permission suffices for this nonsecret read; no configuration-target permission
+or fresh MFA is added. Removing every catalogue permission continues to deny the
+request. The protocol read does not bypass this existing transport boundary.
+
 The owner-protected `SYN443_CONFIGURATION_CONFIG` may contain the optional integer
 `configurationRequestVersion`. Absence,0 or1 advertises1. Only an explicit2
 advertises2, after the owner has coordinated the schema and every queue consumer

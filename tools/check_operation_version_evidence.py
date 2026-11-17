@@ -22,7 +22,7 @@ SOURCE_REQUIRED = {
         'TestSQLOperationVersionMalformedPayloadAndVersionTwoReadCannotCreateBusinessRows',
     },
     'internal/catalog/http_operation_version_test.go': {
-        'TestSQLConfigurationProtocolHttpUsesExistingBoundProofRouteWithoutObjectAclOrFreshMfa',
+        'TestSQLConfigurationProtocolHttpUsesExistingBoundProofRouteWithoutTargetAclOrFreshMfa',
         'TestSQLConfigurationProtocolHttpMalformedOrForeignRequestsNeverInvokeTheService',
         'TestSQLConfigurationProtocolHttpDoesNotBroadenV2ActionsOrTreatFeatureDenialAsUnsupported',
     },

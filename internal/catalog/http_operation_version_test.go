@@ -12,12 +12,17 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
 
-func TestSQLConfigurationProtocolHttpUsesExistingBoundProofRouteWithoutObjectAclOrFreshMfa(t *testing.T) {
+func TestSQLConfigurationProtocolHttpUsesExistingBoundProofRouteWithoutTargetAclOrFreshMfa(t *testing.T) {
 	f := adminHTTPFixture(t)
 	f.Verifier.Principal.ACR = "0"
 	f.Verifier.Principal.Methods = nil
 	f.Verifier.Principal.AuthTime = f.Now.Add(-time.Hour).Unix()
 	if _, e := fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, f.Actor.ID); e != nil {
+		t.Fatal(e)
+	}
+	// Preserve the existing outer catalog-admission gate. An unrelated source
+	// permission admits this control account, never a configuration target ACL.
+	if _, e := fixtureOwner.Exec(`INSERT INTO catalog_acl(actor,action,target_kind,target_id,expires) VALUES($1,'sources.read','source','unrelated-synthetic-source',$2)`, f.Actor.ID, f.Now.Add(time.Hour).Unix()); e != nil {
 		t.Fatal(e)
 	}
 	const businessQuery = `SELECT (SELECT count(*) FROM catalog_jobs)+(SELECT count(*) FROM catalog_operations)+(SELECT count(*) FROM catalog_audit)`
@@ -52,6 +57,14 @@ func TestSQLConfigurationProtocolHttpUsesExistingBoundProofRouteWithoutObjectAcl
 	f.API.ServeHTTP(w, f.request(raw, proof))
 	if w.Code != 403 || calls != 1 {
 		t.Fatal("reused DPoP admitted")
+	}
+	if _, e := fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, f.Actor.ID); e != nil {
+		t.Fatal(e)
+	}
+	w = httptest.NewRecorder()
+	f.API.ServeHTTP(w, f.request(raw, f.proof(t, raw)))
+	if w.Code != 403 || calls != 1 {
+		t.Fatal("missing outer catalog admission must remain denied")
 	}
 	var business int
 	if e := fixtureOwner.QueryRow(businessQuery).Scan(&business); e != nil || business != beforeBusiness {
