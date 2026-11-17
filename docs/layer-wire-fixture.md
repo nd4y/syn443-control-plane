@@ -61,7 +61,9 @@ edit changes the timeout. These fixture paths do not grant editing rights.
 The existing complete Actions race suite retains six exact wire fixture methods;
 the separate [projection fixture](layer-projection-fixture.md) adds seven more.
 The [operation reconciliation fixture](operation-wire-fixture.md) adds six
-source-bound cases through its separate `--operations` mode and artifact.
+source-bound cases through its separate `--operations` mode. Signed operation
+specimens stay temporary; its separate artifact publishes only a scanned
+source/count/hash report, as described in that document.
 The generation step requires all nineteen actual run/pass outcomes and one
 successful package completion, rejecting skips, failures, duplicates, renamed
 roots and missing outcomes. Only then does Actions generate
@@ -70,8 +72,10 @@ files into `SHA256SUMS`. Public-data and secret scanners must pass before the
 separate `layer-wire-evidence` artifact is uploaded. Existing bootstrap evidence
 and runtime artifacts are unchanged.
 
-The generated artifact must be taken from a fully accepted Actions run and copied
-byte-for-byte into the Android test resources with its provenance. This source
+The default layer-wire artifact must be taken from a fully accepted Actions run
+and copied byte-for-byte into the Android test resources with its provenance.
+The operation report is not a copied wire fixture; that consumer must regenerate
+the signed specimen from pinned Go source in its own Actions invocation. This source
 change has not been built, tested or generated locally. It does not establish
 an installed Android editor, server ACL/MFA access, publication, live device
 configuration, or physical acceptance. No API, schema, contract lock, key or SQL

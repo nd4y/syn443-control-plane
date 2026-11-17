@@ -270,16 +270,28 @@ jobs:
             dist/layer-projection/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
-      - name: Generate and scan separate actual Go operation reconciliation wire evidence
+      - name: Validate temporary Go operation specimens and scan their public metadata report
         id: layer-operation-scan
+        env:
+          SYN443_OPERATION_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
+          umask 077
+          test "$(git rev-parse HEAD)" = "$SYN443_OPERATION_SOURCE_SHA"
           mkdir -p dist/layer-operation
-          go run ./cmd/layer-fixture --operations > dist/layer-operation/operations-fixture.json
+          SYN443_OPERATION_FIXTURE="$(mktemp "${RUNNER_TEMP:?}/syn443-operation-fixture.XXXXXXXX.json")"
+          export SYN443_OPERATION_FIXTURE
+          readonly SYN443_OPERATION_FIXTURE
+          cleanup_operation_fixture() {
+            rm -f -- "$SYN443_OPERATION_FIXTURE"
+          }
+          trap cleanup_operation_fixture EXIT
+          go run ./cmd/layer-fixture --operations > "$SYN443_OPERATION_FIXTURE"
           python3 - <<'PY'
           import base64
           import hashlib
           import json
+          import os
           from pathlib import Path
           import re
           def closed_object(pairs):
@@ -299,8 +311,12 @@ jobs:
               value = base64.b64decode(raw + '=' * (-len(raw) % 4), altchars=b'-_', validate=True)
               assert base64.urlsafe_b64encode(value).decode('ascii').rstrip('=') == raw, 'Noncanonical original bytes'
               return value
-          raw = Path('dist/layer-operation/operations-fixture.json').read_bytes()
-          assert 0 < len(raw) <= 65536, 'Operation artifact byte bound'
+          specimen = Path(os.environ['SYN443_OPERATION_FIXTURE'])
+          runner_temp = Path(os.environ['RUNNER_TEMP']).resolve(strict=True)
+          assert specimen.parent.resolve(strict=True) == runner_temp and specimen.name.startswith('syn443-operation-fixture.') and specimen.name.endswith('.json')
+          assert specimen.is_file() and not specimen.is_symlink() and 0 < specimen.stat().st_size <= 65536, 'Temporary operation specimen byte bound'
+          raw = specimen.read_bytes()
+          assert 0 < len(raw) <= 65536, 'Temporary operation specimen byte bound'
           doc = parse(raw.decode('utf-8'))
           assert isinstance(doc, dict) and set(doc) == {'schemaVersion', 'syntheticOnly', 'nowMs', 'actor', 'apiOrigin', 'proposalWire', 'previewKeyId', 'previewRootSpkiB64', 'originals'}
           assert type(doc['schemaVersion']) is int and doc['schemaVersion'] == 1 and doc['syntheticOnly'] is True
@@ -364,10 +380,36 @@ jobs:
                           assert job['id'] == job_id and job['state'] == {'RECORDED': 'queued', 'RECORDED_RUNNING': 'running', 'RECORDED_READY': 'ready', 'RECORDED_PUBLISHED': 'published'}[label]
                   total += 1
           assert total == 36, 'Operation outcome matrix changed'
+          source = os.environ['SYN443_OPERATION_SOURCE_SHA']
+          assert re.fullmatch(r'[0-9a-f]{40}', source), 'Exact GitHub event-source commit required'
+          report = {'sourceCommit': source, 'producerTests': 19, 'originals': 8, 'outcomes': total,
+                    'fixtureBytes': len(raw), 'fixtureSHA256': digest(raw), 'syntheticOnly': True, 'specimensPublished': False}
+          safe = json.dumps(report, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('ascii') + b'\n'
+          assert 0 < len(safe) <= 4096
+          public = parse(safe.decode('ascii'))
+          assert isinstance(public, dict) and set(public) == {'sourceCommit', 'producerTests', 'originals', 'outcomes', 'fixtureBytes', 'fixtureSHA256', 'syntheticOnly', 'specimensPublished'}
+          assert public['sourceCommit'] == source and re.fullmatch(r'[0-9a-f]{64}', public['fixtureSHA256'])
+          assert all(type(public[key]) is int for key in ('producerTests', 'originals', 'outcomes', 'fixtureBytes'))
+          assert (public['producerTests'], public['originals'], public['outcomes']) == (19, 8, 36) and 0 < public['fixtureBytes'] <= 65536
+          assert public['syntheticOnly'] is True and public['specimensPublished'] is False
+          Path('dist/layer-operation/operation-wire-report.json').write_bytes(safe)
           print('Bounded synthetic actual Go operation wire: 8 originals, 36 outcomes, exact hashes and job identities')
           PY
-          git rev-parse HEAD > dist/layer-operation/SOURCE.txt
-          (cd dist/layer-operation && sha256sum operations-fixture.json SOURCE.txt > SHA256SUMS)
+          cleanup_operation_fixture
+          test ! -e "$SYN443_OPERATION_FIXTURE"
+          printf '%s\n' "$SYN443_OPERATION_SOURCE_SHA" > dist/layer-operation/SOURCE.txt
+          (cd dist/layer-operation && sha256sum operation-wire-report.json SOURCE.txt > SHA256SUMS)
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          public = Path('dist/layer-operation')
+          assert public.is_dir() and not public.is_symlink()
+          entries = list(public.iterdir())
+          assert {path.name for path in entries} == {'operation-wire-report.json', 'SOURCE.txt', 'SHA256SUMS'} and len(entries) == 3
+          assert all(path.is_file() and not path.is_symlink() for path in entries), 'Only three regular public evidence files'
+          assert (public / 'SOURCE.txt').read_text(encoding='ascii') == os.environ['SYN443_OPERATION_SOURCE_SHA'] + '\n'
+          assert not Path(os.environ['SYN443_OPERATION_FIXTURE']).exists(), 'Temporary signed specimen must be removed before scanning/upload'
+          PY
           python3 tools/check_public_data.py dist/layer-operation
           bash tools/scan_secrets.sh dist/layer-operation
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -375,7 +417,7 @@ jobs:
         with:
           name: layer-operation-evidence
           path: |
-            dist/layer-operation/operations-fixture.json
+            dist/layer-operation/operation-wire-report.json
             dist/layer-operation/SOURCE.txt
             dist/layer-operation/SHA256SUMS
           if-no-files-found: error

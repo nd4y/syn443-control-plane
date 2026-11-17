@@ -1,9 +1,12 @@
 # Actual Go operation reconciliation wire fixture
 
-`cmd/layer-fixture --operations` adds a separate synthetic wire producer for the
-native editor's retained-operation reconciliation codec. It is source-only until
-its Actions run, scans and artifact are accepted. It neither proves SQL outcomes
-nor activates client recovery, configuration publication or a live service.
+`cmd/layer-fixture --operations` is a separate synthetic wire producer for the
+native editor's retained-operation reconciliation codec. The producer and its
+19 source-bound cases are unchanged. This workflow revision validates the full
+signed specimens in Actions, removes them, then publishes only a scanned
+metadata report. Acceptance of that workflow revision remains pending Actions.
+It neither proves SQL outcomes nor activates client recovery, configuration
+publication or a live service.
 
 The producer accepts no input and requires `GITHUB_ACTIONS=true`. It marshals
 actual `invitation.Envelope`, configuration draft/proposal and
@@ -13,7 +16,8 @@ OpenAPI schema. No server DTO, route, schema, lock, SQL role or runtime trust is
 changed. The existing default layer-wire and `--projection` output paths are
 unchanged; an actual test compares their bytes before and after this new mode.
 
-The output root has exactly these fields:
+The temporary specimen output root has exactly these fields. This is the
+in-job ABI, not the public artifact:
 
 | Field | Meaning |
 | --- | --- |
@@ -61,12 +65,13 @@ are explicitly synthetic context, not assertions about a live device.
 
 For the two publish originals the producer creates one ephemeral P-256 key in
 memory, calls actual `configuration.SignPreview`, and immediately calls actual
-`VerifyPreview`. Only public SPKI and signed synthetic tickets leave generation.
+`VerifyPreview`. Public SPKI and signed synthetic tickets enter only the owned
+temporary specimen used by the in-job validation.
 Tests verify the tickets, reject a 64-byte zero signature and wrong root, actor,
 origin or expiry, and verify a new generation uses a different public key. The
-new fixture is intentionally nondeterministic. Its key is never persisted,
-installed, imported as an application root or used to grant publication rights.
-Only the exact accepted Actions artifact is a cross-language test input.
+new fixture is intentionally nondeterministic. Its private key is never
+persisted, installed, imported as an application root or used to grant
+publication rights. Neither tickets nor public SPKI are published in the report.
 
 Generation marshals before writing and fails if the complete UTF-8 JSON plus
 newline exceeds 65536 bytes. It fails on missing, failed or short output writes;
@@ -76,13 +81,38 @@ original layer-wire roots, seven projection roots and six operation roots.
 Skipped, failed, unknown, missing, repeated or late roots fail the source-bound
 evidence gate, as does a missing successful package completion.
 
-Actions generates the separate `layer-operation-evidence` artifact containing
-only `operations-fixture.json`, exact checkout `SOURCE.txt`, and `SHA256SUMS`.
-The normal public-data and secret scanners run before upload. A scanner failure
-blocks publication; this fixture adds no exception, encoding workaround or scan
-exclusion. Acceptance must retain the exact artifact/source/hash before copying
-it byte-for-byte into Android test resources. No local generation, executable
-suite, build, live client or physical test is claimed by this source change.
+Actions creates the specimen with `mktemp` only under the job's `RUNNER_TEMP`,
+with a scoped `SYN443_OPERATION_FIXTURE` path and restrictive file permissions.
+The exit trap can remove only that owned file. The existing complete validation
+still checks the whole bounded specimen, all eight originals, all 36 actual DTO
+wires, byte hashes and derived job identities. The file is explicitly removed
+before the public directory is scanned or uploaded; failure paths also execute
+the cleanup trap. No signed specimen is placed in a public artifact directory.
+
+The separate `layer-operation-evidence` artifact contains exactly three regular
+files: `operation-wire-report.json`, `SOURCE.txt`, and `SHA256SUMS`. The closed
+report has only `sourceCommit`, `producerTests` (19), `originals` (8), `outcomes`
+(36), `fixtureBytes` (1..65536), `fixtureSHA256` (lowercase SHA-256),
+`syntheticOnly:true`, and `specimensPublished:false`. It contains no JWT, public
+SPKI, original action body or DTO wire. The source is the exact GitHub event
+source used by the existing checkout policy (PR head, otherwise `github.sha`),
+verified against checkout HEAD and repeated in `SOURCE.txt`.
+
+The existing secret scanner rejected the signed synthetic specimen's JWT-shaped
+strings. Distribution is therefore withheld. The normal public-data and secret
+scanners now inspect the entire three-file report directory before upload, with
+no exception, encoding workaround, detector change or scan exclusion. Any new
+scanner failure still blocks publication. The report's fixture hash describes
+the discarded specimen of that run; it does not make those bytes available.
+
+Android cross-language conformance must instead pin an accepted public Go source
+commit and regenerate its own ephemeral specimen in GitHub Actions, passing
+those exact generated bytes to JVM conformance in the same invocation. That
+downstream wiring is separate work. Its fresh key/signature/hash can differ from
+the report, so there is no claim of an identical copied fixture artifact. The
+original deterministic layer-wire and projection artifacts retain their existing
+byte-for-byte consumer flow. No local generation, executable suite, build, live
+client or physical test is claimed by this workflow revision.
 
 Related source evidence: [original layer wire](layer-wire-fixture.md),
 [projection conformance](layer-projection-fixture.md), and
