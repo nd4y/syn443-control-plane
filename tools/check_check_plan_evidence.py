@@ -59,7 +59,7 @@ VECTOR_PATH = 'contracts/v1/route-check-profile-v2-vectors.json'
 VECTOR_COUNTS = {'validCases': 9, 'invalidCases': 37, 'invalidRawCases': 6,
                  'truthCases': 51, 'legacyCases': 1}
 PG_CHILDREN = ('source', 'layer', 'expiry', 'cancel')
-ROW_FIELDS = {'Time', 'Action', 'Package', 'ImportPath', 'Test', 'Elapsed', 'Output', 'FailedBuild'}
+ROW_FIELDS = {'Time', 'Action', 'Package', 'ImportPath', 'Test', 'Elapsed', 'Output', 'OutputType', 'FailedBuild'}
 ACTIONS = {'start', 'run', 'pause', 'cont', 'pass', 'fail', 'skip', 'output',
            'bench', 'build-output', 'build-fail', 'error'}
 
@@ -166,6 +166,10 @@ def verify(lines, stage, root=None):
         assert isinstance(action, str) and action in ACTIONS, 'Invalid check-plan action'
         for key, maximum in (('Package', 512), ('ImportPath', 512), ('Test', 512), ('Time', 128), ('FailedBuild', 512), ('Output', MAX_LINE)):
             assert key not in row or isinstance(row[key], str) and (key == 'Output' or row[key]) and len(row[key]) <= maximum, 'Malformed check-plan outcome metadata'
+        if 'OutputType' in row:
+            # Go1.27 labels output frames. This metadata cannot stand in for
+            # an actual run/pass, nor does an error frame itself decide a test.
+            assert action == 'output' and 'Output' in row and isinstance(row['OutputType'], str) and row['OutputType'] in {'frame', 'error'}, 'Invalid Go output frame metadata'
         if 'Elapsed' in row:
             elapsed = row['Elapsed']
             assert type(elapsed) in (int, float) and 0 <= elapsed <= 9007199254740991 and (type(elapsed) is int or math.isfinite(elapsed)), 'Malformed check-plan elapsed value'

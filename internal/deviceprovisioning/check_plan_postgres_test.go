@@ -180,7 +180,9 @@ func TestSQLCheckPlanV2FinalSourceLayerExpiryAndCancellationFencesPreserveBaseli
 			defer cancel()
 			switch change {
 			case "source":
-				if _, e = fixtureOwner.Exec(`UPDATE catalog_sources SET enabled=false WHERE id=$1`, n.source.ID); e != nil {
+				// Match Store.Fail(subscription_access_revoked): runtime access
+				// state changes without corrupting the encrypted source spec.
+				if _, e = fixtureOwner.Exec(`UPDATE catalog_sources SET state='revoked',access_state='revoked' WHERE id=$1`, n.source.ID); e != nil {
 					t.Fatal(e)
 				}
 			case "layer":
@@ -262,7 +264,9 @@ func TestSQLCheckPlanV2PublisherWaitsForConcurrentSourceRevokeWithoutIssuingProg
 	if !blocked {
 		t.Fatal("real PostgreSQL source wait not observed")
 	}
-	if _, e = hold.Exec(`UPDATE catalog_sources SET enabled=false WHERE id=$1`, n.source.ID); e != nil {
+	// The same coherent worker revoke transition, committed by the actual
+	// source-row lock owner before the publisher may continue.
+	if _, e = hold.Exec(`UPDATE catalog_sources SET state='revoked',access_state='revoked' WHERE id=$1`, n.source.ID); e != nil {
 		t.Fatal(e)
 	}
 	if e = hold.Commit(); e != nil {

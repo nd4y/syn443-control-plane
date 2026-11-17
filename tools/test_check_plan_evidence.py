@@ -45,6 +45,14 @@ class CheckPlanEvidenceTest(unittest.TestCase):
                               'postgres': dict(roots=4, subcases=4, outcomes=8, packages=1)}.items():
             self.assertEqual(counts, self.run_rows(self.rows(stage), stage))
             self.assertEqual(counts['outcomes'], len(expected_cases(ROOT, stage)))
+            frames = []
+            for row in self.rows(stage):
+                frames.append(row)
+                if row['Action'] == 'run':
+                    for kind in ('frame', 'error'):
+                        frames.append(dict(Action='output', Package=row['Package'], Test=row['Test'],
+                                           Output='synthetic public test output', OutputType=kind))
+            self.assertEqual(counts, self.run_rows(frames, stage))
         self.assertEqual(25, sum(len(names) for names in REQUIRED.values()))
 
     def test_every_required_root_child_run_pass_and_package_start_completion_is_mandatory(self):
@@ -136,6 +144,13 @@ class CheckPlanEvidenceTest(unittest.TestCase):
                      json.dumps(dict(Action='output', Package=package, Elapsed=True)),
                      json.dumps(dict(Action='output', Package=package, Elapsed=-1)),
                      json.dumps(dict(Action='output', Package=package, Elapsed=10**400)),
+                     json.dumps(dict(Action='output', Package=package, Output='synthetic', OutputType=[])),
+                     json.dumps(dict(Action='output', Package=package, Output='synthetic', OutputType=None)),
+                     json.dumps(dict(Action='output', Package=package, Output='synthetic', OutputType=True)),
+                     json.dumps(dict(Action='output', Package=package, Output='synthetic', OutputType='stdout')),
+                     json.dumps(dict(Action='output', Package=package, Output='synthetic', OutputType='')),
+                     json.dumps(dict(Action='output', Package=package, OutputType='frame')),
+                     json.dumps(dict(Action='run', Package=package, Test=COMMON_ROOT, Output='synthetic', OutputType='frame')),
                      json.dumps(dict(Action='output', Package=package, Extra='unknown')),
                      '{"Action":"output","Action":"output","Package":' + json.dumps(package) + '}',
                      '{"Action":"output","Package":' + json.dumps(package) + ',"Pack\\u0061ge":' + json.dumps(package) + '}',
@@ -157,6 +172,11 @@ class CheckPlanEvidenceTest(unittest.TestCase):
         # Successful build diagnostics are neither starts nor test outcomes.
         build = dict(Action='build-output', ImportPath=package, Output='synthetic public build output')
         self.assertEqual(21, self.run_rows([build] + self.rows('core'), 'core')['roots'])
+        for action in ('run', 'pass'):
+            wanted = dict(Action=action, Package=package, Test=COMMON_ROOT)
+            frame = dict(wanted, Action='output', Output='synthetic public frame', OutputType='frame')
+            with self.assertRaises(AssertionError):
+                self.run_rows([frame if row == wanted else row for row in rows], 'core')
 
     def test_source_names_package_declarations_build_tags_and_vector_emission_are_locked(self):
         for stage in REQUIRED:
