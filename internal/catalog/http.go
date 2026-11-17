@@ -247,7 +247,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		value, e = a.Invitations(ctx, token, r.Header.Get("DPoP"), raw, now)
-	} else if action.Action == "configuration.preview.request" || action.Action == "configuration.publish" || action.Action == "configuration.request.get" || action.Action == "configuration.inventory.get" || action.Action == "configuration.devices.list" || action.Action == "configuration.runtime.get" || action.Action == "configuration.layers.draft.get" || action.Action == "configuration.layers.draft.put" || action.Action == "configuration.layers.drafts.list" || action.Action == "configuration.layers.draft.discard" || action.Action == "configuration.history.get" {
+	} else if action.Action == "configuration.preview.request" || action.Action == "configuration.publish" || action.Action == "configuration.request.get" || action.Action == "configuration.inventory.get" || action.Action == "configuration.devices.list" || action.Action == "configuration.runtime.get" || action.Action == "configuration.layers.draft.get" || action.Action == "configuration.layers.draft.put" || action.Action == "configuration.layers.drafts.list" || action.Action == "configuration.layers.draft.discard" || action.Action == "configuration.history.get" || action.Action == "configuration.protocol.get" {
 		if a.Configurations == nil {
 			apiFailure(w, ErrDenied)
 			return
