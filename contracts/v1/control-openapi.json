@@ -83,6 +83,16 @@
       }
     },
     "schemas": {
+      "ConfigurationProtocol": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {"type": "integer", "const": 1},
+          "configurationRequestVersion": {"type": "integer", "enum": [1, 2]}
+        },
+        "required": ["version", "configurationRequestVersion"],
+        "description": "Closed reply to version-one configuration.protocol.get with an empty object payload. Current control JWT, exact DPoP and the restricted runtime role remain required. This is nonsecret service eligibility, not object/tenant data, ACL, fresh MFA, a preview, publication or device activation authority. Omitted/zero/one owner configuration advertises one; only an explicit owner declaration after a coordinated schema and all-consumer upgrade advertises two. The declaration does not attest deployment. Existing signed five-field administrative metadata, bootstrap, device/key projection and sessions do not change. Original pending bytes/versions are never rewritten."
+      },
       "ConfigurationOperationReconcile": {
         "type": "object",
         "additionalProperties": false,
@@ -442,6 +452,18 @@
       },
       "Action": {
         "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {"const": 1},
+              "action": {"const": "configuration.protocol.get"},
+              "requestId": {"type": "string", "minLength": 24, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]{24,128}$"},
+              "payload": {"type": "object", "additionalProperties": false, "properties": {}, "maxProperties": 0}
+            },
+            "required": ["version", "action", "requestId", "payload"],
+            "description": "Read-only service eligibility on the existing control action route; reply uses ConfigurationProtocol. Fresh MFA/object ACL are not required for this nonsecret read, but current control token, scope, exact one-use DPoP and runtime role are. The request envelope remains version one; version two is still restricted to the existing four mutations. A known unsupported old server may require conservative version-one creation of a NEW mutation. Authentication/MFA denial, quota, uncertainty or transport failure is not unsupported, and retained pending operations keep their original exact bytes and version."
+          },
           {
             "type": "object",
             "additionalProperties": false,

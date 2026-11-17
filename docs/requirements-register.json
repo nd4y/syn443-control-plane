@@ -1759,10 +1759,14 @@
       "text": "Пока панель недоступна, разрешённый локальный эксперимент может работать в границах действующей политики и lease; очередь публикации хранит черновик. При восстановлении сети администратор видит итоговый diff и актуальные права до публикации. Неактуальное административное право или lease не продлевается офлайн-черновиком.",
       "status": "planned",
       "evidence": [
-        "docs/operation-outcome-reconciliation.md"
+        "docs/operation-outcome-reconciliation.md",
+        "internal/deviceprovisioning/operation_version_test.go",
+        "internal/deviceprovisioning/operation_version_postgres_test.go",
+        "internal/catalog/http_operation_version_test.go",
+        "tools/check_operation_version_evidence.py"
       ],
-      "implementationScope": "Source-pending compact immutable operation ledger and fixed authenticated reconciliation distinguish v1 UNKNOWN, v2 atomic NO_EFFECT, RECORDED and recorded result unavailable.28 exact PostgreSQL/HTTP roots and unchanged role/race/coverage gates require Actions; no deployment or authority activation is claimed.",
-      "remainingScope": "Android pending-CAS receipt handling, compatibility/consumer activation, live migration/restore and physical reconciliation acceptance remain open."
+      "implementationScope": "Source/main-accepted compact immutable operation ledger and fixed authenticated reconciliation distinguish v1 UNKNOWN, v2 atomic NO_EFFECT, RECORDED and recorded result unavailable.28 exact PostgreSQL/HTTP roots and unchanged role/race/coverage gates passed Actions43973718639 and resulting main43975423153; no deployment or authority activation is claimed. A separate source-pending version-one service eligibility read has14 new actual-outcome roots and6 validator cases requiring Actions. Optional owner declaration defaults to1; explicit2 is not deployment proof or a role/MFA/publication grant. Existing pending bytes and versions stay unchanged.",
+      "remainingScope": "Android pending-CAS receipt handling, compatibility/consumer activation, live migration/restore and physical reconciliation acceptance remain open. Coordinated all-consumer deployment and client probe/fallback acceptance remain required; no owner declaration or live enablement is claimed."
     },
     {
       "id": "EDIT-11",
@@ -1858,9 +1862,12 @@
         "internal/deviceprovisioning/reauthentication_authority_postgres_test.go",
         "web-tests/control-reauthentication.spec.js",
         "docs/non-lte-acceptance-20261115.md",
-        "docs/service-discovery.md"
+        "docs/service-discovery.md",
+        "docs/operation-outcome-reconciliation.md",
+        "internal/deviceprovisioning/operation_version_test.go",
+        "internal/catalog/http_operation_version_test.go"
       ],
-      "implementationScope": " Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. Actions43655979806 passed all8 jobs including59 browser cases and actual isolated Keycloak OTP. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial.",
+      "implementationScope": " Scoped fresh-MFA denial and owner-bound web reauthentication preserve the original tab and exact pending operation; retry is explicit and all server grants remain mandatory. Actions43655979806 passed all8 jobs including59 browser cases and actual isolated Keycloak OTP. The dated2026-11-15 checkpoint records exact accepted source, CI and physical/live scope; statuses remain partial. Source-pending service protocol eligibility requires current control token/DPoP/runtime role and grants no object ACL or fresh MFA. Its14 new actual-outcome roots still require Actions; signed administrative metadata, bootstrap/device-key/session bindings and retained pending versions are unchanged.",
       "remainingScope": " Real configured Keycloak MFA acceptance and the complete native administration flow remain open. Optional anonymous signed-service discovery is source-pending Actions and deployment, not an administrative session or grant. Full normative clauses and excluded physical/operational gates remain required."
     },
     {
@@ -2150,7 +2157,7 @@
         "docs/private-draft-inventory.md",
         "docs/operation-outcome-reconciliation.md"
       ],
-      "implementationScope": "Source-pending compact immutable operation ledger and fixed authenticated reconciliation distinguish v1 UNKNOWN, v2 atomic NO_EFFECT, RECORDED and recorded result unavailable.28 exact PostgreSQL/HTTP roots and unchanged role/race/coverage gates require Actions; no deployment or authority activation is claimed.",
+      "implementationScope": "Source/main-accepted compact immutable operation ledger and fixed authenticated reconciliation distinguish v1 UNKNOWN, v2 atomic NO_EFFECT, RECORDED and recorded result unavailable.28 exact PostgreSQL/HTTP roots and unchanged role/race/coverage gates passed Actions43973718639 and resulting main43975423153; no deployment or authority activation is claimed.",
       "remainingScope": "Android pending-CAS receipt handling, compatibility/consumer activation, live migration/restore and physical reconciliation acceptance remain open."
     },
     {

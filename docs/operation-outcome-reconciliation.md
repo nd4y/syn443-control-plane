@@ -1,11 +1,50 @@
 # Configuration operation outcome reconciliation
 
-Status: source candidate. The handler, immutable ledger, transactional SQL
-guards and28 PostgreSQL/HTTP test roots are prepared but have not passed Actions.
+Status: source/main accepted, deployment pending. The handler, immutable ledger,
+transactional SQL guards and28 PostgreSQL/HTTP roots passed Actions43973718639
+and resulting main43975423153. Safe Go-wire generation passed19 producer roots
+in43988560182 and resulting main43991701436; signed specimens are not published.
 This document does not enable a live API, database migration, permission,
 worker action or client publication. Compatibility, protected integration and
 device acceptance remain required. The existing client keeps an uncertain
 operation pending.
+
+## Service protocol eligibility - source pending
+
+The existing `POST /v1/control/action` accepts a separate version-one read:
+`configuration.protocol.get`, with a normal24..128-character request ID and
+exactly an empty object `payload`. Its closed response is
+`{"version":1,"configurationRequestVersion":1}` or
+`{"version":1,"configurationRequestVersion":2}`. A current independent
+administrative control token, exact one-use
+DPoP and the restricted runtime role are required. This nonsecret service read
+has no target, object ACL or fresh-MFA requirement and grants none of those
+rights. Mutation authorization remains unchanged. Existing HTTP clock/proof
+bookkeeping remains; the read creates no configuration, provider, publication,
+draft, ledger or worker effect.
+
+The owner-protected `SYN443_CONFIGURATION_CONFIG` may contain the optional integer
+`configurationRequestVersion`. Absence,0 or1 advertises1. Only an explicit2
+advertises2, after the owner has coordinated the schema and every queue consumer
+upgrade. Null, case/duplicate fields, coercions and other values fail closed.
+The declaration does not prove that every worker was upgraded. There is no
+automatic feature enabling or provider/worker detection.
+
+Clients may probe before creating a **new** mutation. A known unsupported old
+server (`400 catalog_invalid`,404 or405) permits conservative version-one
+creation. Authentication/MFA denial,403, quota429, cancellation, transport
+failure or uncertainty is not unsupported and must not trigger that fallback.
+An existing pending operation keeps its original bytes, request ID and version;
+neither the probe nor a declaration rewrites it. The read envelope itself stays
+version1, and version2 remains restricted to the existing four mutations.
+
+The signed five-field administrative metadata, ordinary bootstrap, device/key
+projection and administrative/device session bindings are unchanged. Adding
+this action does not turn service eligibility into a role, MFA proof, preview,
+publication grant or device activation. The14 new actual-outcome roots
+(7 normal,4 provisioning PostgreSQL and3 catalogue HTTP/PostgreSQL) and6
+validator unit cases are source-pending GitHub Actions. No live API, owner
+declaration, migration or client activation has been performed by this change.
 
 ## Problem and evidence boundary
 

@@ -1,11 +1,13 @@
 # Implementation and acceptance snapshot
 
-Snapshot: 2026-11-16. Specification0.9 contains292 requirements and98 acceptance
+Snapshot: 2026-11-17. Specification0.9 contains292 requirements and98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
 
 
-The operation-reconciliation source candidate adds an immutable SQL ledger, same-transaction native-effect guards and a fixed authenticated endpoint; see [the contract and limits](operation-outcome-reconciliation.md). Its28 new actual PostgreSQL/HTTP outcomes (23 provisioning,5 catalogue) and6 evidence-validator unit cases remain pending GitHub Actions. No migration, live service activation, client reconciliation or restore/import acceptance is claimed. Shared IP/DPoP admission can still transiently throttle recovery.
+The accepted operation-reconciliation source adds an immutable SQL ledger, same-transaction native-effect guards and a fixed authenticated endpoint; see [the contract and limits](operation-outcome-reconciliation.md). Its28 new actual PostgreSQL/HTTP outcomes (23 provisioning,5 catalogue) and6 evidence-validator unit cases passed Actions43973718639 and resulting main43975423153. The separate safe Go-wire producer passed19 roots in43988560182 and resulting main43991701436; its public artifact contains only a bounded report, never signed specimens. No migration, live service activation, client reconciliation or restore/import acceptance is claimed. Shared IP/DPoP admission can still transiently throttle recovery.
+
+The [service protocol eligibility source](operation-outcome-reconciliation.md#service-protocol-eligibility---source-pending) adds only `configuration.protocol.get` with an empty payload and a closed two-field reply. Its optional owner declaration defaults to version1; explicit2 is a coordinated schema/consumer declaration, not proof of deployment or an authorization grant. Fourteen new source tests (7 normal,4 provisioning PostgreSQL,3 catalogue HTTP/PostgreSQL) and6 validator unit cases still require Actions. No signed administrative metadata/bootstrap/device-key/session binding or old pending bytes/version is changed. No live enablement or full M3 acceptance is claimed.
 
 ## Current accepted checkpoint
 
