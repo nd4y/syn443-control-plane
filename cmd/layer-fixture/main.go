@@ -192,6 +192,8 @@ func main() {
 		err = run(os.Getenv, os.Stdout)
 	case len(os.Args) == 2 && os.Args[1] == "--projection":
 		err = runProjection(os.Getenv, os.Stdout)
+	case len(os.Args) == 2 && os.Args[1] == "--operations":
+		err = runOperations(os.Getenv, os.Stdout)
 	default:
 		err = errFixture
 	}
