@@ -4,6 +4,13 @@ useDefault = true
 
 [[rules]]
 id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Verified public protocol contract SHA-256 in shared all-branch history"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "514d86b9834b7e047a3acbfa6604cca6a62800b47f6a615ca456f0985f44e4a5",?\s*$''']
 [[rules.allowlists]]
 description = "Recomputed SHA-256 of the public configuration operation reconciliation contract"
 condition = "AND"
