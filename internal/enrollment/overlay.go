@@ -286,8 +286,8 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 		if e != nil || identity.Hash(envelope) != hash {
 			return DeviceResult{}, ErrUnavailable
 		}
-		if _, e = overlay.VerifyCredential(string(envelope), roots, permit, now.Add(time.Since(started))); e != nil {
-			return DeviceResult{}, ErrUnavailable
+		if e = verifyOverlayDelivery(string(envelope), roots, permit, now.Add(time.Since(started)), s.OverlayBrokerPending); e != nil {
+			return DeviceResult{}, e
 		}
 		return DeviceResult{OverlayReply{Envelope: string(envelope)}, until}, nil
 	})
@@ -299,4 +299,20 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 		return OverlayReply{}, ErrUnavailable
 	}
 	return reply, nil
+}
+
+func verifyOverlayDelivery(envelope string, roots map[string]*ecdsa.PublicKey, permit overlay.CredentialBinding, now time.Time, brokered bool) error {
+	if _, err := overlay.VerifyCredential(envelope, roots, permit, now); err == nil {
+		return nil
+	}
+	// Store.Now preserves a whole-second floor. The broker may have signed
+	// later in that same second. Use its end only to classify a valid
+	// credential as pending. Delivery still requires verification at now.
+	endOfSecond := now.Truncate(time.Second).Add(time.Second - time.Millisecond)
+	if brokered && now.UnixMilli() < endOfSecond.UnixMilli() {
+		if _, err := overlay.VerifyCredential(envelope, roots, permit, endOfSecond); err == nil {
+			return ErrPending
+		}
+	}
+	return ErrUnavailable
 }
