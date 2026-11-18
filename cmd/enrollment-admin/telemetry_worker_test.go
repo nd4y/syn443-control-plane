@@ -19,7 +19,7 @@ const telemetryPruneSyntheticDSN = "postgresql://syn443_telemetry_retention@db.e
 
 func clearTelemetryPruneEnvironment(t *testing.T) {
 	t.Helper()
-	for _, name := range telemetryPruneAmbientVariables {
+	for _, name := range telemetryAmbientVariables {
 		t.Setenv(name, "")
 	}
 }
@@ -29,19 +29,70 @@ func TestTelemetryPruneWorkerDispatchRequiresExactArgumentsBeforeIO(t *testing.T
 	witness := errors.New("synthetic_worker_result")
 	worker := func() error { called++; return witness }
 	blocked := func(time.Time) error { t.Fatal("worker dispatch reached an hour command"); return nil }
-	if err := runArgumentsWithPruneWorker([]string{"telemetry-prune-worker"}, blocked, blocked, worker); !errors.Is(err, witness) || called != 1 {
+	blockedSettled := func() error { t.Fatal("pruning reached scheduled analysis"); return nil }
+	if err := runArgumentsWithTelemetryWorkers([]string{"telemetry-prune-worker"}, blocked, blocked, worker, blockedSettled); !errors.Is(err, witness) || called != 1 {
 		t.Fatal("worker was not dispatched exactly once before enrollment startup")
 	}
 	for _, args := range [][]string{
 		nil, {"telemetry-prune-worker", "extra"}, {"telemetry-prune-worker", "2024-02-29T16:00Z"},
 		{"telemetry-prune-worker", "--config", "synthetic-missing-path"},
 	} {
-		if err := runArgumentsWithPruneWorker(args, blocked, blocked, worker); !errors.Is(err, identity.ErrInvalid) {
+		if err := runArgumentsWithTelemetryWorkers(args, blocked, blocked, worker, blockedSettled); !errors.Is(err, identity.ErrInvalid) {
 			t.Fatal("worker accepted extra arguments")
 		}
 	}
-	if called != 1 || runArgumentsWithPruneWorker([]string{"telemetry-prune-worker"}, blocked, blocked, nil) != identity.ErrInvalid {
+	if called != 1 || runArgumentsWithTelemetryWorkers([]string{"telemetry-prune-worker"}, blocked, blocked, nil, blockedSettled) != identity.ErrInvalid {
 		t.Fatal("invalid dispatch invoked a dependency")
+	}
+}
+
+func TestTelemetrySettledHourDispatchRequiresExactArgumentsBeforeIO(t *testing.T) {
+	calls := 0
+	witness := errors.New("synthetic_settled_hour_result")
+	run := func() error {
+		calls++
+		return witness
+	}
+	blocked := func(time.Time) error { t.Fatal("settled command reached a manual hour command"); return nil }
+	blockedPrune := func() error { t.Fatal("settled command reached pruning"); return nil }
+	if err := runArgumentsWithTelemetryWorkers([]string{"telemetry-aggregate-settled"}, blocked, blocked, blockedPrune, run); err != witness {
+		t.Fatal("the command did not reach its handler")
+	}
+	if err := runArgumentsWithTelemetryWorkers([]string{"telemetry-aggregate-settled", "2026-01-01T00:00Z"}, blocked, blocked, blockedPrune, run); err != identity.ErrInvalid {
+		t.Fatal("the scheduled command accepted a caller-supplied hour")
+	}
+	if err := runArgumentsWithTelemetryWorkers([]string{"telemetry-aggregate-settled"}, blocked, blocked, blockedPrune, nil); err != identity.ErrInvalid {
+		t.Fatal("the dispatcher accepted a missing handler")
+	}
+	if calls != 1 {
+		t.Fatal("the dispatcher invoked the scheduled handler outside the valid command")
+	}
+}
+
+func TestTelemetrySettledHourUsesOnlyScopedAnalysisDSN(t *testing.T) {
+	clearTelemetryPruneEnvironment(t)
+	input := strings.Replace(telemetryPruneSyntheticDSN, "syn443_telemetry_retention@", "syn443_telemetry_analysis@", 1)
+	path := filepath.Join(t.TempDir(), "analysis.dsn")
+	if err := os.WriteFile(path, []byte(input), 0600); err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := analysisTelemetryDSN.read(t.Context(), func(key string) string {
+		if key != "SYN443_TELEMETRY_ANALYSIS_DSN_FILE" {
+			t.Fatal("the scheduled command attempted a different credential source")
+		}
+		return path
+	})
+	if err != nil || parsed == nil || parsed.User != "syn443_telemetry_analysis" ||
+		parsed.TLSConfig == nil || parsed.TLSConfig.InsecureSkipVerify || len(parsed.Fallbacks) != 0 {
+		t.Fatal("the scheduled command lost the dedicated fully verified connection")
+	}
+	for _, dsn := range []string{
+		telemetryPruneSyntheticDSN,
+		strings.Replace(input, "verify-full", "prefer", 1),
+	} {
+		if parsed, err := analysisTelemetryDSN.parse([]byte(dsn)); parsed != nil || err != errTelemetryAggregateSettled {
+			t.Fatal("the scheduled command accepted a widened access path")
+		}
 	}
 }
 
@@ -55,7 +106,7 @@ func TestTelemetryPruneWorkerDSNRequiresExplicitScopedTLSConnection(t *testing.T
 		strings.Replace(telemetryPruneSyntheticDSN, ":5432/", ":65535/", 1),
 		telemetryPruneSyntheticDSN + strings.Repeat(" ", 8192-len(telemetryPruneSyntheticDSN)),
 	} {
-		config, err := parseTelemetryPruneWorkerDSN([]byte(dsn))
+		config, err := retentionTelemetryDSN.parse([]byte(dsn))
 		if err != nil || config == nil || config.User != "syn443_telemetry_retention" || config.Database == "" ||
 			config.ConnectTimeout != 5*time.Second || len(config.Fallbacks) != 0 {
 			t.Fatal("explicit restricted connection was rejected")
@@ -91,7 +142,7 @@ func TestTelemetryPruneWorkerDSNRequiresExplicitScopedTLSConnection(t *testing.T
 		"postgres://syn443_telemetry_retention@127.0.0.1:5432/postgres?sslmode=prefer",
 		"postgres://syn443_telemetry_retention@127.0.0.1:5432/postgres?sslmode=disable&sslrootcert=system",
 	} {
-		if config, err := parseTelemetryPruneWorkerDSN([]byte(dsn)); err != errTelemetryPruneWorker || config != nil {
+		if config, err := retentionTelemetryDSN.parse([]byte(dsn)); err != errTelemetryPruneWorker || config != nil {
 			t.Fatal("unsafe or incomplete connection obtained a runtime")
 		}
 	}
@@ -99,17 +150,17 @@ func TestTelemetryPruneWorkerDSNRequiresExplicitScopedTLSConnection(t *testing.T
 
 func TestTelemetryPruneWorkerRejectsAmbientCredentialAndServiceSources(t *testing.T) {
 	clearTelemetryPruneEnvironment(t)
-	for _, name := range telemetryPruneAmbientVariables {
+	for _, name := range telemetryAmbientVariables {
 		t.Run(name, func(t *testing.T) {
 			t.Setenv(name, "synthetic-untrusted-ambient-input")
-			if config, err := parseTelemetryPruneWorkerDSN([]byte(telemetryPruneSyntheticDSN)); err != errTelemetryPruneWorker || config != nil {
+			if config, err := retentionTelemetryDSN.parse([]byte(telemetryPruneSyntheticDSN)); err != errTelemetryPruneWorker || config != nil {
 				t.Fatal("ambient connection input was accepted")
 			}
 		})
 	}
 	// Explicit URLs still override default credential-file paths in the actual
 	// parsed connection string, even when there is no ambient libpq setting.
-	config, err := parseTelemetryPruneWorkerDSN([]byte(telemetryPruneSyntheticDSN))
+	config, err := retentionTelemetryDSN.parse([]byte(telemetryPruneSyntheticDSN))
 	if err != nil || !strings.Contains(config.ConnString(), "passfile=") || !strings.Contains(config.ConnString(), "sslcert=") || !strings.Contains(config.ConnString(), "sslkey=") {
 		t.Fatal("driver defaults retained an implicit credential file")
 	}
@@ -124,14 +175,14 @@ func TestTelemetryPruneWorkerReadsOnlyOwnerProtectedDedicatedDSN(t *testing.T) {
 	}
 	var names []string
 	getenv := func(name string) string { names = append(names, name); return path }
-	if config, err := readTelemetryPruneWorkerDSN(t.Context(), getenv); err != nil || config == nil ||
+	if config, err := retentionTelemetryDSN.read(t.Context(), getenv); err != nil || config == nil ||
 		len(names) != 1 || names[0] != "SYN443_TELEMETRY_RETENTION_DSN_FILE" {
 		t.Fatal("worker read enrollment inputs or rejected its dedicated owner file")
 	}
 	if err := os.Chmod(path, 0644); err != nil {
 		t.Fatal("could not change synthetic permissions")
 	}
-	if _, err := readTelemetryPruneWorkerDSN(t.Context(), getenv); err != errTelemetryPruneWorker {
+	if _, err := retentionTelemetryDSN.read(t.Context(), getenv); err != errTelemetryPruneWorker {
 		t.Fatal("nonprivate DSN file was accepted")
 	}
 	if err := os.Chmod(path, 0600); err != nil {
@@ -140,7 +191,7 @@ func TestTelemetryPruneWorkerReadsOnlyOwnerProtectedDedicatedDSN(t *testing.T) {
 	if err := os.WriteFile(path, bytes.Repeat([]byte{'x'}, 8193), 0600); err != nil {
 		t.Fatal("could not write synthetic oversized input")
 	}
-	if _, err := readTelemetryPruneWorkerDSN(t.Context(), getenv); err != errTelemetryPruneWorker {
+	if _, err := retentionTelemetryDSN.read(t.Context(), getenv); err != errTelemetryPruneWorker {
 		t.Fatal("oversized DSN file was accepted")
 	}
 	if err := os.WriteFile(path, []byte(telemetryPruneSyntheticDSN), 0600); err != nil {
@@ -150,7 +201,7 @@ func TestTelemetryPruneWorkerReadsOnlyOwnerProtectedDedicatedDSN(t *testing.T) {
 	if err := os.Symlink(path, link); err != nil {
 		t.Fatal("could not create synthetic symlink")
 	}
-	if _, err := readTelemetryPruneWorkerDSN(t.Context(), func(string) string { return link }); err != errTelemetryPruneWorker {
+	if _, err := retentionTelemetryDSN.read(t.Context(), func(string) string { return link }); err != errTelemetryPruneWorker {
 		t.Fatal("symlink DSN was accepted")
 	}
 	var output bytes.Buffer
@@ -352,11 +403,11 @@ func TestTelemetryPruneWorkerRejectsInvalidLoopDependenciesAndOutputFailure(t *t
 
 func readTelemetryPruneWorkerInvalidDependencies(t *testing.T) bool {
 	t.Helper()
-	_, nilContext := readTelemetryPruneWorkerDSN(nil, os.Getenv)
-	_, nilLookup := readTelemetryPruneWorkerDSN(t.Context(), nil)
+	_, nilContext := retentionTelemetryDSN.read(nil, os.Getenv)
+	_, nilLookup := retentionTelemetryDSN.read(t.Context(), nil)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	_, cancelled := readTelemetryPruneWorkerDSN(ctx, func(string) string {
+	_, cancelled := retentionTelemetryDSN.read(ctx, func(string) string {
 		t.Fatal("cancelled private reader consulted an input")
 		return ""
 	})

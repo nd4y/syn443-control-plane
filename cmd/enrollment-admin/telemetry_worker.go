@@ -22,13 +22,32 @@ import (
 )
 
 var errTelemetryPruneWorker = errors.New("telemetry_prune_worker_unavailable")
+var errTelemetryAggregateSettled = errors.New("telemetry_aggregate_settled_unavailable")
+
+type scopedTelemetryDSN struct {
+	fileVariable string
+	role         string
+	unavailable  error
+}
+
+var retentionTelemetryDSN = scopedTelemetryDSN{
+	fileVariable: "SYN443_TELEMETRY_RETENTION_DSN_FILE",
+	role:         "syn443_telemetry_retention",
+	unavailable:  errTelemetryPruneWorker,
+}
+
+var analysisTelemetryDSN = scopedTelemetryDSN{
+	fileVariable: "SYN443_TELEMETRY_ANALYSIS_DSN_FILE",
+	role:         "syn443_telemetry_analysis",
+	unavailable:  errTelemetryAggregateSettled,
+}
 
 const telemetryPruneInterval = 60 * time.Second
 
 // A new, deliberately narrower DSN boundary. The one-shot operator commands
 // retain their existing parser. Ambient libpq settings cannot select another
 // endpoint, credentials, service file or certificate for this process.
-var telemetryPruneAmbientVariables = [...]string{
+var telemetryAmbientVariables = [...]string{
 	"PGHOST", "PGHOSTADDR", "PGPORT", "PGDATABASE", "PGUSER", "PGPASSWORD",
 	"PGPASSFILE", "PGSERVICE", "PGSERVICEFILE", "PGSYSCONFDIR", "PGSSLMODE",
 	"PGREQUIRESSL", "PGSSLROOTCERT", "PGSSLCERT", "PGSSLKEY", "PGSSLCRL",
@@ -40,47 +59,47 @@ var telemetryPruneAmbientVariables = [...]string{
 	"PGREQUIREPEER", "PGREQUIREAUTH",
 }
 
-func parseTelemetryPruneWorkerDSN(raw []byte) (*pgx.ConnConfig, error) {
+func (source scopedTelemetryDSN) parse(raw []byte) (*pgx.ConnConfig, error) {
 	if len(raw) == 0 || len(raw) > 8192 {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
-	for _, name := range telemetryPruneAmbientVariables {
+	for _, name := range telemetryAmbientVariables {
 		if os.Getenv(name) != "" {
-			return nil, errTelemetryPruneWorker
+			return nil, source.unavailable
 		}
 	}
 	dsn := strings.TrimSpace(string(raw))
 	if strings.Contains(dsn, "#") {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
 	u, err := url.Parse(dsn)
 	if err != nil || u.Scheme != "postgres" && u.Scheme != "postgresql" || u.Opaque != "" ||
-		u.User == nil || u.User.Username() != "syn443_telemetry_retention" || u.Hostname() == "" ||
+		u.User == nil || u.User.Username() != source.role || u.Hostname() == "" ||
 		u.Port() == "" || u.Path == "" || u.Path == "/" || strings.Contains(u.Path[1:], "/") ||
 		u.Fragment != "" || u.RawFragment != "" || u.ForceQuery {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
 	port, err := strconv.Atoi(u.Port())
 	if err != nil || port < 1 || port > 65535 || len(u.Port()) > 5 || strings.ContainsAny(u.Hostname(), "\x00/\\, \t\r\n") {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
 	query, err := url.ParseQuery(u.RawQuery)
 	if err != nil {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
 	for key, values := range query {
 		if key != "sslmode" && key != "sslrootcert" || len(values) != 1 {
-			return nil, errTelemetryPruneWorker
+			return nil, source.unavailable
 		}
 	}
 	fixture := u.Hostname() == "127.0.0.1" && query.Get("sslmode") == "disable"
 	if fixture {
 		if _, exists := query["sslrootcert"]; exists {
-			return nil, errTelemetryPruneWorker
+			return nil, source.unavailable
 		}
 		query.Set("sslrootcert", "")
 	} else if query.Get("sslmode") != "verify-full" || query.Get("sslrootcert") != "system" {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
 	// Override the driver's default ~/.pgpass and client-certificate paths, not
 	// merely the corresponding environment variables. Only system TLS roots are
@@ -95,33 +114,33 @@ func parseTelemetryPruneWorkerDSN(raw []byte) (*pgx.ConnConfig, error) {
 			"host", "port", "user", "password", "database", "sslmode", "sslrootcert", "passfile", "sslcert", "sslkey", "connect_timeout",
 		}},
 	})
-	if err != nil || parsed.User != "syn443_telemetry_retention" || parsed.Host != u.Hostname() ||
+	if err != nil || parsed.User != source.role || parsed.Host != u.Hostname() ||
 		parsed.Port != uint16(port) || parsed.Database != u.Path[1:] || len(parsed.Fallbacks) != 0 {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
 	if fixture {
 		if parsed.TLSConfig != nil {
-			return nil, errTelemetryPruneWorker
+			return nil, source.unavailable
 		}
 	} else if parsed.TLSConfig == nil || parsed.TLSConfig.InsecureSkipVerify || parsed.TLSConfig.ServerName == "" {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
 	return parsed, nil
 }
 
-func readTelemetryPruneWorkerDSN(ctx context.Context, getenv func(string) string) (*pgx.ConnConfig, error) {
+func (source scopedTelemetryDSN) read(ctx context.Context, getenv func(string) string) (*pgx.ConnConfig, error) {
 	if ctx == nil || ctx.Err() != nil || getenv == nil {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
-	raw, err := enrollment.PrivateFile(getenv("SYN443_TELEMETRY_RETENTION_DSN_FILE"), 8192)
+	raw, err := enrollment.PrivateFile(getenv(source.fileVariable), 8192)
 	if err != nil {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
 	defer clear(raw)
 	if ctx.Err() != nil {
-		return nil, errTelemetryPruneWorker
+		return nil, source.unavailable
 	}
-	return parseTelemetryPruneWorkerDSN(raw)
+	return source.parse(raw)
 }
 
 type telemetryPruneStep func(context.Context, time.Time) (time.Time, telemetry.Pruned, error)
@@ -185,7 +204,7 @@ func runTelemetryPruneWorkerContext(ctx context.Context, getenv func(string) str
 	if ctx.Err() != nil {
 		return nil
 	}
-	parsed, err := readTelemetryPruneWorkerDSN(ctx, getenv)
+	parsed, err := retentionTelemetryDSN.read(ctx, getenv)
 	if err != nil {
 		return errTelemetryPruneWorker
 	}
@@ -210,4 +229,27 @@ func runTelemetryPruneWorker() (err error) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	return runTelemetryPruneWorkerContext(ctx, os.Getenv, os.Stdout)
+}
+
+func runTelemetryAggregateSettled() error {
+	signalContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	ctx, cancel := context.WithTimeout(signalContext, 15*time.Second)
+	defer cancel()
+	parsed, err := analysisTelemetryDSN.read(ctx, os.Getenv)
+	if err != nil {
+		return err
+	}
+	db := stdlib.OpenDB(*parsed)
+	db.SetMaxOpenConns(1)
+	defer db.Close()
+	result, err := telemetry.AggregateSettledHour(ctx, db, time.Now())
+	if err != nil {
+		return err
+	}
+	if _, err := fmt.Printf("Telemetry hour summarized: hour=%s groups=%d events=%d\n",
+		result.Hour.Format("2006-01-02T15:00Z"), result.Groups, result.Events); err != nil {
+		return errTelemetryAggregateSettled
+	}
+	return nil
 }

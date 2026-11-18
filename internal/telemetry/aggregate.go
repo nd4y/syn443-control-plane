@@ -21,6 +21,11 @@ const (
 
 type Hourly struct{ Groups, Events int64 }
 
+type SettledAggregate struct {
+	Hour time.Time
+	Hourly
+}
+
 type hourRow struct {
 	Kind                     string `json:"kind"`
 	Code                     string `json:"code"`
@@ -32,10 +37,7 @@ type hourRow struct {
 	ConservativeReselections int64  `json:"conservativeReselections,omitempty"`
 }
 
-func CheckAnalysisRole(ctx context.Context, db *sql.DB) error {
-	var scoped bool
-	err := db.QueryRowContext(ctx, `SELECT
- has_column_privilege(current_user,'public.identity_telemetry_events','received_at_ms','SELECT')
+const analysisPrivileges = `has_column_privilege(current_user,'public.identity_telemetry_events','received_at_ms','SELECT')
  AND has_column_privilege(current_user,'public.identity_telemetry_events','kind','SELECT')
  AND has_column_privilege(current_user,'public.identity_telemetry_events','code','SELECT')
  AND has_column_privilege(current_user,'public.identity_telemetry_events','mode','SELECT')
@@ -57,7 +59,11 @@ func CheckAnalysisRole(ctx context.Context, db *sql.DB) error {
  AND NOT has_table_privilege(current_user,'public.identity_telemetry_analysis_events','DELETE')
  AND has_table_privilege(current_user,'public.identity_telemetry_hourly','SELECT')
  AND has_table_privilege(current_user,'public.identity_telemetry_hourly','INSERT')
- AND has_table_privilege(current_user,'public.identity_telemetry_hourly','DELETE')`).Scan(&scoped)
+ AND has_table_privilege(current_user,'public.identity_telemetry_hourly','DELETE')`
+
+func CheckAnalysisRole(ctx context.Context, db *sql.DB) error {
+	var scoped bool
+	err := db.QueryRowContext(ctx, "SELECT "+analysisPrivileges).Scan(&scoped)
 	if err != nil || !scoped {
 		return ErrUnavailable
 	}
@@ -68,9 +74,8 @@ func CheckAnalysisRole(ctx context.Context, db *sql.DB) error {
 // detects overload; a truncated result cannot replace a complete summary.
 func AggregateHour(ctx context.Context, db *sql.DB, hour, now time.Time) (Hourly, error) {
 	hour = hour.UTC()
-	end := hour.Add(time.Hour)
 	if hour.UnixMilli() <= 0 || !hour.Equal(hour.Truncate(time.Hour)) ||
-		end.After(now.Add(-time.Hour)) || hour.Before(now.Add(-DetailRetention)) ||
+		hour.Add(time.Hour).After(now.Add(-time.Hour)) || hour.Before(now.Add(-DetailRetention)) ||
 		hour.Unix()/3600 > 2_147_483_647 {
 		return Hourly{}, ErrInvalid
 	}
@@ -79,8 +84,62 @@ func AggregateHour(ctx context.Context, db *sql.DB, hour, now time.Time) (Hourly
 		return Hourly{}, ErrUnavailable
 	}
 	defer tx.Rollback()
+	out, err := aggregateHour(ctx, tx, hour)
+	if err != nil {
+		return Hourly{}, err
+	}
+	if err = tx.Commit(); err != nil {
+		return Hourly{}, ErrUnavailable
+	}
+	return out, nil
+}
+
+// AggregateSettledHour selects the latest fully settled hour using the
+// transaction's database timestamp. The caller's clock bounds clock skew.
+// Both manual and scheduled invocations use the same per-hour database lock.
+func AggregateSettledHour(ctx context.Context, db *sql.DB, reference time.Time) (SettledAggregate, error) {
+	if ctx == nil || ctx.Err() != nil || db == nil || reference.IsZero() {
+		return SettledAggregate{}, ErrUnavailable
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return SettledAggregate{}, ErrUnavailable
+	}
+	defer tx.Rollback()
+	if _, err = tx.ExecContext(ctx, "SET LOCAL search_path TO pg_catalog, public, pg_temp"); err != nil {
+		return SettledAggregate{}, ErrUnavailable
+	}
+	var scoped bool
+	var now time.Time
+	if err = tx.QueryRowContext(ctx, settledAnalysisAuthority).Scan(&scoped, &now); err != nil || !scoped ||
+		now.Year() < 2020 || now.Year() >= 3000 || now.Sub(reference).Abs() > 2*time.Minute {
+		return SettledAggregate{}, ErrUnavailable
+	}
+	hour := now.UTC().Truncate(time.Hour).Add(-2 * time.Hour)
+	out, err := aggregateHour(ctx, tx, hour)
+	if err != nil {
+		return SettledAggregate{}, err
+	}
+	if ctx.Err() != nil || tx.Commit() != nil {
+		return SettledAggregate{}, ErrUnavailable
+	}
+	return SettledAggregate{Hour: hour, Hourly: out}, nil
+}
+
+const settledAnalysisAuthority = `SELECT
+ current_user='syn443_telemetry_analysis' AND current_user=session_user
+ AND EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname=current_user
+   AND r.rolcanlogin AND NOT (r.rolsuper OR r.rolbypassrls OR r.rolinherit OR r.rolcreatedb OR r.rolcreaterole OR r.rolreplication)
+   AND NOT EXISTS (SELECT 1 FROM pg_auth_members WHERE member=r.oid))
+ AND NOT has_table_privilege(current_user,'public.identity_telemetry_events','TRIGGER')
+ AND NOT has_any_column_privilege(current_user,'public.identity_telemetry_hourly','UPDATE,REFERENCES')
+ AND NOT has_table_privilege(current_user,'public.identity_telemetry_hourly','TRUNCATE,TRIGGER')
+ AND ` + analysisPrivileges + `,
+ statement_timestamp()`
+
+func aggregateHour(ctx context.Context, tx *sql.Tx, hour time.Time) (Hourly, error) {
 	var locked bool
-	if err = tx.QueryRowContext(ctx, `SELECT pg_try_advisory_xact_lock(443052,$1::integer)`, hour.Unix()/3600).Scan(&locked); err != nil || !locked {
+	if err := tx.QueryRowContext(ctx, `SELECT pg_try_advisory_xact_lock(443052,$1::integer)`, hour.Unix()/3600).Scan(&locked); err != nil || !locked {
 		return Hourly{}, ErrUnavailable
 	}
 	rows, err := tx.QueryContext(ctx, `WITH evidence AS MATERIALIZED (
@@ -89,7 +148,7 @@ func AggregateHour(ctx context.Context, db *sql.DB, hour, now time.Time) (Hourly
  SELECT kind,code,mode,count(*),count(duration_ms),coalesce(sum(duration_ms),0),
   count(*) FILTER (WHERE decision_variant=1),count(*) FILTER (WHERE decision_variant=2)
  FROM evidence GROUP BY kind,code,mode ORDER BY kind,code,mode LIMIT 257`,
-		hour.UnixMilli(), end.UnixMilli(), MaxHourlyEvents+1)
+		hour.UnixMilli(), hour.Add(time.Hour).UnixMilli(), MaxHourlyEvents+1)
 	if err != nil {
 		return Hourly{}, ErrUnavailable
 	}
@@ -126,9 +185,6 @@ func AggregateHour(ctx context.Context, db *sql.DB, hour, now time.Time) (Hourly
  FROM jsonb_to_recordset($2::jsonb)
  AS e(kind text,code text,mode text,events bigint,timed bigint,duration bigint,
   "baselineReselections" bigint,"conservativeReselections" bigint)`, hour.UnixMilli(), string(encoded)); err != nil {
-		return Hourly{}, ErrUnavailable
-	}
-	if err = tx.Commit(); err != nil {
 		return Hourly{}, ErrUnavailable
 	}
 	out.Groups = int64(len(grouped))
