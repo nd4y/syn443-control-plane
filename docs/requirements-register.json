@@ -1583,10 +1583,11 @@
       "text": "Серверная политика хранения для согласования: детальные события 14 суток, очищенные crash/бандлы 30 суток, агрегаты 180 суток, аудит административных действий 365 суток. Предусматриваются удаление данных устройства, контроль доступа к support материалам и журнал скачиваний. TTL распространяется на копии и резервное хранение по документированной процедуре.",
       "status": "partial",
       "evidence": [
-        "docs/telemetry-ingest.md"
+        "docs/telemetry-ingest.md",
+        "docs/implementation-status.md#observability-source-and-integration---2026-11-18"
       ],
-      "implementationScope": "Separate analysis, retention and read-only summary roles; 14-day detail and 180-day summary pruning, with a candidate dedicated periodic process; explicit and audited web access to identifier-free aggregates.",
-      "remainingScope": "Exact CI and live operations acceptance, scheduled aggregation, full dashboards, support bundles, remaining audit and retention, copies and device erasure."
+      "implementationScope": "Separate analysis, retention and summary roles. Dedicated periodic pruning of 14-day detail and 180-day summary data passed isolated PostgreSQL tests in Actions. Access to identifier-free aggregates is explicit and audited.",
+      "remainingScope": "Live retention operations, scheduled aggregation, full dashboards, support and audit retention, backup retention and per-device erasure."
     },
     {
       "id": "LOG-01",
@@ -1603,20 +1604,20 @@
       "text": "Локальный кольцевой журнал ограничен, первоначально64MiB/7суток; debug/trace окно - до15минут с автосбросом. Администратор может запросить расширение в пределах policy, но увеличение объёма либо чувствительности сбора требует отдельного локального подтверждения с категориями, сроком и получателем. Разрешение собрать очищенный бандл не является разрешением загрузить его или включить raw capture.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#observability-source-and-integration---2026-11-18"
       ],
-      "implementationScope": "Bounded redacted lifecycle/exit/resource evidence and debug shell/own-UID commands.",
-      "remainingScope": "Full channels/retention/bundle/export/CLI/release opt-in/server audit."
+      "implementationScope": "Android's encrypted controller journal bounds storage at 64 MiB and readable same-boot history at seven days. Source Actions cover queue pressure, clock changes and export.",
+      "remainingScope": "Physical Android acceptance, debug/trace window, administrator retention policy and local consent."
     },
     {
       "id": "LOG-03",
       "text": "Редактируются не только известные значения секретов, но и потенциально секретные поля path, serviceName, headers, query, userinfo, subscription URL и вложенный JSON. Очистка выполняется при записи и перед экспортом. Неизвестный сторонний raw log не считается безопасным автоматически. Для удалённой отправки предпочтителен allowlist структурированных полей; неизвестный free-text/raw third-party вывод автоматически не загружается. Sanitization - проверяемый барьер с тестовыми секретами, а не обещание анонимности любого сырого текста.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#observability-source-and-integration---2026-11-18"
       ],
-      "implementationScope": "Bounded redacted lifecycle/exit/resource evidence and debug shell/own-UID commands.",
-      "remainingScope": "Full channels/retention/bundle/export/CLI/release opt-in/server audit."
+      "implementationScope": "The Android journal admits typed lifecycle and engine events and validates the bounded projection again on archive export.",
+      "remainingScope": "Other log sources, redacted native traces, physical export, supported remote transfer and server auditing."
     },
     {
       "id": "LOG-04",
@@ -1631,14 +1632,22 @@
     {
       "id": "LOG-05",
       "text": "Бандл содержит manifest с хешами/ошибками компонентов, capabilities, redacted effective config, active/desired revisions, health snapshot, ограниченные логи, версии, native stacks с очисткой и результаты назначенных проверок. Приватная идентичность NetBird и ключ устройства исключены. Частичный бандл допустим с complete:false.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#observability-source-and-integration---2026-11-18"
+      ],
+      "implementationScope": "Android local archive with a hashed manifest, closed evidence components and explicit omissions, verified in Actions on three emulator APIs.",
+      "remainingScope": "Redacted effective configuration and complete revision/native-stack sources, broader logging and physical acceptance."
     },
     {
       "id": "LOG-06",
       "text": "Сбор бандла сам по себе не переключает сеть, не меняет конфиг, не перезапускает VPN и не очищает логи. Глубокий сетевой тест запускается отдельным действием. UI показывает состав, размер и факт отправки. Бандл может оставаться чувствительным даже после очистки и хранится в закрытом хранилище.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#observability-source-and-integration---2026-11-18"
+      ],
+      "implementationScope": "Android Actions cover separate collection, preview, explicit document export and cancellation. Temporary storage is private and encrypted. Collection has no network probes or automatic upload.",
+      "remainingScope": "Physical Android preservation and export, remote consent and transfer, complete retention and download auditing."
     },
     {
       "id": "LOG-07",
@@ -3313,10 +3322,10 @@
     "verified": "All clauses and required acceptance proved for the declared scope."
   },
   "evidenceSnapshot": {
-    "date": "2026-11-01",
+    "date": "2026-11-18",
     "inventory": "docs/implementation-status.md",
-    "androidSource": "e2291a71fa8491497f342fe26fbdf36788e2b59a",
-    "controlPlaneSource": "c1fae966a2a0030a2d6e949b35716d767ea79e4c",
-    "scope": "Product requirements; cross-component contributions are linked by pinned inventory, not implied local code."
+    "androidSource": "28192704988696015775863bb6fa82911dfc13bd",
+    "controlPlaneSource": "1ac39de2441cff8a07f917b717da82d5f0b013ca",
+    "scope": "Refreshes bounded Android diagnostic and Control Plane telemetry contributions. The evidence inventory retains earlier snapshots and separates source, integration, deployment and physical acceptance."
   }
 }
