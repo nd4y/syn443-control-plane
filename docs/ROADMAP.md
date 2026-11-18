@@ -1,10 +1,10 @@
 # Implementation roadmap
 
-Latest scoped acceptance: [Android79 USB/Wi-Fi and accepted main](non-lte-acceptance-20261116.md).
+The [implementation snapshot](implementation-status.md#current-accepted-checkpoint)
+links the current observability source evidence and its remaining acceptance.
+The [2026-11-17 checkpoint](non-lte-acceptance-20261117.md) records the prior
+scoped USB/Wi-Fi run and deployed session refresh fix.
 Earlier milestone counts below remain dated foundation evidence.
-
-Current evidence and remaining scope: [implementation snapshot](implementation-status.md).
-Current accepted source and USB/Wi-Fi checks: [2026-11-15 checkpoint](non-lte-acceptance-20261115.md).
 The normative specification remains0.9; all292 requirements and98 scenarios are retained.
 
 ## M0 - contracts and executable reference core (foundation implemented)

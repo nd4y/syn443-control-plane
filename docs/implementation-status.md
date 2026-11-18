@@ -7,7 +7,7 @@ integration and physical regression gates must be recorded separately. Normal
 enrollment still advertises the previous capability set; this source component
 does not activate a managed profile or close the full CHK-04 / AC58 requirement.
 
-Snapshot: 2026-11-17. Specification0.9 contains292 requirements and98 acceptance
+Snapshot: 2026-11-18. Specification0.9 contains292 requirements and98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
 
@@ -17,6 +17,27 @@ The accepted operation-reconciliation source adds an immutable SQL ledger, same-
 The [service protocol eligibility source](operation-outcome-reconciliation.md#service-protocol-eligibility---source-and-main-accepted) adds only `configuration.protocol.get` with an empty payload and a closed two-field reply. Its optional owner declaration defaults to version1; explicit2 is a coordinated schema/consumer declaration, not proof of deployment or an authorization grant. Fourteen new outcomes (7 normal,4 provisioning PostgreSQL,3 catalogue HTTP/PostgreSQL) and6 validator unit cases passed Actions44006215112; resulting main44009146272 passed all8 mandatory jobs with the same source tree. No signed administrative metadata/bootstrap/device-key/session binding or old pending bytes/version is changed. No live enablement or full M3 acceptance is claimed.
 
 ## Current accepted checkpoint
+
+### Observability source and integration - 2026-11-18
+
+| Component | Verified evidence |
+| --- | --- |
+| Android NetBird report | [PR97](https://github.com/nd4y/syn443-android/pull/97) and the [matching main tree's CI](https://github.com/nd4y/syn443-android/actions/runs/44180494937). The report pages bounded retained peer evidence and distinguishes direct, VLESS and unknown transport. |
+| Android offline diagnostic ZIP | [PR99 CI](https://github.com/nd4y/syn443-android/actions/runs/44259756350) passed 522 JVM cases and 524 outcomes on each of API 29, 35 and 37, including a Provider/CLI collect, export and cancel check. The identical source tree passed [main CI](https://github.com/nd4y/syn443-android/actions/runs/44268019344). |
+| Android encrypted local journal | [PR100 CI](https://github.com/nd4y/syn443-android/actions/runs/44268949079) passed 534 JVM cases and 536 outcomes on each emulator API, including 12 new JVM and 12 new device-side journal cases. The source merged into [main with its own CI run](https://github.com/nd4y/syn443-android/actions/runs/44276979024). |
+| Control Plane telemetry administration | [PR65](https://github.com/nd4y/syn443-control-plane/pull/65) restored both UTC-hour CLI entry points. [PR66](https://github.com/nd4y/syn443-control-plane/pull/66) added the dedicated retention worker and isolated PostgreSQL tests. Their exact source trees passed eight jobs each on [PR65 main](https://github.com/nd4y/syn443-control-plane/actions/runs/44258666408) and [PR66 main](https://github.com/nd4y/syn443-control-plane/actions/runs/44264413839). |
+
+The local ZIP has a manifest with hashes, explicit omissions and a preview.
+Collection reads existing evidence without starting probes or changing VPN
+state. The journal adds typed lifecycle and engine evidence with a 64 MiB
+storage cap and up to seven days of readable history in the same boot. The
+Android changes still require physical Wi-Fi, identity preservation and
+export checks. Full effective configuration, redacted native stacks, remote
+support upload and download auditing remain open. The telemetry worker has
+source and isolated database evidence. Live scheduling, retention of backup
+copies, per-device erasure and scheduled aggregation remain open.
+
+### Prior physical and deployment evidence
 
 The [2026-11-17 checkpoint](non-lte-acceptance-20261117.md) records the accepted
 v89 source/main, its68 scoped physical USB/Wi-Fi outcomes and the deployed
@@ -118,7 +139,7 @@ No full M1-M5 or production-readiness claim is made by these statuses.
 | MOD-01..10, ENG-05 | Isolated host/TUN adapter, source/patch/toolchain locks, built-in modules, native alignment and ordinary/race tests | Complete capability/version matrix, signed release inventory/SBOM, all update/retirement acceptance |
 | NB-01/02/05/06/07 | Direct-first/deferred SDK, strict VLESS detour, local identity, bounded cached roster/diagnostics and home traffic proof | Managed account credential retirement, backend peer lifecycle, DNS/route conflict and full handover matrix |
 | CHK-01..12, CHECK requirements | Bounded TCP/SSH/TLS/strictHTTPS all-of checks through selected outbound with fresh scoped samples and check/cancel/status | Full rule/class/template plan model, any/quorum/stages, exit attribution, scheduling/dedup and visual profile editor |
-| LOG-01..04, ADB-01..04 | Bounded redacted lifecycle/exit/resource snapshots and debug own-UID/shell control | Full log channels/retention/redactor/bundle, complete CLI, release opt-in and server audit |
+| LOG-01..06, ADB-01..04 | Bounded lifecycle/exit/resource snapshots, debug own-UID/shell controls, an offline diagnostic ZIP and a typed encrypted controller journal | Full channels, debug windows and retention policy, effective configuration and redacted native stacks, supported remote transfer, release opt-in, server audit and physical export |
 | AUTH/PROV/SEC partial rows | Pilot protocol/Keystore/journals, signed device-key policy and SQL authorization/publication | Full release onboarding, invitation trust, rotation, managed overlays and operational acceptance |
 | CHAT partial rows | SQL message/file integrity and atomicity, Android user/admin and web chat, compression/retry/withdrawal | Complete retention/quota administration, production operations and restricted-network acceptance |
 
