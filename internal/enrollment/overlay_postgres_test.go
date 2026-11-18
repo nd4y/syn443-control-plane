@@ -34,6 +34,11 @@ type overlayFixture struct {
 
 func newOverlayFixture(t *testing.T) *overlayFixture {
 	t.Helper()
+	return newOverlayFixtureWithCredentialDelay(t, 0)
+}
+
+func newOverlayFixtureWithCredentialDelay(t *testing.T, delay time.Duration) *overlayFixture {
+	t.Helper()
 	f := newFixture(t, 2)
 	f.api.OverlayServiceID = "fixture-service"
 	m := ManagedOverlayReference{"home", "provider-resource", "tenant", 1, random(), 1}
@@ -67,8 +72,9 @@ func newOverlayFixture(t *testing.T) *overlayFixture {
 	}
 	secret := hex.EncodeToString(entropy[:])
 	secret = secret[:8] + "-" + secret[8:12] + "-" + secret[12:16] + "-" + secret[16:20] + "-" + secret[20:]
-	c := overlay.Credential{SchemaVersion: 1, Audience: "syn443-overlay-credential", Address: binding.Address, KeyThumbprint: thumb, Reference: binding.Reference, Version: 1, SecurityEpoch: 0, Kind: "netbird.setup-key", IssuedAtMs: f.now.UnixMilli(), NotBeforeMs: f.now.UnixMilli(), ExpiresMs: f.now.Add(5 * time.Minute).UnixMilli(), Value: secret}
-	envelope, e := overlay.SignCredential(c, binding, "fixture-root", f.key, f.now)
+	activation := f.now.Add(delay)
+	c := overlay.Credential{SchemaVersion: 1, Audience: "syn443-overlay-credential", Address: binding.Address, KeyThumbprint: thumb, Reference: binding.Reference, Version: 1, SecurityEpoch: 0, Kind: "netbird.setup-key", IssuedAtMs: activation.UnixMilli(), NotBeforeMs: activation.UnixMilli(), ExpiresMs: f.now.Add(5 * time.Minute).UnixMilli(), Value: secret}
+	envelope, e := overlay.SignCredential(c, binding, "fixture-root", f.key, activation)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -77,7 +83,7 @@ func newOverlayFixture(t *testing.T) *overlayFixture {
 		t.Fatal(e)
 	}
 	defer tx.Rollback()
-	if e = f.worker.InstallOverlayGrant(context.Background(), tx, Owner(f.grant.Issuer, f.grant.Subject), binding, envelope, f.api.Roots, f.now); e != nil {
+	if e = f.worker.InstallOverlayGrant(context.Background(), tx, Owner(f.grant.Issuer, f.grant.Subject), binding, envelope, f.api.Roots, activation); e != nil {
 		t.Fatal(e)
 	}
 	if e = tx.Commit(); e != nil {
@@ -87,6 +93,94 @@ func newOverlayFixture(t *testing.T) *overlayFixture {
 	return &overlayFixture{f, client, session, OverlayRequest{random(), namespace, binding.Reference, 1}, binding, envelope}
 }
 func (o *overlayFixture) raw() []byte { raw, _ := json.Marshal(o.request); return raw }
+
+func TestManagedOverlaySameSecondWaitsForSignedNotBefore(t *testing.T) {
+	const delay = 999 * time.Millisecond
+	o := newOverlayFixtureWithCredentialDelay(t, delay)
+	o.store.OverlayBrokerPending = true
+	start := o.now
+	activation := start.Add(delay)
+	future := o.envelope
+	c, err := overlay.VerifyCredential(future, o.api.Roots, o.binding, activation)
+	if err != nil {
+		t.Fatal("verify original fixture", err)
+	}
+	signAt := func(at time.Time) string {
+		t.Helper()
+		c.IssuedAtMs, c.NotBeforeMs = at.UnixMilli(), at.UnixMilli()
+		signed, err := overlay.SignCredential(c, o.binding, "fixture-root", o.key, at)
+		if err != nil {
+			t.Fatal("sign clock fixture", err)
+		}
+		return signed
+	}
+	if _, err := overlay.VerifyCredential(future, o.api.Roots, o.binding, start); err == nil {
+		t.Fatal("fixture bypasses the strict not-before fence")
+	}
+	if err := verifyOverlayDelivery(future, o.api.Roots, o.binding, activation.Add(-time.Millisecond), true); err != ErrPending {
+		t.Fatal("a valid same-second key was not pending before its activation", err)
+	}
+	if err := verifyOverlayDelivery(future, o.api.Roots, o.binding, activation, true); err != nil {
+		t.Fatal("delivery did not open at the signed activation", err)
+	}
+	if err := verifyOverlayDelivery(future, o.api.Roots, o.binding, start, false); err != ErrUnavailable {
+		t.Fatal("nonbrokered validation changed", err)
+	}
+	if err := verifyOverlayDelivery(signAt(start.Add(time.Second)), o.api.Roots, o.binding, start, true); err != ErrUnavailable {
+		t.Fatal("a later-second key appeared pending", err)
+	}
+	wrong := o.binding
+	wrong.SecurityEpoch++
+	if err := verifyOverlayDelivery(future, o.api.Roots, wrong, start, true); err != ErrUnavailable {
+		t.Fatal("an unbound key appeared pending", err)
+	}
+	parts := strings.Split(future, ".")
+	parts[2] = strings.Repeat("x", len(parts[2]))
+	if err := verifyOverlayDelivery(strings.Join(parts, "."), o.api.Roots, o.binding, start, true); err != ErrUnavailable {
+		t.Fatal("an invalid signature appeared pending", err)
+	}
+	if err := verifyOverlayDelivery(future, o.api.Roots, o.binding, time.UnixMilli(c.ExpiresMs), true); err != ErrUnavailable {
+		t.Fatal("an expired key appeared pending", err)
+	}
+	ctx := t.Context()
+	token := o.session.AccessToken
+	binding, err := o.store.Lookup(ctx, token, false)
+	if err != nil {
+		t.Fatal("load live fixture session", err)
+	}
+	raw := o.raw()
+	uri := o.origin + "/v1/device/overlay/fetch"
+	dpop := signed(t, o.client, "POST", uri, token, o.session.Nonce, raw, start)
+	proof, err := identity.RequestProof(dpop, identity.ProofContext{
+		Method: "POST", URI: uri, Token: token, BodyHash: identity.Hash(raw), Now: start,
+	})
+	if err != nil {
+		t.Fatal("validate fixture proof", err)
+	}
+	replyBefore, err := o.store.overlayCredential(ctx, binding, token, proof, raw, false, o.api.OverlayServiceID,
+		o.api.Roots, start, func() time.Time { return activation.Add(-time.Millisecond) })
+	if err != ErrPending || replyBefore != (OverlayReply{}) {
+		t.Fatal("the transaction did not return pending without a credential", err)
+	}
+	pending := httptest.NewRecorder()
+	failure(pending, err)
+	expect(t, pending, 202)
+	if pending.Header().Get("Retry-After") != "2" || !strings.Contains(pending.Body.String(), "provisioning_pending") {
+		t.Fatal("early fetch did not use the existing pending contract")
+	}
+	var deliveries int
+	if err := fixtureOwner.QueryRow(`SELECT count(*) FROM identity_overlay_deliveries WHERE device=$1`, o.session.DeviceID).Scan(&deliveries); err != nil || deliveries != 0 {
+		t.Fatal("early fetch committed delivery before the fence", err)
+	}
+	o.api.Clock = func() time.Time { return start.Add(time.Second) }
+	answer := o.call(t, false)
+	expect(t, answer, 200)
+	var reply OverlayReply
+	if identity.Decode(answer.Body.Bytes(), &reply, true) != nil || reply.Envelope != future {
+		t.Fatal("the same operation did not deliver the original signed key")
+	}
+}
+
 func (o *overlayFixture) call(t *testing.T, consume bool) *httptest.ResponseRecorder {
 	t.Helper()
 	path := "/v1/device/overlay/fetch"
