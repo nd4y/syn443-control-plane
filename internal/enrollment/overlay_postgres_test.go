@@ -34,6 +34,11 @@ type overlayFixture struct {
 
 func newOverlayFixture(t *testing.T) *overlayFixture {
 	t.Helper()
+	return newOverlayFixtureWithCredentialDelay(t, 0)
+}
+
+func newOverlayFixtureWithCredentialDelay(t *testing.T, delay time.Duration) *overlayFixture {
+	t.Helper()
 	f := newFixture(t, 2)
 	f.api.OverlayServiceID = "fixture-service"
 	m := ManagedOverlayReference{"home", "provider-resource", "tenant", 1, random(), 1}
@@ -67,8 +72,9 @@ func newOverlayFixture(t *testing.T) *overlayFixture {
 	}
 	secret := hex.EncodeToString(entropy[:])
 	secret = secret[:8] + "-" + secret[8:12] + "-" + secret[12:16] + "-" + secret[16:20] + "-" + secret[20:]
-	c := overlay.Credential{SchemaVersion: 1, Audience: "syn443-overlay-credential", Address: binding.Address, KeyThumbprint: thumb, Reference: binding.Reference, Version: 1, SecurityEpoch: 0, Kind: "netbird.setup-key", IssuedAtMs: f.now.UnixMilli(), NotBeforeMs: f.now.UnixMilli(), ExpiresMs: f.now.Add(5 * time.Minute).UnixMilli(), Value: secret}
-	envelope, e := overlay.SignCredential(c, binding, "fixture-root", f.key, f.now)
+	activation := f.now.Add(delay)
+	c := overlay.Credential{SchemaVersion: 1, Audience: "syn443-overlay-credential", Address: binding.Address, KeyThumbprint: thumb, Reference: binding.Reference, Version: 1, SecurityEpoch: 0, Kind: "netbird.setup-key", IssuedAtMs: activation.UnixMilli(), NotBeforeMs: activation.UnixMilli(), ExpiresMs: f.now.Add(5 * time.Minute).UnixMilli(), Value: secret}
+	envelope, e := overlay.SignCredential(c, binding, "fixture-root", f.key, activation)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -77,7 +83,7 @@ func newOverlayFixture(t *testing.T) *overlayFixture {
 		t.Fatal(e)
 	}
 	defer tx.Rollback()
-	if e = f.worker.InstallOverlayGrant(context.Background(), tx, Owner(f.grant.Issuer, f.grant.Subject), binding, envelope, f.api.Roots, f.now); e != nil {
+	if e = f.worker.InstallOverlayGrant(context.Background(), tx, Owner(f.grant.Issuer, f.grant.Subject), binding, envelope, f.api.Roots, activation); e != nil {
 		t.Fatal(e)
 	}
 	if e = tx.Commit(); e != nil {
@@ -89,9 +95,13 @@ func newOverlayFixture(t *testing.T) *overlayFixture {
 func (o *overlayFixture) raw() []byte { raw, _ := json.Marshal(o.request); return raw }
 
 func TestManagedOverlaySameSecondWaitsForSignedNotBefore(t *testing.T) {
-	o := newOverlayFixture(t)
+	const delay = 999 * time.Millisecond
+	o := newOverlayFixtureWithCredentialDelay(t, delay)
 	o.store.OverlayBrokerPending = true
-	c, err := overlay.VerifyCredential(o.envelope, o.api.Roots, o.binding, o.now)
+	start := o.now
+	activation := start.Add(delay)
+	future := o.envelope
+	c, err := overlay.VerifyCredential(future, o.api.Roots, o.binding, activation)
 	if err != nil {
 		t.Fatal("verify original fixture", err)
 	}
@@ -104,9 +114,6 @@ func TestManagedOverlaySameSecondWaitsForSignedNotBefore(t *testing.T) {
 		}
 		return signed
 	}
-	start := o.now
-	activation := start.Add(999 * time.Millisecond)
-	future := signAt(activation)
 	if _, err := overlay.VerifyCredential(future, o.api.Roots, o.binding, start); err == nil {
 		t.Fatal("fixture bypasses the strict not-before fence")
 	}
@@ -135,12 +142,28 @@ func TestManagedOverlaySameSecondWaitsForSignedNotBefore(t *testing.T) {
 	if err := verifyOverlayDelivery(future, o.api.Roots, o.binding, time.UnixMilli(c.ExpiresMs), true); err != ErrUnavailable {
 		t.Fatal("an expired key appeared pending", err)
 	}
-	wrapped := o.worker.Seal([]byte(future), overlayAAD(o.session.DeviceID, o.binding.Reference, o.binding.Version))
-	if _, err := fixtureOwner.Exec(`UPDATE identity_overlay_grants SET envelope=$2,envelope_hash=$3 WHERE device=$1`,
-		o.session.DeviceID, wrapped, identity.Hash([]byte(future))); err != nil {
-		t.Fatal("install same-second fixture", err)
+	ctx := t.Context()
+	token := o.session.AccessToken
+	binding, err := o.store.Lookup(ctx, token, false)
+	if err != nil {
+		t.Fatal("load live fixture session", err)
 	}
-	pending := o.call(t, false)
+	raw := o.raw()
+	uri := o.origin + "/v1/device/overlay/fetch"
+	dpop := signed(t, o.client, "POST", uri, token, o.session.Nonce, raw, start)
+	proof, err := identity.RequestProof(dpop, identity.ProofContext{
+		Method: "POST", URI: uri, Token: token, BodyHash: identity.Hash(raw), Now: start,
+	})
+	if err != nil {
+		t.Fatal("validate fixture proof", err)
+	}
+	replyBefore, err := o.store.overlayCredential(ctx, binding, token, proof, raw, false, o.api.OverlayServiceID,
+		o.api.Roots, start, func() time.Time { return activation.Add(-time.Millisecond) })
+	if err != ErrPending || replyBefore != (OverlayReply{}) {
+		t.Fatal("the transaction did not return pending without a credential", err)
+	}
+	pending := httptest.NewRecorder()
+	failure(pending, err)
 	expect(t, pending, 202)
 	if pending.Header().Get("Retry-After") != "2" || !strings.Contains(pending.Body.String(), "provisioning_pending") {
 		t.Fatal("early fetch did not use the existing pending contract")

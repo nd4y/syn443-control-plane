@@ -182,13 +182,19 @@ func (s *Store) InstallOverlayGrant(ctx context.Context, tx *sql.Tx, owner strin
 
 func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, proof identity.Proof, raw []byte, consume bool, service string, roots map[string]*ecdsa.PublicKey, now time.Time) (OverlayReply, error) {
 	started := time.Now()
+	return s.overlayCredential(ctx, b, token, proof, raw, consume, service, roots, now, func() time.Time {
+		return now.Add(time.Since(started))
+	})
+}
+
+func (s *Store) overlayCredential(ctx context.Context, b Binding, token string, proof identity.Proof, raw []byte, consume bool, service string, roots map[string]*ecdsa.PublicKey, now time.Time, currentTime func() time.Time) (OverlayReply, error) {
 	var reply OverlayReply
 	var request OverlayRequest
 	if proof.Claims.RequestHash != identity.Hash(raw) || identity.Decode(raw, &request, true) != nil || !idPattern.MatchString(request.OperationID) || !overlayDigest(request.Reference) || request.Version < 1 || request.Version > 9007199254740991 || !strings.HasPrefix(request.Namespace, "managed-netbird/") || !overlayDigest(strings.TrimPrefix(request.Namespace, "managed-netbird/")) {
 		return reply, identity.ErrInvalid
 	}
 	value, e := s.WithDeviceSession(ctx, b, token, proof, now, func(ctx context.Context, tx *sql.Tx, a DeviceAuthority) (DeviceResult, error) {
-		current := now.Add(time.Since(started))
+		current := currentTime()
 		permit, e := s.overlayPermission(ctx, tx, a, service, roots, request, consume, current)
 		if e != nil {
 			return DeviceResult{}, e
@@ -286,7 +292,7 @@ func (s *Store) OverlayCredential(ctx context.Context, b Binding, token string, 
 		if e != nil || identity.Hash(envelope) != hash {
 			return DeviceResult{}, ErrUnavailable
 		}
-		if e = verifyOverlayDelivery(string(envelope), roots, permit, now.Add(time.Since(started)), s.OverlayBrokerPending); e != nil {
+		if e = verifyOverlayDelivery(string(envelope), roots, permit, currentTime(), s.OverlayBrokerPending); e != nil {
 			return DeviceResult{}, e
 		}
 		return DeviceResult{OverlayReply{Envelope: string(envelope)}, until}, nil
