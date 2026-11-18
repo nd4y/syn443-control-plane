@@ -53,6 +53,20 @@ detail retention window. A run exceeding 100,000 events or 256 groups
 leaves the previous summary intact. Keep the analysis and retention SQL roles
 out of the control panel and the enrollment API.
 
+An external scheduler can run `enrollment-admin telemetry-aggregate-settled`
+once per hour. This command takes no arguments and uses the dedicated analysis
+DSN file, an explicit PostgreSQL URL and full certificate verification for
+remote databases. Run it in a separate job with a synchronized clock and one
+instance per schedule. The command rejects database clock skew over two minutes
+and validates the analysis login and privileges inside the transaction.
+
+Each invocation uses the database clock to select the latest UTC hour that has
+been closed for at least one hour. It gets 15 seconds and shares the manual
+command's transaction lock for that hour. Overlapping calls can retry the same
+hour. The job emits the UTC hour and aggregate counts after commit. An empty
+hour produces zero counts and no rows for the read-only summary. If an hour was
+missed, use the manual UTC-hour command while its details are retained.
+
 For offline analysis, `enrollment-admin telemetry-summary <UTC-hour>`
 returns versioned JSON for one selected hour. The reader uses the separate
 `syn443_telemetry_reader` role from `internal/telemetry/report-roles.sql`
@@ -82,7 +96,7 @@ clears it when the selected hour changes, on logout and on session expiry.
 The console is a read-only operational view.
 
 Enabling ingestion does not turn on Android uploads without device consent.
-End-to-end delivery, scheduled analysis, cohort comparisons, incident analysis,
+End-to-end delivery, live scheduling, cohort comparisons, incident analysis,
 device erasure and retention for backups and other categories require their
 own acceptance.
 

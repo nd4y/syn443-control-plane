@@ -20,10 +20,10 @@ func run() error {
 }
 
 func runArguments(args []string, aggregate, summary func(time.Time) error) error {
-	return runArgumentsWithPruneWorker(args, aggregate, summary, runTelemetryPruneWorker)
+	return runArgumentsWithTelemetryWorkers(args, aggregate, summary, runTelemetryPruneWorker, runTelemetryAggregateSettled)
 }
 
-func runArgumentsWithPruneWorker(args []string, aggregate, summary func(time.Time) error, pruneWorker func() error) error {
+func runArgumentsWithTelemetryWorkers(args []string, aggregate, summary func(time.Time) error, pruneWorker, aggregateSettled func() error) error {
 	if len(args) == 0 {
 		return identity.ErrInvalid
 	}
@@ -46,6 +46,12 @@ func runArgumentsWithPruneWorker(args []string, aggregate, summary func(time.Tim
 			return identity.ErrInvalid
 		}
 		return pruneWorker()
+	}
+	if command == "telemetry-aggregate-settled" {
+		if aggregateSettled == nil {
+			return identity.ErrInvalid
+		}
+		return aggregateSettled()
 	}
 	if command == "fingerprint-grants" {
 		return fingerprintGrants(os.Stdin, os.Stdout, time.Now)

@@ -5,6 +5,7 @@ package enrollment
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -13,6 +14,107 @@ import (
 
 	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 )
+
+func TestTelemetrySettledHourUsesDatabaseClockAndSharesManualLock(t *testing.T) {
+	f := newFixture(t, 1)
+	f.api.TelemetryEnabled = true
+	k := key(t)
+	session, _, _ := f.register(t, k)
+	ctx := t.Context()
+	var before time.Time
+	if err := fixtureOwner.QueryRowContext(ctx, "SELECT statement_timestamp()").Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	base := before.UTC().Truncate(time.Hour).Add(-2 * time.Hour)
+	batch := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 52, AlgorithmRevision: 1}
+	for range 5 {
+		batch.Events = append(batch.Events, telemetry.Event{
+			ID: random(), AtMS: f.now.UnixMilli(), Kind: "probe", Code: "ok", Mode: "wifi",
+		})
+	}
+	body, err := json.Marshal(batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect(t, f.call(t, k, http.MethodPost, telemetryPath, session.AccessToken, session.Nonce, body), http.StatusOK)
+	eventTimes := []time.Time{
+		base.Add(-time.Millisecond), base, base.Add(time.Hour - time.Millisecond),
+		base.Add(time.Hour), base.Add(2 * time.Hour),
+	}
+	for i, event := range batch.Events {
+		if _, err := fixtureOwner.ExecContext(ctx, "UPDATE identity_telemetry_events SET received_at_ms=$2 WHERE event_id=$1",
+			event.ID, eventTimes[i].UnixMilli()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	lock, err := fixtureOwner.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Rollback()
+	// Protect both possible hours so a test crossing an hour boundary remains deterministic.
+	for _, hour := range []time.Time{base, base.Add(time.Hour)} {
+		if _, err := lock.ExecContext(ctx, "SELECT pg_advisory_xact_lock(443052,$1::integer)", hour.Unix()/3600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := telemetry.AggregateSettledHour(ctx, fixtureAnalysis, time.Now()); err != telemetry.ErrUnavailable {
+		t.Fatal("the scheduled transaction ignored the aggregate lock")
+	}
+	if _, err := telemetry.AggregateHour(ctx, fixtureAnalysis, base, base.Add(3*time.Hour)); err != telemetry.ErrUnavailable {
+		t.Fatal("the existing manual command lost the aggregate lock")
+	}
+	if err := lock.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+
+	for range 2 {
+		out, err := telemetry.AggregateSettledHour(ctx, fixtureAnalysis, time.Now())
+		if err != nil {
+			t.Fatal("scheduled analysis failed", err)
+		}
+		want := int64(2)
+		if out.Hour.Equal(base.Add(time.Hour)) {
+			want = 1
+		} else if !out.Hour.Equal(base) {
+			t.Fatal("the selected hour is outside the valid database time window")
+		}
+		if out.Events != want || out.Groups != 1 {
+			t.Fatal("the replacement included events from another hour", out)
+		}
+		report, err := telemetry.ReportHour(ctx, fixtureTelemetryReader, out.Hour, time.Now().Add(2*time.Minute))
+		if err != nil || !report.Available || len(report.Rows) != 1 || report.Rows[0].Events != want {
+			t.Fatal("the committed report is missing or was duplicated", err)
+		}
+	}
+}
+
+func TestTelemetrySettledHourRejectsWrongRoleClockAndExtraWriteAuthority(t *testing.T) {
+	newFixture(t, 1)
+	ctx := t.Context()
+	for _, db := range []*sql.DB{fixtureOwner, fixtureTelemetryRetention, fixtureTelemetryReader} {
+		if out, err := telemetry.AggregateSettledHour(ctx, db, time.Now()); err != telemetry.ErrUnavailable || !out.Hour.IsZero() {
+			t.Fatal("an unrelated role was authorized")
+		}
+	}
+	for _, shift := range []time.Duration{-3 * time.Minute, 3 * time.Minute} {
+		if out, err := telemetry.AggregateSettledHour(ctx, fixtureAnalysis, time.Now().Add(shift)); err != telemetry.ErrUnavailable || !out.Hour.IsZero() {
+			t.Fatal("an excessive database clock difference was accepted")
+		}
+	}
+	if _, err := fixtureOwner.ExecContext(ctx, "GRANT UPDATE(events) ON identity_telemetry_hourly TO syn443_telemetry_analysis"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := fixtureOwner.Exec("REVOKE UPDATE(events) ON identity_telemetry_hourly FROM syn443_telemetry_analysis"); err != nil {
+			t.Error("restore analysis role after fixture", err)
+		}
+	})
+	if out, err := telemetry.AggregateSettledHour(ctx, fixtureAnalysis, time.Now()); err != telemetry.ErrUnavailable || !out.Hour.IsZero() {
+		t.Fatal("a role with surplus write privileges was authorized")
+	}
+}
 
 func TestTelemetrySummaryUsesScopedRolesAndKeepsLastCompleteHour(t *testing.T) {
 	f := newFixture(t, 1)
