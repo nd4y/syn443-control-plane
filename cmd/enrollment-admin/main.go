@@ -20,6 +20,10 @@ func run() error {
 }
 
 func runArguments(args []string, aggregate, summary func(time.Time) error) error {
+	return runArgumentsWithPruneWorker(args, aggregate, summary, runTelemetryPruneWorker)
+}
+
+func runArgumentsWithPruneWorker(args []string, aggregate, summary func(time.Time) error, pruneWorker func() error) error {
 	if len(args) == 0 {
 		return identity.ErrInvalid
 	}
@@ -36,6 +40,12 @@ func runArguments(args []string, aggregate, summary func(time.Time) error) error
 	}
 	if len(args) != 1 {
 		return identity.ErrInvalid
+	}
+	if command == "telemetry-prune-worker" {
+		if pruneWorker == nil {
+			return identity.ErrInvalid
+		}
+		return pruneWorker()
 	}
 	if command == "fingerprint-grants" {
 		return fingerprintGrants(os.Stdin, os.Stdout, time.Now)
