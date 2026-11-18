@@ -16,23 +16,35 @@ import (
 )
 
 func run() error {
-	if len(os.Args) != 2 {
+	return runArguments(os.Args[1:], runTelemetryAggregate, runTelemetrySummary)
+}
+
+func runArguments(args []string, aggregate, summary func(time.Time) error) error {
+	if len(args) == 0 {
 		return identity.ErrInvalid
 	}
-	if os.Args[1] == "fingerprint-grants" {
+	command := args[0]
+	if command == "telemetry-aggregate" || command == "telemetry-summary" {
+		hour, err := parseTelemetryHour(args[1:])
+		if err != nil {
+			return err
+		}
+		if command == "telemetry-aggregate" {
+			return aggregate(hour)
+		}
+		return summary(hour)
+	}
+	if len(args) != 1 {
+		return identity.ErrInvalid
+	}
+	if command == "fingerprint-grants" {
 		return fingerprintGrants(os.Stdin, os.Stdout, time.Now)
 	}
-	if os.Args[1] == "bootstrap-profile" {
+	if command == "bootstrap-profile" {
 		return runBootstrapProfile()
 	}
-	if os.Args[1] == "telemetry-prune" {
+	if command == "telemetry-prune" {
 		return runTelemetryPrune()
-	}
-	if os.Args[1] == "telemetry-aggregate" {
-		return runTelemetryAggregate(os.Args[2:])
-	}
-	if os.Args[1] == "telemetry-summary" {
-		return runTelemetrySummary(os.Args[2:])
 	}
 	c, e := enrollment.ReadConfig(os.Getenv("SYN443_ENROLLMENT_CONFIG"))
 	if e != nil {
@@ -45,7 +57,7 @@ func run() error {
 	defer store.DB.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	switch os.Args[1] {
+	switch command {
 	case "overlay-resource-put":
 		raw, e := enrollment.PrivateFile(os.Getenv("SYN443_OVERLAY_RESOURCE"), 98304)
 		if e != nil {

@@ -62,11 +62,7 @@ func parseTelemetryHour(args []string) (time.Time, error) {
 	return hour, nil
 }
 
-func runTelemetryAggregate(args []string) error {
-	hour, err := parseTelemetryHour(args)
-	if err != nil {
-		return err
-	}
+func runTelemetryAggregate(hour time.Time) error {
 	db, err := openTelemetryDatabase("SYN443_TELEMETRY_ANALYSIS_DSN_FILE")
 	if err != nil {
 		return err
@@ -85,11 +81,7 @@ func runTelemetryAggregate(args []string) error {
 	return nil
 }
 
-func runTelemetrySummary(args []string) error {
-	hour, err := parseTelemetryHour(args)
-	if err != nil {
-		return err
-	}
+func runTelemetrySummary(hour time.Time) error {
 	db, err := openTelemetryDatabase("SYN443_TELEMETRY_READER_DSN_FILE")
 	if err != nil {
 		return err
