@@ -1585,8 +1585,8 @@
       "evidence": [
         "docs/telemetry-ingest.md"
       ],
-      "implementationScope": "Separate analysis, retention and read-only summary roles; 14-day detail and 180-day summary pruning; explicit and audited web access to identifier-free aggregates.",
-      "remainingScope": "Scheduled operations acceptance, full dashboards, support bundles, remaining audit and retention, copies and device erasure."
+      "implementationScope": "Separate analysis, retention and read-only summary roles; 14-day detail and 180-day summary pruning, with a candidate dedicated periodic process; explicit and audited web access to identifier-free aggregates.",
+      "remainingScope": "Exact CI and live operations acceptance, scheduled aggregation, full dashboards, support bundles, remaining audit and retention, copies and device erasure."
     },
     {
       "id": "LOG-01",

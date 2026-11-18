@@ -19,8 +19,26 @@ allowed to read only keys and timestamps and delete expired telemetry. Run
 `enrollment-admin telemetry-prune` with its DSN in
 `SYN443_TELEMETRY_RETENTION_DSN_FILE`. One invocation removes at most 1,024
 detailed events past 14 days, 1,024 budget rows past 48 hours, and summaries
-for four hours past 180 days. Operators schedule pruning before enabling
-intake and monitor whether it catches up.
+for four hours past 180 days.
+
+For periodic cleanup, run `enrollment-admin telemetry-prune-worker` as a
+separate process with just that retention DSN file. The worker attempts one
+transaction immediately and waits a minute after it finishes before trying
+again. Each transaction gets 15 seconds, uses the database clock, checks
+the dedicated login and its column privileges, and takes a nonblocking
+database lock to avoid overlapping scheduled deletion. A failed attempt
+emits a fixed diagnostic. Successful deletion reports only counts. Stop the
+process to revert to manual pruning. Already expired rows removed in a
+successful transaction are not restored by stopping the worker.
+
+Configure a private PostgreSQL URL with an explicit host, port, database, the
+`syn443_telemetry_retention` login and certificate verification. Use
+`sslmode=verify-full` with the system trust store for remote databases.
+Start the worker without other PostgreSQL connection settings in its
+environment. The process rejects a backward database clock within its
+lifetime. Keep database time synchronized and monitor backlog before enabling
+intake. Live deployment, retention of backup copies and scheduling for other
+data categories each require their own acceptance.
 
 The separate `syn443_telemetry_analysis` role can summarize one settled
 UTC hour with `enrollment-admin telemetry-aggregate <UTC-hour>` using
