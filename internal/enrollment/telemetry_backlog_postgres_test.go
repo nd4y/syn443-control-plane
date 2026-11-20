@@ -3,13 +3,82 @@
 package enrollment
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 )
+
+func TestTelemetryAggregateWorkerProcessCommitsStopsAndResumes(t *testing.T) {
+	f := newFixture(t, 1)
+	f.api.TelemetryEnabled = true
+	k := key(t)
+	session, _, _ := f.register(t, k)
+	base := time.Now().UTC().Truncate(time.Hour).Add(-9 * time.Hour)
+	// Only these hours are shared with the other database fixtures.
+	for _, hour := range []time.Time{base, base.Add(time.Hour)} {
+		clear := func() {
+			if _, err := fixtureOwner.Exec("DELETE FROM identity_telemetry_hourly WHERE hour_start_ms=$1", hour.UnixMilli()); err != nil {
+				t.Error(err)
+			}
+		}
+		clear()
+		t.Cleanup(clear)
+	}
+	dsn := filepath.Join(t.TempDir(), "analysis")
+	if err := os.WriteFile(dsn, []byte(fixtureAnalysisDSN), 0600); err != nil {
+		t.Fatal("could not prepare a temporary analysis credential")
+	}
+	for _, hour := range []time.Time{base, base.Add(time.Hour)} {
+		event := telemetry.Event{ID: random(), AtMS: f.now.UnixMilli(), Kind: "probe", Code: "ok", Mode: "wifi"}
+		body, err := json.Marshal(telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 52, AlgorithmRevision: 1, Events: []telemetry.Event{event}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		expect(t, f.call(t, k, http.MethodPost, telemetryPath, session.AccessToken, session.Nonce, body), http.StatusOK)
+		if _, err := fixtureOwner.Exec("UPDATE identity_telemetry_events SET received_at_ms=$1 WHERE event_id=$2", hour.UnixMilli(), event.ID); err != nil {
+			t.Fatal(err)
+		}
+		observe := func() {
+			ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, filepath.Join(os.Getenv("SYN443_TEST_BINARY_DIR"), "enrollment-admin"), "telemetry-aggregate-worker")
+			cmd.Env = []string{"SYN443_TELEMETRY_ANALYSIS_DSN_FILE=" + dsn}
+			stdout, err := cmd.StdoutPipe()
+			if err != nil || cmd.Start() != nil {
+				t.Fatal("analysis worker failed to start")
+			}
+			defer func() {
+				if cmd.ProcessState == nil {
+					cancel()
+					_ = cmd.Wait()
+				}
+			}()
+			scanner := bufio.NewScanner(stdout)
+			want := fmt.Sprintf("Telemetry hour summarized: hour=%s groups=1 events=1", hour.Format("2006-01-02T15:00Z"))
+			if !scanner.Scan() || scanner.Text() != want {
+				t.Fatal("analysis worker did not confirm the expected hour")
+			}
+			report, err := telemetry.ReportHour(t.Context(), fixtureTelemetryReader, hour, time.Now())
+			if err != nil || !report.Available || len(report.Rows) != 1 || report.Rows[0].Events != 1 {
+				t.Fatal("worker output preceded durable reader-visible data", err)
+			}
+			if cmd.Process.Signal(syscall.SIGTERM) != nil || cmd.Wait() != nil {
+				t.Fatal("worker did not stop cleanly after commit")
+			}
+		}
+		observe()
+	}
+}
 
 func TestTelemetryWorkerRecoversRetainedGapsAndWrapsAfterBusyHour(t *testing.T) {
 	f := newFixture(t, 1)
