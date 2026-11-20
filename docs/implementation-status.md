@@ -7,7 +7,7 @@ integration and physical regression gates must be recorded separately. Normal
 enrollment still advertises the previous capability set; this source component
 does not activate a managed profile or close the full CHK-04 / AC58 requirement.
 
-Snapshot: 2026-11-20. Specification0.9 contains292 requirements and98 acceptance
+Snapshot: 2026-11-21. Specification0.9 contains292 requirements and98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
 
@@ -38,9 +38,16 @@ The traffic checks matched the request's resolved destination against the
 VPN routes and checked that the requesting UID belonged to the app-owned
 VPN. Timings include the verification request. The assigned policy used one
 direct outbound. The test concluded with VPN off and Wi-Fi on, as found.
-Cellular, autonomous battery life, NetBird and VLESS require separate physical
-checks. The chat check covered opening the conversation. The administrator
-web card still requires a fresh authenticated read.
+Cellular, autonomous battery life and current managed NetBird/VLESS assignments
+require separate physical checks. The chat check covered opening the conversation.
+
+On November 21 an administrator signed in to the pilot console through Keycloak,
+selected the existing phone from the device list and opened its issued settings.
+The signed configuration selected a direct outbound and the `m1-local-v1`
+algorithm. The console marked the last runtime report as stale. USB readback
+confirmed the installed v99 package and its existing registration. This check
+covered read access to the device and its configuration. Administrative edits
+and publication from the phone remain separate checks.
 
 The server tests covered a concurrent chat send during orphan cleanup, a
 backlog spanning multiple cleanup transactions and a retry after the queue
@@ -66,9 +73,11 @@ state. The journal adds typed lifecycle and engine evidence with a 64 MiB
 storage cap and up to seven days of readable history in the same boot. The
 November 20 checkpoint above records the later physical Wi-Fi, identity
 preservation and export checks. Full effective configuration, redacted native stacks, remote
-support upload and download auditing remain open. The telemetry worker has
-source and isolated database evidence. Live scheduling, retention of backup
-copies, per-device erasure and scheduled aggregation remain open.
+support upload and download auditing remain open. The aggregation worker scans
+settled UTC hours and resumes missed work after restart. Isolated PostgreSQL
+tests exercise the executable with the restricted analysis role and verify its
+commits through the reporting role. Pilot deployment, retention of backup copies
+and per-device erasure remain open. [Aggregation worker](https://github.com/nd4y/syn443-control-plane/pull/74)
 
 ### Prior physical and deployment evidence
 
@@ -143,9 +152,13 @@ NetBird direct mode attempts P2P before relay fallback; VLESS mode has a dedicat
 detour with no hidden direct fallback. Direct home access was physically checked;
 that is not restricted-LTE acceptance or managed overlay enrollment acceptance.
 
-Signed assigned configurations containing route_checks or unsupported managed
-overlay credentials remain rejected until their activation/retirement protocols
-enforce the same safety constraints. This limitation is not silently bypassed.
+Android accepts signed route checks and managed NetBird assignments when the
+device has the corresponding capabilities. New enrollment advertises
+`route.health.v1` and `overlay.credentials.v1`. A managed NetBird publication
+requires a permitted provider resource, the broker and an addressed grant.
+The November 21 pilot card contained only a direct outbound. The earlier
+managed Cloud enrollment and private-peer checks are documented in the
+[Android acceptance record](https://github.com/nd4y/syn443-android/blob/4dfffe92c6dbf86f4be9b7b86c3473362f30d2d1/docs/managed-overlay.md#diagnostic-readiness-after-network-changes).
 Multiple Remnawave resources, x-ui/3x-ui and Tailscale/ZeroTier remain extension
 contracts by design, not implemented version1.0 requirements.
 
