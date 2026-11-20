@@ -148,7 +148,7 @@ func runArgumentsWithTelemetryWorkers(args []string, aggregate, summary func(tim
 		_, e = store.DB.ExecContext(ctx, `INSERT INTO chat_admins(owner,enabled) VALUES($1,$2) ON CONFLICT(owner) DO UPDATE SET enabled=excluded.enabled`, enrollment.Owner(g.Issuer, g.Subject), g.Enabled)
 		return e
 	case "chat-cleanup":
-		_, e = supportchat.PruneExpiredUploads(ctx, store.DB, time.Now())
+		_, e = supportchat.DrainExpiredUploads(ctx, store.DB, time.Now())
 		return e
 	case "migrate":
 		_, e = store.DB.ExecContext(ctx, enrollment.Schema)
