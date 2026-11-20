@@ -175,21 +175,36 @@ func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool, managed ..
 	}
 	privateJSON(t, apiFile, config)
 	stopAPI, apiLog := startProcess(t, "enrollment-api", []string{"SYN443_ENROLLMENT_CONFIG=" + apiFile})
-	ready := false
-	for i := 0; i < 50; i++ {
-		r, e := client.Get(origin + "/v1/device/policy")
-		if e == nil {
+	waitForAPI := func() {
+		t.Helper()
+		for i := 0; i < 50; i++ {
+			r, err := client.Get(origin + "/readyz")
+			if err == nil {
+				r.Body.Close()
+				if r.StatusCode == http.StatusOK {
+					break
+				}
+			}
+			if i == 49 {
+				t.Fatal("API database readiness failed")
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		for _, check := range []struct {
+			path string
+			want int
+		}{{"/livez", http.StatusOK}, {"/v1/device/policy", http.StatusUnauthorized}} {
+			r, err := client.Get(origin + check.path)
+			if err != nil {
+				t.Fatal(err)
+			}
 			r.Body.Close()
-			if r.StatusCode == 401 {
-				ready = true
-				break
+			if r.StatusCode != check.want {
+				t.Fatalf("%s returned %d, want %d", check.path, r.StatusCode, check.want)
 			}
 		}
-		time.Sleep(100 * time.Millisecond)
 	}
-	if !ready {
-		t.Fatal("API readiness failed")
-	}
+	waitForAPI()
 	k := key(t)
 	thumb, _ := identity.PublicJWK(&k.PublicKey).Thumbprint()
 	jwtHeader, _ := json.Marshal(map[string]string{"alg": "RS256", "kid": "fixture", "typ": "JWT"})
@@ -248,21 +263,7 @@ func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool, managed ..
 	}
 	stopAPI, _ = startProcess(t, "enrollment-api", []string{"SYN443_ENROLLMENT_CONFIG=" + apiFile})
 	defer stopAPI()
-	ready = false
-	for i := 0; i < 50; i++ {
-		r, e := client.Get(origin + "/v1/device/policy")
-		if e == nil {
-			r.Body.Close()
-			if r.StatusCode == 401 {
-				ready = true
-				break
-			}
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	if !ready {
-		t.Fatal("API restart readiness")
-	}
+	waitForAPI()
 	status, _, _ = call("GET", "/v1/device/policy", session.AccessToken, session.Nonce, proof, nil)
 	if status != 401 {
 		t.Fatal("proof replay survived process restart")

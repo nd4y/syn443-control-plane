@@ -1,5 +1,17 @@
 # Control plane database recovery
 
+The enrollment and administrative APIs expose two probes on their existing
+loopback HTTP or HTTPS listener. Configure the local container supervisor to
+use `GET /livez` for liveness and `GET /readyz` for readiness. Both also accept
+`HEAD`. Keep these paths internal at the reverse proxy.
+
+Liveness returns 200 when the process can serve HTTP. Readiness uses the API's
+own PostgreSQL pool with a one-second deadline. It returns 200 on success and
+503 after a failed check or once shutdown starts. Concurrent checks share a
+result for up to two seconds. Responses have an empty body. After a restore,
+also check policy retrieval, role restrictions and file integrity as described
+below. These probes cover the primary database connection only.
+
 The enrollment CI job restores a PostgreSQL custom-format dump into a new
 database inside its own disposable container. It reopens the API using the
 restricted runtime role and the original synthetic store encryption key.
