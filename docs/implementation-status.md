@@ -7,7 +7,7 @@ integration and physical regression gates must be recorded separately. Normal
 enrollment still advertises the previous capability set; this source component
 does not activate a managed profile or close the full CHK-04 / AC58 requirement.
 
-Snapshot: 2026-11-18. Specification0.9 contains292 requirements and98 acceptance
+Snapshot: 2026-11-20. Specification0.9 contains292 requirements and98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
 
@@ -17,6 +17,39 @@ The accepted operation-reconciliation source adds an immutable SQL ledger, same-
 The [service protocol eligibility source](operation-outcome-reconciliation.md#service-protocol-eligibility---source-and-main-accepted) adds only `configuration.protocol.get` with an empty payload and a closed two-field reply. Its optional owner declaration defaults to version1; explicit2 is a coordinated schema/consumer declaration, not proof of deployment or an authorization grant. Fourteen new outcomes (7 normal,4 provisioning PostgreSQL,3 catalogue HTTP/PostgreSQL) and6 validator unit cases passed Actions44006215112; resulting main44009146272 passed all8 mandatory jobs with the same source tree. No signed administrative metadata/bootstrap/device-key/session binding or old pending bytes/version is changed. No live enablement or full M3 acceptance is claimed.
 
 ## Current accepted checkpoint
+
+### Physical Wi-Fi recovery and support - 2026-11-20
+
+A pilot user signed back in through the system browser on Android v98. The
+app verified the assigned policy and retained the device ID and key. After
+installation of v99 over v98, the same policy authorized VPN use. The app
+UID, policy revision, telemetry consent and radio settings matched their
+pre-upgrade values. [Android PR101](https://github.com/nd4y/syn443-android/pull/101)
+
+| Physical check on the USB-connected phone | Observed result |
+| --- | --- |
+| Disable Wi-Fi, observe network loss, then re-enable Wi-Fi in airplane mode | Both cycles recovered. A fresh HTTPS request through the app-owned VPN returned 204 after 16.25 s and 16.24 s. |
+| End the app's native engine process while the VPN is on | A new process took over. HTTPS through the VPN returned 204 after 9.02 s. |
+| End the UI process while the VPN is on | The native process and connection generation stayed the same. A new HTTPS request succeeded, and the UI reopened. |
+| End the VPN controller process | Android started a new controller before the test queried the app. The engine was replaced, the connection generation stayed the same and HTTPS succeeded after 9.91 s. |
+| Open support chat and export a local diagnostics ZIP | The user saw the connected conversation and an enabled composer. The Android document picker saved the ZIP. Its manifest listed all nine components and the available component hashes matched their contents. |
+
+The traffic checks matched the request's resolved destination against the
+VPN routes and checked that the requesting UID belonged to the app-owned
+VPN. Timings include the verification request. The assigned policy used one
+direct outbound. The test concluded with VPN off and Wi-Fi on, as found.
+Cellular, autonomous battery life, NetBird and VLESS require separate physical
+checks. The chat check covered opening the conversation. The administrator
+web card still requires a fresh authenticated read.
+
+The server tests covered a concurrent chat send during orphan cleanup, a
+backlog spanning multiple cleanup transactions and a retry after the queue
+drained. PostgreSQL retained the attachment bytes after the send committed.
+Separate process tests checked that API readiness follows database
+availability. These changes reached the main branch. Their pilot rollout
+remains open. [Chat cleanup](https://github.com/nd4y/syn443-control-plane/pull/70)
+and [backlog tests](https://github.com/nd4y/syn443-control-plane/pull/72).
+[API readiness tests](https://github.com/nd4y/syn443-control-plane/pull/71).
 
 ### Observability source and integration - 2026-11-18
 
@@ -31,8 +64,8 @@ The local ZIP has a manifest with hashes, explicit omissions and a preview.
 Collection reads existing evidence without starting probes or changing VPN
 state. The journal adds typed lifecycle and engine evidence with a 64 MiB
 storage cap and up to seven days of readable history in the same boot. The
-Android changes still require physical Wi-Fi, identity preservation and
-export checks. Full effective configuration, redacted native stacks, remote
+November 20 checkpoint above records the later physical Wi-Fi, identity
+preservation and export checks. Full effective configuration, redacted native stacks, remote
 support upload and download auditing remain open. The telemetry worker has
 source and isolated database evidence. Live scheduling, retention of backup
 copies, per-device erasure and scheduled aggregation remain open.

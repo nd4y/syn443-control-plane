@@ -229,7 +229,8 @@
       "text": "После разрешённой регистрации клиент автоматически получает эффективную конфигурацию и показывает готовность к включению VPN. Повторный запуск использует действующую сессию либо разрешённую offline lease. Необходимость повторного входа, отсутствие назначений и отсутствие сети различаются.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/implementation-status.md#physical-wi-fi-recovery-and-support---2026-11-20"
       ]
     },
     {
@@ -948,7 +949,8 @@
       "status": "partial",
       "evidence": [
         "docs/implementation-status.md#evidence-index-and-register-semantics",
-        "docs/chat-acceptance-20261115.md"
+        "docs/chat-acceptance-20261115.md",
+        "docs/implementation-status.md#physical-wi-fi-recovery-and-support---2026-11-20"
       ],
       "text": "Пока desiredOn=true и нет запрета/необходимого действия пользователя по ENG-01/02, единый reconcile loop повторно приводит фактическое состояние к разрешённому желаемому. DNS timeout/EOF/TLS failure и недоступный узел вызывают классификацию и восстановление, а не окончательный Off; валидация TLS не ослабляется. Reference retry policy v1: base=1секунда, factor=2, cap=60секунд, jitter multiplier в пределах0.8-1.2 с итоговым clamp1-60секунд; floor для досрочной попытки по новому usable network=5секунд между такими попытками, с общим admission limit. Параметры версионируются внутри локальных hard limits. Повторы используют бюджеты AUTO-07/ARC-06; номер попытки, причина, следующий допуск и история тяжёлых запусков переживают рестарт контроллера. При NoNetwork активные сетевые попытки не выполняются: ожидание callback ОС, без polling/wakelock storm. При новой пригодной Network разрешена своевременная попытка с актуальным контекстом и общим rate limit; повторные смены epoch не обнуляют backoff, cooldown и rolling budget. Задержка сбрасывается только после устойчивого успеха (reference policy v1: не менее30секунд и трёх свежих успешных required checks), а не по созданию процесса или одному callback. Исчерпание краткосрочного бюджета откладывает следующую допустимую попытку, не стирая намерение; Doze и ограничения ОС могут отложить её дольше60секунд. Невалидная схема/подпись, истёкшее право или отсутствие разрешения ждут изменения входных условий/действия пользователя без бесполезного частого retry. Повтор транспорта не означает повтор активации отвергнутого bundle вопреки ARC-04."
     },
@@ -968,7 +970,8 @@
       "status": "partial",
       "evidence": [
         "docs/implementation-status.md#evidence-index-and-register-semantics",
-        "docs/chat-acceptance-20261115.md"
+        "docs/chat-acceptance-20261115.md",
+        "docs/implementation-status.md#physical-wi-fi-recovery-and-support---2026-11-20"
       ],
       "text": "Supervisor и контроль его прогресса находятся вне управляемого native runtime. Watchdog проверяет полезный прогресс/дедлайны операций, а не только живой PID или ответ отдельного control looper; полный native hang имеет fault-injection сценарий. После bounded graceful stop supervisor вправе завершить только аутентифицированный принадлежащий ему host с проверенными identity token/UID/handle, подтвердить его смерть и освобождение TUN duplicates/identity locks перед новым поколением. Timeout или PID не являются подтверждением. После смерти самого контроллера разрешённый ОС новый экземпляр сначала читает намерение/последний Stop, сверяет реальное владение и незавершённые эффекты, безопасно дожидается/завершает только своего старого host; два владельца TUN/identity и повторное enrollment исключены. Если прекращение владения не доказано, новый host не запускается, отображается блокировка/необходимое действие. Смерть владельца TUN может уничтожить интерфейс и оборвать трафик; отсутствие сети или процесса-владельца не сопровождается обещанием непрерывного соединения. Границы MOD-08/09 и системный lockdown остаются обязательными."
     },
@@ -1634,7 +1637,8 @@
       "text": "Бандл содержит manifest с хешами/ошибками компонентов, capabilities, redacted effective config, active/desired revisions, health snapshot, ограниченные логи, версии, native stacks с очисткой и результаты назначенных проверок. Приватная идентичность NetBird и ключ устройства исключены. Частичный бандл допустим с complete:false.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#observability-source-and-integration---2026-11-18"
+        "docs/implementation-status.md#observability-source-and-integration---2026-11-18",
+        "docs/implementation-status.md#physical-wi-fi-recovery-and-support---2026-11-20"
       ],
       "implementationScope": "Android local archive with a hashed manifest, closed evidence components and explicit omissions, verified in Actions on three emulator APIs.",
       "remainingScope": "Redacted effective configuration and complete revision/native-stack sources, broader logging and physical acceptance."
@@ -1644,7 +1648,8 @@
       "text": "Сбор бандла сам по себе не переключает сеть, не меняет конфиг, не перезапускает VPN и не очищает логи. Глубокий сетевой тест запускается отдельным действием. UI показывает состав, размер и факт отправки. Бандл может оставаться чувствительным даже после очистки и хранится в закрытом хранилище.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#observability-source-and-integration---2026-11-18"
+        "docs/implementation-status.md#observability-source-and-integration---2026-11-18",
+        "docs/implementation-status.md#physical-wi-fi-recovery-and-support---2026-11-20"
       ],
       "implementationScope": "Android Actions cover separate collection, preview, explicit document export and cancellation. Temporary storage is private and encrypted. Collection has no network probes or automatic upload.",
       "remainingScope": "Physical Android preservation and export, remote consent and transfer, complete retention and download auditing."
@@ -1936,7 +1941,8 @@
         "internal/enrollment/chat_postgres_test.go",
         "web-tests/chat.spec.js",
         "docs/implementation-status.md#evidence-index-and-register-semantics",
-        "docs/chat-acceptance-20261115.md"
+        "docs/chat-acceptance-20261115.md",
+        "docs/implementation-status.md#physical-wi-fi-recovery-and-support---2026-11-20"
       ],
       "text": "В Android доступен раздел «Поддержка»: личная переписка пользователя с администраторами SYN443. Администратор видит список диалогов и отвечает из Android и адаптивного веб-интерфейса control plane. В базовый выпуск входят текст, файлы, изображения и видео; групповые чаты пользователей, звонки, боты и интеграции внешних мессенджеров не входят."
     },
@@ -2088,7 +2094,8 @@
         "internal/enrollment/chat_postgres_test.go",
         "web-tests/chat.spec.js",
         "docs/implementation-status.md#evidence-index-and-register-semantics",
-        "internal/enrollment/chat_prune_postgres_test.go"
+        "internal/enrollment/chat_prune_postgres_test.go",
+        "docs/implementation-status.md#physical-wi-fi-recovery-and-support---2026-11-20"
       ],
       "text": "SQL имеет конфигурируемые retention и квоты; Исходные пределы: незавершённые и непривязанные загрузки удаляются через 24 часа; целевой срок хранения сообщений и привязанных файлов - 365 суток при доступном лимите. Изменение срока и удаление истории - административная операция с аудитом без содержимого сообщений. В базовой реализации достаточно очистки истёкших uploads; полный интерфейс retention явно отмечается отдельно до его реализации."
     },
