@@ -1589,8 +1589,8 @@
         "docs/telemetry-ingest.md",
         "docs/implementation-status.md#observability-source-and-integration---2026-11-18"
       ],
-      "implementationScope": "Separate analysis, retention and summary roles. Dedicated periodic pruning of 14-day detail and 180-day summary data passed isolated PostgreSQL tests in Actions. Access to identifier-free aggregates is explicit and audited.",
-      "remainingScope": "Live retention operations, scheduled aggregation, full dashboards, support and audit retention, backup retention and per-device erasure."
+      "implementationScope": "Separate analysis, retention and summary roles. Dedicated periodic pruning of 14-day detail and 180-day summaries. The analysis worker recovers missing nonempty hours from retained detail and resumes from committed SQL summaries. Access to identifier-free aggregates is explicit and audited.",
+      "remainingScope": "Live retention and aggregate-worker deployment, full dashboards, support and audit retention, backup retention and per-device erasure."
     },
     {
       "id": "LOG-01",

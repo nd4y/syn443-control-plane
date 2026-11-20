@@ -83,6 +83,7 @@ jobs:
           python3 tools/check_route_fixture_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_admin_bootstrap_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_enrollment_queue_evidence.py exit-country-core-tests.jsonl
+          jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/cmd/enrollment-admin" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryAggregateWorkerRotatesAfterFailureAndStopsWithoutAnotherStep","TestTelemetryAggregateWorkerRequiresScopedDSNAndExactArguments"])' exit-country-core-tests.jsonl
           python3 tools/check_service_discovery_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_grant_fingerprint_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_operation_version_evidence.py exit-country-core-tests.jsonl --stage core
@@ -718,6 +719,7 @@ jobs:
           set -euo pipefail
           GOFLAGS=-json bash tools/test_enrollment.sh | tee session-boundary-postgres-tests.jsonl
           python3 tools/check_session_boundary_evidence.py session-boundary-postgres-tests.jsonl
+          jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass" and .Test == "TestTelemetryWorkerRecoversRetainedGapsAndWrapsAfterBusyHour")) | length == 1' session-boundary-postgres-tests.jsonl
       - name: Check and scan enrollment evidence
         id: enrollment-scan
         run: |

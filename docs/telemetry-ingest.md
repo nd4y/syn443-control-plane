@@ -64,8 +64,18 @@ Each invocation uses the database clock to select the latest UTC hour that has
 been closed for at least one hour. It gets 15 seconds and shares the manual
 command's transaction lock for that hour. Overlapping calls can retry the same
 hour. The job emits the UTC hour and aggregate counts after commit. An empty
-hour produces zero counts and no rows for the read-only summary. If an hour was
-missed, use the manual UTC-hour command while its details are retained.
+hour produces zero counts and no rows for the read-only summary.
+
+For continuous operation, start `enrollment-admin telemetry-aggregate-worker`
+as a separate service or container with the same analysis DSN file. It starts
+immediately, processes up to one missing nonempty UTC hour in a 15-second
+transaction, then waits one minute. It uses indexed time ranges over the
+complete hours still inside the 14-day detail window. A locked or over-budget
+hour can be retried after other hours have had a turn. If the service restarts,
+committed summaries identify the completed hours. Empty hours stay unavailable.
+The existing manual hour command can recompute a previously summarized hour.
+SIGTERM stops the worker. Both scheduling options use the existing per-hour
+transaction lock and preserve the event and group limits.
 
 For offline analysis, `enrollment-admin telemetry-summary <UTC-hour>`
 returns versioned JSON for one selected hour. The reader uses the separate
