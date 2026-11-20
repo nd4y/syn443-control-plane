@@ -54,6 +54,9 @@ func runArgumentsWithTelemetryWorkers(args []string, aggregate, summary func(tim
 		}
 		return aggregateSettled()
 	}
+	if command == "telemetry-aggregate-worker" {
+		return runTelemetryAggregateWorker()
+	}
 	if command == "fingerprint-grants" {
 		return fingerprintGrants(os.Stdin, os.Stdout, time.Now)
 	}

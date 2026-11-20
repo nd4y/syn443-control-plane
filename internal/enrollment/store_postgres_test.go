@@ -31,7 +31,7 @@ var fixtureOwner *sql.DB
 var fixtureAPI, fixturePublisher *sql.DB
 var fixtureBroker *sql.DB
 var fixtureAnalysis, fixtureTelemetryRetention, fixtureTelemetryReader *sql.DB
-var fixtureAPIDSN, fixturePublisherDSN, fixtureBrokerDSN string
+var fixtureAPIDSN, fixturePublisherDSN, fixtureBrokerDSN, fixtureAnalysisDSN string
 var b64 = base64.RawURLEncoding
 
 func TestMain(m *testing.M) {
@@ -72,6 +72,8 @@ func TestMain(m *testing.M) {
 			fixturePublisherDSN = copy.String()
 		} else if item.name == "syn443_overlay_worker" {
 			fixtureBrokerDSN = copy.String()
+		} else if item.name == "syn443_telemetry_analysis" {
+			fixtureAnalysisDSN = copy.String()
 		}
 		*item.target, e = sql.Open("pgx", copy.String())
 		if e != nil {

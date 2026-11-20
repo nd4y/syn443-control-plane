@@ -17,6 +17,63 @@ import (
 
 const telemetryPruneSyntheticDSN = "postgresql://syn443_telemetry_retention@db.example.invalid:5432/syn443?sslmode=verify-full&sslrootcert=system"
 
+func TestTelemetryAggregateWorkerRotatesAfterFailureAndStopsWithoutAnotherStep(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	first := time.Date(2026, 1, 1, 1, 0, 0, 0, time.UTC)
+	second := first.Add(time.Hour)
+	var output bytes.Buffer
+	var steps, waits int
+	err := runTelemetryAggregateLoop(ctx, func(step context.Context, after time.Time) (telemetry.SettledAggregate, error) {
+		deadline, ok := step.Deadline()
+		if !ok || time.Until(deadline) > 15*time.Second || step.Err() != nil {
+			t.Fatal("missing database transaction deadline")
+		}
+		steps++
+		switch steps {
+		case 1:
+			if !after.IsZero() {
+				t.Fatal("initial cursor must discover outstanding summaries")
+			}
+			return telemetry.SettledAggregate{Hour: first}, errors.New("synthetic_private_error")
+		case 2:
+			if !after.Equal(first) {
+				t.Fatal("failed hour starved the following hour")
+			}
+			return telemetry.SettledAggregate{Hour: second, Hourly: telemetry.Hourly{Groups: 1, Events: 3}}, nil
+		case 3:
+			if !after.Equal(second) {
+				t.Fatal("worker lost successful hour")
+			}
+			return telemetry.SettledAggregate{}, nil
+		default:
+			t.Fatal("ran after stop")
+			return telemetry.SettledAggregate{}, nil
+		}
+	}, &output, func(ctx context.Context) bool {
+		waits++
+		if waits == 3 {
+			cancel()
+		}
+		return ctx.Err() == nil
+	})
+	want := "telemetry_aggregate_step_unavailable\nTelemetry hour summarized: hour=2026-01-01T02:00Z groups=1 events=3\n"
+	if err != nil || steps != 3 || waits != 3 || output.String() != want {
+		t.Fatal("wrong result, retry cadence or diagnostic output", err)
+	}
+}
+
+func TestTelemetryAggregateWorkerRequiresScopedDSNAndExactArguments(t *testing.T) {
+	t.Setenv("SYN443_TELEMETRY_ANALYSIS_DSN_FILE", "")
+	unused := func(time.Time) error { t.Fatal("manual hour command ran"); return nil }
+	if err := runArguments([]string{"telemetry-aggregate-worker"}, unused, unused); err != errTelemetryAggregateSettled {
+		t.Fatal("worker did not require its own analysis credential", err)
+	}
+	if err := runArguments([]string{"telemetry-aggregate-worker", "extra"}, unused, unused); err != identity.ErrInvalid {
+		t.Fatal("worker accepted arguments", err)
+	}
+}
+
 func clearTelemetryPruneEnvironment(t *testing.T) {
 	t.Helper()
 	for _, name := range telemetryAmbientVariables {
@@ -251,7 +308,7 @@ func TestTelemetryPruneWorkerSerialStepsUseOneDeadlineAndPostExitWait(t *testing
 		waits++
 		return waits < 2
 	})
-	if err != nil || strings.Join(order, ",") != "step,wait,step,wait" || telemetryPruneInterval != time.Minute ||
+	if err != nil || strings.Join(order, ",") != "step,wait,step,wait" || telemetryWorkerInterval != time.Minute ||
 		output.String() != strings.Repeat("{\"events\":1024,\"windows\":1024,\"summaries\":7}\n", 2) {
 		t.Fatal("worker overlapped, changed cadence or rendered nonnumeric data")
 	}
@@ -365,7 +422,7 @@ func TestTelemetryPruneWorkerCancellationRetainsActualStepOwnership(t *testing.T
 	case <-time.After(time.Second):
 		t.Fatal("actual exit did not finish cancellation")
 	}
-	if waitTelemetryPruneTick(ctx) {
+	if waitTelemetryTick(ctx) {
 		t.Fatal("cancelled idle wait retained work")
 	}
 }

@@ -42,7 +42,7 @@ var analysisTelemetryDSN = scopedTelemetryDSN{
 	unavailable:  errTelemetryAggregateSettled,
 }
 
-const telemetryPruneInterval = 60 * time.Second
+const telemetryWorkerInterval = time.Minute
 
 // A new, deliberately narrower DSN boundary. The one-shot operator commands
 // retain their existing parser. Ambient libpq settings cannot select another
@@ -145,8 +145,8 @@ func (source scopedTelemetryDSN) read(ctx context.Context, getenv func(string) s
 
 type telemetryPruneStep func(context.Context, time.Time) (time.Time, telemetry.Pruned, error)
 
-func waitTelemetryPruneTick(ctx context.Context) bool {
-	timer := time.NewTimer(telemetryPruneInterval)
+func waitTelemetryTick(ctx context.Context) bool {
+	timer := time.NewTimer(telemetryWorkerInterval)
 	defer timer.Stop()
 	select {
 	case <-ctx.Done():
@@ -217,7 +217,7 @@ func runTelemetryPruneWorkerContext(ctx context.Context, getenv func(string) str
 	defer db.Close()
 	return runTelemetryPruneLoop(ctx, func(step context.Context, previous time.Time) (time.Time, telemetry.Pruned, error) {
 		return telemetry.PruneScheduled(step, db, previous)
-	}, output, waitTelemetryPruneTick)
+	}, output, waitTelemetryTick)
 }
 
 func runTelemetryPruneWorker() (err error) {

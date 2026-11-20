@@ -106,14 +106,9 @@ func AggregateSettledHour(ctx context.Context, db *sql.DB, reference time.Time) 
 		return SettledAggregate{}, ErrUnavailable
 	}
 	defer tx.Rollback()
-	if _, err = tx.ExecContext(ctx, "SET LOCAL search_path TO pg_catalog, public, pg_temp"); err != nil {
-		return SettledAggregate{}, ErrUnavailable
-	}
-	var scoped bool
-	var now time.Time
-	if err = tx.QueryRowContext(ctx, settledAnalysisAuthority).Scan(&scoped, &now); err != nil || !scoped ||
-		now.Year() < 2020 || now.Year() >= 3000 || now.Sub(reference).Abs() > 2*time.Minute {
-		return SettledAggregate{}, ErrUnavailable
+	now, err := analysisClock(ctx, tx, reference)
+	if err != nil {
+		return SettledAggregate{}, err
 	}
 	hour := now.UTC().Truncate(time.Hour).Add(-2 * time.Hour)
 	out, err := aggregateHour(ctx, tx, hour)
@@ -122,6 +117,61 @@ func AggregateSettledHour(ctx context.Context, db *sql.DB, reference time.Time) 
 	}
 	if ctx.Err() != nil || tx.Commit() != nil {
 		return SettledAggregate{}, ErrUnavailable
+	}
+	return SettledAggregate{Hour: hour, Hourly: out}, nil
+}
+
+func analysisClock(ctx context.Context, tx *sql.Tx, reference time.Time) (time.Time, error) {
+	if _, err := tx.ExecContext(ctx, "SET LOCAL search_path TO pg_catalog, public, pg_temp"); err != nil {
+		return time.Time{}, ErrUnavailable
+	}
+	var scoped bool
+	var now time.Time
+	if err := tx.QueryRowContext(ctx, settledAnalysisAuthority).Scan(&scoped, &now); err != nil || !scoped ||
+		now.Year() < 2020 || now.Year() >= 3000 || now.Sub(reference).Abs() > 2*time.Minute {
+		return time.Time{}, ErrUnavailable
+	}
+	return now.UTC(), nil
+}
+
+// AggregatePendingHour repairs a single missing summary. On an error after
+// selection, Hour is a scheduling hint only. No counts are returned until commit.
+func AggregatePendingHour(ctx context.Context, db *sql.DB, reference, after time.Time) (SettledAggregate, error) {
+	if ctx == nil || ctx.Err() != nil || db == nil || reference.IsZero() {
+		return SettledAggregate{}, ErrUnavailable
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return SettledAggregate{}, ErrUnavailable
+	}
+	defer tx.Rollback()
+	now, err := analysisClock(ctx, tx, reference)
+	if err != nil {
+		return SettledAggregate{}, err
+	}
+	oldest := now.Add(-DetailRetention)
+	if rounded := oldest.Truncate(time.Hour); rounded.Before(oldest) {
+		oldest = rounded.Add(time.Hour)
+	}
+	latest := now.Truncate(time.Hour).Add(-2 * time.Hour)
+	var millis int64
+	err = tx.QueryRowContext(ctx, `SELECT h FROM generate_series($1::bigint, $2::bigint, 3600000::bigint) AS hours(h)
+		WHERE NOT EXISTS (SELECT 1 FROM public.identity_telemetry_hourly WHERE hour_start_ms=h)
+		AND EXISTS (SELECT 1 FROM public.identity_telemetry_events WHERE received_at_ms>=h AND received_at_ms<h+3600000)
+		ORDER BY h <= $3::bigint, h LIMIT 1`, oldest.UnixMilli(), latest.UnixMilli(), after.UnixMilli()).Scan(&millis)
+	if err == sql.ErrNoRows {
+		return SettledAggregate{}, nil
+	}
+	if err != nil {
+		return SettledAggregate{}, ErrUnavailable
+	}
+	hour := time.UnixMilli(millis).UTC()
+	out, err := aggregateHour(ctx, tx, hour)
+	if err != nil {
+		return SettledAggregate{Hour: hour}, err
+	}
+	if ctx.Err() != nil || tx.Commit() != nil {
+		return SettledAggregate{Hour: hour}, ErrUnavailable
 	}
 	return SettledAggregate{Hour: hour, Hourly: out}, nil
 }
