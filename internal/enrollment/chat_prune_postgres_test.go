@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -38,7 +39,7 @@ func TestChatPruneWhileMessageWithAttachmentCommits(t *testing.T) {
 	cutoff := f.now.Add(24 * time.Hour)
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	n, err := supportchat.PruneExpiredUploads(ctx, fixtureOwner, cutoff)
+	n, err := supportchat.DrainExpiredUploads(ctx, fixtureOwner, cutoff)
 	if err != nil || n != 1 {
 		t.Fatalf("expected only the unlocked orphan to expire, got %d: %v", n, err)
 	}
@@ -56,7 +57,8 @@ func TestChatPruneWhileMessageWithAttachmentCommits(t *testing.T) {
 	}
 }
 
-func TestChatPruneBatchLimitExpiryBoundaryAndRetry(t *testing.T) {
+func seedChatExpiryBoundary(t *testing.T) time.Time {
+	t.Helper()
 	f, client := chatSetup(t)
 	conversation := chatSelf(t, f, client)
 	_, err := fixtureOwner.ExecContext(t.Context(), `INSERT INTO chat_uploads
@@ -67,14 +69,36 @@ func TestChatPruneBatchLimitExpiryBoundaryAndRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return f.now
+}
+
+func TestChatPruneBatchLimitExpiryBoundaryAndRetry(t *testing.T) {
+	now := seedChatExpiryBoundary(t)
 	for _, want := range []int64{128, 2, 0} {
-		got, err := supportchat.PruneExpiredUploads(t.Context(), fixtureOwner, f.now)
+		got, err := supportchat.PruneExpiredUploads(t.Context(), fixtureOwner, now)
 		if err != nil || got != want {
 			t.Fatalf("pruned %d, want %d: %v", got, want, err)
 		}
 	}
 	var remaining int
-	if err = fixtureOwner.QueryRowContext(t.Context(), `SELECT count(*) FROM chat_uploads WHERE id=md5('131') AND expires_at=$1`, f.now.Unix()+1).Scan(&remaining); err != nil || remaining != 1 {
+	if err := fixtureOwner.QueryRowContext(t.Context(), `SELECT count(*) FROM chat_uploads WHERE id=md5('131') AND expires_at=$1`, now.Unix()+1).Scan(&remaining); err != nil || remaining != 1 {
 		t.Fatal("unexpired upload was removed", err)
+	}
+}
+
+func TestChatMaintenanceDrainsBacklogWithinOneInvocation(t *testing.T) {
+	now := seedChatExpiryBoundary(t)
+	stopped, cancel := context.WithCancel(t.Context())
+	cancel()
+	if n, err := supportchat.DrainExpiredUploads(stopped, fixtureOwner, now); n != 0 || !errors.Is(err, context.Canceled) {
+		t.Fatal("cancelled cleanup did not return the cancellation", n, err)
+	}
+	for _, want := range []int64{130, 0} {
+		if n, err := supportchat.DrainExpiredUploads(t.Context(), fixtureOwner, now); err != nil || n != want {
+			t.Fatalf("pruned %d, want %d: %v", n, want, err)
+		}
+	}
+	if n, err := supportchat.DrainExpiredUploads(t.Context(), fixtureOwner, now.Add(time.Second)); err != nil || n != 1 {
+		t.Fatal("next cutoff must remove the remaining upload", n, err)
 	}
 }
