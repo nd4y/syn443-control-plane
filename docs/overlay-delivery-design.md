@@ -1,11 +1,12 @@
 # Managed NetBird delivery and local ownership plan
 
-This is the remaining implementation contract. The namespace and credential
-cryptographic cores exist. The bounded SQL/API implementation is now present
-and passed its Actions transaction/role gates at53ec35d405d6e93acea911856cf8655df78ea3ed
-(run41384206025, all8 jobs). Protected Android cache and SDK
-activation below are not implemented or accepted yet. Assigned NetBird stays rejected until all
-three are complete. This document does not authorize production enrollment.
+This contract describes the implemented namespace, addressed credential,
+SQL/API delivery and Android SDK ownership boundaries. The initial server
+transaction and role checks passed [Actions 41384206025](https://github.com/nd4y/syn443-control-plane/actions/runs/41384206025).
+The [Android implementation and pilot evidence](https://github.com/nd4y/syn443-android/blob/4dfffe92c6dbf86f4be9b7b86c3473362f30d2d1/docs/managed-overlay.md)
+record managed Cloud registration, private-peer traffic, Wi-Fi recovery and
+scoped retirement. Each deployment still needs an authorized resource and a
+device assignment.
 
 ## Trusted sources and wire boundary
 
@@ -96,7 +97,7 @@ on Xperia must preserve the original operator identity and check assigned VPN,
 Stop and Wi-Fi loss/recovery. LTE and production resources stay separate gates;
 no simulator, RUNNING flag, compiled adapter or pure namespace hash proves them.
 
-## Implemented delivery surface awaiting Actions acceptance
+## Device delivery API
 
 The enrollment API enables `POST /v1/device/overlay/fetch` and
 `POST /v1/device/overlay/consume` only when the owner-only enrollment configuration
@@ -112,8 +113,8 @@ disabled. Envelope responses are never cacheable.
 A signed NetBird outbound has a closed `managed` object with `overlayId`,
 `resourceId`, `networkId`, `identityEpoch`, `setupReference`, `setupVersion`, plus
 its ordinary `management_url`. It must not embed `setup_key` or `state_directory`.
-The policy requires `overlay.credentials.v1`, which Android deliberately does not
-advertise until its protected vault/native integration is complete. Device owner
+The policy requires `overlay.credentials.v1`. New Android enrollment requests
+advertise this capability. A retry preserves the original request body. Device owner
 and key derive from the locked session; namespace owner is the shared canonical
 service/issuer/subject digest. The current publication records its authorizing
 account grant hash, so a changed account assignment cannot redeem an older grant.
@@ -122,8 +123,9 @@ The migration adds immutable encrypted grants and one delivery operation per gra
 Only the separate publication role can insert/revoke grants; the API can consume
 and erase values but cannot change addressed scope, revive or replace envelopes.
 `InstallOverlayGrant` must run inside the independent publisher's final fenced
-assignment transaction. Wiring provider enrollment and this issuer into the new
-configuration compiler remains open. The API has no signing private key.
+assignment transaction. The [portable NetBird compiler and broker](portable-netbird.md)
+check the recipient, resource and approved layers before publication. The signing
+private key stays with the publisher.
 
 ## Cleanup after a reference/lease refresh (acceptance pending)
 
@@ -149,9 +151,9 @@ registration; the client must independently persist its native proof first.
 
 New PostgreSQL cases use a separately signed one-second grant, not clock sleeps,
 and check expired consumption/retry after reference+epoch refresh, no refetch,
-protected-envelope erasure and current-scope rejection. Exact Actions acceptance
-is pending. Android still needs its full preparation/materialization/proof/ack
-integration before advertising the managed overlay capability.
+protected-envelope erasure and current-scope rejection. Android persists the
+operation before fetch, validates the native registration proof and erases its
+local setup material before acknowledging consumption.
 
 Pending-grant replacement additionally checks unsent, expired/refreshed and revoked
 grants against real SQL. Abandonment never confirms SDK registration or deletes

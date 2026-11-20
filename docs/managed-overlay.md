@@ -10,9 +10,9 @@ change does. Seven shared public vectors check cross-language agreement.
 
 The managed root is distinct from the existing operator NetBird state directory.
 The helper has no file, network, SDK, secret-delivery, signing or retirement
-authority. It does not enable a managed outbound. Android continues rejecting
-assigned NetBird configurations until addressed secret delivery, protected local
-storage, native ownership/retirement and rollback are integrated and accepted.
+authority. Android enables a managed outbound through its controller after
+verifying the assignment and addressed credential. The controller uses a
+Keystore-backed vault and an SDK directory bound to this managed identity.
 Tailscale/ZeroTier remain unimplemented extension contracts.
 
 Before activation the client must derive account/device binding from its verified
@@ -22,7 +22,8 @@ erase the setup secret after acknowledged enrollment, reuse the same SDK keys on
 network/config changes and never substitute an operator identity. Logout/revoke
 must withdraw permits first, wait for confirmed native owner release, then retire
 only the owned managed identity; a permitted rollback retains the old identity.
-These remaining paths require independent API/native/physical tests.
+The [Android implementation and physical pilot evidence](https://github.com/nd4y/syn443-android/blob/4dfffe92c6dbf86f4be9b7b86c3473362f30d2d1/docs/managed-overlay.md)
+record the tested enrollment, connectivity, recovery and retirement paths.
 
 ## Addressed enrollment-secret authority
 
@@ -35,11 +36,11 @@ flag or SQL ready field cannot substitute for this signature. The value is only
 the addressed setup key; provider management tokens and SDK private keys are not
 permitted. Unknown/noncanonical JSON/header/encoding, wrong recipient/reference,
 unsupported keys and exact expiry fail closed. Diagnostics redact all contents.
-The cryptographic core is accepted separately. The new SQL/HTTP delivery surface
-is described in [the delivery contract](overlay-delivery-design.md); its exact
-Actions acceptance is pending. Managed SDK activation remains disabled.
+The [delivery contract](overlay-delivery-design.md) describes SQL/HTTP fetch
+and consumption. The [portable configuration](portable-netbird.md) describes
+how the publisher and broker bind them to a permitted provider resource.
 
-Remaining delivery/storage contract: the publication authority signs a grant
+The publication authority signs a grant
 only for a currently authorized assignment; the API returns it only under a
 fresh session-bound DPoP request/nonce and current ref/namespace permission.
 The device validates the independent envelope before any native effect. A stable
