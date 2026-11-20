@@ -14,6 +14,75 @@ async function open(page){
  await expect(page.locator('#support-send')).toBeDisabled();
 }
 
+for (const surface of ['standalone', 'console']) {
+ test(`switching conversations clears the previous history and file on ${surface}`, async ({page}) => {
+  const prefix=surface==='console'?'support-':'';
+  const el=name=>page.locator('#'+prefix+name);
+  const second={id:'b'.repeat(32),owner:'B'.repeat(43),lastSeq:0,readSeq:0,updatedAt:1700000000};
+  await page.route('**/chat/inbox',async route=>{
+   const response=await route.fetch();
+   await route.fulfill({response,json:[...(await response.json()),second]});
+  });
+  await page.goto(surface==='console'?origin+'/#support-title':chatOrigin+'/');
+  await el('inbox').getByRole('button',{name:/Пользователь A/}).click();
+  await el('text').fill('Message for the first fixture account');
+  await el('file').setInputFiles({name:'first-thread.txt',mimeType:'text/plain',buffer:Buffer.from('first thread')});
+  await el('send').click();
+  await el('messages').getByRole('button',{name:/Скачать: first-thread/}).click();
+  const link=el('download-ready').getByRole('link');
+  await expect(link).toBeVisible();
+  const href=await link.getAttribute('href');
+  await page.evaluate(()=>{
+   const original=URL.revokeObjectURL;
+   window.revokedFixtureUrls=[];
+   URL.revokeObjectURL=url=>{window.revokedFixtureUrls.push(url);original.call(URL,url);};
+  });
+  let release;
+  const blocked=new Promise(resolve=>{release=resolve;});
+  await page.route('**/chat/messages',async route=>{
+   if(route.request().postDataJSON().conversation!==second.id){await route.continue();return;}
+   await blocked;
+   await route.fulfill({status:503,json:{}});
+  });
+  try {
+   await el('inbox').getByRole('button',{name:/Пользователь B/}).click();
+   await expect(el('thread-title')).toContainText(second.owner.slice(0,10));
+   await expect(el('messages').locator('li')).toHaveCount(0);
+   await expect(link).toHaveCount(0);
+   expect(await page.evaluate(()=>window.revokedFixtureUrls)).toContain(href);
+  } finally { release(); }
+  await expect(el('status')).toContainText('повторить');
+  await expect(el('messages').locator('li')).toHaveCount(0);
+  await expect(link).toHaveCount(0);
+ });
+}
+
+test('leaving support during final file verification cannot publish a save link',async({page})=>{
+ await open(page);
+ await page.locator('#support-file').setInputFiles({name:'verification.txt',mimeType:'text/plain',buffer:Buffer.from('synthetic')});
+ await page.locator('#support-send').click();
+ const download=page.locator('#support-messages').getByRole('button',{name:/Скачать: verification/});
+ await expect(download).toBeVisible();
+ await page.evaluate(()=>{
+  const original=SubtleCrypto.prototype.digest;
+  let calls=0;
+  SubtleCrypto.prototype.digest=async function(...args){
+   const result=await original.apply(this,args);
+   if(++calls===2)await new Promise(resolve=>{window.releaseFileDigest=resolve;});
+   return result;
+  };
+ });
+ await download.click();
+ await page.waitForFunction(()=>typeof window.releaseFileDigest==='function');
+ await page.getByRole('link',{name:'Устройства',exact:true}).click();
+ await page.evaluate(()=>window.releaseFileDigest());
+ await expect(page.locator('#support-file')).toBeEnabled();
+ await expect(page.locator('#support-download-ready a')).toHaveCount(0);
+ await page.getByRole('link',{name:'Чат поддержки',exact:true}).click();
+ await expect(page.locator('#support-text')).toBeEnabled();
+ await expect(page.locator('#support-download-ready a')).toHaveCount(0);
+});
+
 test('PatternFly console chat sends hostile text safely without leaving device administration',async({page})=>{
  await open(page);
  await page.getByRole('link',{name:'Устройства',exact:true}).click();
