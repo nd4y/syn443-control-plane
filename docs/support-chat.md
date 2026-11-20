@@ -34,7 +34,9 @@ authority. Only the explicit fixture flag allows loopback HTTP. Issuer discovery
 and JWKS use the same pinned provider and bounded cache as device authentication;
 there is no fallback to another realm after a failed token.
 `enrollment-admin chat-cleanup` removes at most 128 expired orphan uploads per
-invocation. Scheduling and production rollout are operator actions.
+invocation. The batch skips uploads locked by a sender and checks eligibility again
+before deletion. Linked attachment chunks remain available for download. Repeated
+invocations drain expired orphans in batches. Scheduling and production rollout are operator actions.
 
 The console BFF may explicitly set `chatApiOrigin` when the control and chat APIs
 have different HTTPS origins. Chat DPoP proofs bind the exact chat origin, while
