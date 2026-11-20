@@ -422,7 +422,7 @@ func TestTelemetryPruneWorkerCancellationRetainsActualStepOwnership(t *testing.T
 	case <-time.After(time.Second):
 		t.Fatal("actual exit did not finish cancellation")
 	}
-	if waitTelemetryPruneTick(ctx) {
+	if waitTelemetryTick(ctx) {
 		t.Fatal("cancelled idle wait retained work")
 	}
 }
