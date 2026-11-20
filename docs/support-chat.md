@@ -113,6 +113,11 @@ and clearing an authorized save link on logout. A verified Blob link is explicit
 and expires after 120 seconds. Physical Edge download persistence is not confirmed
 by the automation tool; Android SAF download was checked against the source hash.
 
+Selecting another conversation clears the previous history and revokes its
+prepared file link before the first request for the new conversation. This
+also applies when the new history is slow or unavailable. Leaving the support
+view during file verification invalidates the pending save link.
+
 A disposable deployment of the Actions binaries preserved SQL history and file
 bytes across runtime replacement. Private USB Xperia checks exercised ordinary
 user and administrator replies, live role withdrawal, complete 25 MiB files and

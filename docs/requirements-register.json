@@ -2107,6 +2107,7 @@
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
         "web-tests/chat.spec.js",
+        "web-tests/control-chat.spec.js",
         "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],
       "text": "В Android администратора и веб-панели есть список диалогов, непрочитанное, история с пагинацией, поле ответа, выбор/отмена файла и download. На телефоне пользователя есть свой диалог, состояние связи и ошибки повторной отправки. Нельзя отправить сообщение нажатием Enter во время ввода составного текста; действие отправки явно подтверждается кнопкой."

@@ -5,6 +5,9 @@ import xml.etree.ElementTree as ET
 root = ET.parse(Path(__file__).resolve().parent.parent / 'web-tests/results.xml').getroot()
 cases = list(root.iter('testcase'))
 expected = {
+    'switching conversations clears the previous history and file on standalone',
+    'switching conversations clears the previous history and file on console',
+    'leaving support during final file verification cannot publish a save link',
     'administrator sends text and hostile content remains text',
     '25 MiB upload and authenticated verified download',
     'lost send acknowledgment retries exactly one message',
