@@ -19,6 +19,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/deviceprovisioning"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
+	"github.com/nd4y/syn443-control-plane/internal/health"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
 	"github.com/nd4y/syn443-control-plane/internal/telemetry"
@@ -124,7 +125,7 @@ func run() error {
 			return value, err
 		}
 	}
-	server := &http.Server{Addr: c.Listen, Handler: api, ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 32768, BaseContext: func(net.Listener) context.Context { return ctx }}
+	server := &http.Server{Addr: c.Listen, Handler: health.Wrap(ctx, api, store.DB.PingContext), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 32768, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go func() {
 		<-ctx.Done()
 		shut, cancel := context.WithTimeout(context.Background(), 3*time.Second)

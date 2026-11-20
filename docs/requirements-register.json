@@ -2452,9 +2452,11 @@
       "status": "partial",
       "evidence": [
         "docs/database-recovery.md",
-        "internal/enrollment/restore_postgres_test.go"
+        "internal/enrollment/restore_postgres_test.go",
+        "internal/health/handler_test.go",
+        "internal/enrollment/process_postgres_test.go"
       ],
-      "implementationScope": "Isolated PostgreSQL backup/restore drill and recovery procedure with application and authorization checks.",
+      "implementationScope": "Enrollment and control API process liveness and bounded PostgreSQL readiness. Isolated backup/restore drill and recovery procedure with application and authorization checks.",
       "remainingScope": "Recovery of a complete deployed instance, external identity/provider state, key and role recovery, and observed RPO/RTO."
     },
     {

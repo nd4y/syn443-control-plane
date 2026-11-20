@@ -17,6 +17,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/bootstrap"
 	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
+	"github.com/nd4y/syn443-control-plane/internal/health"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
 	"github.com/nd4y/syn443-control-plane/internal/telemetry"
@@ -138,7 +139,7 @@ func runEnrollmentAPI(discovery *bootstrap.ServiceDiscovery) error {
 	if e != nil {
 		return e
 	}
-	server := &http.Server{Addr: c.Listen, Handler: discovery.Wrap(api), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 16384}
+	server := &http.Server{Addr: c.Listen, Handler: health.Wrap(ctx, discovery.Wrap(api), store.DB.PingContext), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 16384}
 	go func() {
 		<-ctx.Done()
 		shut, cancel := context.WithTimeout(context.Background(), 3*time.Second)
