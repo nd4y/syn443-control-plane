@@ -60,6 +60,11 @@ remote databases. Run it in a separate job with a synchronized clock and one
 instance per schedule. The command rejects database clock skew over two minutes
 and validates the analysis login and privileges inside the transaction.
 
+The enrollment integration suite generates a temporary CA and a server
+certificate for its disposable PostgreSQL instance. It runs the analysis
+executable with the dedicated database login. It checks a trusted connection
+and rejection of both an incorrect server name and an unknown CA.
+
 Each invocation uses the database clock to select the latest UTC hour that has
 been closed for at least one hour. It gets 15 seconds and shares the manual
 command's transaction lock for that hour. Overlapping calls can retry the same
