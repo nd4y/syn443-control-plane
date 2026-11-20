@@ -2087,7 +2087,8 @@
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
         "web-tests/chat.spec.js",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "internal/enrollment/chat_prune_postgres_test.go"
       ],
       "text": "SQL имеет конфигурируемые retention и квоты; Исходные пределы: незавершённые и непривязанные загрузки удаляются через 24 часа; целевой срок хранения сообщений и привязанных файлов - 365 суток при доступном лимите. Изменение срока и удаление истории - административная операция с аудитом без содержимого сообщений. В базовой реализации достаточно очистки истёкших uploads; полный интерфейс retention явно отмечается отдельно до его реализации."
     },

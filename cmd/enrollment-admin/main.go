@@ -13,6 +13,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/deviceprovisioning"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/supportchat"
 )
 
 func run() error {
@@ -147,7 +148,7 @@ func runArgumentsWithTelemetryWorkers(args []string, aggregate, summary func(tim
 		_, e = store.DB.ExecContext(ctx, `INSERT INTO chat_admins(owner,enabled) VALUES($1,$2) ON CONFLICT(owner) DO UPDATE SET enabled=excluded.enabled`, enrollment.Owner(g.Issuer, g.Subject), g.Enabled)
 		return e
 	case "chat-cleanup":
-		_, e = store.DB.ExecContext(ctx, `DELETE FROM chat_uploads WHERE id IN (SELECT id FROM chat_uploads WHERE message_id IS NULL AND expires_at<=$1 ORDER BY expires_at LIMIT 128)`, time.Now().Unix())
+		_, e = supportchat.PruneExpiredUploads(ctx, store.DB, time.Now())
 		return e
 	case "migrate":
 		_, e = store.DB.ExecContext(ctx, enrollment.Schema)
