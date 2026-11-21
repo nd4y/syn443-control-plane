@@ -5,7 +5,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Requirements | 292 | 106 | 33 | 46 | 107 |
-| Acceptance scenarios | 98 | 19 | 0 | 1 | 78 |
+| Acceptance scenarios | 98 | 19 | 0 | 2 | 77 |
 
 ## Requirement families
 
