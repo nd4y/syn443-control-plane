@@ -183,13 +183,28 @@ func requireSQLAssignedNetworkPolicy(t *testing.T, prepared *PreparedConfigurati
 		t.Fatal("incompatible client lost last usable policy")
 	}
 	approve([]string{feature}, "synthetic network feature client")
+	accepted := c.snapshot(t)
+	if !slices.Contains(accepted.Capabilities, feature) {
+		t.Fatal("capability did not pass independent approval")
+	}
+	candidate := before
+	if err := applyPreparedConfiguration(&candidate, prepared, accepted.Capabilities, c.f.now); err != nil {
+		t.Fatal("approved prepared configuration rejected before signing", err)
+	}
+
 	if err := c.publisher.RunOnce(t.Context(), c.f.now); err != nil {
 		t.Fatal(err)
 	}
 	current := readPolicy()
 	if current.Revision != before.Revision+1 || !slices.Contains(current.RequiredCapabilities, feature) ||
 		!bytes.Equal(mustDecodeAdaptiveEngine(t, current.EngineConfigB64), prepared.EngineConfig) {
-		t.Fatal("fetched addressed policy lost its revision, capability or compiled bytes")
+		var code string
+		if err := fixtureOwner.QueryRow(`SELECT publication_error FROM identity_devices WHERE id=$1`, c.session.DeviceID).Scan(&code); err != nil {
+			t.Fatal(err)
+		}
+		retryErr := c.publisher.publish(t.Context(), c.session.DeviceID, c.f.now)
+		t.Fatalf("signed policy mismatch: previousRevision=%d newRevision=%d capabilityPresent=%t bytesMatch=%t workerCode=%q isolatedPublishError=%v",
+			before.Revision, current.Revision, slices.Contains(current.RequiredCapabilities, feature), bytes.Equal(mustDecodeAdaptiveEngine(t, current.EngineConfigB64), prepared.EngineConfig), code, retryErr)
 	}
 	return current
 }

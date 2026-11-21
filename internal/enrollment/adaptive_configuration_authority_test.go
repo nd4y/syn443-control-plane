@@ -282,3 +282,27 @@ func TestPreparedHomeProofKeepsIndependentClosedSchemaAndCapabilityChecks(t *tes
 		})
 	}
 }
+
+func TestPreparedModeSelectionPassesIndependentValidationOfActualCompilerBytes(t *testing.T) {
+	mode := policy.NetworkModePolicy{PreferredMode: "WIFI", UserModes: []string{"WIFI"}, MaxOverrideMinutes: 60}
+	prepared, payload, now := compiledAdaptivePreparationWithNetwork(t, nil, &mode)
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(prepared.EngineConfig, &root); err != nil {
+		t.Fatal(err)
+	}
+	if !policy.ValidNetworkModeJSON(root["network_mode"], false) {
+		t.Fatal("compiled mode schema")
+	}
+	if err := configuration.ValidateAdaptiveIssuedEngine(prepared.EngineConfig); err != nil {
+		t.Fatal("adaptive projection", err)
+	}
+	if err := validatePreparedNetwork(prepared.EngineConfig); err != nil {
+		t.Fatal("prepared network", err)
+	}
+	if err := configuration.ValidateIssuedCheckPlans(prepared.EngineConfig); err != nil {
+		t.Fatal("independent check plans", err)
+	}
+	if err := applyPreparedConfiguration(&payload, prepared, prepared.RequiredCapabilities, now); err != nil {
+		t.Fatal("signed payload", err)
+	}
+}
