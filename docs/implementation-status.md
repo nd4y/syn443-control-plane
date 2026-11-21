@@ -18,6 +18,49 @@ The [service protocol eligibility source](operation-outcome-reconciliation.md#se
 
 ## Current accepted checkpoint
 
+### Wi-Fi recovery and Control Plane rollout - 2026-11-21
+
+On the same enrolled ARM64 phone, v107 established a fresh HTTPS connection
+through its VPN and returned 204. Five subsequent Wi-Fi losses and recoveries
+kept the user's VPN intent. Each recovery advanced the network epoch. The first
+default-family and explicit IPv4 requests returned 204 in all five cycles.
+Time from restoring Wi-Fi to Online was 4.09-11.17 seconds. A separate check
+in every cycle confirmed that the requesting UID and destination used the
+app-owned TUN. The phone finished on its original Wi-Fi with the VPN off.
+
+A separate test triggered a native engine crash and disabled Wi-Fi during
+recovery. Android recorded one native SIGABRT in that interval. The client
+reported NoNetwork, retained the same intent generation and established a new
+engine. It returned to Online 15.06 seconds after the fault. A fresh HTTPS
+request through the replacement TUN returned 204.
+
+The test network had no global IPv6 address or IPv6 default route. IPv6-only
+connections failed both with the VPN off and during these recoveries. Internet
+egress over IPv6 still needs a capable network. A single HTTPS failure just
+after an earlier v105 handover was not reproduced. Its cause is open.
+The live assignment for these measurements contained one direct route. Device
+tests of reserve failover and decision comparison used separate fixtures.
+[Android failover](https://github.com/nd4y/syn443-android/pull/111) and
+[on-device decision comparison](https://github.com/nd4y/syn443-android/pull/112).
+
+On the same phone, the packaged VLESS XHTTP client exchanged a payload with
+an independent, loopback TLS/HTTP2 server in stream-one mode. The server
+observed the correct VLESS destination and served its banner. A mismatched TLS
+name was rejected before another HTTP request or target connection. Two more
+packaged tests exercised HTTP CONNECT through a VLESS exit and a refused
+entry. These fixtures used ephemeral test credentials. A provisioned external
+provider path still has its own acceptance gate.
+[Android XHTTP test](https://github.com/nd4y/syn443-android/pull/113).
+
+| Control Plane change in main | Evidence |
+| --- | --- |
+| Keep a stable control group during a staged policy rollout | An authorized publisher prepared policies for devices on both sides of the cohort boundary. The mobile editor preserved the control percentage. [PR 93](https://github.com/nd4y/syn443-control-plane/pull/93) |
+| Compare routing decisions against the same recorded observations | The web console runs the same ranking function with two evidence lifetimes and reports which decisions change. The replay sends no probes and publishes no policy. [PR 94](https://github.com/nd4y/syn443-control-plane/pull/94) |
+| Check provider-worker readiness before taking a job | The executable verified role and catalog configuration against PostgreSQL, left queued work available and made no provider request. Starting the normal worker then processed the job once. [PR 95](https://github.com/nd4y/syn443-control-plane/pull/95) |
+
+The production pilot's web deployment, activation of the provider worker and
+external provider egress each have a separate acceptance gate.
+
 ### Android v104 on Wi-Fi - 2026-11-21
 
 The first controller status read after an Android reboot used to report recovery

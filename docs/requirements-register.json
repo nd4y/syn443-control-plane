@@ -1275,7 +1275,7 @@
         "docs/control-catalog.md#replay-the-freshness-of-route-evidence"
       ],
       "implementationScope": "Authenticated operators can replay bounded aggregate evidence or the shared scenario corpus with a trial evidence TTL. Both passes use the reference route-ranking function, with no network probes or policy writes.",
-      "remainingScope": "On-device shadow observation, additional decision policy variants and automated prepublication gates."
+      "remainingScope": "Fleet analysis of on-device comparison results, additional decision policy variants and automated prepublication gates. The Android component now records local failover comparisons for matching probe plans."
     },
     {
       "id": "RLP-07",
