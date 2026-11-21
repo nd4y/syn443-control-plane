@@ -3,6 +3,43 @@ const origin='http://127.0.0.1:17851';
 const plan={schemaVersion:1,graph:{profiles:{proxy:{sourceId:'source-a',profileId:'profile-a'}},chains:{},balancers:{},final:'proxy'},network:{schemaVersion:1,requiredNetworks:['tcp'],dnsFinal:'system',dnsStrategy:'prefer_ipv4'},activation:{timeoutSeconds:30,checks:[{id:'internet',type:'https_204',target:'https://health.example.invalid/generate_204',required:true}]}};
 async function reset(request,body={}){await request.post(origin+'/fixture/reset',{data:body});}
 
+async function openIssuedPaths(page,request,issued){
+ await reset(request);
+ await page.setViewportSize({width:393,height:852});
+ await page.route('**/control/action',async route=>{
+  const op=route.request().postDataJSON();
+  if(op.action!=='configuration.inventory.get'||op.payload.id!=='device-a')return route.fallback();
+  const upstream=await route.fetch(),reply=await upstream.json();
+  reply.issuedSettings={...reply.issuedSettings,...issued};
+  await route.fulfill({response:upstream,json:reply});
+ });
+ await page.goto(origin+'/#device=device-a');
+ await page.getByText('Настройки выданной политики',{exact:true}).click();
+}
+test('phone displays configured entry and exit in network order and leaves balancer choice to device',async({page,request})=>{
+ await openIssuedPaths(page,request,{routeFinal:'last',outbounds:[
+  {tag:'last',type:'vless',detour:'middle'},{tag:'start',type:'http'},{tag:'middle',type:'ssh',detour:'start'},
+  {tag:'automatic',type:'urltest',outbounds:['last','start'],default:'last'}]});
+ const choice=page.getByLabel('Выход для просмотра'),steps=page.getByRole('list',{name:'Порядок соединения'}).getByRole('listitem');
+ await expect(choice).toHaveValue('last');
+ await expect(steps).toHaveText(['start · HTTP','middle · SSH','last · VLESS']);
+ await choice.selectOption('automatic');
+ await expect(page.locator('#issued-path-note')).toContainText('выбирает устройство');
+ await expect(steps).toHaveText(['automatic · Балансер · варианты: last, start']);
+ await page.locator('#inventory-device').fill('device-expired');await page.locator('#load-inventory').click();
+ await expect(page.locator('#inventory-status')).toHaveText('Конфигурация загружена.');
+ await expect(page.locator('#issued-path')).toBeHidden();await expect(choice.locator('option')).toHaveCount(0);
+});
+test('missing or circular detours never display a guessed route and switching to direct recovers',async({page,request})=>{
+ await openIssuedPaths(page,request,{routeFinal:'cycle',outbounds:[
+  {tag:'cycle',type:'vless',detour:'cycle'},{tag:'incomplete',type:'ssh',detour:'absent'},{tag:'direct',type:'direct'}]});
+ const choice=page.getByLabel('Выход для просмотра'),steps=page.locator('#issued-path-steps li');
+ await expect(page.locator('#issued-path-note')).toContainText('неизвестен');await expect(steps).toHaveCount(0);
+ await choice.selectOption('incomplete');await expect(steps).toHaveCount(0);
+ await choice.selectOption('direct');await expect(steps).toHaveText(['direct · Прямое соединение']);
+ await page.locator('#logout').click();await expect(page.locator('#issued-path-steps')).toHaveText('');
+});
+
 test('hourly telemetry distinguishes data empty and mismatched reports and clears on expiry',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#telemetry-title');
  const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows'),status=page.locator('#telemetry-status');

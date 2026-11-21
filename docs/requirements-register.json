@@ -704,8 +704,16 @@
     {
       "id": "PROTO-02",
       "text": "Кандидаты маршрутов формируются из ориентированного графа разрешённых подключений. Конкретная цепочка - простой путь без циклов, с ограничением глубины, первоначально четыре proxy-перехода. Разрешённые комбинации задаются политикой и capabilities; каталог не обязан заранее перечислять каждую цепочку. UI показывает порядок входов и фактический конечный выход. Запрещены ссылки на себя, обход через защищённый служебный сокет и DNS-зависимость от ещё не поднятого пути.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/routegraph/graph.go",
+        "internal/routegraph/group_info_test.go",
+        "internal/policy/issued_settings.go",
+        "docs/device-inventory.md#issued-route-order",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "The declaration predicate checks mode, features, directed edges, distinct hops and a maximum of four slots. The device card displays configured detours in connection order and identifies dynamic selection.",
+      "remainingScope": "Associate actual runtime selection and exit observations with the issued path, and verify protected-socket and DNS bootstrap behavior for each supported physical chain."
     },
     {
       "id": "PROTO-03",

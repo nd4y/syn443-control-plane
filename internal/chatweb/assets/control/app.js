@@ -9,6 +9,7 @@ let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='',source
 let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null;
 let layerComparison=null;
 let layerDraftInventory=null;
+let inventoryEpoch=0;
 let sourceShares=null;
 let providerContext=null,providerEpoch=0;
 let devicesNext='',deviceIds=new Set();
@@ -339,7 +340,11 @@ function controls(){
  drawRouteChecks();
 }
 function clearInventory(){
+ inventoryEpoch++;
  clearRuntime();
+ $('issued-path').hidden=true;
+ $('issued-path-select').onchange=null;
+ for(const id of ['issued-path-select','issued-path-note','issued-path-steps'])$(id).replaceChildren();
  layerInventory=null;
  for(const id of ['inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions','inventory-issued-config','inventory-state','inventory-issued','inventory-issued-algorithm','inventory-report','inventory-report-time'])$(id).replaceChildren();
  for(const id of ['inventory-state','inventory-issued','inventory-report'])delete $(id).dataset.tone;
@@ -455,6 +460,41 @@ async function checkReauthentication(){
 }
 function textItem(list,text){const item=document.createElement('li');item.textContent=text;list.append(item);return item;}
 function inventoryPair(list,name,value){const term=document.createElement('dt');term.textContent=name;const detail=document.createElement('dd');detail.textContent=value;list.append(term,detail);}
+function showIssuedPaths(issued){
+ const rows=issued.outbounds,byTag=new Map(),validTag=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(v);
+ const labels={direct:'Прямое соединение',block:'Блокировка',http:'HTTP',socks:'SOCKS',ssh:'SSH',vless:'VLESS',
+  netbird:'NetBird',selector:'Селектор',urltest:'Балансер',dns:'DNS','syn443-adaptive':'Адаптивный выбор'};
+ if(rows.length>256)return;
+ for(const row of rows){
+  if(!row||!validTag(row.tag)||!Object.hasOwn(labels,row.type)||byTag.has(row.tag)||
+    row.detour!==undefined&&!validTag(row.detour))return;
+  byTag.set(row.tag,row);
+ }
+ const select=$('issued-path-select'),note=$('issued-path-note'),steps=$('issued-path-steps');
+ for(const row of rows)select.add(new Option(row.tag===issued.routeFinal?row.tag+' (основной выход)':row.tag,row.tag));
+ if(byTag.has(issued.routeFinal))select.value=issued.routeFinal;
+ function draw(){
+  steps.replaceChildren();
+  const route=[],seen=new Set();let tag=select.value;
+  while(tag){
+   const row=byTag.get(tag);
+   if(!row||seen.has(tag)){
+    note.textContent='Порядок соединения неизвестен: в описании нет звена или оно повторяется.';return;
+   }
+   seen.add(tag);route.push(row);tag=row.detour;
+  }
+  const dynamic=route.some(row=>['selector','urltest','syn443-adaptive'].includes(row.type));
+  note.textContent=dynamic?'Конкретный маршрут выбирает устройство.':'Порядок соединения от устройства до выбранного выхода.';
+  for(const row of route.reverse()){
+   const item=document.createElement('li');item.textContent=row.tag+' · '+labels[row.type];
+   if(['selector','urltest','syn443-adaptive'].includes(row.type)&&Array.isArray(row.outbounds)&&row.outbounds.length&&row.outbounds.length<=256&&row.outbounds.every(validTag)){
+    const choices=document.createElement('span');choices.textContent=' · варианты: '+row.outbounds.join(', ');item.append(choices);
+   }
+   steps.append(item);
+  }
+ }
+ $('issued-path').hidden=false;select.onchange=draw;draw();
+}
 function updateProviderControls(){
  const visible=authenticated&&$('source-mode').value==='resource';
  const id=$('source-resource').value.trim();
@@ -554,6 +594,7 @@ function showInventory(view){
    algorithm.hidden=false;
   }
   $('inventory-issued-config').textContent=JSON.stringify(issued,null,2);
+  showIssuedPaths(issued);
   $('inventory-issued-settings').hidden=false;
  }
  const fieldList=$('inventory-fields');fieldList.replaceChildren();
@@ -630,17 +671,21 @@ async function loadInventory(){
  const device=$('inventory-device').value.trim();
  if(!deviceID.test(device))throw Error('invalid');
  clearInventory();
+ const epoch=inventoryEpoch;
  $('inventory-status').textContent='Загружаем конфигурацию…';
  try{
   const view=await action('configuration.inventory.get',{id:device});
+  if(epoch!==inventoryEpoch||!authenticated||$('inventory-device').value.trim()!==device)return;
   if(view?.device!==device)throw Error('invalid');
   showInventory(view);
   $('devices-disclosure').open=false;
   $('inventory-view').focus({preventScroll:true});
   layerInventory=structuredClone(view);
   await loadRuntime();
+  if(epoch!==inventoryEpoch)return;
   $('inventory-status').textContent='Конфигурация загружена.';
  }catch(error){
+  if(epoch!==inventoryEpoch&&authenticated)return;
   clearInventory();
   $('inventory-status').textContent=error.message==='invalid'?'Карточка не соответствует выбранному устройству.':
    error.message==='denied'?'Проверьте права доступа и повторите вход.':

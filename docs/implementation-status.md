@@ -18,6 +18,25 @@ The [service protocol eligibility source](operation-outcome-reconciliation.md#se
 
 ## Current accepted checkpoint
 
+### Android v104 on Wi-Fi - 2026-11-21
+
+The first controller status read after an Android reboot used to report recovery
+even when the VPN service had already restored traffic. On the updated ARM64
+handset, a fresh HTTPS request returned 204 through the app-owned TUN after a real
+OS reboot, before the first controller query. Subsequent status queries reported
+Online and preserved the connection generation. [Android change and Actions checks](https://github.com/nd4y/syn443-android/pull/108)
+
+| Physical check | Observed result |
+| --- | --- |
+| Move between two saved Wi-Fi networks, then return | Fresh tunneled HTTPS 204 after 13.88 s and 12.44 s, respectively |
+| Terminate the native VPN process | New process and fresh tunneled HTTPS 204 after 37.36 s |
+| Keep the screen off on Wi-Fi and USB power | 13 of 13 fresh HTTPS checks passed over 3,603.72 s, with the same engine process, connection generation and network epoch at every sample |
+| Exercise the packaged transport | Four handset tests passed, including HTTP CONNECT through a VLESS exit on loopback, refused-entry handling and real Wi-Fi HTTPS GET/HEAD |
+
+The original enrollment was retained. The handset finished on its original Wi-Fi
+with the VPN off. Cellular access, unplugged battery life and a full day of
+operation require separate measurements.
+
 ### Wi-Fi handover and support chat - 2026-11-21
 
 On an enrolled ARM64 phone running v99, the VPN stayed on as the phone moved
