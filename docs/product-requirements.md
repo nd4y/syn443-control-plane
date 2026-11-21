@@ -4,7 +4,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Requirements | 292 | 108 | 37 | 64 | 83 |
+| Requirements | 292 | 114 | 42 | 60 | 76 |
 | Acceptance scenarios | 98 | 19 | 2 | 4 | 73 |
 
 ## Requirement families
@@ -21,21 +21,21 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | PROV | 8 | 6 | 0 | 0 | 2 |
 | PROTO | 4 | 0 | 1 | 2 | 1 |
 | NB | 7 | 5 | 0 | 2 | 0 |
-| OVL | 7 | 1 | 0 | 4 | 2 |
-| MODE | 5 | 0 | 3 | 0 | 2 |
-| AUTO | 10 | 0 | 2 | 0 | 8 |
+| OVL | 7 | 2 | 0 | 3 | 2 |
+| MODE | 5 | 0 | 3 | 1 | 1 |
+| AUTO | 10 | 0 | 3 | 0 | 7 |
 | REC | 6 | 6 | 0 | 0 | 0 |
 | ALG | 24 | 0 | 13 | 0 | 11 |
-| BAD | 10 | 0 | 7 | 0 | 3 |
+| BAD | 10 | 0 | 8 | 0 | 2 |
 | RLP | 10 | 3 | 1 | 1 | 5 |
 | ROUTE | 6 | 1 | 1 | 1 | 3 |
-| CHECK | 7 | 2 | 1 | 0 | 4 |
+| CHECK | 7 | 2 | 2 | 0 | 3 |
 | CHK | 12 | 12 | 0 | 0 | 0 |
 | TEL | 12 | 7 | 1 | 2 | 2 |
 | LOG | 7 | 6 | 0 | 0 | 1 |
 | UI | 1 | 1 | 0 | 0 | 0 |
-| EDIT | 12 | 0 | 0 | 5 | 7 |
-| OWN | 6 | 0 | 0 | 0 | 6 |
+| EDIT | 12 | 5 | 1 | 0 | 6 |
+| OWN | 6 | 0 | 1 | 0 | 5 |
 | MOB | 8 | 3 | 2 | 2 | 1 |
 | CHAT | 15 | 15 | 0 | 0 | 0 |
 | SRV | 4 | 0 | 0 | 2 | 2 |
@@ -43,7 +43,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | ADB | 4 | 4 | 0 | 0 | 0 |
 | BOOT | 15 | 2 | 2 | 6 | 5 |
 | NFR | 8 | 1 | 0 | 1 | 6 |
-| SEC | 12 | 3 | 2 | 1 | 6 |
+| SEC | 12 | 3 | 2 | 2 | 5 |
 | ENG | 8 | 5 | 0 | 0 | 3 |
 
 ## Trace an item
@@ -51,7 +51,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 Download `product-requirements` from the CI run for this Control Plane revision. The CSV lists every requirement and acceptance scenario with both original status values. Look up the item ID in its component register for evidence and remaining scope.
 
 - [Control Plane register](requirements-register.json)
-- [Android register at 585283f911e3](https://github.com/nd4y/syn443-android/blob/585283f911e33c70dcc5bf905ba352a815b5536a/docs/requirements-register.json)
+- [Android register at 69c983b744af](https://github.com/nd4y/syn443-android/blob/69c983b744af0e813fcda0fa670e4c11b1478bae/docs/requirements-register.json)
 - [Technical specification](spec/TECHNICAL_SPEC_RU.md)
 - [Live and release acceptance records](implementation-status.md)
 

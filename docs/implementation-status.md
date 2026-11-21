@@ -18,6 +18,12 @@ The [service protocol eligibility source](operation-outcome-reconciliation.md#se
 
 ## Current accepted checkpoint
 
+### Home-network policy, operator console and Android v120
+
+An administrator can assign a TLS endpoint to a specific device's adaptive policy and edit or remove it from the console draft on a phone. Three named Go cases verify policy decoding, compilation and the target's separate capability. The two phone-sized browser cases preserve neighboring settings, reject invalid input and clear unfinished edits when changing target. The server policy passed the protected run. The console form passed its pull-request run. [Policy CI](https://github.com/nd4y/syn443-control-plane/actions/runs/44943758656) · [Console CI](https://github.com/nd4y/syn443-control-plane/actions/runs/44944162657)
+
+The Android v120 integration passed 539 JVM cases and 592 instrumented cases on each of API 29, 35 and 37 before merge. Coverage includes editor capacity, per-route checks, retry expiry and preservation of chat drafts. Deployment, the physical handset's current VPN state and home/guest TLS verification have separate acceptance checks. [Android CI](https://github.com/nd4y/syn443-android/actions/runs/44937487103)
+
 ### Wi-Fi recovery and Control Plane rollout - 2026-11-21
 
 On the same enrolled ARM64 phone, v107 established a fresh HTTPS connection
