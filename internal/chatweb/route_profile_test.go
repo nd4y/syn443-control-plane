@@ -10,6 +10,11 @@ const profileFixture = `{"schemaVersion":2,"id":"home","revision":1,"deadlineMs"
 
 func TestConsoleProfileValidationUsesCanonicalGatesWithoutProbing(t *testing.T) {
 	s, _, principal := webFixture(t)
+	const path = "/control/route-check-profile"
+	chatCookie := loginWeb(t, s)
+	if w := webCall(s, path, profileFixture, chatCookie); w.Code != http.StatusNotFound {
+		t.Fatalf("standalone chat returned %d for a console-only action", w.Code)
+	}
 	s.config.ControlConsole = true
 	principal.Scope = "syn443.control"
 	cookie := loginWeb(t, s)
@@ -17,7 +22,6 @@ func TestConsoleProfileValidationUsesCanonicalGatesWithoutProbing(t *testing.T) 
 		t.Fatal("validating check definitions called an upstream service")
 		return nil, nil
 	})
-	const path = "/control/route-check-profile"
 	w := webCall(s, path, profileFixture, cookie)
 	if w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) != `{"valid":true}` {
 		t.Fatal("valid definition failed or preview disclosed its contents")
@@ -41,9 +45,5 @@ func TestConsoleProfileValidationUsesCanonicalGatesWithoutProbing(t *testing.T) 
 	s.sessions[cookie.Value].principal.Scope = "openid"
 	if webCall(s, path, profileFixture, cookie).Code != http.StatusForbidden {
 		t.Fatal("non-control account passed")
-	}
-	s.config.ControlConsole = false
-	if webCall(s, path, profileFixture, cookie).Code != http.StatusNotFound {
-		t.Fatal("standalone chat exposed profile validation")
 	}
 }

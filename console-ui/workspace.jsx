@@ -507,7 +507,7 @@ function Drafts() {
             </Select>
             <p>Укажите корневой HTTPS-адрес сервиса, который возвращает IP и страну текущего подключения в JSON.</p>
           </div>
-          <p id="route-profile-note" hidden>Для этого выхода заданы условия в профиле проверок.</p>
+          <p id="route-profile-note" hidden>Этот маршрут использует профиль проверок.</p>
           <Button id="route-check-add" type="button" variant="secondary">
             Добавить проверку
           </Button>
