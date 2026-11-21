@@ -20,6 +20,34 @@ type Grant struct {
 	DeviceLimit   int                 `json:"deviceLimit"`
 	Until         int64               `json:"until"`
 	Template      policy.Payload      `json:"template"`
+	PolicyTiming  *PolicyTiming       `json:"policyTiming,omitempty"`
+}
+
+// PolicyTiming controls when the worker renews an authorized device policy
+// and how long the last signed policy can be used while disconnected.
+type PolicyTiming struct {
+	RefreshAfterSeconds int64 `json:"refreshAfterSeconds"`
+	OfflineLeaseSeconds int64 `json:"offlineLeaseSeconds"`
+}
+
+func (g Grant) setPolicyTimes(p *policy.Payload, now time.Time) error {
+	timing := PolicyTiming{RefreshAfterSeconds: 300, OfflineLeaseSeconds: 3600}
+	if g.PolicyTiming != nil {
+		timing = *g.PolicyTiming
+	}
+	if timing.RefreshAfterSeconds < 30 || timing.RefreshAfterSeconds >= timing.OfflineLeaseSeconds ||
+		timing.OfflineLeaseSeconds > 7*24*60*60 {
+		return identity.ErrInvalid
+	}
+	p.IssuedAtMs = now.UnixMilli()
+	p.NotBeforeMs = p.IssuedAtMs
+	p.OfflineUntilMs = min(p.IssuedAtMs+timing.OfflineLeaseSeconds*1000, g.Until*1000)
+	// Retain the existing admission floor near the account's expiry.
+	if p.OfflineUntilMs-p.IssuedAtMs < 30_000 {
+		return identity.ErrInvalid
+	}
+	p.RefreshAfterMs = min(p.IssuedAtMs+timing.RefreshAfterSeconds*1000, p.OfflineUntilMs-1000)
+	return nil
 }
 
 func (g Grant) Hash() string { raw, _ := json.Marshal(g); return identity.Hash(raw) }
@@ -61,10 +89,9 @@ func (g Grant) Validate(now time.Time) error {
 	}
 	p.TargetDevice = "synthetic-device"
 	p.Revision = 1
-	p.IssuedAtMs = now.UnixMilli()
-	p.NotBeforeMs = p.IssuedAtMs
-	p.RefreshAfterMs = p.IssuedAtMs + 30000
-	p.OfflineUntilMs = min(p.IssuedAtMs+3600000, g.Until*1000)
+	if err := g.setPolicyTimes(&p, now); err != nil {
+		return err
+	}
 	return p.Validate(now)
 }
 func hasCapability(values []string, value string) bool {
@@ -248,10 +275,9 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	}
 	payload.TargetDevice = id
 	payload.Revision = s.Revision + 1
-	payload.IssuedAtMs = now.UnixMilli()
-	payload.NotBeforeMs = payload.IssuedAtMs
-	payload.OfflineUntilMs = min(payload.IssuedAtMs+3600000, g.Until*1000)
-	payload.RefreshAfterMs = min(payload.IssuedAtMs+300000, payload.OfflineUntilMs-1000)
+	if err := g.setPolicyTimes(&payload, now); err != nil {
+		return err
+	}
 	var configurationFence ApprovalFence
 	var configurationSource ConfigurationSource
 	if p.Configurations != nil {

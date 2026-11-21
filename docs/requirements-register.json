@@ -660,7 +660,9 @@
       "status": "partial",
       "evidence": [
         "docs/managed-policy.md",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/enrollment-pilot.md#refresh-and-offline-policy-deadlines",
+        "internal/enrollment/policy_timing_postgres_test.go"
       ]
     },
     {

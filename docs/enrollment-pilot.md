@@ -66,3 +66,18 @@ The current continuation pins Go 1.27.4 after the mandatory vulnerability gate
 identified [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) in Go 1.27.3.
 The scanner remains mandatory. All runtime and browser artifacts must be rebuilt
 in GitHub Actions; an older green artifact does not satisfy this patched gate.
+## Refresh and offline policy deadlines
+
+An operator can set policy timing in an individual enrollment grant. For example,
+`"policyTiming":{"refreshAfterSeconds":300,"offlineLeaseSeconds":604800}`
+requests renewal after five minutes and allows up to seven days of offline use.
+Omitting the object preserves the existing grant fingerprint, five-minute refresh
+and one-hour offline lease.
+
+Both values are whole seconds. Refresh must be at least 30 seconds and earlier
+than expiry. The lease can be at most seven days. The signed expiry is capped
+by the account grant, prepared configuration and any shorter required resource
+lifetime. The publisher saves the next refresh time in SQL with the signed
+revision. Android can contact the server earlier after a network or policy event.
+Changing the timing changes the grant fingerprint and follows the existing
+operator approval and publisher workflow.
