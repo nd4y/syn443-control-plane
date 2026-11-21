@@ -463,6 +463,7 @@ function Drafts() {
             <option value="https_status">{'Код ответа HTTPS'}</option>
             <option value="ssh_banner">{'SSH banner'}</option>
             <option value="https_exit_ip">{'IP выхода по HTTPS'}</option>
+            <option value="https_exit_country">Страна выхода по HTTPS</option>
           </Select>
           <label htmlFor="route-check-target">Адрес проверки</label>
           <TextInput
@@ -491,6 +492,16 @@ function Drafts() {
             <label htmlFor="route-check-status">Ожидаемый код ответа</label>
             <TextInput id="route-check-status" type="number" min={200} max={599} step={1} defaultValue="200" />
           </div>
+          <div id="route-check-country" hidden>
+            <label htmlFor="route-check-country-class">Расположение выхода</label>
+            <Select id="route-check-country-class" defaultValue="">
+              <option value="">Выберите расположение</option>
+              <option value="RU">Россия</option>
+              <option value="NON_RU">За пределами России</option>
+            </Select>
+            <p>Укажите корневой HTTPS-адрес сервиса, который возвращает IP и страну текущего подключения в JSON.</p>
+          </div>
+          <p id="route-profile-note" hidden>Этот маршрут использует профиль проверок. Его условия можно изменить в JSON плана.</p>
           <Button id="route-check-add" type="button" variant="secondary">
             Добавить проверку
           </Button>

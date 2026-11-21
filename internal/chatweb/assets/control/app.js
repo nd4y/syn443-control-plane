@@ -64,7 +64,8 @@ function linkedDevice(){
  return deviceID.test(id)?id:'';
 }
 const confirmedDecision='m4-confirmed-v1';
-const routeCheckMethods={tcp:'TCP',tls:'TLS',https_204:'HTTPS 204',https_status:'Код ответа HTTPS',ssh_banner:'SSH banner',https_exit_ip:'IP выхода по HTTPS'};
+const routeCheckMethods={tcp:'TCP',tls:'TLS',https_204:'HTTPS 204',https_status:'Код ответа HTTPS',ssh_banner:'SSH banner',https_exit_ip:'IP выхода по HTTPS',https_exit_country:'Страна выхода по HTTPS'};
+const exitCountryLabels={RU:'Россия',NON_RU:'За пределами России'};
 function sameRouteCheck(a,b){
  return a?.method===b.method&&a.target===b.target&&a.expected_ip===b.expected_ip&&
   a.expected_exit_class===b.expected_exit_class&&a.http_method===b.http_method&&a.expected_status===b.expected_status;
@@ -94,7 +95,11 @@ function routeDraft(){
  }
  if(graph.final==='direct')tags.add('direct');
  const checks=network.routeChecks??[];
- if(!Array.isArray(checks)||checks.length>16||checks.some(row=>!row||typeof row.outbound!=='string'||!Array.isArray(row.checks)||row.checks.length>4))throw Error('invalid');
+ if(!Array.isArray(checks)||checks.length>16||checks.some(row=>{
+  if(!row||typeof row.outbound!=='string')return true;
+  if(Object.hasOwn(row,'profile'))return Object.hasOwn(row,'checks')||row.profile?.schemaVersion!==2||typeof row.profile.id!=='string';
+  return !Array.isArray(row.checks)||row.checks.length>4;
+ }))throw Error('invalid');
  return {value,network,tags,checks};
 }
 function drawRouteChecks(){
@@ -104,6 +109,9 @@ function drawRouteChecks(){
  const editor=$('route-check-editor'),select=$('route-check-path'),list=$('route-check-list');
  $('route-check-exit').hidden=$('route-check-method').value!=='https_exit_ip';
  $('route-check-http').hidden=$('route-check-method').value!=='https_status';
+ $('route-check-country').hidden=$('route-check-method').value!=='https_exit_country';
+ $('route-profile-note').hidden=true;
+ $('route-check-add').disabled=true;
  const cooldown=$('route-reserve-cooldown');cooldown.checked=false;cooldown.disabled=true;
  const rollout=$('route-cooldown-rollout');rollout.hidden=true;
  drawDeviceRollout('route-rollout',null);
@@ -117,7 +125,12 @@ function drawRouteChecks(){
  if(state.value.adaptive){$('route-bounds').hidden=false;$('route-bounds-preview').disabled=busy||!!pending;}
  for(const tag of [...state.tags].sort()){const option=document.createElement('option');option.value=tag;option.textContent=tag;select.append(option);}
  if(state.tags.has(prior))select.value=prior;
- $('route-check-required').checked=state.checks.some(row=>row.outbound===select.value&&row.required===true);
+ const selected=state.checks.find(row=>row.outbound===select.value);
+ $('route-check-required').checked=selected?.required===true;
+ $('route-profile-note').hidden=!selected?.profile;
+ for(const id of ['route-check-method','route-check-target','route-check-ip','route-check-verb','route-check-status','route-check-country-class','route-check-add']){
+  $(id).disabled=!!selected?.profile;
+ }
  editor.disabled=busy||!!pending||!state.tags.size;
  const failover=internalFailoverPlan(state);
  if(failover){
@@ -129,6 +142,12 @@ function drawRouteChecks(){
   if(decision.value)drawDeviceRollout('route-decision',failover.decisionRollout);
  }
  for(const row of state.checks){
+  if(row.profile){
+   const li=document.createElement('li');
+   li.textContent=`${row.outbound} · Профиль ${row.profile.id}${row.required===true?' · обязательная':''}`;
+   list.append(li);
+   continue;
+  }
   for(const item of row.checks){
    if(!item||typeof item.method!=='string'||typeof item.target!=='string')continue;
    const li=document.createElement('li'),remove=actionButton();
@@ -136,6 +155,7 @@ function drawRouteChecks(){
    let expected='';
    if(item.method==='https_exit_ip'&&typeof item.expected_ip==='string')expected=` · ${item.expected_ip}`;
    if(item.method==='https_status')expected=` · ${item.http_method} · ${item.expected_status}`;
+   if(item.method==='https_exit_country'&&Object.hasOwn(exitCountryLabels,item.expected_exit_class))expected=` · ${exitCountryLabels[item.expected_exit_class]}`;
    li.textContent=`${row.outbound} · ${method} · ${item.target}${expected}${row.required===true?' · обязательная':''} `;
    remove.type='button';remove.textContent='Удалить проверку';
    remove.onclick=()=>work(async()=>{
@@ -228,7 +248,7 @@ function clearInventory(){
 function erase(){
  reauthenticationAvailable=false;reauthenticationNeeded=false;reauthenticationIssuer='';reauthenticationFocus=false;
  clearDevices();clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
- for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip'])$(id).value='';
+ for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip','route-check-country-class'])$(id).value='';
  $('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';
  for(const id of ['sources','profiles','source-details','inventory-status'])$(id).replaceChildren();
 }
@@ -574,7 +594,7 @@ function showDraft(draft){
  if(!Number.isSafeInteger(draft.revision)||draft.revision<1)throw Error('invalid');
  opened={id:draft.id,kind:draft.targetKind,target:draft.targetId};revision=draft.revision;
  $('draft-id').value=draft.id;$('target-kind').value=draft.targetKind;$('target-id').value=draft.targetId;
- $('base-revision').value=String(draft.baseRevision);$('base-hash').value=draft.baseHash;$('plan').value=JSON.stringify(draft.plan,null,2);$('route-check-target').value='';$('route-check-ip').value='';
+ $('base-revision').value=String(draft.baseRevision);$('base-hash').value=draft.baseHash;$('plan').value=JSON.stringify(draft.plan,null,2);$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';
  $('draft-version').textContent=`Версия черновика: ${draft.revision}`;
 }
 async function sources(more=false){
@@ -781,7 +801,7 @@ addEventListener('hashchange',()=>{
  setNavExpanded(false);
  if(authenticated&&!pending&&linkedDevice())void work(openLinkedDevice);
 });$('open-draft').onclick=()=>work(openDraft);
-$('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
+$('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
 $('plan').oninput=drawRouteChecks;
 $('route-bounds-preview').onclick=()=>work(async()=>{
@@ -856,9 +876,7 @@ $('route-decision-save').onclick=()=>{
   applyRouteChecks(state);
  });
 };
-$('route-check-path').onchange=()=>{
- try{$('route-check-required').checked=routeDraft().checks.some(row=>row.outbound===$('route-check-path').value&&row.required===true);}catch{}
-};
+$('route-check-path').onchange=drawRouteChecks;
 $('route-check-required').onchange=()=>{
  const selected=$('route-check-path').value,value=$('route-check-required').checked;
  try{if(!routeDraft().checks.some(row=>row.outbound===selected))return;}catch{return;}
@@ -868,7 +886,7 @@ $('route-check-required').onchange=()=>{
   row.required=value;applyRouteChecks(current);
  });
 };
-$('route-check-method').onchange=()=>{$('route-check-ip').value='';drawRouteChecks();};
+$('route-check-method').onchange=()=>{$('route-check-ip').value='';$('route-check-country-class').value='';drawRouteChecks();};
 $('route-check-add').onclick=()=>{
  const path=$('route-check-path').value,method=$('route-check-method').value,target=$('route-check-target').value.trim();
  const expectedIP=$('route-check-ip').value.trim();
@@ -877,6 +895,11 @@ $('route-check-add').onclick=()=>{
   const current=routeDraft();
   if(!current.tags.has(path)||!Object.hasOwn(routeCheckMethods,method)||!target||target.length>2048||/[^!-~]/.test(target))throw Error('invalid');
   const check={method,target};
+  if(method==='https_exit_country'){
+   const country=$('route-check-country-class').value;
+   if(!Object.hasOwn(exitCountryLabels,country)||!validProbeHTTPS(target)||!/^https:\/\/[^/?#]+\/?$/.test(target))throw Error('invalid');
+   check.expected_exit_class=country;
+  }
   if(method==='https_exit_ip'){
    if(!/^[0-9a-fA-F:.]{2,45}$/.test(expectedIP)||!validProbeHTTPS(target))throw Error('invalid');
    check.expected_ip=expectedIP;
@@ -888,7 +911,7 @@ $('route-check-add').onclick=()=>{
   }
   let group=current.checks.find(row=>row.outbound===path);
   if(!group){if(current.checks.length>=16)throw Error('invalid');group={outbound:path,required,checks:[]};current.checks.push(group);}
-  if(group.checks.length>=4||group.checks.some(row=>sameRouteCheck(row,check)))throw Error('invalid');
+  if(group.profile||group.checks.length>=4||group.checks.some(row=>sameRouteCheck(row,check)))throw Error('invalid');
   group.required=required;group.checks.push(check);applyRouteChecks(current);$('route-check-target').value='';$('route-check-ip').value='';
  });
 };

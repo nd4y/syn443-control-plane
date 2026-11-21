@@ -1390,7 +1390,7 @@
         "docs/exit-country-probe.md",
         "docs/route-check-profiles-v2.md#checking-an-exact-https-response-status"
       ],
-      "implementationScope": "Per-outbound TCP, SSH banner, TLS, HTTPS 204 and exit checks. Device-capability negotiation and signed policies can specify HTTPS GET or HEAD with an exact status in an ordered list or v2 profile.",
+      "implementationScope": "Per-outbound TCP, SSH banner, TLS, HTTPS 204 and exit checks. The console can edit a route's HTTPS country predicate. Device-capability negotiation and signed policies can specify HTTPS GET or HEAD with an exact status in an ordered list or v2 profile.",
       "remainingScope": "DNS response conditions, ICMP and UDP responder checks, HTTP header/body predicates and explicitly authorized bounded POST. Verify assigned-policy operation on a physical device."
     },
     {
@@ -1401,7 +1401,7 @@
         "docs/implementation-status.md#evidence-index-and-register-semantics",
         "docs/route-check-profiles-v2.md"
       ],
-      "implementationScope": "Legacy all-of checks are retained. The current source component adds negotiated bounded all/any/quorum and sequential stages with mandatory security gates; its Actions, integration and rollout evidence are tracked separately.",
+      "implementationScope": "Legacy all-of checks are retained. Negotiated bounded all/any/quorum and sequential stages support mandatory security gates. The console preserves existing v2 profiles while editing other outbound checks and previewing adaptive route counts.",
       "remainingScope": "Parallel stages, explicit conditional/fallback branches, reusable traffic-rule profiles/editor, ordinary variable/overlay paths and capability-approved managed physical acceptance remain open."
     },
     {
