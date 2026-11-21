@@ -80,6 +80,7 @@ type NetworkSettings struct {
 	DNSFinal         string               `json:"dnsFinal"`
 	DNSStrategy      string               `json:"dnsStrategy"`
 	RouteChecks      []OutboundCheckPlan  `json:"routeChecks,omitempty"`
+	HomeProof        *policy.HomeProof    `json:"homeProof,omitempty"`
 	RouteFailover    *RouteFailoverPlan   `json:"routeFailover,omitempty"`
 }
 
@@ -98,6 +99,11 @@ func DecodeNetworkSettings(raw []byte) (NetworkSettings, error) {
 	}
 	parsed, err := subscriptions.DecodeJSON(raw)
 	if err != nil || !boundedNumbers(parsed) {
+		return NetworkSettings{}, ErrInvalid
+	}
+	root, ok := parsed.(map[string]any)
+	_, hasProof := root["homeProof"]
+	if !ok || hasProof != (value.HomeProof != nil) || hasProof && !value.HomeProof.Valid() {
 		return NetworkSettings{}, ErrInvalid
 	}
 	// routecheck.Plan owns exact XOR, null and primitive-field presence checks.
@@ -550,6 +556,12 @@ func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMess
 		return nil, err
 	}
 	output := map[string]any{"outbounds": graph.Outbounds, "route": map[string]any{"rules": rules, "final": graph.Final}, "dns": map[string]any{"servers": dnsServers, "rules": dnsRules, "final": dnsTag(settings.DNSFinal), "strategy": settings.DNSStrategy}}
+	if settings.HomeProof != nil {
+		if !settings.HomeProof.Valid() {
+			return nil, ErrInvalid
+		}
+		output["home_proof"] = settings.HomeProof
+	}
 	if metadata != nil {
 		output["route_checks"] = metadata
 	}

@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"net/netip"
 	"slices"
 	"testing"
 	"time"
@@ -146,5 +147,40 @@ func TestAdaptivePolicyRequiresExactEnvelopeCapabilitySchemaAndConfigureScope(t 
 	payload.AlgorithmRevision = policy.BaselineAlgorithm
 	if err := payload.Validate(now); err != nil {
 		t.Fatal("ordinary baseline policy with its own country check was changed", err)
+	}
+}
+
+func TestHomeProofRequiresAddressedAdaptivePolicyAndExactPinnedEndpoint(t *testing.T) {
+	address := netip.AddrFrom4([4]byte{10, 51, 0, 23}).String()
+	hash := sha256.Sum256([]byte("synthetic home TLS public key"))
+	pin := base64.RawURLEncoding.EncodeToString(hash[:])
+	valid := map[string]any{"hostname": "proof.example.invalid", "address": address, "port": 8443, "spkiSha256": pin}
+	payload, now := adaptivePolicyFixture(t)
+	replaceAdaptivePolicyEngine(t, &payload, func(root map[string]any) { root["home_proof"] = valid })
+	if payload.Validate(now) == nil {
+		t.Fatal("proof accepted without capability")
+	}
+	payload.RequiredCapabilities = append(payload.RequiredCapabilities, policy.HomeWiFiProof)
+	if err := payload.Validate(now); err != nil {
+		t.Fatal("valid proof rejected", err)
+	}
+	for _, tc := range []struct {
+		key   string
+		value any
+	}{
+		{"hostname", "*.example.invalid"}, {"hostname", "example.localhost"}, {"hostname", "127.0.0.1"},
+		{"address", "127.0.0.1"}, {"address", "192.0.2.11"}, {"address", "::1"}, {"address", "fe80::1%wlan0"},
+		{"address", "::ffff:192.0.2.1"}, {"address", "host.example.invalid"}, {"port", 0}, {"port", 65536}, {"port", "8443"},
+		{"spkiSha256", "bad"}, {"spkiSha256", pin + "="}, {"accessToken", "invalid"},
+	} {
+		candidate := payload
+		replaceAdaptivePolicyEngine(t, &candidate, func(root map[string]any) { root["home_proof"].(map[string]any)[tc.key] = tc.value })
+		if candidate.Validate(now) == nil {
+			t.Fatalf("invalid field accepted: %s", tc.key)
+		}
+	}
+	replaceAdaptivePolicyEngine(t, &payload, func(root map[string]any) { delete(root, "home_proof") })
+	if payload.Validate(now) == nil {
+		t.Fatal("capability accepted without proof")
 	}
 }

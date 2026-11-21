@@ -250,3 +250,21 @@ The console returns aggregate counts, performs no live probes or writes, and
 discards comparisons when the operator changes the inputs. This replay covers
 snapshot ranking; on-device shadow observation and automatic rollout gates
 remain separate requirements.
+
+## Home Wi-Fi proof for adaptive routes
+
+An adaptive network draft can assign one TLS service in `network.homeProof`.
+Supply its DNS certificate name in `hostname`, its private IP literal in
+`address`, the TCP `port`, and the SHA-256 digest of the leaf certificate's
+SubjectPublicKeyInfo in unpadded base64url as `spkiSha256`. Choose a service
+reachable over the intended home network. Use a private IPv4 or IPv6 ULA
+address; the name is for SNI and certificate verification. The client needs
+no DNS lookup of that name. Retain ordinary TLS certificate and hostname
+verification when deploying or rotating the key.
+
+Publication requires the authenticated target to advertise
+`network.home-proof.v1` along with adaptive routing. This declaration scopes
+a handshake to the named service. It grants no direct application traffic,
+trust exception, location permission or access to additional endpoints.
+An unreachable or changed service leaves the client on its ordinary Wi-Fi
+policy. Previously enrolled clients retain their earlier configuration.

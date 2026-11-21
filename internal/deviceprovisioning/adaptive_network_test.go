@@ -106,3 +106,20 @@ func TestAdaptiveNetworkRequiresActualPrimitiveDecisionKeyAndProbeAvailability(t
 		t.Fatal("ordinary capability/rollout path was changed", err)
 	}
 }
+
+func TestHomeProofRequiresAnAdaptivePlanAndAnIndependentlyCapableTarget(t *testing.T) {
+	plan := adaptiveAuthorityPlan(t, []configuration.ProfileReference{{SourceID: "src", ProfileID: "one"}})
+	target := enrollment.ConfigurationTarget{Capabilities: adaptiveAuthorityCapabilities()}
+	plan.Network.HomeProof = &policy.HomeProof{}
+	if err := adaptiveNetworkAvailable(plan, target); err != enrollment.ErrDenied {
+		t.Fatal("incapable target accepted", err)
+	}
+	target.Capabilities = append(target.Capabilities, policy.HomeWiFiProof)
+	if err := adaptiveNetworkAvailable(plan, target); err != nil {
+		t.Fatal("capable target rejected", err)
+	}
+	plan.Adaptive = nil
+	if err := adaptiveNetworkAvailable(plan, target); err != configuration.ErrInvalid {
+		t.Fatal("non-adaptive policy accepted proof", err)
+	}
+}

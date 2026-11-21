@@ -10,11 +10,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/netip"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/nd4y/syn443-control-plane/internal/policy"
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
 )
 
@@ -468,5 +470,30 @@ func TestAdaptiveGraphKeepsOwnedPrefixesHopNodeAndNetBirdUnderlayBoundaries(t *t
 	nodeGraph.Chains["alias-15"] = Chain{DialOrder: []string{"profile-00"}}
 	if _, err := compileGraphWithAdaptive(nodeGraph, resolver, nodeDeclarations); err == nil {
 		t.Fatal("managed groups escaped the existing64-parent-outbound hard limit")
+	}
+}
+
+func TestCompileHomeProofPreservesAssignedPrivateTLSServiceAndRequiresAdaptivePolicy(t *testing.T) {
+	plan, profiles := adaptiveCompilerFixture(t, 2, "NON_RU")
+	pin := sha256.Sum256([]byte("public test certificate"))
+	address := netip.AddrFrom4([4]byte{10, 55, 1, 67})
+	plan.Network.HomeProof = &policy.HomeProof{Hostname: "gateway.example.invalid", Address: address.String(), Port: 443, SPKISHA256: base64.RawURLEncoding.EncodeToString(pin[:])}
+	resolver := adaptiveCompilerResolver(profiles)
+	compiled, err := CompileNetworkPlan(context.Background(), plan, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var declared struct {
+		Proof *policy.HomeProof `json:"home_proof"`
+	}
+	if json.Unmarshal(compiled.EngineConfig, &declared) != nil || declared.Proof == nil || *declared.Proof != *plan.Network.HomeProof {
+		t.Fatal("assigned TLS endpoint lost")
+	}
+	plan.Adaptive = nil
+	if _, err := CompileNetworkPlan(context.Background(), plan, resolver); err == nil {
+		t.Fatal("accepted static graph with home proof")
+	}
+	if _, err := DecodeNetworkSettings([]byte(`{"schemaVersion":1,"homeProof":null}`)); err == nil {
+		t.Fatal("silently discarded explicit null proof")
 	}
 }

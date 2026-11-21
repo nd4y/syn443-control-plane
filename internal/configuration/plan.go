@@ -54,7 +54,7 @@ func DecodeNetworkPlan(raw []byte) (NetworkPlan, error) {
 	if e != nil {
 		return NetworkPlan{}, ErrInvalid
 	}
-	if _, e = DecodeNetworkSettings(networkRaw); e != nil {
+	if _, e = DecodeNetworkSettings(networkRaw); e != nil || plan.Network.HomeProof != nil && plan.Adaptive == nil {
 		return NetworkPlan{}, ErrInvalid
 	}
 	if plan.Adaptive != nil {
