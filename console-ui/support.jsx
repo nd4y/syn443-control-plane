@@ -14,13 +14,16 @@ export function Support() {
         <CardBody>
           <ul id="support-inbox" className="support-inbox" aria-label="Диалоги поддержки" />
           <p id="support-empty" hidden>Диалогов пока нет.</p>
-          <Button id="support-more" variant="secondary" isDisabled>Ещё диалоги</Button>
+          <Button id="support-more" variant="secondary" isDisabled>Следующие диалоги</Button>
+          <Button id="support-inbox-first" variant="secondary" hidden>К началу списка</Button>
         </CardBody>
       </Card>
       <Card isCompact>
         <CardTitle component="h2" id="support-thread-title">Выберите диалог</CardTitle>
         <CardBody>
           <Button id="support-older" variant="secondary" isDisabled>Предыдущие сообщения</Button>
+          <Button id="support-newer" variant="secondary" hidden>Следующие сообщения</Button>
+          <Button id="support-latest" variant="secondary" hidden>К последним сообщениям</Button>
           <ol id="support-messages" className="support-messages" aria-label="Сообщения поддержки" aria-live="polite" />
           <form id="support-compose" className="support-compose">
             <label htmlFor="support-text">Сообщение</label>

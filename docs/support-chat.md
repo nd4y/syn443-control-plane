@@ -113,6 +113,14 @@ and clearing an authorized save link on logout. A verified Blob link is explicit
 and expires after 120 seconds. Physical Edge download persistence is not confirmed
 by the automation tool; Android SAF download was checked against the source hash.
 
+The inbox shows 50 conversations per page. The next page uses the last
+conversation's update time and ID, including when several updates share a
+timestamp. Administrators can return to the first page from any depth.
+The conversation view follows new arrivals while keeping up to 200 messages.
+Its history controls navigate older and newer pages of 20 and can jump back
+to the newest messages. Polling an archived page retains the current position
+and leaves the read cursor alone. These controls are available in both web views.
+
 Selecting another conversation clears the previous history and revokes its
 prepared file link before the first request for the new conversation. This
 also applies when the new history is slow or unavailable. Leaving the support
