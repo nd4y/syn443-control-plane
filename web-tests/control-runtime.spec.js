@@ -18,6 +18,45 @@ test('runtime observation is separately attributed and never invents an activati
  expect(observed.calls).not.toContain('configuration.publish');expect(observed.operations).toBe(0);
  expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
 });
+test('adaptive algorithm follows the current issued policy and ages with the active device report',async({page,request})=>{
+ const algorithm='m4-graph-tcp-v1';
+ await page.setViewportSize({width:360,height:800});
+ await page.route('**/control/action',async route=>{
+  const op=route.request().postDataJSON();
+  if(op.action!=='configuration.inventory.get'||op.payload.id!=='device-a')return route.fallback();
+  const response=await route.fetch(),view=await response.json();
+  view.issuedSettings.algorithmRevision=algorithm;
+  return route.fulfill({response,json:view});
+ });
+ const issued=page.locator('#inventory-issued-algorithm'),observed=page.locator('#inventory-runtime-detail');
+ await open(page,request,{runtime:'recent'});
+ await expect(issued).toHaveText('Алгоритм '+algorithm);
+ await expect(observed).toContainText('алгоритм политики '+algorithm);
+ await open(page,request,{runtime:'expires'});
+ await expect(issued).toHaveText('Алгоритм '+algorithm);
+ await expect(page.locator('#inventory-runtime')).toHaveText('Отчёт устарел',{timeout:8000});
+ await expect(observed).not.toContainText(algorithm);
+ await expect(issued).toHaveText('Алгоритм '+algorithm);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('issued algorithm is never attributed to a stopped engine or a different observed revision',async({page,request})=>{
+ const detail=page.locator('#inventory-runtime-detail');
+ await open(page,request,{runtime:'recent',runtimeEngine:'starting_stopped'});
+ await expect(detail).toContainText('движок остановлен');
+ await expect(detail).not.toContainText('алгоритм политики');
+ await page.route('**/control/action',async route=>{
+  if(route.request().postDataJSON().action!=='configuration.runtime.get')return route.fallback();
+  const response=await route.fetch(),view=await response.json();
+  view.report.policyRevision=22;
+  return route.fulfill({response,json:view});
+ });
+ await open(page,request,{runtime:'recent'});
+ await expect(detail).toContainText('политика 22');
+ await expect(detail).not.toContainText('алгоритм политики');
+ await expect(page.locator('#inventory-issued-algorithm')).toHaveText('Алгоритм m4-confirmed-v1');
+});
+
 test('runtime observation expires locally without polling or refreshing a historical receipt',async({page,request})=>{
  await open(page,request,{runtime:'expires'});
  await expect(page.locator('#inventory-runtime')).toHaveText('Сообщено: VPN включён');
@@ -39,7 +78,8 @@ test('mobile runtime shows the reported engine independently of the phase and ne
  ]){
   await open(page,request,{runtime:'recent',runtimeEngine});
   await expect(summary).toHaveText('Сообщено: '+phase);
-  await expect(detail).toHaveText('По данным клиента · Wi-Fi · сборка 74 · политика 23 · '+engine);
+  const algorithm=runtimeEngine==='recovering_active'?' · алгоритм политики m4-confirmed-v1':'';
+  await expect(detail).toHaveText('По данным клиента · Wi-Fi · сборка 74 · политика 23 · '+engine+algorithm);
   await expect(page.locator('#inventory-report')).toContainText('Откат');
  }
  await open(page,request,{runtime:'stale',runtimeEngine:'recovering_active'});

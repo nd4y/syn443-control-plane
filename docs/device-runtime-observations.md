@@ -34,6 +34,12 @@ the observation using elapsed time and removes it on a denied/changed selection.
 Its [bounded foreground refresh](runtime-console-refresh.md) fetches later reports
 while the selected card is visible. A read never renews the stored receipt.
 
+The device card shows the algorithm in its issued policy, including the adaptive
+graph evaluator. The runtime panel identifies the algorithm of the reported
+policy while a fresh observation names that same revision and reports an active
+engine. An older revision, a stopped engine, or an expired report leaves the
+algorithm visible only in the issued settings.
+
 The Android sender must reuse the existing supervisor and account transport,
 send at most once per60 seconds, retain a single durable pending operation and
 sequence, retry unchanged content with a fresh proof, and preserve Stop/account
