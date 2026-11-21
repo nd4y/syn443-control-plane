@@ -2036,9 +2036,11 @@
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
         "web-tests/chat.spec.js",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/support-chat.md#physical-media-processing"
       ],
-      "text": "При выборе режима «Фото» Android на устройстве учитывает ориентацию, уменьшает изображение до разрешённого размера и кодирует JPEG/WebP с ограниченным качеством/числом попыток. Метаданные геолокации удаляются; декодирование имеет предел пикселей и памяти. Исходник пользователя не изменяется. Режим «Файл» позволяет отправить оригинал в пределах25MiB без преобразования; UI явно отличает режимы."
+      "text": "При выборе режима «Фото» Android на устройстве учитывает ориентацию, уменьшает изображение до разрешённого размера и кодирует JPEG/WebP с ограниченным качеством/числом попыток. Метаданные геолокации удаляются; декодирование имеет предел пикселей и памяти. Исходник пользователя не изменяется. Режим «Файл» позволяет отправить оригинал в пределах25MiB без преобразования; UI явно отличает режимы.",
+      "implementationScope": "Synthetic JPEG on a physical Android device was rotated from 640x480 to 480x640 and re-encoded without GPS. See the linked fixture for its assertions."
     },
     {
       "id": "CHAT-09",
@@ -2048,9 +2050,11 @@
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
         "web-tests/chat.spec.js",
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#evidence-index-and-register-semantics",
+        "docs/support-chat.md#physical-media-processing"
       ],
-      "text": "В режиме «Видео» Android выполняет аппаратно поддерживаемое перекодирование в MP4/H.264/AAC с профилем до720p/30fps и подбором bitrate по длительности/бюджету размера. Фактический результат должен укладываться в25MiB. Неподдерживаемый codec, превышение длительности/размера, недостаток места и сбой encoder дают понятную ошибку и варианты выбрать другой файл или отправить допустимый оригинал; незаметная отправка большого оригинала запрещена."
+      "text": "В режиме «Видео» Android выполняет аппаратно поддерживаемое перекодирование в MP4/H.264/AAC с профилем до720p/30fps и подбором bitrate по длительности/бюджету размера. Фактический результат должен укладываться в25MiB. Неподдерживаемый codec, превышение длительности/размера, недостаток места и сбой encoder дают понятную ошибку и варианты выбрать другой файл или отправить допустимый оригинал; незаметная отправка большого оригинала запрещена.",
+      "implementationScope": "Physical Android encoding produced a smaller AVC/AAC MP4 within 25 MiB and 1280x720, removed location metadata and cleaned up a cancelled conversion."
     },
     {
       "id": "CHAT-10",
@@ -3276,7 +3280,8 @@
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
         "web-tests/chat.spec.js",
-        "docs/implementation-status.md"
+        "docs/implementation-status.md",
+        "docs/support-chat.md#physical-media-processing"
       ],
       "specRow": " Фото с EXIF/GPS/rotation, большое разрешение, PNG/JPEG/WebP | Корректная ориентация, сжатие на телефоне, удаление GPS, bounded память; исходник не изменён, готовый файл в лимите |"
     },
@@ -3288,7 +3293,8 @@
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
         "web-tests/chat.spec.js",
-        "docs/implementation-status.md"
+        "docs/implementation-status.md",
+        "docs/support-chat.md#physical-media-processing"
       ],
       "specRow": " Видео с rotation/audio, encoder failure, отмена и нехватка места | MP4/H.264/AAC в лимите, прогресс/отмена и cleanup; нет отправки большого оригинала или зависшего UI |"
     },
