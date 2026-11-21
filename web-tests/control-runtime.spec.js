@@ -78,7 +78,8 @@ test('mobile runtime shows the reported engine independently of the phase and ne
  ]){
   await open(page,request,{runtime:'recent',runtimeEngine});
   await expect(summary).toHaveText('Сообщено: '+phase);
-  await expect(detail).toHaveText('По данным клиента · Wi-Fi · сборка 74 · политика 23 · '+engine);
+  const algorithm=runtimeEngine==='recovering_active'?' · алгоритм политики m4-confirmed-v1':'';
+  await expect(detail).toHaveText('По данным клиента · Wi-Fi · сборка 74 · политика 23 · '+engine+algorithm);
   await expect(page.locator('#inventory-report')).toContainText('Откат');
  }
  await open(page,request,{runtime:'stale',runtimeEngine:'recovering_active'});
