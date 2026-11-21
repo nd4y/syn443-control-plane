@@ -19,10 +19,11 @@ import {
 import { BarsIcon, ShieldAltIcon } from '@patternfly/react-icons';
 import '@patternfly/react-core/dist/styles/base.css';
 import { Workspace } from './workspace.jsx';
+import { connectInvitations } from './invitations.jsx';
 import { connectSupportChat } from './support.jsx';
 
 const groups = [
-  { title: 'Главная', sections: [['inventory-title', 'Устройства']] },
+  { title: 'Главная', sections: [['inventory-title', 'Устройства'], ['invites-title', 'Приглашения']] },
   {
     title: 'Конфигурация',
     sections: [
@@ -199,5 +200,6 @@ function Console() {
 // The controller owns transient form and authorization state across workspace navigation.
 const root = createRoot(document.getElementById('console-root'));
 flushSync(() => root.render(<Console />));
-await import('/app.js');
+const {sendInvitation} = await import('/app.js');
+connectInvitations(sendInvitation);
 connectSupportChat();

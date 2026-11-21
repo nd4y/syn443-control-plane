@@ -15,6 +15,19 @@ import (
 	"testing"
 )
 
+func TestConsoleInvitationActionsAreBoundedAndSeparateFromImport(t *testing.T) {
+	for _, action := range []string{"invite.issue", "invite.get", "invite.approve", "invite.revoke", "invite.list", "invite.complete", "invite.admin"} {
+		raw, err := json.Marshal(map[string]any{"version": 1, "action": action, "requestId": "synthetic-request-for-invitation", "payload": map[string]any{"id": "sample"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		allowed := action == "invite.issue" || action == "invite.get" || action == "invite.approve" || action == "invite.revoke"
+		if validConsoleAction(raw, false) != allowed || validConsoleAction(raw, true) || validConsoleAction(append(raw, []byte(strings.Repeat(" ", 8192))...), false) {
+			t.Fatalf("unexpected boundary for %s", action)
+		}
+	}
+}
+
 func TestConsoleSourceMutationsRemainInTheClosedActionAllowlist(t *testing.T) {
 	for _, action := range []string{"source.put", "source.sync", "source.shares.put", "job.get", "job.list", "configuration.preview.request", "configuration.publish", "configuration.request.get", "configuration.inventory.get", "configuration.devices.list", "configuration.layers.draft.get", "configuration.layers.draft.put", "configuration.layers.drafts.list", "configuration.layers.draft.discard", "configuration.history.get"} {
 		raw := []byte(`{"version":1,"action":"` + action + `","requestId":"synthetic-request-123","payload":{}}`)

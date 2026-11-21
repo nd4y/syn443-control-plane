@@ -371,4 +371,8 @@ pre:not(:empty) {
 .support-compose input{max-width:100%}
 .support-actions{display:flex;flex-wrap:wrap;gap:.5rem}
 .support-notice{margin-block-start:1rem;overflow-wrap:anywhere}
+#invite-qr{display:block;max-width:min(100%,28rem);height:auto;image-rendering:pixelated}
+#invite-qr[hidden]{display:none}
+#invite-link{width:100%;overflow-wrap:anywhere}
+#invite-detail,#invite-confirm-text{overflow-wrap:anywhere}
 @media(max-width:1000px){.support-grid{grid-template-columns:minmax(0,1fr)}}

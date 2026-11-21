@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const noticeFiles = [
   'RED-HAT-FONT-LICENSE',
+  'QR-CODE-LICENSE',
   'node_modules/@patternfly/react-core/LICENSE',
   'node_modules/@patternfly/react-icons/LICENSE',
   'node_modules/@patternfly/react-styles/LICENSE',

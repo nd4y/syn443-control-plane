@@ -296,6 +296,8 @@ function controls(){
  $('reauthentication').hidden=!authenticated||!reauthenticationNeeded;
  $('reauthentication-unavailable').hidden=reauthenticationAvailable;
  $('reauthentication-start').disabled=busy||!authenticated||!reauthenticationAvailable;
+ $('invite-reauth').hidden=!authenticated||!reauthenticationAvailable;
+ $('invite-reauth').disabled=busy;
  $('reauthentication-check').disabled=busy||!authenticated;
  for(const id of ['refresh-devices','more-devices'])$(id).disabled=busy||!authenticated||!!pending||(id==='more-devices'&&!devicesNext);
  for(const button of $('device-rows').querySelectorAll('button'))button.disabled=busy||!authenticated||!!pending;
@@ -346,6 +348,7 @@ function clearInventory(){
  $('inventory-details').open=false;$('inventory-view').hidden=true;$('inventory-issued-settings').hidden=true;$('inventory-issued-settings').open=false;
 }
 function erase(){
+ window.dispatchEvent(new Event('syn443-console-session-ended'));
  reauthenticationAvailable=false;reauthenticationNeeded=false;reauthenticationIssuer='';reauthenticationFocus=false;
  clearDevices();clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
  for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip','route-check-country-class'])$(id).value='';
@@ -377,6 +380,11 @@ async function request(path,body,signal){
  finally{clearTimeout(deadline);signal?.removeEventListener('abort',abort);}
 }
 const envelope=(action,payload)=>JSON.stringify({version:1,action,requestId:crypto.randomUUID(),payload});
+export async function sendInvitation(body,signal){
+ if(!authenticated)throw Error('login');
+ try{return await request('/control/action',body,signal);}
+ finally{controls();}
+}
 const action=(name,payload,signal)=>request('/control/action',envelope(name,payload),signal);
 function clearTelemetry(){
  $('telemetry-status').textContent='';$('telemetry-rows').replaceChildren();$('telemetry-view').hidden=true;
@@ -897,6 +905,10 @@ async function saveSource(){
 $('login').onclick=()=>work(async()=>{const device=linkedDevice();const result=await request('/login',device?{device}:{});const target=new URL(result.url);if(target.protocol!=='https:'&&!(location.hostname==='127.0.0.1'&&target.protocol==='http:'&&target.hostname==='127.0.0.1'))throw Error('invalid');location.assign(target.href);});
 $('logout').onclick=()=>work(async()=>{try{await request('/logout',{});}finally{authenticated=false;erase();if(linkedDevice())history.replaceState(null,'','/#inventory-title');}status('Вы вышли. Локальная копия черновика очищена.');});
 $('refresh-devices').onclick=()=>work(()=>loadDevices());
+$('invite-reauth').onclick=()=>{
+ if(!authenticated||!reauthenticationAvailable||busy)return;
+ reauthenticationNeeded=true;controls();$('reauthentication-title').focus();
+};
 $('reauthentication-start').onclick=()=>work(beginReauthentication);
 $('reauthentication-check').onclick=()=>work(checkReauthentication);
 $('refresh-runtime').onclick=()=>work(loadRuntime);

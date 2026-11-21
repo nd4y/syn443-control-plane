@@ -2378,14 +2378,26 @@
     {
       "id": "BOOT-07",
       "text": "Приглашение выпускает администратор для конкретного существующего пользователя/профиля получателя, разрешённых назначений и одного нового устройства. Сервер не создаёт полномочия по переданному телефоном userId, role или URL произвольного конфига. Ручная привязка обходит Keycloak для конечного пользователя, но не проверку выданного доступа.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/invitations.md#mobile-and-desktop-console",
+        "web-tests/invitations.spec.js",
+        "internal/invitation/boundaries_postgres_test.go"
+      ],
+      "implementationScope": "The scoped control console issues a one-device invitation for a selected existing recipient and grant. It exposes the mobile claim confirmation and versioned revocation through the original four upstream actions.",
+      "remainingScope": "Live issuer setup, authorized account inventory integration and a fresh disposable-device enrollment are separate acceptance gates."
     },
     {
       "id": "BOOT-08",
       "text": "Предлагаемая форма: `syn443://enroll?v=1&server=https%3A%2F%2Fvpn.example.com&code=EXAMPLE_NOT_A_TOKEN`. Реальный code - случайный непрозрачный секрет не менее 128 бит энтропии, одноразовый; начальный TTL 10 минут с настройкой серверной политики. В ссылке нет VLESS UUID, VPN-пароля, подписочного URL, персональных данных или токена администратора.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/invitations.md#mobile-and-desktop-console",
+        "web-tests/invitations.spec.js",
+        "internal/invitation/boundaries_postgres_test.go"
+      ],
+      "implementationScope": "The backend generates a one-use 32-byte code. The mobile and desktop console render the exact link into a QR locally, enforce the ten-minute maximum, clear the visible secret and retain an idempotent retry for a lost reply.",
+      "remainingScope": "Verify real descriptor size and first-use delivery on an authorized disposable device and validate production retention and recovery."
     },
     {
       "id": "BOOT-09",
