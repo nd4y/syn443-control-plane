@@ -33,6 +33,7 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 	tags := []string{"panel", "feed-one", "feed-two"}
 	graph := configuration.Graph{
 		Profiles:  map[string]configuration.ProfileReference{},
+		Chains:    map[string]configuration.Chain{},
 		Balancers: map[string]configuration.Balancer{"pool": {Type: "selector", Members: tags, Default: tags[0]}},
 		Final:     "pool",
 	}
@@ -137,7 +138,8 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 	refresh("feed-two", "good-refresh", true)
 	for _, tag := range tags {
 		view, err := n.api.GetSource(ctx, n.actor, tag, now)
-		if err != nil || view.ActiveSnapshot == "" || (view.ActiveSnapshot != active[tag]) != (tag == "feed-two") {
+		if err != nil || view.ActiveSnapshot == "" || (view.ActiveSnapshot != active[tag]) != (tag == "feed-two") ||
+			(view.State == "quarantined") != (tag == "feed-one") {
 			t.Fatal("refresh isolation", tag, err)
 		}
 	}
@@ -146,13 +148,17 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	n.approved.Layers[0].Changes[1].Value = graphBody
+	prepared, err := n.authority.Prepare(ctx, n.target, now)
+	if err != nil {
+		t.Fatal("prepare mixed-source configuration", err)
+	}
 	if err = n.publisher.RunOnce(ctx, now); err != nil {
 		t.Fatal(err)
 	}
 	var sealed []byte
 	var revision int64
 	if err = fixtureOwner.QueryRowContext(ctx, "SELECT revision,publication FROM identity_devices WHERE id=$1", n.target.Device).Scan(&revision, &sealed); err != nil || revision != 1 {
-		t.Fatal("device revision", err)
+		t.Fatal("device revision", revision, err)
 	}
 	plain, err := n.publisher.Store.Open(sealed, fmt.Sprintf("publication/v1/%s/%d", n.target.Device, revision))
 	if err != nil {
@@ -167,8 +173,8 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 		t.Fatal("foreign device accepted publication")
 	}
 	engine, err := base64.RawURLEncoding.DecodeString(p.EngineConfigB64)
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || !bytes.Equal(engine, prepared.EngineConfig) {
+		t.Fatal("prepared configuration differs from signed payload", err)
 	}
 	for _, v := range protected {
 		if bytes.Contains(engine, v) || bytes.Contains(plain, v) {
