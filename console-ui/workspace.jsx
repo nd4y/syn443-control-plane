@@ -499,6 +499,21 @@ function Drafts() {
           autoComplete="off"
           isRequired
         ></TextArea>
+        <fieldset id="home-proof" hidden disabled>
+          <legend>Проверка домашнего Wi-Fi</legend>
+          <p>Укажите TLS-узел, доступный только в домашней сети. Телефон проверяет сертификат через текущую Wi-Fi-сеть.</p>
+          <label htmlFor="home-address">Локальный IP-адрес</label>
+          <TextInput id="home-address" autoComplete="off" maxLength={45} />
+          <label htmlFor="home-hostname">Имя узла в сертификате</label>
+          <TextInput id="home-hostname" autoComplete="off" maxLength={253} />
+          <label htmlFor="home-port">Порт TLS</label>
+          <TextInput id="home-port" inputMode="numeric" autoComplete="off" maxLength={5} />
+          <label htmlFor="home-pin">Отпечаток ключа сертификата (SHA-256, base64url)</label>
+          <TextInput id="home-pin" autoComplete="off" maxLength={43} />
+          <Button id="home-apply" type="button" variant="secondary">Записать узел в черновик</Button>
+          <Button id="home-remove" type="button" variant="link">Удалить узел из черновика</Button>
+          <div id="home-feedback" role="status" aria-live="polite"></div>
+        </fieldset>
         <div id="route-bounds" hidden>
           <Button id="route-bounds-preview" type="button" variant="secondary">
             Оценить число цепочек

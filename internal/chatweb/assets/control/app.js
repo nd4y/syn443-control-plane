@@ -111,8 +111,61 @@ function routeDraft(){
  }))throw Error('invalid');
  return {value,network,tags,checks};
 }
+const homeFields = ['address','hostname','port','pin'];
+let homeDocument, homeSubject;
+function showHomeProof(current, changed) {
+ const form=$('home-proof'), enabled=!!current?.value.adaptive;
+ form.hidden=!enabled;
+ form.disabled=!enabled||busy||!!pending;
+ const proof=current?.network.homeProof;
+ $('home-remove').disabled=!enabled||!Object.hasOwn(current.network,'homeProof');
+ if(!changed)return;
+ const values=enabled&&proof&&typeof proof==='object'?proof:{};
+ for(const key of homeFields) {
+  const value=key==='pin'?values.spkiSha256:values[key];
+  $('home-'+key).value=typeof value==='string'||key==='port'&&Number.isInteger(value)?String(value):'';
+ }
+ $('home-feedback').textContent='';
+}
+function privateHomeAddress(raw) {
+ if(raw.includes(':')) {
+  if(!/^f[cd][0-9a-f]{2}:[0-9a-f:]+$/i.test(raw))return false;
+  try {return !!new URL('https://['+raw+']/').hostname;}catch{return false;}
+ }
+ if(!/^(?:0|[1-9]\d{0,2})(?:\.(?:0|[1-9]\d{0,2})){3}$/.test(raw))return false;
+ const [first,second,...rest]=raw.split('.').map(Number);
+ return [first,second,...rest].every(n=>n<=255)&&(first===10||first===172&&second>=16&&second<=31||first===192&&second===168);
+}
+function updateHomeProof(remove) {
+ if(!authenticated||busy||pending)return;
+ const state=routeDraft();
+ if(!state.value.adaptive||homeDocument!==$('plan').value||homeSubject!==profileSubject())return;
+ const notice=$('home-feedback');
+ if(remove)delete state.network.homeProof;
+ else {
+  const [address,hostname,port,pin]=homeFields.map(key=>$('home-'+key).value.trim());
+  const labels=hostname.split('.');
+  let field,message;
+  if(!privateHomeAddress(address)){field='address';message='Введите частный IPv4-адрес или IPv6 ULA.';}
+  else if(hostname.length>253||labels.length<2||labels.some(label=>!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))||
+    /^\d+$/.test(labels.at(-1))||hostname.endsWith('.localhost')){field='hostname';message='Введите DNS-имя из сертификата в нижнем регистре.';}
+  else if(!/^[1-9]\d{0,4}$/.test(port)||Number(port)>65535){field='port';message='Укажите порт от 1 до 65535.';}
+  else if(!/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(pin)){field='pin';message='Нужен SHA-256 от открытого ключа в формате base64url без дополнения.';}
+  if(field){notice.textContent=message;$('home-'+field).focus();return;}
+  state.network.homeProof={hostname,address,port:Number(port),spkiSha256:pin};
+ }
+ const next=JSON.stringify(state.value,null,2);
+ if(new TextEncoder().encode(next).length>262144){notice.textContent='План превышает допустимый размер.';return;}
+ $('plan').value=next;
+ drawRouteChecks();
+ notice.textContent=remove?'Узел удалён из черновика.':'Узел записан в черновик.';
+}
+$('home-apply').onclick=()=>updateHomeProof(false);
+$('home-remove').onclick=()=>updateHomeProof(true);
 function drawRouteChecks(){
  const draft=authenticated?$('plan').value:null;
+ const subject=profileSubject(), changed=homeDocument!==draft||homeSubject!==subject;
+ homeDocument=draft;homeSubject=subject;
  const context=JSON.stringify([authenticated,$('draft-id').value,$('target-kind').value,$('target-id').value]);
  if(explanationContext!==context)$('cohort-device').value='';
  if(explanationContext!==context||boundsDraft!==draft){explanationContext=context;resetExplanation(true);clearCohortPreview();}
@@ -135,9 +188,10 @@ function drawRouteChecks(){
  $('route-decision-rollout').hidden=true;
  drawDeviceRollout('route-decision',null);
  const prior=select.value;select.replaceChildren();list.replaceChildren();editor.disabled=true;
- if(!authenticated)return;
  let state;
- try{state=routeDraft();}catch{return;}
+ if(authenticated){try{state=routeDraft();}catch{ /* An incomplete raw draft has no editable fields. */ }}
+ showHomeProof(state,changed);
+ if(!state)return;
  $('route-explanation').hidden=false;
  $('explain-run').disabled=busy||!!pending||!['domain','address','application'].some(key=>$('explain-'+key).value.trim());
  if(state.value.adaptive){$('route-bounds').hidden=false;$('route-bounds-preview').disabled=busy||!!pending;}

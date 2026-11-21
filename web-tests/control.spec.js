@@ -988,3 +988,46 @@ test('phone keeps a historical NetBird summary unknown and ignores another overl
   await page.unroute('**/control/action');await page.goto('about:blank');
  }
 });
+
+async function editHomeProof(page,request){
+ await reset(request);await page.setViewportSize({width:393,height:852});
+ await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ const adaptive={metadataB64:'synthetic',bindingsB64:'synthetic',groups:{work:'adaptive-work'}};
+ const document={...structuredClone(plan),adaptive};
+ await page.locator('#plan').fill(JSON.stringify(document));
+ await expect(page.getByRole('group',{name:'Проверка домашнего Wi-Fi'})).toBeVisible();
+ return document;
+}
+test('phone changes only the home TLS endpoint in an unpublished adaptive draft',async({page,request})=>{
+ const original=await editHomeProof(page,request);
+ const address=['10','61','1','4'].join('.'),hostname='proof.example.invalid',pin='A'.repeat(43);
+ await page.getByLabel('Локальный IP-адрес').fill(address);
+ await page.getByLabel('Имя узла в сертификате').fill(hostname);
+ await page.getByLabel('Порт TLS').fill('8443');
+ await page.getByLabel('Отпечаток ключа сертификата').fill(pin);
+ await page.getByRole('button',{name:'Записать узел в черновик'}).click();
+ await expect(page.locator('#home-feedback')).toHaveText('Узел записан в черновик.');
+ const expected=structuredClone(original);expected.network.homeProof={address,hostname,port:8443,spkiSha256:pin};
+ expect(JSON.parse(await page.locator('#plan').inputValue())).toEqual(expected);
+ await page.getByRole('button',{name:'Удалить узел из черновика'}).click();
+ expect(JSON.parse(await page.locator('#plan').inputValue())).toEqual(original);
+ await expect(page.getByLabel('Имя узла в сертификате')).toHaveValue('');
+ expect((await(await request.post(origin+'/fixture/state',{data:{}})).json()).operations).toBe(0);
+});
+test('phone rejects invalid home credentials and clears unsaved fields on a target change',async({page,request})=>{
+ const original=await editHomeProof(page,request),raw=await page.locator('#plan').inputValue();
+ const address=page.getByLabel('Локальный IP-адрес'),hostname=page.getByLabel('Имя узла в сертификате');
+ const port=page.getByLabel('Порт TLS'),pin=page.getByLabel('Отпечаток ключа сертификата');
+ const apply=page.getByRole('button',{name:'Записать узел в черновик'});
+ await hostname.fill('proof.example.invalid');await port.fill('443');await pin.fill('A'.repeat(43));
+ for(const invalid of ['127.0.0.1','2001:db8::1','fd13::1%wlan0','0x0a000001']){
+  await address.fill(invalid);await apply.click();await expect(address).toBeFocused();await expect(page.locator('#plan')).toHaveValue(raw);
+ }
+ await address.fill('fd13::2');await pin.fill('A'.repeat(42)+'B');await apply.click();
+ await expect(pin).toBeFocused();await expect(page.locator('#plan')).toHaveValue(raw);
+ await page.locator('#target-id').fill('other-synthetic-device');
+ await expect(pin).toHaveValue('');await expect(address).toHaveValue('');await expect(hostname).toHaveValue('');
+ const regular=structuredClone(original);delete regular.adaptive;
+ await page.locator('#plan').fill(JSON.stringify(regular));await expect(page.locator('#home-proof')).toBeHidden();
+ expect((await(await request.post(origin+'/fixture/state',{data:{}})).json()).operations).toBe(0);
+});
