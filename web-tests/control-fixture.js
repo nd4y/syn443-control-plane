@@ -88,6 +88,10 @@ const server=http.createServer(async(req,res)=>{
   if(kind==='future')report.receivedAtMs=report.sampledAtMs=now+1;
   if(kind==='old-sample')report.sampledAtMs=sample.at-120001;
   if(kind==='false-online')report.engineActive=false;
+  if(options.runtimeEngine){
+   const states={blocked_unknown:['blocked',false,false],starting_stopped:['starting',true,false],recovering_active:['recovering',true,true]};
+   [report.phase,report.engineKnown,report.engineActive]=states[options.runtimeEngine];
+  }
   if(kind==='false-fresh')state='stale';
   send(200,{device,observedAtMs:now,state,report});break;
  }
