@@ -464,11 +464,11 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           mkdir -p dist/control-plane
-          for binary in enrollment-api enrollment-worker enrollment-admin support-chat-web resource-inspect control-api source-worker overlay-worker; do
+          for binary in enrollment-api enrollment-worker enrollment-admin support-chat-web resource-inspect control-api source-worker overlay-worker telemetry-ingest; do
             go build -trimpath -ldflags='-s -w -buildid=' -o "dist/control-plane/$binary" "./cmd/$binary"
           done
           git rev-parse HEAD > dist/control-plane/SOURCE.txt
-          (cd dist/control-plane && sha256sum enrollment-api enrollment-worker enrollment-admin support-chat-web resource-inspect control-api source-worker overlay-worker > SHA256SUMS)
+          (cd dist/control-plane && sha256sum enrollment-api enrollment-worker enrollment-admin support-chat-web resource-inspect control-api source-worker overlay-worker telemetry-ingest > SHA256SUMS)
       - name: Scan control-plane runtime payloads
         id: runtime-scan
         run: |
@@ -749,6 +749,7 @@ jobs:
         run: |
           bash -n tools/test_enrollment.sh tools/package_overlay_worker.sh
           bash tools/package_overlay_worker.sh "$RUNNER_TEMP/control-plane-release" "$RUNNER_TEMP/overlay-worker-image"
+          install -Dm0555 "$RUNNER_TEMP/control-plane-release/telemetry-ingest" bin/telemetry-ingest
           echo "SYN443_TEST_OVERLAY_IMAGE=syn443-overlay-worker:$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - name: Capture and require PostgreSQL refresh-boundary outcomes
         run: |
@@ -756,6 +757,7 @@ jobs:
           GOFLAGS=-json bash tools/test_enrollment.sh | tee session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestActualManagedAPIPublisherAndProviderWorkerProcesses/readiness_preserves_pending_provider_work/container_role_checks" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           python3 tools/check_session_boundary_evidence.py session-boundary-postgres-tests.jsonl
+          jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestStandaloneTelemetryProcessReceivesBoundEvents","TestStandaloneTelemetryRejectsPrivilegeDrift"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryPressurePreservesPolicyAndRefresh","TestTelemetryAddressBudgetLeavesPolicyAccessible"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestOperatorPolicyTimingBoundsAndLegacyGrantHash","TestSQLGrantTimingFencesPublisherAndSchedulesSignedRenewal"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryWorkerRecoversRetainedGapsAndWrapsAfterBusyHour","TestTelemetryAggregateWorkerProcessCommitsStopsAndResumes"])' session-boundary-postgres-tests.jsonl

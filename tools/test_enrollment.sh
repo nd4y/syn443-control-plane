@@ -58,7 +58,7 @@ if [ -n "${SYN443_GO_IMAGE:-}" ]; then
     -v "$tls_dir/ca.crt:/tmp/syn443-fixture-ca.crt:ro" \
     -v "$PWD:/src" -v "$PWD/.fixture-cache/mod:/go/pkg/mod" \
     -v "$PWD/.fixture-cache/build:/root/.cache/go-build" -w /src "$SYN443_GO_IMAGE" \
-    sh -c 'export SYN443_TEST_BINARY_DIR="$PWD/bin"; go build -o bin/enrollment-api ./cmd/enrollment-api && go build -o bin/enrollment-worker ./cmd/enrollment-worker && go build -o bin/enrollment-admin ./cmd/enrollment-admin && go build -o bin/overlay-worker ./cmd/overlay-worker && go test -p 1 -tags postgres -race -count=1 -timeout=2m -coverpkg=./internal/enrollment,./internal/supportchat -coverprofile=enrollment-coverage.out -v ./internal/enrollment ./internal/supportchat'
+    sh -c 'export SYN443_TEST_BINARY_DIR="$PWD/bin"; go build -o bin/enrollment-api ./cmd/enrollment-api && go build -o bin/enrollment-worker ./cmd/enrollment-worker && go build -o bin/enrollment-admin ./cmd/enrollment-admin && go build -o bin/overlay-worker ./cmd/overlay-worker && go build -o bin/telemetry-ingest ./cmd/telemetry-ingest && go test -p 1 -tags postgres -race -count=1 -timeout=2m -coverpkg=./internal/enrollment,./internal/supportchat -coverprofile=enrollment-coverage.out -v ./internal/enrollment ./internal/supportchat'
 else
   export SYN443_TEST_BINARY_DIR="$PWD/bin"
   export SYN443_RESTORE_FIXTURE_CONTAINER="$container_id"
@@ -66,5 +66,10 @@ else
   go build -o bin/enrollment-worker ./cmd/enrollment-worker
   go build -o bin/enrollment-admin ./cmd/enrollment-admin
   go build -o bin/overlay-worker ./cmd/overlay-worker
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    test -x bin/telemetry-ingest
+  else
+    go build -o bin/telemetry-ingest ./cmd/telemetry-ingest
+  fi
   go test -tags postgres -race -count=1 -timeout=2m -coverpkg=./internal/enrollment,./internal/supportchat -coverprofile=enrollment-coverage.out -v ./internal/enrollment ./internal/supportchat
 fi
