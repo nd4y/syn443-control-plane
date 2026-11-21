@@ -6,6 +6,7 @@ const jobStates={queued:'В очереди',running:'Выполняется',suc
 const recipientKinds={user:'Пользователь',device:'Устройство',group:'Группа'};
 let authenticated=false,busy=false,pending=null,revision=0,opened=null,next='',listedOwner='';
 let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='',sourceHistoryNext='';
+let reviewEpoch=0,reviewAvailable=false,sourceReview=null,reviewChanges=[],reviewOffset=0;
 let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null;
 let layerComparison=null;
 let layerDraftInventory=null;
@@ -339,6 +340,10 @@ function controls(){
  $('source-device').disabled=$('source-device').disabled||!deviceSource||!!sourceIdentity?.fetchDeviceId;
  $('source-device').required=deviceSource;
  updateProviderControls();
+ const reviewBlocked=busy||!authenticated||!!pending||!reviewAvailable;
+ $('source-review-load').disabled=reviewBlocked;
+ $('source-review-confirm').disabled=reviewBlocked||!sourceReview;
+ for(const id of ['source-review-approve','source-review-reject'])$(id).disabled=reviewBlocked||!sourceReview||!$('source-review-confirm').checked;
  $('sync-source').disabled=busy||!authenticated||!!pending||!sourceIdentity;$('source-job').disabled=busy||!authenticated||!!pending||!sourceJob;
  $('source-history').disabled=busy||!authenticated||!!pending||!sourceIdentity;
  $('source-history-more').disabled=$('source-history').disabled||!sourceHistoryNext;
@@ -875,13 +880,27 @@ async function retry(){
  let result;
  try{result=await request(pendingKind==='import'?sourceImportPath:'/control/action',pending);}
  catch(error){
+  if(pendingKind==='review'&&error.message==='conflict'){
+   pending=null;resetSourceReview(reviewAvailable);
+   status('Версии подписки или её зависимости изменились. Сравните версии заново.','danger');return;
+  }
   if(pendingKind==='resource'&&error.message==='conflict'){
    pending=null;clearProviderEditor();$('provider-details').replaceChildren();
    status('Ресурс или его источники изменились. Нажмите «Посмотреть ресурс» и проверьте актуальные настройки.','danger');return;
   }
   if(['invalid','size','importSize'].includes(error.message))pending=null;throw error;
  }
- if(pendingKind==='resource'){
+ if(pendingKind==='review'){
+  const sent=JSON.parse(pending).payload;
+  if(!result||result.id!==sent.candidate||result.sourceId!==sent.sourceId||result.sourceRevision!==sent.sourceRevision||
+     result.hash!==sent.hash||result.state!==(sent.approve?'active':'rejected'))throw Error('invalid');
+  pending=null;
+  if(sourceIdentity?.id===sent.sourceId&&sourceRevision===sent.sourceRevision){
+   resetSourceReview(false);
+   $('source-version').textContent='Версия источника: '+sourceRevision+' · '+(sent.approve?'обновление принято':'обновление отклонено');
+  }
+  status(sent.approve?'Версия подписки принята.':'Версия подписки отклонена.');return;
+ }else if(pendingKind==='resource'){
   const wanted=JSON.parse(pending).payload.resource;
   if(!result||result.id!==wanted.id||result.revision!==wanted.revision+1||result.enabled!==wanted.enabled||
     result.name!==wanted.name||result.providerType!==wanted.providerType||result.apiVersion!==wanted.apiVersion)throw Error('invalid');
@@ -909,9 +928,68 @@ async function retry(){
  }
  pending=null;
 }
-function clearSource(){sourceRevision=0;sourceIdentity=null;sourceJob='';clearSourceHistory();clearSourceShares();for(const id of ['source-id','source-owner','source-name','source-device','source-resource','source-external','source-until','source-secret','source-import-file'])$(id).value='';$('source-mode').value='server';$('source-format').value='uri';$('source-refresh').value='3600';$('source-stale').value='86400';$('source-enabled').checked=true;$('source-secret-operation').value='keep';for(const option of $('source-modes').options)option.selected=option.value==='wifi';$('source-version').textContent='Источник не выбран';$('job-status').replaceChildren();}
+function clearSource(){resetSourceReview(false);sourceRevision=0;sourceIdentity=null;sourceJob='';clearSourceHistory();clearSourceShares();for(const id of ['source-id','source-owner','source-name','source-device','source-resource','source-external','source-until','source-secret','source-import-file'])$(id).value='';$('source-mode').value='server';$('source-format').value='uri';$('source-refresh').value='3600';$('source-stale').value='86400';$('source-enabled').checked=true;$('source-secret-operation').value='keep';for(const option of $('source-modes').options)option.selected=option.value==='wifi';$('source-version').textContent='Источник не выбран';$('job-status').replaceChildren();}
 function localDate(seconds){const d=new Date(seconds*1000);if(!Number.isFinite(d.getTime()))throw Error('invalid');return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-function showSource(s){if(!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');sourceIdentity={id:s.id,owner:s.owner,mode:s.mode,fetchDeviceId:s.fetchDeviceId||''};sourceRevision=s.revision;sourceJob='';clearSourceHistory();clearSourceShares();$('source-import-file').value='';$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-device').value=sourceIdentity.fetchDeviceId;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
+function resetSourceReview(available){
+ reviewEpoch++;reviewAvailable=available;sourceReview=null;reviewChanges=[];reviewOffset=0;
+ $('source-review').hidden=!available;$('source-review-comparison').hidden=true;
+ $('source-review-more').hidden=true;
+ $('source-review-confirm').checked=false;$('source-review-summary').textContent='';$('source-review-changes').replaceChildren();
+}
+function moreReviewChanges(){
+ for(const change of reviewChanges.slice(reviewOffset,reviewOffset+40))textItem($('source-review-changes'),change);
+ reviewOffset=Math.min(reviewOffset+40,reviewChanges.length);
+ $('source-review-more').hidden=reviewOffset>=reviewChanges.length;
+}
+function reviewProfiles(view,sourceId,id){
+ const snapshot=view?.snapshot;
+ if(!snapshot||snapshot.id!==id||snapshot.sourceId!==sourceId||!Array.isArray(view.profiles)||
+    view.profiles.length>5000||snapshot.count!==view.profiles.length)throw Error('invalid');
+ const profiles=new Map();
+ for(const item of view.profiles){
+  if(!item||typeof item.id!=='string'||!/^[-_A-Za-z0-9]{1,128}$/.test(item.id)||profiles.has(item.id)||
+     typeof item.name!=='string'||typeof item.kind!=='string')throw Error('invalid');
+  profiles.set(item.id,{name:item.name,kind:item.kind});
+ }
+ return profiles;
+}
+async function compareSourceReview(){
+ const owner=sourceIdentity;
+ if(!owner||pending)return;
+ resetSourceReview(true);
+ const epoch=reviewEpoch;
+ const source=await action('source.get',{id:owner.id});
+ if(epoch!==reviewEpoch||sourceIdentity!==owner)return;
+ if(source.id!==owner.id||source.owner!==owner.owner||source.revision!==sourceRevision)throw Error('conflict');
+ if(!source.candidateSnapshot){resetSourceReview(false);status('У источника нет версии в карантине.');return;}
+ const candidate=source.candidateSnapshot,active=source.activeSnapshot||'';
+ const [newView,oldView]=await Promise.all([action('source.snapshot',{id:source.id,snapshot:candidate}),
+  active?action('source.snapshot',{id:source.id,snapshot:active}):Promise.resolve(null)]);
+ if(epoch!==reviewEpoch||sourceIdentity!==owner)return;
+ const next=reviewProfiles(newView,source.id,candidate),previous=oldView?reviewProfiles(oldView,source.id,active):new Map();
+ const snapshot=newView.snapshot;
+ if(snapshot.state!=='quarantined'||snapshot.sourceRevision!==source.revision||!/^[-_A-Za-z0-9]{43}$/.test(snapshot.hash)||
+    !Number.isSafeInteger(snapshot.observedAt)||snapshot.observedAt<=0||active&&oldView.snapshot.state!=='active')throw Error('conflict');
+ const changes=[];
+ for(const [id,profile] of previous)if(!next.has(id))changes.push('Удалён · '+profile.name+' ('+profile.kind+')');
+ for(const [id,profile] of next){
+  const prior=previous.get(id);
+  if(!prior)changes.push('Добавлен · '+profile.name+' ('+profile.kind+')');
+  else if(prior.name!==profile.name||prior.kind!==profile.kind)changes.push('Изменён · '+prior.name+' → '+profile.name);
+ }
+ const reason={excessive_removal:'исчезла значительная часть профилей',referenced_profile_removed:'удалён профиль, используемый в конфигурации'}[snapshot.reason];
+ $('source-review-summary').textContent='Источник '+source.id+'. Профилей было '+previous.size+', стало '+next.size+'. Изменений '+changes.length+
+  '. Получено '+new Date(snapshot.observedAt*1000).toLocaleString('ru')+'.'+(reason?' Причина карантина: '+reason+'.':'');
+ reviewChanges=changes;moreReviewChanges();
+ sourceReview={sourceId:source.id,sourceRevision:source.revision,candidate,hash:snapshot.hash,active};
+ $('source-review-comparison').hidden=false;
+}
+async function decideSourceReview(approve){
+ if(pending||!sourceReview||sourceReview.sourceId!==sourceIdentity?.id||sourceReview.sourceRevision!==sourceRevision||
+    !$('source-review-confirm').checked)throw Error('invalid');
+ pendingKind='review';pending=envelope('source.review',{...sourceReview,approve});await retry();
+}
+function showSource(s){if(!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');resetSourceReview(Boolean(s.candidateSnapshot));sourceIdentity={id:s.id,owner:s.owner,mode:s.mode,fetchDeviceId:s.fetchDeviceId||''};sourceRevision=s.revision;sourceJob='';clearSourceHistory();clearSourceShares();$('source-import-file').value='';$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-device').value=sourceIdentity.fetchDeviceId;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
 async function importSource(){
  const field=$('source-import-file'),file=field.files[0];
  if(pending||sourceIdentity?.mode!=='manual'||!file||file.size<1)throw Error('invalid');
@@ -1057,6 +1135,7 @@ $('console-nav').addEventListener('click',event=>{
  }
 });
 addEventListener('hashchange',()=>{
+ if(location.hash!=='#sources-title')resetSourceReview(reviewAvailable);
  resetExplanation(true);
  resetReplay();
  updateSectionNav(true);
@@ -1295,6 +1374,11 @@ $('source-import').onclick=()=>work(importSource);
 $('source-shares-load').onclick=()=>work(loadSourceShares);
 $('source-shares-add').onclick=()=>work(addSourceRecipient);
 $('source-shares-confirm').onchange=controls;
+$('source-review-load').onclick=()=>work(compareSourceReview);
+$('source-review-more').onclick=moreReviewChanges;
+$('source-review-confirm').onchange=controls;
+$('source-review-approve').onclick=()=>work(()=>decideSourceReview(true));
+$('source-review-reject').onclick=()=>work(()=>decideSourceReview(false));
 $('source-shares-save').onclick=()=>work(saveSourceShares);
 updateSectionNav();
 controls();

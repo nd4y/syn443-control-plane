@@ -229,6 +229,18 @@ function Sources() {
         Новый источник
       </Button>
       <p id="source-version">Источник не выбран</p>
+      <section id="source-review" hidden aria-labelledby="source-review-title">
+        <h3 id="source-review-title">Обновление в карантине</h3>
+        <Button id="source-review-load" variant="secondary" isDisabled>Сравнить версии</Button>
+        <div id="source-review-comparison" hidden>
+          <p id="source-review-summary" role="status"></p>
+          <ul id="source-review-changes"></ul>
+          <Button id="source-review-more" variant="link" hidden>Показать ещё изменения</Button>
+          <label><input id="source-review-confirm" type="checkbox" disabled /> Я проверил изменения в подписке</label>
+          <Button id="source-review-approve" variant="primary" isDisabled>Принять версию</Button>
+          <Button id="source-review-reject" variant="secondary" isDisabled>Отклонить версию</Button>
+        </div>
+      </section>
       <form id="source-form">
         <label htmlFor="source-id">ID источника</label>
         <TextInput
