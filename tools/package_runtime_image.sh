@@ -19,6 +19,10 @@ case "$service" in
     expected=telemetry_ingest_unavailable
     export SYN443_TELEMETRY_IMAGE="$image" SYN443_TELEMETRY_PRIVATE_DIR="$context" SYN443_INGRESS_CONTAINER=fixture
     ;;
+  support-chat-web)
+    expected=chat_web_failed
+    export SYN443_CHAT_WEB_IMAGE="$image" SYN443_CHAT_WEB_PRIVATE_DIR="$context" SYN443_INGRESS_CONTAINER=fixture
+    ;;
   *) exit 2 ;;
 esac
 mkdir -- "$output"
@@ -40,7 +44,8 @@ assert mount["type"] == "bind" and mount["read_only"] and not mount["bind"].get(
 if role == "overlay-worker":
     assert mount["target"] == "/run/secrets/overlay-worker.json" and config["networks"]["backend"]["external"]
 else:
-    assert mount["target"] == "/run/syn443/telemetry" and s["network_mode"] == "container:fixture"
+    directory = {"telemetry-ingest": "telemetry", "support-chat-web": "web"}[role]
+    assert mount["target"] == "/run/syn443/"+directory and s["network_mode"] == "container:fixture"
 ' "$service" "$image"
 docker image inspect "$image" | python3 -c '
 import json, sys

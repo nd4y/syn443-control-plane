@@ -34,7 +34,7 @@ def check_layer(layer, seen, expected, service='overlay-worker'):
 
 
 def verify(archive, binary, tag, service='overlay-worker'):
-    if service not in ('overlay-worker', 'telemetry-ingest'):
+    if service not in ('overlay-worker', 'telemetry-ingest', 'support-chat-web'):
         raise ValueError('Unknown service image')
     with binary.open('rb') as data:
         expected = hashlib.file_digest(data, 'sha256').digest()

@@ -90,6 +90,7 @@ type Config struct {
 	Audience            string `json:"audience"`
 	Certificate         string `json:"certificate"`
 	CertificateKey      string `json:"certificateKey"`
+	ReadinessServerName string `json:"readinessServerName,omitempty"`
 	FixtureHTTP         bool   `json:"fixtureHttp"`
 	ControlConsole      bool   `json:"controlConsole,omitempty"`
 	ReauthenticationACR string `json:"reauthenticationAcr,omitempty"`
