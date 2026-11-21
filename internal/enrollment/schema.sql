@@ -47,6 +47,12 @@ CREATE TABLE IF NOT EXISTS identity_sessions (
 CREATE TABLE IF NOT EXISTS identity_refresh_history (
  hash text PRIMARY KEY, session text NOT NULL REFERENCES identity_sessions(id), expires bigint NOT NULL
 );
+-- A row lock requires UPDATE privilege on one column. These fixed zero
+-- columns let the ingest login lock rows without changing their authority.
+ALTER TABLE identity_devices ADD COLUMN IF NOT EXISTS ingest_lock_guard integer NOT NULL DEFAULT 0 CHECK (ingest_lock_guard=0);
+ALTER TABLE identity_sessions ADD COLUMN IF NOT EXISTS ingest_lock_guard integer NOT NULL DEFAULT 0 CHECK (ingest_lock_guard=0);
+CREATE TABLE IF NOT EXISTS identity_telemetry_clock (id boolean PRIMARY KEY CHECK(id), second bigint NOT NULL);
+INSERT INTO identity_telemetry_clock(id,second) VALUES(true,0) ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS identity_replays (
  jkt text NOT NULL, jti text NOT NULL, expires bigint NOT NULL, PRIMARY KEY(jkt,jti)
 );

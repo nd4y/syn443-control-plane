@@ -18,6 +18,7 @@ let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticatio
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
 let runtimeRefreshTimer=null,runtimeRequest=null,runtimePolling=false,runtimeLastStarted=0;
 let boundsDraft=null,boundsEpoch=0;
+let explanationEpoch=0,explanationContext='';
 let replayEpoch=0;
 let routeProfileEdit=null;
 const runtimeRefreshMs=60000;
@@ -109,6 +110,10 @@ function routeDraft(){
 }
 function drawRouteChecks(){
  const draft=authenticated?$('plan').value:null;
+ const context=JSON.stringify([authenticated,$('draft-id').value,$('target-kind').value,$('target-id').value]);
+ if(explanationContext!==context||boundsDraft!==draft){explanationContext=context;resetExplanation(true);}
+ $('route-explanation').hidden=true;
+ $('explain-run').disabled=true;
  if(boundsDraft!==draft){boundsDraft=draft;boundsEpoch++;$('route-bounds-result').replaceChildren();closeRouteProfile();}
  $('route-profile-open').disabled=true;
  $('route-bounds').hidden=true;$('route-bounds-preview').disabled=true;
@@ -128,6 +133,8 @@ function drawRouteChecks(){
  if(!authenticated)return;
  let state;
  try{state=routeDraft();}catch{return;}
+ $('route-explanation').hidden=false;
+ $('explain-run').disabled=busy||!!pending||!['domain','address','application'].some(key=>$('explain-'+key).value.trim());
  if(state.value.adaptive){$('route-bounds').hidden=false;$('route-bounds-preview').disabled=busy||!!pending;}
  for(const tag of [...state.tags].sort()){const option=document.createElement('option');option.value=tag;option.textContent=tag;select.append(option);}
  if(state.tags.has(prior))select.value=prior;
@@ -1050,6 +1057,7 @@ $('console-nav').addEventListener('click',event=>{
  }
 });
 addEventListener('hashchange',()=>{
+ resetExplanation(true);
  resetReplay();
  updateSectionNav(true);
  setNavExpanded(false);
@@ -1058,6 +1066,67 @@ addEventListener('hashchange',()=>{
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
 $('plan').oninput=drawRouteChecks;
+for(const id of ['draft-id','target-id','target-kind'])$(id).addEventListener('input',drawRouteChecks);
+const connectionFields=['domain','address','application','network','port','dnsType'];
+function resetExplanation(clearInputs){
+ explanationEpoch++;
+ $('explain-result').replaceChildren();
+ if(clearInputs) $('route-explanation-form').reset();
+}
+function plannedSteps(plan,tag,parents=[]){
+ if(!/^[A-Za-z0-9_-]{1,64}$/.test(tag)||parents.length>=8||parents.includes(tag))throw Error('invalid');
+ const graph=plan.graph;
+ if(tag==='direct')return ['Прямое соединение'];
+ if(Object.hasOwn(graph.profiles||{},tag))return [tag];
+ if(Object.hasOwn(graph.balancers||{},tag)||Object.values(plan.adaptive?.groups||{}).includes(tag))return [tag+' (вариант выберет устройство)'];
+ const path=[...parents,tag];
+ if(graph.netbird?.tag===tag){
+  if(graph.netbird.mode==='direct')return [tag+' (NetBird)'];
+  if(graph.netbird.mode==='vless')return [...plannedSteps(plan,graph.netbird.detour,path),tag+' (NetBird)'];
+  throw Error('invalid');
+ }
+ const chain=Object.hasOwn(graph.chains||{},tag)?graph.chains[tag]?.dialOrder:null;
+ if(!Array.isArray(chain)||!chain.length||chain.length>4||new Set(chain).size!==chain.length)throw Error('invalid');
+ const hops=[];
+ for(const member of chain){
+  hops.push(...plannedSteps(plan,member,path));
+  if(hops.length>4)throw Error('invalid');
+ }
+ return hops;
+}
+function showExplanation(report,plan){
+ const list=document.createElement('dl');
+ for(const [key,title] of [['route','Маршрут'],['dns','DNS']]){
+  const item=report?.[key];
+  if(!item||!['matched','default','incomplete','not_applicable'].includes(item.status))throw Error('invalid');
+  if(item.rule!==undefined&&(typeof item.rule!=='string'||!/^[A-Za-z0-9_.-]{1,64}$/.test(item.rule)))throw Error('invalid');
+  if(item.target!==undefined&&(typeof item.target!=='string'||!/^[A-Za-z0-9_.-]{1,64}$/.test(item.target)))throw Error('invalid');
+  if(item.status==='not_applicable'){inventoryPair(list,title,'Не требуется');continue;}
+  if(item.status==='incomplete'){inventoryPair(list,title,'Недостаточно данных'+(item.rule?' для правила '+item.rule:'')+'.');continue;}
+  if(item.status==='matched'&&!item.rule||!item.target&&(key==='dns'||item.status!=='matched'))throw Error('invalid');
+  const policy=item.status==='default'?'По умолчанию':'Правило '+item.rule;
+  const choice=key==='route'?(item.target?plannedSteps(plan,item.target).join(' → '):'Блокировка'):item.target;
+  inventoryPair(list,title,policy+' · '+choice);
+ }
+ $('explain-result').replaceChildren(list);
+}
+$('route-explanation-form').addEventListener('input',()=>{resetExplanation(false);drawRouteChecks();});
+$('route-explanation-form').onsubmit=event=>{
+ event.preventDefault();
+ if($('explain-run').disabled)return;
+ void work(async()=>{
+  resetExplanation(false);
+  const epoch=explanationEpoch,{value,network}=routeDraft(),query={};
+  for(const field of connectionFields){
+   const text=$('explain-'+field).value.trim();
+   if(text)query[field]=field==='port'?Number(text):text;
+  }
+  const result=await request('/control/route-explanation',{
+   query,routeFinal:value.graph.final,dnsFinal:network.dnsFinal,rules:network.rules||[],dnsRules:network.dnsRules||[]
+  });
+  if(authenticated&&explanationEpoch===epoch)showExplanation(result,value);
+ });
+};
 function resetReplay(clearInputs=true){
  replayEpoch++;
  $('route-replay-result').replaceChildren();

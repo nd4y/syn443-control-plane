@@ -32,6 +32,8 @@ var fixtureAPI, fixturePublisher *sql.DB
 var fixtureBroker *sql.DB
 var fixtureAnalysis, fixtureTelemetryRetention, fixtureTelemetryReader *sql.DB
 var fixtureAPIDSN, fixturePublisherDSN, fixtureBrokerDSN, fixtureAnalysisDSN string
+var fixtureIngestDSN string
+var fixtureIngest *sql.DB
 var b64 = base64.RawURLEncoding
 
 func TestMain(m *testing.M) {
@@ -55,7 +57,7 @@ func TestMain(m *testing.M) {
 		target **sql.DB
 	}{{"syn443_identity_api", &fixtureAPI}, {"syn443_identity_publisher", &fixturePublisher}, {"syn443_overlay_worker", &fixtureBroker},
 		{"syn443_telemetry_analysis", &fixtureAnalysis}, {"syn443_telemetry_retention", &fixtureTelemetryRetention},
-		{"syn443_telemetry_reader", &fixtureTelemetryReader}} {
+		{"syn443_telemetry_reader", &fixtureTelemetryReader}, {"syn443_telemetry_ingest", &fixtureIngest}} {
 		password := random()
 		var statement string
 		if e = fixtureOwner.QueryRow(`SELECT format('CREATE ROLE %I LOGIN NOINHERIT NOBYPASSRLS PASSWORD %L',$1::text,$2::text)`, item.name, password).Scan(&statement); e != nil {
@@ -74,6 +76,8 @@ func TestMain(m *testing.M) {
 			fixtureBrokerDSN = copy.String()
 		} else if item.name == "syn443_telemetry_analysis" {
 			fixtureAnalysisDSN = copy.String()
+		} else if item.name == "syn443_telemetry_ingest" {
+			fixtureIngestDSN = copy.String()
 		}
 		*item.target, e = sql.Open("pgx", copy.String())
 		if e != nil {
@@ -84,7 +88,7 @@ func TestMain(m *testing.M) {
 	if _, e = fixtureOwner.Exec(Roles); e != nil {
 		panic(e)
 	}
-	if _, e = fixtureOwner.Exec(telemetry.AnalysisRoles + "\n" + telemetry.RetentionRoles + "\n" + telemetry.ReportRoles); e != nil {
+	if _, e = fixtureOwner.Exec(telemetry.AnalysisRoles + "\n" + telemetry.RetentionRoles + "\n" + telemetry.ReportRoles + "\n" + IngestRoles); e != nil {
 		panic(e)
 	}
 	code := m.Run()
@@ -94,6 +98,7 @@ func TestMain(m *testing.M) {
 	fixtureAnalysis.Close()
 	fixtureTelemetryRetention.Close()
 	fixtureTelemetryReader.Close()
+	fixtureIngest.Close()
 	fixtureOwner.Close()
 	os.Exit(code)
 }
@@ -127,7 +132,7 @@ type fixture struct {
 func newFixture(t *testing.T, limit int) *fixture {
 	t.Helper()
 	ctx := context.Background()
-	_, e := fixtureOwner.Exec(`TRUNCATE identity_overlay_resource_versions,identity_accounts,identity_devices,identity_challenges,identity_sessions,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations CASCADE;UPDATE identity_clock SET second=0;UPDATE identity_overlay_broker_clock SET second=0`)
+	_, e := fixtureOwner.Exec(`TRUNCATE identity_overlay_resource_versions,identity_accounts,identity_devices,identity_challenges,identity_sessions,identity_requests,identity_refresh_history,identity_replays,identity_revocations,identity_owner_revocations CASCADE;UPDATE identity_clock SET second=0;UPDATE identity_overlay_broker_clock SET second=0;UPDATE identity_telemetry_clock SET second=0`)
 	if e != nil {
 		t.Fatal(e)
 	}

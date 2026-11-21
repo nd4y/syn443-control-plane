@@ -98,6 +98,8 @@ func runEnrollmentAPI(discovery *bootstrap.ServiceDiscovery) error {
 	api.ControlPanelDiscovery = c.ControlPanelDiscovery
 	switch os.Getenv("SYN443_TELEMETRY_INGEST") {
 	case "", "0":
+	case "external":
+		api.ExternalTelemetry = true
 	case "1":
 		check, cancel := context.WithTimeout(ctx, 5*time.Second)
 		uploadStore, err := enrollment.OpenTelemetryStore(check, c)
