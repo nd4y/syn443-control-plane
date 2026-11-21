@@ -50,8 +50,10 @@ func (s *Store) WithDeviceSession(ctx context.Context, b Binding, token string, 
 	if hash != identity.Hash([]byte(token)) {
 		return nil, ErrDenied
 	}
-	if e = tx.QueryRowContext(ctx, `SELECT issuer,subject FROM identity_accounts WHERE owner=$1`, current.Owner).Scan(&issuer, &subject); e != nil {
-		return nil, e
+	if !s.telemetryOnly {
+		if e = tx.QueryRowContext(ctx, `SELECT issuer,subject FROM identity_accounts WHERE owner=$1`, current.Owner).Scan(&issuer, &subject); e != nil {
+			return nil, e
+		}
 	}
 	result, e := operation(ctx, tx, DeviceAuthority{Binding: current, Issuer: issuer, Subject: subject, GrantHash: a.Grant, AccountUntilMs: a.Until * 1000})
 	if e != nil {

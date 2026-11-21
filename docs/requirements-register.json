@@ -2209,7 +2209,10 @@
         "internal/catalog/roles.sql",
         "internal/catalog/http_postgres_test.go",
         "cmd/source-worker/main.go",
-        "cmd/control-api/main.go"
+        "cmd/control-api/main.go",
+        "cmd/telemetry-ingest/main.go",
+        "internal/enrollment/ingest-roles.sql",
+        "internal/enrollment/standalone_ingest_postgres_test.go"
       ]
     },
     {
@@ -2256,9 +2259,12 @@
       "evidence": [
         "docs/telemetry-ingest.md",
         "internal/enrollment/telemetry.go",
-        "internal/enrollment/telemetry_admission_postgres_test.go"
+        "internal/enrollment/telemetry_admission_postgres_test.go",
+        "cmd/telemetry-ingest/main.go",
+        "internal/enrollment/ingest-roles.sql",
+        "internal/enrollment/standalone_ingest_postgres_test.go"
       ],
-      "remainingScope": "Independent ingest deployment, full storage budgets and mixed-workload operational acceptance remain open."
+      "remainingScope": "Pilot ingress cutover, mixed production workload, capacity and full storage budgets remain open."
     },
     {
       "id": "SVC-06",
@@ -2301,7 +2307,10 @@
         "internal/catalog/roles.sql",
         "internal/catalog/http_postgres_test.go",
         "cmd/source-worker/main.go",
-        "cmd/control-api/main.go"
+        "cmd/control-api/main.go",
+        "cmd/telemetry-ingest/main.go",
+        "internal/enrollment/ingest-roles.sql",
+        "internal/enrollment/standalone_ingest_postgres_test.go"
       ]
     },
     {
@@ -2317,9 +2326,12 @@
         "cmd/control-api/main.go",
         "docs/telemetry-ingest.md",
         "internal/enrollment/telemetry.go",
-        "internal/enrollment/telemetry_admission_postgres_test.go"
+        "internal/enrollment/telemetry_admission_postgres_test.go",
+        "cmd/telemetry-ingest/main.go",
+        "internal/enrollment/ingest-roles.sql",
+        "internal/enrollment/standalone_ingest_postgres_test.go"
       ],
-      "remainingScope": "Independent ingest deployment, full storage budgets and mixed-workload operational acceptance remain open."
+      "remainingScope": "Pilot ingress cutover, mixed production workload, capacity and full storage budgets remain open."
     },
     {
       "id": "SVC-10",

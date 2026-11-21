@@ -30,6 +30,7 @@ type API struct {
 	Invitations           InvitationActions
 	ControlPanelDiscovery bool
 	TelemetryStore        *Store
+	ExternalTelemetry     bool
 	DeviceFetch           *catalog.Store
 	// Empty disables addressed credential delivery. Set only from owner configuration.
 	OverlayServiceID string
@@ -476,7 +477,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-SYN443-Device-Source-Fetch", "1")
 		w.Header().Set("X-SYN443-Device-Source-Validators", "1")
 	}
-	if a.TelemetryStore != nil {
+	if a.TelemetryStore != nil || a.ExternalTelemetry {
 		w.Header().Set("X-SYN443-Telemetry", "1")
 	}
 	w.Header().Set("Content-Type", "application/jose")
