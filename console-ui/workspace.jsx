@@ -175,6 +175,13 @@ function Devices() {
         <details id="inventory-issued-settings" hidden>
           <summary>Настройки выданной политики</summary>
           <p>Последняя политика, подписанная сервером. Учётные данные и адреса проверок скрыты.</p>
+          <section id="issued-path" aria-labelledby="issued-path-heading" hidden>
+            <h3 id="issued-path-heading">Маршрут по выданной политике</h3>
+            <label htmlFor="issued-path-select">Выход для просмотра</label>
+            <Select id="issued-path-select"></Select>
+            <p id="issued-path-note"></p>
+            <ol id="issued-path-steps" aria-label="Порядок соединения"></ol>
+          </section>
           <pre id="inventory-issued-config"></pre>
         </details>
         <details id="inventory-details">

@@ -54,3 +54,13 @@ exact subsequent build.
 This contributes to web administration. Friendly names, user management, native
 administrative screens, current online heartbeats and the full M2/M3 milestone
 remain separate requirements.
+
+### Issued route order
+
+Open the issued settings in the device card and choose an outbound. For a
+fixed chain the numbered list follows connection order from the device through
+each configured detour to the selected outbound. Automatic selectors and
+balancers list their configured choices. The device supplies live selection
+evidence separately. Missing or circular references display an unknown order.
+The view reads the existing credential-free policy projection and clears when
+the operator changes devices or signs out.
