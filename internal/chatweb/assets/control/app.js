@@ -375,6 +375,8 @@ function clearInventory(){
  for(const id of ['inventory-meta','inventory-layers','inventory-effective','inventory-fields','inventory-restrictions','inventory-issued-config','inventory-state','inventory-issued','inventory-issued-algorithm','inventory-report','inventory-report-time'])$(id).replaceChildren();
  for(const id of ['inventory-state','inventory-issued','inventory-report'])delete $(id).dataset.tone;
  $('inventory-issued-algorithm').hidden=true;
+ $('inventory-assignment-note').replaceChildren();
+ $('inventory-assignment-note').hidden=true;
  $('inventory-report-time').removeAttribute('datetime');$('inventory-report-time').hidden=true;
  $('inventory-details').open=false;$('inventory-view').hidden=true;$('inventory-issued-settings').hidden=true;$('inventory-issued-settings').open=false;
 }
@@ -601,7 +603,7 @@ function showInventory(view){
  const assigned=state==='assigned'||state==='expired';
  if(!assigned&&(revision!==0||hash!==''||layers.length||effective))throw Error('invalid');
  if(assigned&&(revision<1||!/^[0-9a-f]{64}$/.test(hash)||!effective||typeof view.mode!=='string'||!view.mode||!Number.isSafeInteger(view.approvalUntilMs)||view.approvalUntilMs<1))throw Error('invalid');
- const stateLabel={assigned:`Назначена · версия ${revision}`,unassigned:'Не назначена',expired:`Истекла · версия ${revision}`};
+ const stateLabel={assigned:`Назначены · версия ${revision}`,unassigned:'Слои не назначены',expired:`Срок назначения истёк · версия ${revision}`};
  inventoryBadge('inventory-state',stateLabel[state],{assigned:'success',unassigned:'neutral',expired:'warning'}[state]);
  inventoryBadge('inventory-issued',policyRevision?`Версия ${policyRevision}`:'Ещё не выдана',policyRevision?'info':'neutral');
  inventoryBadge('inventory-report','Отчёт ещё не получен');
@@ -647,7 +649,7 @@ function showInventory(view){
  }
  if(!layerList.children.length)textItem(layerList,'Наследованные слои отсутствуют.');
  const documentNode=$('inventory-effective');
- if(effective){if(effective.document===undefined)throw Error('invalid');documentNode.textContent=JSON.stringify(effective.document,null,2);}else documentNode.textContent='Управляемая конфигурация не назначена.';
+ if(effective){if(effective.document===undefined)throw Error('invalid');documentNode.textContent=JSON.stringify(effective.document,null,2);}else documentNode.textContent='Настройки из управляемых слоёв отсутствуют.';
  const issued=view.issuedSettings;
  if(issued!=null){
   if(typeof issued!=='object'||Array.isArray(issued)||issued.revision!==policyRevision||!Array.isArray(issued.outbounds)||!issued.outbounds.length)throw Error('invalid');
@@ -659,6 +661,11 @@ function showInventory(view){
   $('inventory-issued-config').textContent=JSON.stringify(issued,null,2);
   showIssuedPaths(issued);
   $('inventory-issued-settings').hidden=false;
+ }
+ if(state==='unassigned'&&policyRevision>0){
+  const note=$('inventory-assignment-note');
+  note.textContent=`Сервер выдал политику версии ${policyRevision}.`+(issued?' Подробнее в разделе «Настройки выданной политики».':'');
+  note.hidden=false;
  }
  const fieldList=$('inventory-fields');fieldList.replaceChildren();
  const origins=effective&&effective.fields;
@@ -718,7 +725,7 @@ async function loadDevices(more=false){
    open.type='button';open.textContent=row.device;open.setAttribute('aria-label',`Открыть устройство ${row.device}`);
    open.onclick=()=>work(async()=>{$('inventory-device').value=row.device;await loadInventory();});cell.append(open);tr.append(cell);
    const report=row.report;const label=report.outcome?`${deviceReportStates[report.state]} · ${deviceOutcomes[report.outcome]}`:deviceReportStates[report.state];
-   for(const value of [row.desiredRevision?String(row.desiredRevision):'Не назначена',row.policyRevision?String(row.policyRevision):'Не выдана',label,report.receivedAtMs?inventoryDate(report.receivedAtMs):'—']){const td=document.createElement('td');td.textContent=value;tr.append(td);}
+   for(const value of [row.desiredRevision?String(row.desiredRevision):'Слои не назначены',row.policyRevision?String(row.policyRevision):'Не выдана',label,report.receivedAtMs?inventoryDate(report.receivedAtMs):'—']){const td=document.createElement('td');td.textContent=value;tr.append(td);}
    fragment.append(tr);
   }
   if(!more)$('device-rows').replaceChildren();$('device-rows').append(fragment);

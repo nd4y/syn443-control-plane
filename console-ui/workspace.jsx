@@ -109,7 +109,7 @@ function Devices() {
       <div id="devices-region" className="device-list-scroll" role="region" aria-label="Доступные устройства" tabIndex={0} hidden>
         <table className="pf-v6-c-table pf-m-compact">
           <caption>Доступные устройства. Отчёт об активации не подтверждает текущее подключение.</caption>
-          <thead><tr><th scope="col">Устройство</th><th scope="col">Желаемая версия</th><th scope="col">Выданная политика</th><th scope="col">Последний отчёт</th><th scope="col">Получен сервером</th></tr></thead>
+          <thead><tr><th scope="col">Устройство</th><th scope="col">Версия управляемых слоёв</th><th scope="col">Выданная политика</th><th scope="col">Последний отчёт</th><th scope="col">Получен сервером</th></tr></thead>
           <tbody id="device-rows"></tbody>
         </table>
       </div>
@@ -150,9 +150,10 @@ function Devices() {
             </CardBody>
           </Card>
           <Card isCompact>
-            <CardTitle component="h3">Желаемая конфигурация</CardTitle>
+            <CardTitle component="h3">Назначение управляемых слоёв</CardTitle>
             <CardBody>
               <p id="inventory-state"></p>
+              <p id="inventory-assignment-note" hidden></p>
             </CardBody>
           </Card>
           <Card isCompact>

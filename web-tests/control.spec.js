@@ -626,7 +626,7 @@ test('source permission withdrawal erases unsent credentials and disables mutati
 test('desired device view keeps revision provenance and hostile content separate from activation',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#load-inventory')).toBeEnabled();
  await page.locator('#inventory-device').fill('device-a');await page.locator('#load-inventory').click();
- await expect(page.locator('#inventory-view')).toBeVisible();await expect(page.locator('#inventory-state')).toContainText('Назначена');
+ await expect(page.locator('#inventory-view')).toBeVisible();await expect(page.locator('#inventory-state')).toHaveText('Назначены · версия 7');
  await expect(page.locator('#inventory-meta')).toContainText('Желаемая версия7');await expect(page.locator('#inventory-meta')).toContainText('Версия выданной политики23');
  await expect(page.locator('#inventory-meta')).toContainText('Источник выданной политикиСоответствует желаемой');
  await expect(page.locator('#inventory-issued-algorithm')).toHaveText('Алгоритм m4-confirmed-v1');
@@ -643,7 +643,7 @@ test('desired device view keeps revision provenance and hostile content separate
 
 test('desired device view distinguishes unassigned expired and mismatched responses',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#load-inventory')).toBeEnabled();
- await page.locator('#inventory-device').fill('device-unassigned');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-state')).toContainText('Не назначена');await expect(page.locator('#inventory-effective')).toHaveText('Управляемая конфигурация не назначена.');
+ await page.locator('#inventory-device').fill('device-unassigned');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-state')).toHaveText('Слои не назначены');await expect(page.locator('#inventory-effective')).toHaveText('Настройки из управляемых слоёв отсутствуют.');
  await page.getByText('Настройки выданной политики',{exact:true}).click();
  await expect(page.locator('#inventory-issued-config')).toBeVisible();
  await expect(page.locator('#inventory-issued-config')).toContainText('"routeFinal": "direct"');
@@ -651,7 +651,7 @@ test('desired device view distinguishes unassigned expired and mismatched respon
  await expect(page.locator('#layer-from-device')).toBeDisabled();
  await expect(page.locator('#inventory-meta')).toContainText('Ожидаем результат применения');
  await expect(page.locator('#inventory-meta')).toContainText('Источник не зафиксирован');
- await page.locator('#inventory-device').fill('device-expired');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-state')).toContainText('Истекла');
+ await page.locator('#inventory-device').fill('device-expired');await page.locator('#load-inventory').click();await expect(page.locator('#inventory-state')).toHaveText('Срок назначения истёк · версия 7');
  await expect(page.locator('#inventory-meta')).toContainText('Откат · политика 22 · предыдущая или истёкшая выдача');
  await expect(page.locator('#inventory-meta')).toContainText('Выдана из другой ревизии');
  await expect(page.locator('#inventory-issued-algorithm')).toBeHidden();
@@ -661,6 +661,40 @@ test('desired device view distinguishes unassigned expired and mismatched respon
  await request.post(origin+'/fixture/revoke',{data:{}});await page.locator('#load-inventory').click();await expect(page.locator('#inventory-view')).toBeHidden();await expect(page.locator('#inventory-meta')).toHaveText('');
 });
 
+
+test('mobile inventory separates layer assignment from an issued policy and clears previous device details',async({page,request})=>{
+ await reset(request);
+ await page.setViewportSize({width:320,height:720});
+ await page.goto(origin);
+ const input=page.locator('#inventory-device'),note=page.locator('#inventory-assignment-note');
+ async function select(device){
+  await input.fill(device);
+  await input.press('Enter');
+ }
+ await select('device-unassigned');
+ await expect(page.getByRole('heading',{name:'Назначение управляемых слоёв'})).toBeVisible();
+ await expect(note).toHaveText('Сервер выдал политику версии 3. Подробнее в разделе «Настройки выданной политики».');
+ await expect(page.locator('#inventory-report')).toHaveText('Ожидаем результат применения');
+ await page.getByText('Настройки выданной политики',{exact:true}).click();
+ await expect(page.locator('#inventory-issued-config')).toContainText('m1-local-v1');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await select('device-summary-only');
+ await expect(note).toHaveText('Сервер выдал политику версии 3.');
+ await expect(page.locator('#inventory-issued-settings')).toBeHidden();
+ await expect(page.locator('#inventory-issued-config')).toHaveText('');
+ await select('device-no-policy');
+ await expect(page.locator('#inventory-issued')).toHaveText('Ещё не выдана');
+ await expect(note).toBeHidden();
+ await expect(note).toHaveText('');
+ await select('device-unassigned');
+ await expect(note).toBeVisible();
+ await request.post(origin+'/fixture/revoke',{data:{}});
+ await page.locator('#load-inventory').click();
+ await expect(page.locator('#inventory-view')).toBeHidden();
+ await expect(note).toHaveText('');
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(0);
+});
 
 test('device workspace is private until sign in and opens a safe linked device',async({page,request})=>{
  await reset(request);
@@ -711,7 +745,7 @@ test('mobile device form submits by keyboard and cannot keep a stale device sele
  await expect(page.locator('#inventory-meta')).toHaveText('');
  await expect(page.locator('#plan')).toHaveValue(JSON.stringify(plan,null,2));
  await input.press('Enter');
- await expect(page.locator('#inventory-state')).toHaveText('Не назначена');
+ await expect(page.locator('#inventory-state')).toHaveText('Слои не назначены');
  await expect(page.locator('#layer-from-device')).toBeDisabled();
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.calls.filter(call=>call==='configuration.inventory.get')).toHaveLength(2);
