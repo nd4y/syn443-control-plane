@@ -28,7 +28,7 @@ var homeDNSLabel = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 
 func (p HomeProof) Valid() bool {
 	addr, err := netip.ParseAddr(p.Address)
-	if err != nil || addr.Zone() != "" || addr.Is4In6() || !addr.IsPrivate() ||
+	if err != nil || addr.Zone() != "" || addr.Is4In6() || addr.Is6() && strings.Contains(p.Address, ".") || !addr.IsPrivate() ||
 		p.Port < 1 || p.Port > 65535 || len(p.Hostname) > 253 || strings.HasSuffix(p.Hostname, ".localhost") {
 		return false
 	}
