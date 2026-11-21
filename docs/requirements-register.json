@@ -1930,7 +1930,7 @@
         "web-tests/control-chat.spec.js"
       ],
       "implementationScope": "Administrators can look up an exact self-reported incident reference from the mobile console or standalone inbox. Live SQL grants gate each lookup. A missing or ambiguous reference does not expose a message.",
-      "remainingScope": "Physical delivery and administrator readback in the assigned pilot, plus corroborated last-known-good engine/policy pairing and rollout workflow."
+      "remainingScope": "Physical delivery, readback of the last-known-good configuration and algorithm pair, and targeted remediation through the assigned rollout cohort."
     },
     {
       "id": "OWN-04",
