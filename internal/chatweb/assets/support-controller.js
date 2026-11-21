@@ -4,6 +4,21 @@ export function mountSupportChat({prefix='',embedded=false,visible=()=>!document
 const $=id=>document.getElementById(prefix+id);
 const MAX=25*1024*1024,CHUNK=256*1024;
 const actions=new Set(['self','inbox','messages','send','read','uploads/begin','uploads/part','uploads/status','uploads/complete','uploads/cancel','download']);
+const wireId=/^[0-9a-f]{32}$/;
+const fileTypes=new Set(['application/pdf','application/zip','text/plain','image/jpeg','image/png','image/webp','video/mp4']);
+function confirmsMessage(receipt, draft, uploaded) {
+ if(!receipt || typeof receipt.id!=='string' || !wireId.test(receipt.id) ||
+    receipt.conversation!==draft.conversation || receipt.clientId!==draft.clientId || receipt.text!==draft.text ||
+    !Number.isSafeInteger(receipt.sequence) || receipt.sequence<1 ||
+    !Array.isArray(receipt.attachments) || receipt.attachments.length!==uploaded.size) return false;
+ const remaining=new Map(uploaded);
+ for(const file of receipt.attachments) {
+  const expected=remaining.get(file?.id);
+  if(!expected || ['name','mime','kind','size','sha256'].some(field=>file[field]!==expected[field])) return false;
+  remaining.delete(file.id);
+ }
+ return remaining.size===0;
+}
 let preparedURL='',preparedTimer=null;
 function releasePrepared(){if(preparedTimer)clearTimeout(preparedTimer);preparedTimer=null;if(preparedURL)URL.revokeObjectURL(preparedURL);preparedURL='';$('download-ready').replaceChildren();}
 let authenticated=false,thread='',messages=[],inbox=[],pending=null,busy=false,epoch=0,nextPoll=0;
@@ -122,8 +137,31 @@ $('file').onchange=()=>{$('attachment').textContent=Array.from($('file').files).
 $('discard').onclick=()=>{pending=null;status('Локальная попытка удалена. Уже доставленное сообщение остаётся у собеседника.');controls();};
 $('compose').onsubmit=e=>{e.preventDefault();work(async()=>{
  if(!pending){const text=$('text').value,files=Array.from($('file').files);if([...text].length>4096||new TextEncoder().encode(text).length>16384||text.includes('\0')||!text.trim()&&!files.length||files.length>4||files.some(f=>!f.size||f.size>MAX))throw Error('invalid');pending={clientId:id(),conversation:thread,text,files:files.map(file=>({file,clientId:id(),sha256:null}))};}
- const attachments=[];for(const item of pending.files){if(!item.sha256)item.sha256=await hash(await item.file.arrayBuffer());const mime=['application/pdf','application/zip','text/plain','image/jpeg','image/png','image/webp','video/mp4'].includes(item.file.type)?item.file.type:'application/octet-stream';const result=await api('uploads/begin',{conversation:pending.conversation,clientId:item.clientId,name:item.file.name,mime,kind:'file',size:item.file.size,sha256:item.sha256});const upload=result.attachment.id;if(!result.complete){const parts=new Set(result.parts),count=Math.ceil(item.file.size/CHUNK);$('progress').hidden=false;for(let part=0;part<count;part++){if(!parts.has(part)){const data=new Uint8Array(await item.file.slice(part*CHUNK,(part+1)*CHUNK).arrayBuffer());await api('uploads/part',{upload,part,data:base64(data),sha256:await hash(data)});}$('progress').value=(part+1)*100/count;}await api('uploads/complete',{upload});}attachments.push(upload);}
- await api('send',{conversation:pending.conversation,clientId:pending.clientId,text:pending.text,attachments});pending=null;$('text').value='';$('file').value='';$('attachment').textContent='';status('Отправлено.');await refresh(historyPage?'latest':'poll');
+ const uploaded=new Map();
+ for(const item of pending.files) {
+  const file=item.file;
+  if(!item.sha256)item.sha256=await hash(await file.arrayBuffer());
+  const metadata={name:file.name,mime:fileTypes.has(file.type)?file.type:'application/octet-stream',kind:'file',size:file.size,sha256:item.sha256};
+  const result=await api('uploads/begin',{conversation:pending.conversation,clientId:item.clientId,...metadata});
+  const upload=result?.attachment?.id;
+  if(typeof upload!=='string'||!wireId.test(upload)||uploaded.has(upload))throw Error('invalid');
+  if(!result.complete) {
+   const parts=new Set(result.parts),count=Math.ceil(file.size/CHUNK);
+   $('progress').hidden=false;
+   for(let part=0;part<count;part++) {
+    if(!parts.has(part)) {
+     const data=new Uint8Array(await file.slice(part*CHUNK,(part+1)*CHUNK).arrayBuffer());
+     await api('uploads/part',{upload,part,data:base64(data),sha256:await hash(data)});
+    }
+    $('progress').value=(part+1)*100/count;
+   }
+   await api('uploads/complete',{upload});
+  }
+  uploaded.set(upload,metadata);
+ }
+ const reply=await api('send',{conversation:pending.conversation,clientId:pending.clientId,text:pending.text,attachments:[...uploaded.keys()]});
+ if(!confirmsMessage(reply,pending,uploaded))throw Error('invalid');
+ pending=null;$('text').value='';$('file').value='';$('attachment').textContent='';status('Отправлено.');await refresh(historyPage?'latest':'poll');
  });};
 async function download(file){const conversation=thread,started=epoch;if(!Number.isSafeInteger(file.size)||file.size<1||file.size>MAX)throw Error('invalid');const all=new Uint8Array(file.size);$('progress').hidden=false;for(let part=0;part<Math.ceil(file.size/CHUNK);part++){const result=await api('download',{attachment:file.id,part}),data=unbase64(result.data);if(data.length!==Math.min(CHUNK,file.size-part*CHUNK)||await hash(data)!==result.sha256)throw Error('invalid');all.set(data,part*CHUNK);$('progress').value=Math.min(100,(part+1)*CHUNK*100/file.size);}if(await hash(all)!==file.sha256)throw Error('invalid');
  if(destroyed||!authenticated||!visible()||started!==epoch||thread!==conversation)throw Error('stale');
