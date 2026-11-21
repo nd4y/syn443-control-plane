@@ -241,8 +241,14 @@
     {
       "id": "ONB-04",
       "text": "Пользователь не вводит вручную серверы, DNS, VLESS UUID или подписочные URL. Операционное согласие Android на VPN сохраняется. Ручная привязка и OIDC приводят к одной модели пользователя/устройства и одинаковым правилам выдачи, отзыва и аудита.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/invitations.md",
+        "internal/enrollment/invited_postgres_test.go",
+        "internal/invitation/boundaries_postgres_test.go"
+      ],
+      "implementationScope": "OIDC and invitations share device seats, ordinary key-bound sessions, and account and generation revocation checks.",
+      "remainingScope": "Complete onboarding from a clean device and compare both audit trails and Android VPN consent."
     },
     {
       "id": "SUB-01",
@@ -2415,20 +2421,39 @@
     {
       "id": "BOOT-09",
       "text": "Сервер хранит защищённое представление кода, адресата, creator, expiry и состояние created/pending/approved/consumed/revoked. Обмен идёт по HTTPS в теле запроса, с rate limit и идемпотентностью. Ссылка и код исключены из обычных логов, analytics, crash breadcrumbs и бандлов.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/invitations.md",
+        "internal/invitation/store_postgres_test.go",
+        "internal/invitation/boundaries_postgres_test.go"
+      ],
+      "implementationScope": "SQL retains a code hash and protected receipts. Claims are immutable and idempotent. A failed database operation cannot be acknowledged.",
+      "remainingScope": "Verify end-to-end redaction in client diagnostics, server logs and support exports."
     },
     {
       "id": "BOOT-10",
       "text": "Телефон создаёт ключ устройства и предъявляет доказательство владения. Если приглашение заранее не связано с проверенным ключом устройства, по умолчанию требуется подтверждение привязки администратором со сверкой короткого кода/отпечатка, показанного на телефоне. Это защищает от завершения регистрации первым перехватившим ссылку. До подтверждения VPN-секреты не выдаются.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/invitations.md",
+        "internal/invitation/store_postgres_test.go",
+        "internal/invitation/publication_postgres_test.go"
+      ],
+      "implementationScope": "A key-bound claim returns a pairing code. The signer checks the separate approval and receipts before normal policy publication.",
+      "remainingScope": "Verify the pairing code across a real administrator screen and a newly enrolling device."
     },
     {
       "id": "BOOT-11",
       "text": "Повтор после сетевого обрыва с тем же приглашением и доказанным ключом завершает ту же регистрацию, не расходует новый слот и не создаёт второго NetBird peer. Другому ключу использованный/зарезервированный код не выдаёт доступ. Просроченное, отозванное или неизвестное приглашение показывает понятную причину и не изменяет действующую регистрацию.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/invitations.md",
+        "internal/invitation/store_postgres_test.go",
+        "internal/invitation/boundaries_postgres_test.go",
+        "internal/enrollment/invited_postgres_test.go"
+      ],
+      "implementationScope": "Repeated issue, claim and completion recover the original outcome; wrong-key, expired and revoked requests cannot obtain a session.",
+      "remainingScope": "Exercise interrupted enrollment with the real overlay broker and verify its peer count."
     },
     {
       "id": "BOOT-12",
@@ -2464,8 +2489,14 @@
     {
       "id": "BOOT-15",
       "text": "После одобрения сервер привязывает устройство к назначенному пользователю, выдаёт обычную device session и полный подписанный конфиг. Дальнейшая работа/обновление/отзыв аналогичны OIDC-входу; повторный Keycloak не требуется только ради повседневной работы такого устройства. Получение административных прав требует отдельной авторизации администратора. Само приглашение не решает блокировку сетевого доступа к серверу регистрации.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/invitations.md",
+        "internal/invitation/publication_postgres_test.go",
+        "internal/enrollment/invited_postgres_test.go"
+      ],
+      "implementationScope": "The ordinary key-bound session requires a committed authorized device policy and shares the OIDC revocation and generation fences.",
+      "remainingScope": "Verify subsequent phone policy refresh and administrator separation for a newly invited pilot device."
     },
     {
       "id": "NFR-01",
