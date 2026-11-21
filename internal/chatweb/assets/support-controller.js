@@ -7,6 +7,7 @@ const actions=new Set(['self','inbox','messages','send','read','uploads/begin','
 let preparedURL='',preparedTimer=null;
 function releasePrepared(){if(preparedTimer)clearTimeout(preparedTimer);preparedTimer=null;if(preparedURL)URL.revokeObjectURL(preparedURL);preparedURL='';$('download-ready').replaceChildren();}
 let authenticated=false,thread='',messages=[],inbox=[],pending=null,busy=false,epoch=0,nextPoll=0;
+let historyPage=null,olderEnd=false,newerEnd=false,inboxPage=null,moreInbox=false,inboxEnd=null;
 let workEpoch=null,authorityRequired=false,failures=0,manualAt=0,destroyed=false;
 const requests=new Set();
 const id=()=>crypto.randomUUID().replaceAll('-','');
@@ -15,8 +16,19 @@ const hash=async bytes=>hex(await crypto.subtle.digest('SHA-256',bytes));
 function base64(bytes){let value='';for(let i=0;i<bytes.length;i+=8192)value+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(value);}
 function unbase64(value){if(typeof value!=='string'||value.length>349528)throw Error('invalid');return Uint8Array.from(atob(value),c=>c.charCodeAt(0));}
 function status(text){$('status').textContent=text;}
-function forget(){if(embedded)$('empty').hidden=true;releasePrepared();epoch++;authenticated=false;thread='';messages=[];inbox=[];pending=null;$('text').value='';$('file').value='';$('attachment').textContent='';$('messages').replaceChildren();$('inbox').replaceChildren();$('thread-title').textContent='Выберите диалог';}
-function controls(){if(embedded)$('retry').disabled=busy||Date.now()<manualAt;for(const name of ['text','file','send'])$(name).disabled=!authenticated||!thread||busy||!!pending&&name!=='send';$('send').disabled||=!pending&&!$('text').value.trim()&&!$('file').files.length;$('discard').disabled=busy||!pending;$('login').disabled=authenticated||busy;$('logout').disabled=!authenticated||busy;$('older').disabled=!thread||busy||!messages.length;$('more').disabled=!authenticated||busy||inbox.length<50;}
+function resetHistory(){messages=[];historyPage=null;olderEnd=false;newerEnd=false;}
+function forget(){if(embedded)$('empty').hidden=true;releasePrepared();epoch++;authenticated=false;thread='';resetHistory();inbox=[];inboxPage=null;inboxEnd=null;moreInbox=false;pending=null;$('text').value='';$('file').value='';$('attachment').textContent='';$('messages').replaceChildren();$('inbox').replaceChildren();$('thread-title').textContent='Выберите диалог';}
+function controls(){
+ if(embedded)$('retry').disabled=busy||Date.now()<manualAt;
+ for(const name of ['text','file','send'])$(name).disabled=!authenticated||!thread||busy||!!pending&&name!=='send';
+ $('send').disabled||=!pending&&!$('text').value.trim()&&!$('file').files.length;
+ $('discard').disabled=busy||!pending;$('login').disabled=authenticated||busy;$('logout').disabled=!authenticated||busy;
+ $('older').disabled=busy||!messages.length||olderEnd;
+ $('newer').hidden=$('latest').hidden=!historyPage;
+ $('newer').disabled=busy||!messages.length||newerEnd;$('latest').disabled=busy;
+ $('more').disabled=!authenticated||busy||!moreInbox;
+ $('inbox-first').hidden=!inboxPage;$('inbox-first').disabled=busy;
+}
 async function request(path,body={}){
  if(destroyed||workEpoch!==epoch||!visible())throw Error('stale');
  const current=epoch,controller=new AbortController();requests.add(controller);
@@ -51,7 +63,7 @@ async function openConversation(row){
  if(pending||$('text').value.trim()||$('file').files.length){status('Сначала отправьте или удалите текущий черновик.');return;}
  if(thread!==row.id){
   releasePrepared();
-  messages=[];
+  resetHistory();
   $('messages').replaceChildren();
   $('text').value='';
   $('file').value='';
@@ -65,19 +77,53 @@ async function openConversation(row){
 }
 function renderInbox(){if(embedded)$('empty').hidden=inbox.length>0;const list=$('inbox');list.replaceChildren();for(const row of inbox){const li=document.createElement('li'),button=document.createElement('button');if(embedded)button.className='pf-v6-c-button pf-m-link';button.textContent='Пользователь '+row.owner.slice(0,10)+(row.lastSeq>row.readSeq?' - новые':'');button.onclick=()=>work(()=>openConversation(row));li.append(button);list.append(li);}}
 function renderMessages(peerRead){const list=$('messages');const nearEnd=list.scrollHeight-list.scrollTop-list.clientHeight<80;list.replaceChildren();for(const msg of messages){const li=document.createElement('li');li.className='message'+(msg.senderRole==='admin'?' admin':'');const role=document.createElement('div');role.className='meta';role.textContent=msg.senderRole==='admin'?'Администратор':'Пользователь';const text=document.createElement('div');text.textContent=msg.text;li.append(role,text);for(const file of msg.attachments){const button=document.createElement('button');if(embedded)button.className='pf-v6-c-button pf-m-link';button.textContent='Скачать: '+file.name+' ('+Math.ceil(file.size/1024)+' КБ)';button.onclick=()=>work(()=>download(file));li.append(button);}const date=document.createElement('div');date.className='meta';date.textContent=new Date(msg.createdAt*1000).toLocaleString()+(msg.sequence<=peerRead?' - прочитано':'');li.append(date);list.append(li);}if(nearEnd)list.scrollTop=list.scrollHeight;}
-async function refresh(older=false){if(!thread)return;const response=await api('messages',{conversation:thread,before:older&&messages.length?messages[0].sequence:0,after:!older&&messages.length?messages.at(-1).sequence:0});const map=new Map(messages.map(m=>[m.id,m]));for(const m of response.messages)map.set(m.id,m);messages=[...map.values()].sort((a,b)=>a.sequence-b.sequence).slice(-200);renderMessages(response.peerRead);if(!document.hidden&&!older&&messages.length)await api('read',{conversation:thread,sequence:messages.at(-1).sequence});}
-async function loadInbox(more=false){const last=more?inbox.at(-1):null;const rows=await api('inbox',{before:last?.updatedAt||0,beforeId:last?.id||''});inbox=more?[...inbox,...rows].filter((row,i,all)=>all.findIndex(x=>x.id===row.id)===i).slice(0,200):inbox.length>50?[...rows,...inbox.filter(row=>!rows.some(x=>x.id===row.id))].slice(0,200):rows;renderInbox();}
+async function refresh(action='poll'){
+ if(!thread)return;
+ let page=historyPage;
+ if(action==='older')page={before:messages[0].sequence,after:0};
+ if(action==='newer')page={before:0,after:messages.at(-1).sequence};
+ if(action==='latest')page=null;
+ const tail=action==='poll'&&!page?messages.at(-1)?.sequence:0;
+ const response=await api('messages',{conversation:thread,before:page?.before||0,after:page?.after||tail||0});
+ if(!response.messages.length&&(action==='older'||action==='newer')){
+  if(action==='older')olderEnd=true;else newerEnd=true;
+  return;
+ }
+ if(action!=='poll'){olderEnd=false;newerEnd=false;}
+ historyPage=page;
+ const items=new Map(tail?messages.map(m=>[m.id,m]):[]);
+ for(const item of response.messages)items.set(item.id,item);
+ if(tail&&items.size>200)olderEnd=false;
+ messages=[...items.values()].sort((a,b)=>a.sequence-b.sequence).slice(-200);
+ if(page?.before&&response.messages.length<20)olderEnd=true;
+ if(page?.after&&response.messages.length<20)newerEnd=true;
+ renderMessages(response.peerRead);
+ if(!page&&!document.hidden&&messages.length)await api('read',{conversation:thread,sequence:messages.at(-1).sequence});
+}
+async function loadInbox(action='poll'){
+ const page=action==='more'?inbox.at(-1):action==='first'?null:inboxPage;
+ const rows=await api('inbox',{before:page?.updatedAt||0,beforeId:page?.id||''});
+ if(action==='first')inboxEnd=null;
+ if(action==='more'&&!rows.length){inboxEnd=page;moreInbox=false;return;}
+ const last=rows.at(-1);
+ moreInbox=rows.length===50&&!(last.id===inboxEnd?.id&&last.updatedAt===inboxEnd.updatedAt);
+ inboxPage=page?{updatedAt:page.updatedAt,id:page.id}:null;
+ inbox=rows;
+ renderInbox();
+}
 async function boot(){await request('/session');authenticated=true;const own=await api('self');if(!own.admin){forget();throw Error('denied');}await loadInbox();status('Выберите диалог.');}
 $('login').onclick=()=>work(async()=>{const result=await request('/login');const url=new URL(result.url);if(url.protocol!=='https:'&&url.hostname!=='127.0.0.1')throw Error('invalid');location.assign(url.href);});
 $('logout').onclick=()=>work(async()=>{await request('/logout');forget();status('Сессия завершена.');});
-$('older').onclick=()=>work(()=>refresh(true));$('more').onclick=()=>work(()=>loadInbox(true));
+for(const action of ['older','newer','latest'])$(action).onclick=()=>work(()=>refresh(action));
+$('more').onclick=()=>work(()=>loadInbox('more'));
+$('inbox-first').onclick=()=>work(()=>loadInbox('first'));
 $('text').oninput=controls;
 $('file').onchange=()=>{$('attachment').textContent=Array.from($('file').files).map(f=>f.name+' ('+Math.ceil(f.size/1024)+' КБ)').join(', ');controls();};
 $('discard').onclick=()=>{pending=null;status('Локальная попытка удалена. Уже доставленное сообщение остаётся у собеседника.');controls();};
 $('compose').onsubmit=e=>{e.preventDefault();work(async()=>{
  if(!pending){const text=$('text').value,files=Array.from($('file').files);if([...text].length>4096||new TextEncoder().encode(text).length>16384||text.includes('\0')||!text.trim()&&!files.length||files.length>4||files.some(f=>!f.size||f.size>MAX))throw Error('invalid');pending={clientId:id(),conversation:thread,text,files:files.map(file=>({file,clientId:id(),sha256:null}))};}
  const attachments=[];for(const item of pending.files){if(!item.sha256)item.sha256=await hash(await item.file.arrayBuffer());const mime=['application/pdf','application/zip','text/plain','image/jpeg','image/png','image/webp','video/mp4'].includes(item.file.type)?item.file.type:'application/octet-stream';const result=await api('uploads/begin',{conversation:pending.conversation,clientId:item.clientId,name:item.file.name,mime,kind:'file',size:item.file.size,sha256:item.sha256});const upload=result.attachment.id;if(!result.complete){const parts=new Set(result.parts),count=Math.ceil(item.file.size/CHUNK);$('progress').hidden=false;for(let part=0;part<count;part++){if(!parts.has(part)){const data=new Uint8Array(await item.file.slice(part*CHUNK,(part+1)*CHUNK).arrayBuffer());await api('uploads/part',{upload,part,data:base64(data),sha256:await hash(data)});}$('progress').value=(part+1)*100/count;}await api('uploads/complete',{upload});}attachments.push(upload);}
- await api('send',{conversation:pending.conversation,clientId:pending.clientId,text:pending.text,attachments});pending=null;$('text').value='';$('file').value='';$('attachment').textContent='';status('Отправлено.');await refresh();
+ await api('send',{conversation:pending.conversation,clientId:pending.clientId,text:pending.text,attachments});pending=null;$('text').value='';$('file').value='';$('attachment').textContent='';status('Отправлено.');await refresh(historyPage?'latest':'poll');
  });};
 async function download(file){const conversation=thread,started=epoch;if(!Number.isSafeInteger(file.size)||file.size<1||file.size>MAX)throw Error('invalid');const all=new Uint8Array(file.size);$('progress').hidden=false;for(let part=0;part<Math.ceil(file.size/CHUNK);part++){const result=await api('download',{attachment:file.id,part}),data=unbase64(result.data);if(data.length!==Math.min(CHUNK,file.size-part*CHUNK)||await hash(data)!==result.sha256)throw Error('invalid');all.set(data,part*CHUNK);$('progress').value=Math.min(100,(part+1)*CHUNK*100/file.size);}if(await hash(all)!==file.sha256)throw Error('invalid');
  if(destroyed||!authenticated||!visible()||started!==epoch||thread!==conversation)throw Error('stale');

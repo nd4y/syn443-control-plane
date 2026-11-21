@@ -6,6 +6,8 @@ root = ET.parse(Path(__file__).resolve().parent.parent / 'web-tests/results.xml'
 cases = list(root.iter('testcase'))
 expected = {
     'switching conversations clears the previous history and file on standalone',
+    'long inbox and message history remain navigable on standalone',
+    'long inbox and message history remain navigable on console',
     'switching conversations clears the previous history and file on console',
     'leaving support during final file verification cannot publish a save link',
     'administrator sends text and hostile content remains text',

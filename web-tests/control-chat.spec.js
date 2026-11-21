@@ -15,6 +15,68 @@ async function open(page){
 }
 
 for (const surface of ['standalone', 'console']) {
+ test(`long inbox and message history remain navigable on ${surface}`, async ({page}) => {
+  const prefix=surface==='console'?'support-':'';
+  const el=name=>page.locator('#'+prefix+name);
+  const conversations=Array.from({length:212},(_,i)=>({
+   id:i.toString(16).padStart(32,'0'),owner:'owner-'+String(i).padStart(4,'0'),
+   updatedAt:2_000_000_000-Math.floor(i/3),lastSeq:241,readSeq:0
+  }));
+  const message=sequence=>({id:String(sequence),sequence,senderRole:'user',text:'Message #'+sequence+'.',attachments:[],createdAt:1700000000+sequence});
+  const reads=[];
+  let total=241;
+  await page.clock.install();
+  await page.route('**/chat/inbox',async route=>{
+   const {before,beforeId}=route.request().postDataJSON();
+   const start=before?conversations.findIndex(row=>row.id===beforeId&&row.updatedAt===before)+1:0;
+   if(before)expect(start).toBeGreaterThan(0);
+   await route.fulfill({json:conversations.slice(start,start+50)});
+  });
+  await page.route('**/chat/messages',async route=>{
+   const {conversation,before,after}=route.request().postDataJSON();
+   expect(conversation).toBe(conversations[211].id);
+   const rows=Array.from({length:total},(_,i)=>message(i+1));
+   const results=after?rows.filter(row=>row.sequence>after).slice(0,20):
+    rows.filter(row=>!before||row.sequence<before).slice(-20).reverse();
+   await route.fulfill({json:{messages:results,peerRead:0}});
+  });
+  await page.route('**/chat/read',async route=>{
+   reads.push(route.request().postDataJSON().sequence);
+   await route.fulfill({json:{}});
+  });
+  await page.goto(surface==='console'?origin+'/#support-title':chatOrigin+'/');
+  for(let i=0;i<4;i++){
+   await el('more').click();
+   await expect(el('inbox').locator('li').first()).toContainText(conversations[(i+1)*50].owner);
+  }
+  await expect(el('inbox').locator('li')).toHaveCount(12);
+  await expect(el('more')).toBeDisabled();
+  await el('inbox').getByRole('button',{name:/owner-0211/}).click();
+  const items=el('messages').locator('li');
+  await expect(items.last()).toContainText('Message #241.');
+  for(let end=221;end>=21;end-=20){
+   await el('older').click();
+   await expect(items.last()).toContainText('Message #'+end+'.');
+   await expect(items).toHaveCount(20);
+  }
+  await el('older').click();
+  await expect(items).toHaveCount(1);await expect(items.first()).toContainText('Message #1.');
+  await expect(el('older')).toBeDisabled();
+  total=242;
+  const poll=page.waitForResponse(r=>r.url().endsWith('/chat/messages')&&r.request().postDataJSON().before===2);
+  await page.clock.fastForward(22000);await poll;
+  await expect(el('newer')).toBeEnabled();
+  await expect(items).toHaveCount(1);
+  expect(reads).toEqual([241]);
+  await expect(el('inbox').locator('li')).toHaveCount(12);
+  await el('newer').click();await expect(items.last()).toContainText('Message #21.');
+  await el('latest').click();await expect(items.last()).toContainText('Message #242.');
+  await expect.poll(()=>reads.at(-1)).toBe(242);
+  await el('inbox-first').click();
+  await expect(el('inbox').locator('li').first()).toContainText(conversations[0].owner);
+  await expect(el('inbox-first')).toBeHidden();
+ });
+
  test(`switching conversations clears the previous history and file on ${surface}`, async ({page}) => {
   const prefix=surface==='console'?'support-':'';
   const el=name=>page.locator('#'+prefix+name);
