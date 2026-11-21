@@ -55,3 +55,19 @@ The new source tests exercise real TLS discovery and signed tokens whose realms
 share a key, kid and subject, plus normal SQL preview/publication and a renewed
 key-bound device policy without changing enrollment identity. These additions
 require exact-head Actions results; they do not establish live pilot acceptance.
+
+## Home Wi-Fi verification
+
+In the adaptive network draft, open **Проверка домашнего Wi-Fi** and enter
+the private IPv4 or ULA IPv6 address, TLS port, DNS name from the certificate,
+and the base64url SHA-256 digest of its public key (DER SubjectPublicKeyInfo,
+without padding). Choose a service reachable only on the intended home Wi-Fi.
+Use **Записать узел в черновик**, review the resulting plan, and save and publish
+it through the usual device policy flow. **Удалить узел из черновика** prepares
+its removal through the same flow. The field group is available on phone and
+desktop. It edits only `network.homeProof`.
+
+The addressed device must advertise `network.home-proof.v1`. The handset
+binds the probe to the current validated physical Wi-Fi and verifies both the
+certificate chain and key pin before selecting home-only routes. A certificate
+renewal with a different public key requires updating and publishing the pin.
