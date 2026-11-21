@@ -145,24 +145,24 @@ func (w *Worker) ProcessOne(ctx context.Context) (Job, error) {
 		job.Phase = "succeeded"
 		return job, nil
 	}
-	if errors.Is(e, ErrStale) {
-		job.Phase = "cancelled"
-		job.Reason = "stale_inputs"
-		return job, w.Store.Abandon(ctx, job, finished)
+	if !errors.Is(e, ErrStale) {
+		if errors.Is(e, ErrUnavailable) || ctx.Err() != nil {
+			return job, ErrUnavailable
+		}
+		reason, permanent := sourceFailure(e)
+		switch err := w.Store.Fail(ctx, job, reason, permanent, finished); {
+		case err == nil:
+			job.Reason, job.Phase = reason, "queued"
+			if permanent {
+				job.Phase = "failed"
+			}
+			return job, nil
+		case !errors.Is(err, ErrStale):
+			return job, err
+		}
 	}
-	if errors.Is(e, ErrUnavailable) || ctx.Err() != nil {
-		return job, ErrUnavailable
-	}
-	reason, permanent := sourceFailure(e)
-	if e = w.Store.Fail(ctx, job, reason, permanent, finished); e != nil {
-		return job, e
-	}
-	job.Phase = "queued"
-	if permanent {
-		job.Phase = "failed"
-	}
-	job.Reason = reason
-	return job, nil
+	job.Phase, job.Reason = "cancelled", "stale_inputs"
+	return job, w.Store.Abandon(ctx, job, finished)
 }
 func sourceFailure(e error) (string, bool) {
 	for _, known := range []error{subscriptions.ErrInvalid, subscriptions.ErrUnsupported, subscriptions.ErrAmbiguous, subscriptions.ErrTLS, subscriptions.ErrAccess, subscriptions.ErrRevoked, subscriptions.ErrExpired, subscriptions.ErrEmpty, subscriptions.ErrSize} {

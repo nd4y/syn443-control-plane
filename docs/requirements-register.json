@@ -375,10 +375,11 @@
         "internal/catalog/worker.go",
         "internal/catalog/store_postgres_test.go",
         "internal/catalog/resource_postgres_test.go",
-        "internal/catalog/review_postgres_test.go"
+        "internal/catalog/review_postgres_test.go",
+        "internal/catalog/review_refresh_postgres_test.go"
       ],
-      "implementationScope": "Bounded all-or-nothing URI/base64/sing-box/Xray/Mihomo profile normalization with explicit field matrix, private source-scoped HMAC IDs and pure candidate-removal quarantine assessment; Actions acceptance pending.",
-      "remainingScope": "Persistent source/grant/snapshot management, fetch modes, sync/reconciliation, exact candidate review, compiler/publication and administrative/device flows remain required for full M3."
+      "implementationScope": "The catalog preserves the approved snapshot after a malformed import and requires review for excessive removals or broken route references. A late malformed or transient response cannot supersede a newer administrative promotion. Confirmed provider revocation and expiry still block selection.",
+      "remainingScope": "End-to-end administrative and physical device readback of quarantine and provider revocation remains open."
     },
     {
       "id": "SUB-10",
