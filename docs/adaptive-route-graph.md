@@ -32,6 +32,19 @@ The entire UTF-8 metadata is limited to 262144 bytes. Individual limits need not
 all fit simultaneously within that byte bound. Shared conformance fixtures are
 required before this contract participates in policy activation.
 
+## Preview candidate counts
+
+The network draft editor can preview the maximum number of candidate chains.
+For an adaptive plan, choose **Оценить число цепочек**. The console shows an
+upper bound for each destination intent and each group, plus the maximum hop
+count per group. Groups that share a template count it once toward their
+intent. A draft above 4096 candidates per intent returns a narrowing suggestion.
+Editing the draft clears its previous result.
+
+The preview reads the submitted adaptive declaration and its local profile
+references. The publication path uses the same Go graph decoder and limit.
+Device measurements determine which of these candidates are reachable.
+
 ## Runtime ownership decision
 
 The existing embedded engine constructs a static graph. Its pinned upstream

@@ -17,6 +17,10 @@ import (
 const MaxBytes = 262144
 
 var ErrInvalid = errors.New("invalid route graph")
+var ErrCandidateLimit = errors.New("route candidate limit exceeded")
+
+const MaxCandidatesPerIntent = 4096
+
 var identifier = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 var modes = map[string]bool{"HOME_WIFI": true, "WIFI": true, "CELLULAR_RESTRICTED": true, "CELLULAR": true}
 var intents = map[string]bool{"RU": true, "NON_RU": true, "INTERNAL": true}
@@ -170,6 +174,16 @@ func read(d *json.Decoder, depth int) (any, bool) {
 // Decode requires the independently authorized catalogue IDs, not IDs supplied
 // by the metadata as a substitute for resolving profile ownership/dependencies.
 func Decode(raw []byte, catalogue []string) (*Graph, error) {
+	graph, err := DecodeForPreview(raw, catalogue)
+	if err != nil {
+		return nil, ErrInvalid
+	}
+	return graph, nil
+}
+
+// DecodeForPreview distinguishes the finite search limit for an editor.
+// Issuance and runtime callers keep their existing closed error through Decode.
+func DecodeForPreview(raw []byte, catalogue []string) (*Graph, error) {
 	bad := func() (*Graph, error) { return nil, ErrInvalid }
 	if len(raw) == 0 || len(raw) > MaxBytes || !utf8.Valid(raw) || len(catalogue) < 1 || len(catalogue) > 500 {
 		return bad()
@@ -278,8 +292,11 @@ func Decode(raw []byte, catalogue []string) (*Graph, error) {
 		t := template{bound: 1}
 		for _, value := range slots {
 			choices, ok := ids(value, 1, 500)
-			if !ok || len(choices) > 4096/t.bound {
+			if !ok {
 				return bad()
+			}
+			if len(choices) > MaxCandidatesPerIntent/t.bound {
+				return nil, ErrCandidateLimit
 			}
 			for _, name := range choices {
 				if _, exists := g.hops[name]; !exists {
@@ -327,8 +344,11 @@ func Decode(raw []byte, catalogue []string) (*Graph, error) {
 		}
 		for _, reference := range references {
 			t, exists := g.templates[reference]
-			if !exists || t.bound > 4096-bound {
+			if !exists {
 				return bad()
+			}
+			if t.bound > MaxCandidatesPerIntent-bound {
+				return nil, ErrCandidateLimit
 			}
 			bound += t.bound
 			intentTemplates[intent][reference] = true
@@ -339,8 +359,8 @@ func Decode(raw []byte, catalogue []string) (*Graph, error) {
 	for intent, references := range intentTemplates {
 		for reference := range references {
 			bound := g.templates[reference].bound
-			if bound > 4096-g.intentBound[intent] {
-				return bad()
+			if bound > MaxCandidatesPerIntent-g.intentBound[intent] {
+				return nil, ErrCandidateLimit
 			}
 			g.intentBound[intent] += bound
 		}

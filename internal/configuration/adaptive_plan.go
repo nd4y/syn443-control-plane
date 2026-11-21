@@ -140,6 +140,16 @@ func adaptiveBindings(raw []byte) (map[string]ProfileReference, error) {
 // normalized profile compilation, capabilities and signed publication remain
 // separate; a successful result cannot activate or select a route.
 func DecodeAdaptivePlan(plan AdaptivePlan, static Graph) (*AdaptivePlanSnapshot, error) {
+	result, err := InspectAdaptivePlan(plan, static)
+	if err != nil {
+		return nil, ErrInvalid
+	}
+	return result, nil
+}
+
+// InspectAdaptivePlan preserves the search-limit diagnostic for a draft preview.
+// No catalogue lookups, network access or issuance take place here.
+func InspectAdaptivePlan(plan AdaptivePlan, static Graph) (*AdaptivePlanSnapshot, error) {
 	if len(plan.MetadataB64) < 1 || len(plan.MetadataB64) > MaxAdaptivePlanBytes || len(plan.BindingsB64) < 1 || len(plan.BindingsB64) > MaxAdaptivePlanBytes || len(plan.Groups) < 1 || len(plan.Groups) > 16 {
 		return nil, ErrInvalid
 	}
@@ -169,8 +179,11 @@ func DecodeAdaptivePlan(plan AdaptivePlan, static Graph) (*AdaptivePlanSnapshot,
 		ids = append(ids, hop)
 	}
 	sort.Strings(ids)
-	graph, e := routegraph.Decode(metadata, ids)
-	if e != nil || len(graph.GroupIDs()) != len(plan.Groups) {
+	graph, e := routegraph.DecodeForPreview(metadata, ids)
+	if e != nil {
+		return nil, e
+	}
+	if len(graph.GroupIDs()) != len(plan.Groups) {
 		return nil, ErrInvalid
 	}
 	groups := make(map[string]string, len(plan.Groups))

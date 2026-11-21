@@ -441,6 +441,12 @@ function Drafts() {
           autoComplete="off"
           isRequired
         ></TextArea>
+        <div id="route-bounds" hidden>
+          <Button id="route-bounds-preview" type="button" variant="secondary">
+            Оценить число цепочек
+          </Button>
+          <div id="route-bounds-result" role="status" aria-live="polite"></div>
+        </div>
         <fieldset id="route-check-editor" disabled>
           <legend>Проверки маршрутов</legend>
           <label htmlFor="route-check-path">Выход</label>

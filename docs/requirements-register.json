@@ -42,10 +42,15 @@
     {
       "id": "ARC-05",
       "text": "Разрешённый граф конечен и объявлен шаблонами ingress/transit/egress с cardinality/edge constraints. Reference limit: до4096 различных цепочек на intent, четыре proxy hops, до64 resident frontier states плюс компактный cursor; каталог500профилей не означает500 в каждой позиции четырёх hops. Preview вычисляет/оценивает верхнюю границу, превышение отклоняется с предложением сузить шаблон. Нельзя незаметно обрезать хвост и затем заявить полный coverage. Порядок enumeration и продолжение детерминированы; на малом конечном fixture полнота обхода проверяется.",
-      "status": "planned",
+      "status": "partial",
       "evidence": [
-        "docs/chat-acceptance-20261115.md"
-      ]
+        "docs/adaptive-route-graph.md#preview-candidate-counts",
+        "internal/routegraph/graph_test.go",
+        "internal/chatweb/route_bounds_test.go",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "Shared Go/Kotlin bounds and conformance fixtures, including 500 catalogue entries and a hard limit of 4096 candidates per intent. The console previews per-group and deduplicated per-intent bounds before saving a draft.",
+      "remainingScope": "Accept deterministic resume and bounded frontier residency on the deployed device with a managed adaptive graph, alongside the deployed console."
     },
     {
       "id": "ARC-06",
