@@ -15,6 +15,32 @@ before advancing the broker clock, leasing work or contacting the provider.
 Use it for the container readiness check and when preparing a deployment.
 Successful key delivery and a reachable enrolled peer need separate checks.
 
+### Running the container
+
+The Actions artifact `overlay-worker-image-linux-amd64` contains a Docker
+archive, its SHA-256 and the Git revision. In the extracted directory, run
+`sha256sum -c SHA256SUMS` and `docker load -i overlay-worker.tar.gz`.
+The resulting tag is `syn443-overlay-worker:<revision>`. The image contains
+the same static executable as the Linux runtime artifact and public CA roots.
+It runs as UID/GID 65532 and defines `--check-ready` as its health check.
+
+On the host, provision a worker configuration readable only by UID 65532
+(mode 0400). Mount it read-only at `/run/secrets/overlay-worker.json`.
+Give the service access to its PostgreSQL database and configured provider
+on the deployment network. It needs no published ports, writable root
+filesystem or Linux capabilities. Check the actual role and configuration
+before starting the polling loop, for example with Compose:
+
+```sh
+docker compose run --rm overlay-worker --check-ready
+docker compose up -d overlay-worker
+```
+
+The workflow exercises that image against disposable PostgreSQL with the
+broker role and the API role. Both checks take place while a provider request
+is queued. The fixture verifies that its lease, attempts and provider request
+count are unchanged before continuing the separate delivery test.
+
 `internal/enrollment/broker.go` adds a publisher-reserved SQL journal and a
 separately restricted `syn443_overlay_worker` role. It is not enabled by the
 existing enrollment runtime configuration. No live NetBird account is changed by tests.

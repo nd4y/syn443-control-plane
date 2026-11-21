@@ -2549,11 +2549,13 @@
       "evidence": [
         "docs/database-recovery.md",
         "docs/overlay-broker.md#worker-readiness",
+        "deploy/overlay-worker/Dockerfile",
+        "tools/verify_overlay_image.py",
         "internal/enrollment/restore_postgres_test.go",
         "internal/health/handler_test.go",
         "internal/enrollment/process_postgres_test.go"
       ],
-      "implementationScope": "Enrollment and control API process liveness, bounded PostgreSQL readiness and an overlay-worker readiness command that checks the isolated broker and catalog roles before provider work. Isolated backup/restore drill and recovery procedure with application and authorization checks.",
+      "implementationScope": "Enrollment and control API process liveness, bounded PostgreSQL readiness, isolated backup/restore drill and recovery procedure. The separately packaged non-root overlay worker checks its broker and catalog roles before provider work. Its Actions container fixture exercises the real release binary with a queued request.",
       "remainingScope": "Recovery of a complete deployed instance, external identity/provider state, key and role recovery, and observed RPO/RTO."
     },
     {
