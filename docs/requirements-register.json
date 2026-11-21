@@ -727,8 +727,14 @@
     {
       "id": "PROV-08",
       "text": "Конфигурации и версии decision policy публикуются управляемым rollout: тестовое устройство, пилотная группа, последующие cohort и все разрешённые устройства. Назначение стабильно, стадии подтверждаются метриками, остановка/откат происходят по RLP-01-10. Обновление серверных сервисов, APK/движков, decision policy и пользовательских назначений имеют отдельные версии и совместимость.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/configuration/probe_cooldown_rollout.go",
+        "internal/deviceprovisioning/network_postgres_test.go",
+        "docs/control-console.md"
+      ],
+      "implementationScope": "Signed policy issuance uses stable per-device cohorts and a separately reserved control group for a compatible failover evaluator and cooldown. The console previews the assignment.",
+      "remainingScope": "Whole-configuration staged releases, metric gates, pause and automated rollback remain open."
     },
     {
       "id": "PROTO-01",
@@ -1369,7 +1375,9 @@
       "status": "partial",
       "evidence": [
         "docs/control-console.md",
-        "web-tests/control.spec.js"
+        "web-tests/control.spec.js",
+        "docs/device-runtime-observations.md",
+        "web-tests/control-runtime.spec.js"
       ]
     },
     {
