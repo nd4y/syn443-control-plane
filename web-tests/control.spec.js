@@ -148,6 +148,46 @@ test('a delayed candidate count cannot repaint a changed draft',async({page,requ
  release();await expect(page.locator('#save-draft')).toBeEnabled();
  await expect(page.locator('#route-bounds-result')).toBeEmpty();await expect(button).toBeHidden();
 });
+test('phone source editor inspects assigned API resource metadata and distinguishes planned providers',async({page,request})=>{
+ await page.setViewportSize({width:393,height:852});
+ await reset(request);await page.goto(origin+'/#sources-title');
+ const mode=page.locator('#source-mode'),id=page.getByLabel('ID ресурса Remnawave'),button=page.getByRole('button',{name:'Посмотреть ресурс'}),details=page.locator('#provider-details');
+ await expect(id).toBeHidden();await mode.selectOption('resource');await expect(button).toBeDisabled();
+ await id.fill('/invalid');await expect(button).toBeDisabled();
+ await id.fill('panel-a');await button.click();
+ await expect(details.locator('dd')).toHaveText(['Synthetic panel-a','Remnawave','3.4','Включён','3','2','Нет данных']);
+ await expect(details).not.toContainText('fixture-impact-hash');
+ await id.fill('panel-b');await expect(details).toBeEmpty();await button.click();await expect(details).toContainText('Отключён');
+ await id.fill('future-a');await button.click();
+ await expect(details).toContainText('3x-ui');await expect(details).toContainText('Поддержка запланирована');
+ await expect(details).not.toContainText('Последняя синхронизация');
+ await mode.selectOption('manual');await expect(button).toBeHidden();await expect(details).toBeEmpty();
+ await mode.selectOption('resource');await button.click();await expect(details).toContainText('Synthetic future-a');
+ await id.fill('not-authorized');await button.click();await expect(page.locator('#status')).toContainText('недостаточно прав');
+ await expect(details).toBeEmpty();await expect(page.locator('#signin')).toBeVisible();
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(0);expect(state.calls.filter(name=>name==='resource.get')).toHaveLength(5);
+});
+
+test('source change and expired session cannot retain a previous resource lookup',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#sources-title');
+ const mode=page.locator('#source-mode'),id=page.getByLabel('ID ресурса Remnawave'),details=page.locator('#provider-details');
+ const button=page.getByRole('button',{name:'Посмотреть ресурс'});
+ await mode.selectOption('resource');await id.fill('panel-a');
+ let arrived,release;
+ const requested=new Promise(resolve=>{arrived=resolve}),gate=new Promise(resolve=>{release=resolve});
+ await page.route('**/control/action',async route=>{
+  if(route.request().postDataJSON().action!=='resource.get'){await route.continue();return;}
+  const response=await route.fetch();arrived();await gate;await route.fulfill({response});
+ });
+ await button.click();await requested;
+ await page.locator('#source-owner').evaluate(n=>{n.value='other-fixture';n.dispatchEvent(new Event('input',{bubbles:true}));});
+ release();await expect(button).toBeEnabled();await expect(details).toBeEmpty();await page.unroute('**/control/action');
+ await button.click();await expect(details).toContainText('Synthetic panel-a');
+ await request.post(origin+'/fixture/expire',{data:{}});await button.click();
+ await expect(details).toBeEmpty();await expect(page.locator('#signin')).toBeVisible();
+});
+
 test('route checks editor changes only its private draft and restores saved checks',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();
  await expect(page.locator('#route-check-add')).toBeDisabled();

@@ -4,6 +4,19 @@ This first M3 slice is a server-side adapter and an owner CLI. It does not add a
 device protocol or automatically assign a provider catalogue to SYN443 users.
 No live panel credential or provider URL is required by CI.
 
+## Inspect a source's resource in the console
+
+In **Источники**, choose **Remnawave API** as the source mode, enter the resource
+ID and select **Посмотреть ресурс**. A user with read access to that resource sees
+the provider, API version, enabled state, configuration revision, linked source
+count and last sync time when available. Opening the card does not contact the
+provider. The resource can be enabled before its first successful sync.
+
+Reserved x-ui, 3x-ui, Tailscale and ZeroTier records appear as **Поддержка
+запланирована**. They remain disabled and cannot hold credentials or run a sync.
+The editor clears the card when its source, owner or resource changes. Account
+expiry or loss of read access clears it as well.
+
 ## Pinned API contract
 
 The implemented subset follows official Remnawave 3.4 contracts at

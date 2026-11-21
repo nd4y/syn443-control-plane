@@ -265,10 +265,16 @@ function Sources() {
           <option value="xray">{'Xray'}</option>
           <option value="mihomo">{'Mihomo'}</option>
         </Select>
-        <label htmlFor="source-resource">Ресурс (для Remnawave API)</label>
-        <TextInput id="source-resource" autoComplete="off" maxLength={48} />
-        <label htmlFor="source-external">ID пользователя в Remnawave</label>
-        <TextInput id="source-external" autoComplete="off" maxLength={15} />
+        <div id="provider-settings" hidden>
+          <label htmlFor="source-resource">ID ресурса Remnawave</label>
+          <TextInput id="source-resource" autoComplete="off" maxLength={48} />
+          <Button id="inspect-provider" type="button" variant="secondary" isDisabled>
+            Посмотреть ресурс
+          </Button>
+          <div role="status" aria-live="polite"><dl id="provider-details" /></div>
+          <label htmlFor="source-external">ID пользователя в Remnawave</label>
+          <TextInput id="source-external" autoComplete="off" maxLength={15} />
+        </div>
         <label htmlFor="source-until">Разрешён до</label>
         <input id="source-until" type="datetime-local" required />
         <label htmlFor="source-refresh">Интервал обновления, секунды</label>
