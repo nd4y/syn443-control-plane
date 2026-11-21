@@ -102,6 +102,7 @@ jobs:
           python3 tools/check_adaptive_runtime_evidence.py exit-country-core-tests.jsonl --stage core
           python3 tools/check_route_fixture_evidence.py exit-country-core-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/chatweb" and .Test == "TestConsoleProfileValidationUsesCanonicalGatesWithoutProbing" and .Action == "pass")) | length == 1' exit-country-core-tests.jsonl
+          jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/chatweb" and .Test == "TestConsoleInvitationActionsAreBoundedAndSeparateFromImport" and .Action == "pass")) | length == 1' exit-country-core-tests.jsonl
           python3 tools/check_admin_bootstrap_evidence.py exit-country-core-tests.jsonl
           python3 tools/check_enrollment_queue_evidence.py exit-country-core-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/cmd/enrollment-admin" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryAggregateWorkerRotatesAfterFailureAndStopsWithoutAnotherStep","TestTelemetryAggregateWorkerRequiresScopedDSNAndExactArguments"])' exit-country-core-tests.jsonl
@@ -693,6 +694,7 @@ jobs:
         run: |
           set -euo pipefail
           GOFLAGS=-json bash tools/test_invitations.sh | tee exit-country-postgres-tests.jsonl
+          jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/invitation" and .Action == "pass")) | map(.Test) | contains(["TestSQLIssueLostReplyAndConflictingOperations","TestSQLClaimSeatQuotaKeySubstitutionAndStatusBoundaries","TestSQLRevokedUncompletedDeviceReleasesItsSeatBeforeExpiry"])' exit-country-postgres-tests.jsonl
           python3 tools/check_exit_country_evidence.py exit-country-postgres-tests.jsonl --stage postgres
           python3 tools/check_adaptive_runtime_evidence.py exit-country-postgres-tests.jsonl --stage postgres
           python3 tools/check_operation_reconcile_evidence.py exit-country-postgres-tests.jsonl --stage provisioning

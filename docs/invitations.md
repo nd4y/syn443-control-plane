@@ -1,5 +1,26 @@
 # One-use invitation authority
 
+## Mobile and desktop console
+
+Open **Приглашения** to issue a link for one new device. Use the recipient ID and
+current grant fingerprint from the account assignment, plus the service ID and
+revision of its signed bootstrap descriptor. The default lifetime is ten
+minutes. Review the recipient and confirm issuance. The console displays the
+exact returned link and generates its QR inside the browser. A link that exceeds
+QR capacity can still be delivered as text.
+
+After the recipient opens the link, look up its invitation ID. Once the new
+device claims it, compare the device key fingerprint and enter the six-digit
+code shown on the phone. Confirm to approve that key. Refresh the state to
+follow publication and completion. Revocation requires the currently displayed
+version and a separate confirmation. Completed devices have their own revocation
+workflow.
+
+The link and QR disappear on expiry, tab hiding, leaving the section or ending
+the session. An ambiguous issue reply can be retried in the same active session
+with the original request ID, recipient and expiry. The invitation API enforces
+the actor's current ACL and MFA for every mutation.
+
 The invitation component reserves a key for an existing enabled account/grant;
 it does not create a user or infer authority from Keycloak login alone. An issue
 request binds owner, grant hash, service/bootstrap revision and a maximum10-minute
@@ -47,11 +68,11 @@ committed, never infers readiness from a device-row insert. OIDC registration
 counts pending invitation reservations against the same device quota.
 
 SQL role and end-to-end tests run serially on a dedicated disposable Actions
-PostgreSQL fixture, with unchanged80% gates for invitation and its independent
-publisher bridge. No real users/accounts are enrolled by CI. Native protected
-trust/pending journal, camera/Intent/paste flow, root transition delivery and
-physical acceptance are still pending; backend integration alone does not close
-M2 or M3.
+PostgreSQL fixture, with 80% coverage gates for invitation and its independent
+publisher bridge. CI enrolls synthetic accounts. The Android client handles
+camera, image import and invitation links in its [enrollment screen](https://github.com/nd4y/syn443-android/blob/c92dc9f3c43a8b05d787f8a51840b9b0ff8cfcbe/app/src/main/kotlin/io/syn443/android/EnrollmentActivity.kt).
+End-to-end acceptance of a freshly issued console invitation requires a
+disposable device, its trusted descriptor and an authorized grant.
 
 Revoking a link after device preparation also retires the still-uncompleted
 identity through the narrow maintenance primitive; it cannot strand device seats.
