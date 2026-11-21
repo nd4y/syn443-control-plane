@@ -34,6 +34,26 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - run: python3 tools/check_documents.py
+      - id: android_register
+        run: |
+          revision=$(cat docs/android-register-revision.txt)
+          [[ "$revision" =~ ^[0-9a-f]{40}$ ]]
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: nd4y/syn443-android
+          ref: ${{ steps.android_register.outputs.revision }}
+          path: .android-register
+          sparse-checkout: /docs/requirements-register.json
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tools -p 'test_product_requirements.py'
+      - run: python3 tools/product_requirements.py .android-register/docs/requirements-register.json --csv "${RUNNER_TEMP}/product-requirements.csv"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: product-requirements
+          path: ${{ runner.temp }}/product-requirements.csv
+          if-no-files-found: error
       - run: python3 tools/check_contracts.py
       - run: python3 -m unittest discover -s tools -p 'test_enrollment_site.py'
       - run: python3 -m unittest discover -s tools -p 'test_exit_country_evidence.py'
