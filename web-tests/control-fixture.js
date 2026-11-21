@@ -4,6 +4,8 @@ let auth=true,denied=false,failSave=false,drafts=new Map(),operations=new Map(),
 const originalSource=()=>({id:'source-a',owner:'synthetic-user',name:'<img src=x onerror="window.injected=true">',mode:'server',format:'uri',enabled:true,state:'active',revision:1,networkModes:['wifi'],activeSnapshot:'snapshot-a',validUntil:1800003600,refreshSeconds:3600,maxStaleSeconds:86400});
 let sources=new Map([['source-a',originalSource()]]),jobs=new Map();
 let shares=new Map();
+const resourceEdits=new Map();
+const resourceImpact=crypto.createHash('sha256').update('synthetic source impact').digest('base64url');
 let layerDrafts=new Map(),discardedDrafts=new Set(),configurationJobs=new Map(),options={};
 let freshAssurance=false,assuranceRequests=[],authenticationStarts=0;
 let chatCalls=[];
@@ -26,7 +28,7 @@ const server=http.createServer(async(req,res)=>{
  const limit=req.url==='/chat/uploads/part'?352*1024:importing?14*1024*1024+65536:278528;
  let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>limit){send(413,{});return;}}
  let body;try{body=JSON.parse(raw||'{}');}catch{send(400,{});return;}
- if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];chatCalls=[];freshAssurance=false;assuranceRequests=[];authenticationStarts=0;runtimeSamples=new Map();runtimeClockOffset=0;const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();shares=new Map();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
+ if(req.url==='/fixture/reset'){auth=true;denied=false;failSave=!!body.failSave;drafts=new Map();operations=new Map();calls=[];chatCalls=[];freshAssurance=false;assuranceRequests=[];authenticationStarts=0;runtimeSamples=new Map();runtimeClockOffset=0;const source=originalSource();if(body.manualSource)source.mode='manual';sources=new Map([['source-a',source]]);jobs=new Map();shares=new Map();resourceEdits.clear();layerDrafts=new Map();discardedDrafts=new Set();configurationJobs=new Map();options={...body};send(200,{});return;}
  if(req.url==='/fixture/runtime-clock'){
   if(!Number.isSafeInteger(body.advanceMs)||body.advanceMs<0||body.advanceMs>3600000){send(400,{});return;}
   runtimeClockOffset+=body.advanceMs;send(200,{});return;
@@ -176,8 +178,20 @@ const server=http.createServer(async(req,res)=>{
   };
   if(!Object.hasOwn(providers,p.id)){send(403,{});break;}
   const [providerType,apiVersion,enabled,state]=providers[p.id];
-  send(200,{resource:{id:p.id,name:'Synthetic '+p.id,providerType,apiVersion,enabled,state,revision:3,lastSync:0},
-   impact:{sources:2,hash:'fixture-impact-hash'}});break;
+  send(200,{resource:resourceEdits.get(p.id)||{id:p.id,name:'Synthetic '+p.id,providerType,apiVersion,enabled,state,revision:3,lastSync:0},
+   impact:{sources:2,hash:resourceImpact}});break;
+ }
+ case 'resource.put':{
+  const prior=operations.get(body.requestId);
+  if(prior){send(prior.raw===raw?200:409,prior.value);break;}
+  const edit=p.resource;
+  if(!edit||edit.id!=='panel-a'||edit.providerType!=='panel.remnawave'||p.secret.operation!=='keep'||Object.keys(p.secret).length!==1){send(403,{});break;}
+  if(p.impactHash!==resourceImpact||edit.revision!==(resourceEdits.get(edit.id)?.revision||3)){send(409,{});break;}
+  if(options.providerReauth&&!freshAssurance){send(403,{code:'catalog_reauthentication_required'});break;}
+  const value={...edit,revision:edit.revision+1,state:edit.enabled?'unknown':'disabled',lastSync:0};
+  resourceEdits.set(edit.id,value);operations.set(body.requestId,{raw,value});
+  if(options.providerLostReply){options.providerLostReply=false;send(503,{});}else send(200,value);
+  break;
  }
  case 'source.get':{const source=sources.get(p.id);send(source?200:403,source||{});break;}
  case 'source.shares.get':{

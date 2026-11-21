@@ -19,6 +19,14 @@ Reserved x-ui, 3x-ui, Tailscale and ZeroTier records appear as **Поддерж�
 The editor clears the card when its source, owner or resource changes. Account
 expiry or loss of read access clears it as well.
 
+Open **Изменить ресурс Remnawave** to rename an existing resource or allow or
+stop its source synchronization. A synchronization change shows the number of
+affected sources and requires confirmation and fresh administrative login.
+**Сохранить ресурс** uses the revision and source-impact digest from the
+current card. A conflict requires opening the card again. After a lost
+response, the retry control sends the same request identifier and content.
+The catalog rechecks the write grant and keeps its existing credential.
+
 ## Pinned API contract
 
 The implemented subset follows official Remnawave 3.4 contracts at

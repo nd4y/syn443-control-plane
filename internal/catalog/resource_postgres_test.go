@@ -182,7 +182,7 @@ func TestSQLResourcesAuthorityImpactAndRevisionFence(t *testing.T) {
 	if _, e = api.PutResource(ctx, actor, changed, SecretPatch{Operation: "keep"}, "wrong", "disable-stale-impact", now); !errors.Is(e, ErrConflict) {
 		t.Fatal("disable without exact impact", e)
 	}
-	if _, e = api.PutResource(ctx, noMFA, changed, SecretPatch{Operation: "keep"}, impact.Hash, "disable-no-mfa", now); !errors.Is(e, ErrDenied) {
+	if _, e = api.PutResource(ctx, noMFA, changed, SecretPatch{Operation: "keep"}, impact.Hash, "disable-no-mfa", now); !errors.Is(e, ErrReauthentication) {
 		t.Fatal("disable without assurance", e)
 	}
 	if _, e = api.PutResource(ctx, actor, changed, SecretPatch{Operation: "keep"}, impact.Hash, "disable", now); e != nil {

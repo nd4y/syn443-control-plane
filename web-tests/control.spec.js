@@ -206,6 +206,57 @@ test('phone source editor inspects assigned API resource metadata and distinguis
  expect(state.operations).toBe(0);expect(state.calls.filter(name=>name==='resource.get')).toHaveLength(5);
 });
 
+async function editExistingProvider(page){
+ await page.goto(origin+'/#sources-title');
+ await page.locator('#source-mode').selectOption('resource');
+ await page.getByLabel('ID ресурса Remnawave').fill('panel-a');
+ await page.getByRole('button',{name:'Посмотреть ресурс'}).click();
+ await page.getByText('Изменить ресурс Remnawave',{exact:true}).click();
+ return page.getByRole('button',{name:'Сохранить ресурс'});
+}
+
+test('mobile resource rename replays its exact request after a lost response',async({page,request})=>{
+ await page.setViewportSize({width:393,height:852});await reset(request,{providerLostReply:true});
+ const bodies=[];
+ page.on('request',r=>{if(r.url().endsWith('/control/action')&&r.postDataJSON()?.action==='resource.put')bodies.push(r.postData());});
+ const save=await editExistingProvider(page);
+ await expect(save).toBeDisabled();await page.getByLabel('Название ресурса').fill('Тестовый провайдер');
+ await page.getByLabel('Название ресурса').press('Enter');await expect(page.locator('#pending')).toBeVisible();
+ await page.locator('#retry-save').click();await expect(page.locator('#provider-details')).toContainText('Тестовый провайдер');
+ expect(bodies).toHaveLength(2);expect(bodies[1]).toBe(bodies[0]);
+ const payload=JSON.parse(bodies[0]).payload;
+ expect(payload.secret).toEqual({operation:'keep'});expect(payload.resource.revision).toBe(3);
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();expect(state.operations).toBe(1);
+ expect(state.calls).not.toContain('configuration.publish');expect(state.calls).not.toContain('source.put');
+});
+
+test('sync changes require acknowledged impact and explicit retry after stronger login',async({page,request})=>{
+ await reset(request,{reauthentication:true,providerReauth:true});
+ const save=await editExistingProvider(page);
+ await page.getByLabel('Разрешить синхронизацию').uncheck();
+ await expect(page.locator('#provider-impact-text')).toContainText('Связанные источники: 2');
+ await expect(save).toBeDisabled();await page.getByLabel('Подтверждаю изменение синхронизации').check();await save.click();
+ await expect(page.locator('#reauthentication')).toBeVisible();
+ await request.post(origin+'/fixture/reauth-complete',{data:{}});
+ await page.locator('#reauthentication-check').click();
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();expect(state.operations).toBe(0);
+ await page.locator('#retry-save').click();await expect(page.locator('#provider-details')).toContainText('Отключён');
+});
+
+test('a conflicting resource update requires fresh inspection and planned providers stay read-only',async({page,request})=>{
+ await reset(request);const save=await editExistingProvider(page);
+ await page.route('**/control/action',async route=>{
+  if(route.request().postDataJSON().action==='resource.put')await route.fulfill({status:409,json:{}});
+  else await route.continue();
+ });
+ await page.getByLabel('Название ресурса').fill('Conflicting edit');await save.click();
+ await expect(page.locator('#status')).toContainText('Ресурс или его источники изменились');
+ await expect(page.locator('#provider-editor')).toBeHidden();await expect(page.locator('#pending')).toBeHidden();
+ await page.getByLabel('ID ресурса Remnawave').fill('future-a');await page.getByRole('button',{name:'Посмотреть ресурс'}).click();
+ await expect(page.locator('#provider-details')).toContainText('Поддержка запланирована');
+ await expect(page.locator('#provider-editor')).toBeHidden();
+});
+
 test('source change and expired session cannot retain a previous resource lookup',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#sources-title');
  const mode=page.locator('#source-mode'),id=page.getByLabel('ID ресурса Remnawave'),details=page.locator('#provider-details');
