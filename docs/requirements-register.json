@@ -2261,7 +2261,8 @@
         "cmd/control-api/main.go",
         "cmd/telemetry-ingest/main.go",
         "internal/enrollment/ingest-roles.sql",
-        "internal/enrollment/standalone_ingest_postgres_test.go"
+        "internal/enrollment/standalone_ingest_postgres_test.go",
+        "deploy/telemetry-ingest/compose.yaml"
       ]
     },
     {
@@ -2385,8 +2386,14 @@
     {
       "id": "SVC-10",
       "text": "Поставка включает Compose-профиль малого сервера, health/readiness, ограничения CPU/RAM, метрики очередей/provider jobs, раздельные логи и независимые restart/scale. Worker outage оставляет выдачу уже готовых разрешённых конфигов, frontend outage не останавливает API/клиента. Реальное high availability и Kubernetes не являются обязательными для первого пилота. Маршруты выбираются телефоном; worker не является удалённым мозгом каждого соединения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "deploy/overlay-worker/compose.yaml",
+        "deploy/telemetry-ingest/compose.yaml",
+        "internal/enrollment/standalone_ingest_postgres_test.go",
+        "docs/telemetry-ingest.md"
+      ],
+      "remainingScope": "The remaining services need a complete small-server Compose profile, queue visibility, independent scaling and integrated outage acceptance."
     },
     {
       "id": "ADB-01",

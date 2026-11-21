@@ -20,27 +20,33 @@ import (
 )
 
 type config struct {
-	Listen         string `json:"listen"`
-	Origin         string `json:"origin"`
-	DatabaseFile   string `json:"databaseFile"`
-	Certificate    string `json:"certificate"`
-	CertificateKey string `json:"certificateKey"`
-	FixtureHTTP    bool   `json:"fixtureHttp"`
+	Listen              string `json:"listen"`
+	Origin              string `json:"origin"`
+	DatabaseFile        string `json:"databaseFile"`
+	Certificate         string `json:"certificate"`
+	CertificateKey      string `json:"certificateKey"`
+	ReadinessServerName string `json:"readinessServerName,omitempty"`
+	FixtureHTTP         bool   `json:"fixtureHttp"`
 }
 
-func run(ctx context.Context) error {
+func loadConfig() (config, error) {
+	var c config
 	raw, err := enrollment.PrivateFile(os.Getenv("SYN443_TELEMETRY_CONFIG"), 16384)
 	if err != nil {
-		return err
+		return c, err
 	}
-	var c config
+	defer clear(raw)
 	if identity.Decode(raw, &c, true) != nil {
-		return identity.ErrInvalid
+		return c, identity.ErrInvalid
 	}
 	host, _, err := net.SplitHostPort(c.Listen)
 	if err != nil || !net.ParseIP(host).IsLoopback() {
-		return identity.ErrInvalid
+		return c, identity.ErrInvalid
 	}
+	return c, nil
+}
+
+func run(ctx context.Context, c config) error {
 	dsn, err := enrollment.PrivateFile(c.DatabaseFile, 8192)
 	if err != nil {
 		return err
@@ -53,8 +59,14 @@ func run(ctx context.Context) error {
 		return err
 	}
 	defer service.Close()
+	handler := health.Wrap(ctx, service, service.Ready)
 	server := &http.Server{
-		Addr: c.Listen, Handler: health.Wrap(ctx, service, service.Ready),
+		Addr: c.Listen, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/readyz" {
+				w.Header().Set("X-SYN443-Service", "telemetry-ingest")
+			}
+			handler.ServeHTTP(w, r)
+		}),
 		ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second,
 		IdleTimeout: 15 * time.Second, MaxHeaderBytes: 16384, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12},
 	}
@@ -95,7 +107,20 @@ func run(ctx context.Context) error {
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	if len(os.Args) != 1 || run(ctx) != nil {
+	check := len(os.Args) == 2 && os.Args[1] == "--check-ready"
+	if len(os.Args) != 1 && !check {
+		fmt.Fprintln(os.Stderr, "usage: telemetry-ingest [--check-ready]")
+		os.Exit(2)
+	}
+	c, err := loadConfig()
+	if err == nil {
+		if check {
+			err = checkReady(ctx, c)
+		} else {
+			err = run(ctx, c)
+		}
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "telemetry_ingest_unavailable")
 		os.Exit(1)
 	}

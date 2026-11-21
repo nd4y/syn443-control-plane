@@ -11,16 +11,16 @@ CERTS = 'etc/ssl/certs/ca-certificates.crt'
 DIRECTORIES = {'.', 'etc', 'etc/ssl', 'etc/ssl/certs'}
 
 
-def check_layer(layer, seen, expected):
+def check_layer(layer, seen, expected, service='overlay-worker'):
     for item in layer:
         name = str(PurePosixPath(item.name))
         if item.isdir() and name in DIRECTORIES:
             continue
-        if not item.isreg() or name not in ('overlay-worker', CERTS) or name in seen:
+        if not item.isreg() or name not in (service, CERTS) or name in seen:
             raise ValueError('Unexpected or repeated image layer entry')
         seen.add(name)
         with layer.extractfile(item) as data:
-            if name == 'overlay-worker':
+            if name == service:
                 if item.mode & 0o7777 != 0o555 or hashlib.file_digest(data, 'sha256').digest() != expected:
                     raise ValueError('Image binary differs from the scanned release')
             else:
@@ -33,7 +33,9 @@ def check_layer(layer, seen, expected):
                 ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT).load_verify_locations(cadata=pem)
 
 
-def verify(archive, binary, tag):
+def verify(archive, binary, tag, service='overlay-worker'):
+    if service not in ('overlay-worker', 'telemetry-ingest'):
+        raise ValueError('Unknown service image')
     with binary.open('rb') as data:
         expected = hashlib.file_digest(data, 'sha256').digest()
     with tarfile.open(archive, 'r:gz') as image:
@@ -47,10 +49,10 @@ def verify(archive, binary, tag):
         seen = set()
         for name in manifest['Layers']:
             with image.extractfile(name) as raw, tarfile.open(fileobj=raw, mode='r|*') as layer:
-                check_layer(layer, seen, expected)
-        if seen != {'overlay-worker', CERTS}:
+                check_layer(layer, seen, expected, service)
+        if seen != {service, CERTS}:
             raise ValueError('Incomplete release root filesystem')
 
 
 if __name__ == '__main__':
-    verify(Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3])
+    verify(Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], *sys.argv[4:])

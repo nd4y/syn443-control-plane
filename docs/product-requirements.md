@@ -4,7 +4,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Requirements | 292 | 107 | 34 | 58 | 93 |
+| Requirements | 292 | 107 | 34 | 59 | 92 |
 | Acceptance scenarios | 98 | 19 | 0 | 4 | 75 |
 
 ## Requirement families
@@ -39,7 +39,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | MOB | 8 | 3 | 2 | 2 | 1 |
 | CHAT | 15 | 15 | 0 | 0 | 0 |
 | SRV | 4 | 0 | 0 | 2 | 2 |
-| SVC | 10 | 0 | 0 | 8 | 2 |
+| SVC | 10 | 0 | 0 | 9 | 1 |
 | ADB | 4 | 4 | 0 | 0 | 0 |
 | BOOT | 15 | 2 | 1 | 6 | 6 |
 | NFR | 8 | 1 | 0 | 1 | 6 |
@@ -51,7 +51,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 Download `product-requirements` from the CI run for this Control Plane revision. The CSV lists every requirement and acceptance scenario with both original status values. Look up the item ID in its component register for evidence and remaining scope.
 
 - [Control Plane register](requirements-register.json)
-- [Android register at 71d45dc843d8](https://github.com/nd4y/syn443-android/blob/71d45dc843d82cf3beb6737c8971f4dcd88e4040/docs/requirements-register.json)
+- [Android register at 4b57bbb4187c](https://github.com/nd4y/syn443-android/blob/4b57bbb4187cf2a4028f111eb2a0ad7659f3a9aa/docs/requirements-register.json)
 - [Technical specification](spec/TECHNICAL_SPEC_RU.md)
 - [Live and release acceptance records](implementation-status.md)
 

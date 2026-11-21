@@ -17,6 +17,19 @@ import (
 )
 
 func TestStandaloneTelemetryProcessReceivesBoundEvents(t *testing.T) {
+	exerciseStandaloneTelemetry(t, "")
+}
+
+func TestPackagedTelemetryProcessReceivesBoundEvents(t *testing.T) {
+	image := os.Getenv("SYN443_TEST_TELEMETRY_IMAGE")
+	if image == "" {
+		t.Skip("packaged telemetry image is required by the release workflow")
+	}
+	exerciseStandaloneTelemetry(t, image)
+}
+
+func exerciseStandaloneTelemetry(t *testing.T, image string) {
+	t.Helper()
 	f := newFixture(t, 1)
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -49,8 +62,17 @@ func TestStandaloneTelemetryProcessReceivesBoundEvents(t *testing.T) {
 	if err := os.WriteFile(dsn, []byte(fixtureIngestDSN), 0600); err != nil {
 		t.Fatal(err)
 	}
-	privateJSON(t, config, map[string]any{"databaseFile": dsn, "listen": addr, "origin": f.origin, "fixtureHttp": true})
-	stop, _ := startProcess(t, "telemetry-ingest", []string{"SYN443_TELEMETRY_CONFIG=" + config})
+	dbPath := dsn
+	if image != "" {
+		dbPath = "/run/syn443/telemetry/database"
+	}
+	privateJSON(t, config, map[string]any{"databaseFile": dbPath, "listen": addr, "origin": f.origin, "fixtureHttp": true})
+	var stop func()
+	if image == "" {
+		stop, _ = startProcess(t, "telemetry-ingest", []string{"SYN443_TELEMETRY_CONFIG=" + config})
+	} else {
+		stop = startTelemetryImage(t, image, config, dsn)
+	}
 	defer stop()
 	client := &http.Client{Timeout: 2 * time.Second}
 	deadline := time.Now().Add(6 * time.Second)
