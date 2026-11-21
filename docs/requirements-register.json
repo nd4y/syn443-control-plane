@@ -1270,8 +1270,12 @@
     {
       "id": "RLP-06",
       "text": "Перед rollout выполняются static validation и replay/simulation на сценарных trace. Shadow evaluation оценивает другую policy на тех же фактах, но не меняет маршруты, не запускает дополнительные сетевые пробы и не вмешивается в рабочее соединение. Отличающиеся probe plans отдельно испытываются на пилотах в своём бюджете.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md#replay-the-freshness-of-route-evidence"
+      ],
+      "implementationScope": "Authenticated operators can replay bounded aggregate evidence or the shared scenario corpus with a trial evidence TTL. Both passes use the reference route-ranking function, with no network probes or policy writes.",
+      "remainingScope": "On-device shadow observation, additional decision policy variants and automated prepublication gates."
     },
     {
       "id": "RLP-07",
@@ -2998,9 +3002,10 @@
       "specRow": " Cohort rollout и shadow новой policy | Назначение стабильно, control группа сохранена; shadow не меняет маршруты и не создаёт сетевых проб |",
       "status": "partial",
       "evidence": [
-        "docs/control-catalog.md#permanent-control-group"
+        "docs/control-catalog.md#permanent-control-group",
+        "docs/control-catalog.md#replay-the-freshness-of-route-evidence"
       ],
-      "implementationScope": "Stable assignment and permanent baseline control for the built-in decision and reserve cooldown options.",
+      "implementationScope": "Stable assignment and permanent baseline control for the built-in decision and reserve cooldown options. The console can compare snapshot ranking on identical facts with a trial freshness window.",
       "remainingScope": "Shadow policy evaluation and operational comparison across cohorts."
     },
     {
