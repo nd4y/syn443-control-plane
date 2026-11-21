@@ -13,6 +13,7 @@ tls_dir=$(mktemp -d)
 cleanup() {
   if [ -n "$container_id" ]; then docker rm -f -v "$container_id" >/dev/null; fi
   rm -f -- "$tls_dir"/{ca.key,ca.crt,server.key,server.csr,server.crt,extensions}
+  rm -f -- "$tls_dir/capacity-engine.json"
   rmdir -- "$tls_dir"
   unset POSTGRES_PASSWORD PGPASSWORD SYN443_TEST_DATABASE
 }
@@ -50,6 +51,14 @@ docker exec "$container_id" psql -X -U postgres -v ON_ERROR_STOP=1 \
   -c "ALTER SYSTEM SET ssl_key_file = '/tmp/syn443-server.key'" \
   -c "ALTER SYSTEM SET ssl = 'on'" -c 'SELECT pg_reload_conf()' >/dev/null
 export SYN443_TEST_DATABASE_CA="$tls_dir/ca.crt"
+if [[ "${1:-}" == capacity ]]; then
+  [[ "$#" == 1 && "${GITHUB_ACTIONS:-}" == true && -n "${RUNNER_TEMP:-}" ]]
+  export SYN443_CAPACITY_ENGINE="$tls_dir/capacity-engine.json"
+  export SYN443_CAPACITY_REPORT="$RUNNER_TEMP/small-service-capacity.json"
+  go test -count=1 -tags capacity -run '^TestExportCapacityEngineFrom500CompiledProfiles$' ./internal/configuration
+  go test -count=1 -timeout=7m -tags 'postgres capacity' -run '^(TestCapacityKeepsEveryScheduledOutcomeInEachPercentile|TestSmallServiceCapacityWithIssuedPoliciesAndDurableTelemetry)$' -v ./internal/enrollment
+  exit 0
+fi
 if [ -n "${SYN443_GO_IMAGE:-}" ]; then
   # Optional bounded builder for the shared build host; CI uses its pinned Go installation.
   mkdir -p "$PWD/.fixture-cache/mod" "$PWD/.fixture-cache/build"

@@ -2658,8 +2658,13 @@
     {
       "id": "NFR-07",
       "text": "Начальная проверяемая ёмкость для малого закрытого сервиса: 100 пользователей, 300 зарегистрированных устройств, 100 одновременно работающих клиентов, 500 профилей на устройство. Нагрузочные цели серверного API: p95 до 500ms для чтения готового конфига и приёма обычного telemetry batch без внешней загрузки провайдера. Цифры являются предложенными целями, а не оценкой текущей аудитории.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/enrollment/small_service_capacity_postgres_test.go",
+        "internal/configuration/small_service_capacity_test.go",
+        "tools/test_enrollment.sh",
+        "docs/TESTING.md#small-service-reference-load"
+      ]
     },
     {
       "id": "NFR-08",
