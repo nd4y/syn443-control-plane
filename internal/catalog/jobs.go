@@ -346,6 +346,12 @@ func (s *Store) Fail(ctx context.Context, job Job, reason string, permanent bool
 	if reason == "subscription_empty_response" || reason == "subscription_invalid" || reason == "subscription_unsupported" || reason == "subscription_ambiguous" || reason == "subscription_size_limit" {
 		state = "quarantined"
 	}
+	// A review may promote another snapshot without changing the source revision.
+	// A failure of the retired input cannot quarantine or reschedule that new head.
+	// Authoritative denial applies to the source under the still-current credentials.
+	if source.ActiveSnapshot != job.BaseSnapshot && state != "revoked" && state != "expired" {
+		return ErrStale
+	}
 	_, e = tx.ExecContext(ctx, `UPDATE catalog_jobs SET phase=$2,reason=$3,lease='',lease_until=0,not_before=$4,updated_at=$5 WHERE id=$1`, job.ID, phase, reason, now.Unix()+delay, now.Unix())
 	if e != nil {
 		return ErrUnavailable
