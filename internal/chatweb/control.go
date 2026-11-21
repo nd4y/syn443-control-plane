@@ -1,7 +1,10 @@
 package chatweb
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"regexp"
+	"strings"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
@@ -30,6 +33,8 @@ func validConsoleAction(raw []byte, sourceImport bool) bool {
 		return request.Action == "source.import"
 	}
 	switch request.Action {
+	case "resource.put":
+		return len(raw) <= 4096 && validResourceEdit(request.Payload)
 	case "invite.issue", "invite.get", "invite.approve", "invite.revoke":
 		return len(raw) <= 8192
 	case "telemetry.summary.get":
@@ -38,4 +43,34 @@ func validConsoleAction(raw []byte, sourceImport bool) bool {
 		return true
 	}
 	return false
+}
+
+var resourceEditID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,48}$`)
+
+// The browser can change an existing resource's metadata. Credentials and
+// provider construction remain behind the catalog's separate operator path.
+func validResourceEdit(raw json.RawMessage) bool {
+	var body struct {
+		Resource struct {
+			ID           string `json:"id"`
+			Name         string `json:"name"`
+			ProviderType string `json:"providerType"`
+			APIVersion   string `json:"apiVersion"`
+			Enabled      *bool  `json:"enabled"`
+			Revision     int64  `json:"revision"`
+		} `json:"resource"`
+		Secret struct {
+			Operation string `json:"operation"`
+		} `json:"secret"`
+		ImpactHash string `json:"impactHash"`
+	}
+	if identity.Decode(raw, &body, true) != nil {
+		return false
+	}
+	r := body.Resource
+	hash, err := base64.RawURLEncoding.Strict().DecodeString(body.ImpactHash)
+	return err == nil && len(hash) == 32 && base64.RawURLEncoding.EncodeToString(hash) == body.ImpactHash &&
+		body.Secret.Operation == "keep" && resourceEditID.MatchString(r.ID) &&
+		r.ProviderType == "panel.remnawave" && r.APIVersion == "3.4" && r.Enabled != nil &&
+		r.Revision > 0 && r.Revision < 9007199254740991 && strings.TrimSpace(r.Name) != "" && len(r.Name) <= 256
 }

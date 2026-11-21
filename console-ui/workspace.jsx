@@ -281,6 +281,17 @@ function Sources() {
             Посмотреть ресурс
           </Button>
           <div role="status" aria-live="polite"><dl id="provider-details" /></div>
+          <details id="provider-editor" hidden>
+            <summary>Изменить ресурс Remnawave</summary>
+            <label htmlFor="provider-edit-name">Название ресурса</label>
+            <TextInput id="provider-edit-name" autoComplete="off" maxLength={256} />
+            <label><input id="provider-edit-enabled" type="checkbox" /> Разрешить синхронизацию</label>
+            <div id="provider-impact" hidden>
+              <p id="provider-impact-text" aria-live="polite" />
+              <label><input id="provider-impact-confirm" type="checkbox" /> Подтверждаю изменение синхронизации</label>
+            </div>
+            <Button id="provider-edit-save" type="button" variant="secondary" isDisabled>Сохранить ресурс</Button>
+          </details>
           <label htmlFor="source-external">ID пользователя в Remnawave</label>
           <TextInput id="source-external" autoComplete="off" maxLength={15} />
         </div>

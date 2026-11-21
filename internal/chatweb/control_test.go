@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -14,6 +15,24 @@ import (
 	"sync"
 	"testing"
 )
+
+func TestConsoleResourceEditsKeepCredentialsAndRequireReviewedExistingRevision(t *testing.T) {
+	hash := base64.RawURLEncoding.EncodeToString(make([]byte, 32))
+	const fields = `"id":"panel-a","name":"Reviewed","providerType":"panel.remnawave","apiVersion":"3.4","enabled":true,"revision":2`
+	body := `{"version":1,"action":"resource.put","requestId":"synthetic-request-123","payload":{"resource":{` + fields + `},"secret":{"operation":"keep"},"impactHash":"` + hash + `"}}`
+	if !validConsoleAction([]byte(body), false) || validConsoleAction([]byte(body), true) {
+		t.Fatal("existing metadata edit did not use the control action boundary")
+	}
+	for _, pair := range [][2]string{
+		{`"revision":2`, `"revision":0`}, {`"enabled":true,`, ""}, {"panel.remnawave", "panel.3x-ui"},
+		{`"operation":"keep"`, `"operation":"delete"`}, {`"operation":"keep"`, `"operation":"keep","value":{}`},
+		{`"name":"Reviewed"`, `"name":"  "`}, {hash, "missing-impact"},
+	} {
+		if validConsoleAction([]byte(strings.Replace(body, pair[0], pair[1], 1)), false) {
+			t.Fatal("unsupported resource edit reached the catalog boundary")
+		}
+	}
+}
 
 func TestConsoleInvitationActionsAreBoundedAndSeparateFromImport(t *testing.T) {
 	for _, action := range []string{"invite.issue", "invite.get", "invite.approve", "invite.revoke", "invite.list", "invite.complete", "invite.admin"} {
