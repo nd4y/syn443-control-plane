@@ -135,8 +135,10 @@ for(const action of ['older','newer','latest'])$(action).onclick=()=>work(()=>re
 $('more').onclick=()=>work(()=>loadInbox('more'));
 $('inbox-first').onclick=()=>work(()=>loadInbox('first'));
 $('text').oninput=controls;
-$('text').oncompositionstart=()=>{composing=true;controls();};
-$('text').oncompositionend=()=>{composing=false;controls();};
+const composer=$('text');
+function composition(event){composing=event.type==='compositionstart';controls();}
+composer.addEventListener('compositionstart',composition);
+composer.addEventListener('compositionend',composition);
 $('file').onchange=()=>{$('attachment').textContent=Array.from($('file').files).map(f=>f.name+' ('+Math.ceil(f.size/1024)+' КБ)').join(', ');controls();};
 $('discard').onclick=()=>{pending=null;status('Локальная попытка удалена. Уже доставленное сообщение остаётся у собеседника.');controls();};
 $('compose').onsubmit=event=>event.preventDefault();
@@ -187,5 +189,10 @@ if(embedded){$('retry').onclick=()=>{if(Date.now()<manualAt||busy)return;manualA
 const timer=setInterval(()=>{if(embedded)$('retry').disabled=busy||Date.now()<manualAt;resume();},10000);
 document.addEventListener('visibilitychange',visibility);
 controls();if(!embedded)resume();
-return {resume,suspend,clear,dispose(){destroyed=true;suspend();forget();clearInterval(timer);document.removeEventListener('visibilitychange',visibility);}};
+return {resume,suspend,clear,dispose(){
+ destroyed=true;suspend();forget();clearInterval(timer);
+ document.removeEventListener('visibilitychange',visibility);
+ composer.removeEventListener('compositionstart',composition);
+ composer.removeEventListener('compositionend',composition);
+}};
 }

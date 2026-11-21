@@ -24,6 +24,7 @@ for (const surface of ['standalone', 'console']) {
   const draft=el('text'),send=el('send');
   await draft.fill('編');
   await draft.dispatchEvent('compositionstart',{data:'編'});
+  await expect(send).toBeDisabled();
   await draft.dispatchEvent('keydown',{key:'Enter',isComposing:true});
   await el('compose').evaluate(form=>form.requestSubmit());
   await expect(send).toBeDisabled();
