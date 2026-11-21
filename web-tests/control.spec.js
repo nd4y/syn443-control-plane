@@ -1031,3 +1031,38 @@ test('phone rejects invalid home credentials and clears unsaved fields on a targ
  await page.locator('#plan').fill(JSON.stringify(regular));await expect(page.locator('#home-proof')).toBeHidden();
  expect((await(await request.post(origin+'/fixture/state',{data:{}})).json()).operations).toBe(0);
 });
+
+test('phone assigns a preferred mode and bounded temporary permission in the local draft',async({page,request})=>{
+ const original=await editHomeProof(page,request);
+ await page.getByLabel('Режим по умолчанию').selectOption('WIFI');
+ await page.locator('#mode-allow-WIFI').check();
+ await page.getByLabel('Максимальный срок выбора в минутах').fill('45');
+ await page.getByRole('button',{name:'Записать режим в черновик'}).click();
+ const expected=structuredClone(original);
+ expected.network.modeSelection={preferredMode:'WIFI',userModes:['WIFI'],maxOverrideMinutes:45};
+ expect(JSON.parse(await page.locator('#plan').inputValue())).toEqual(expected);
+ await page.locator('#mode-allow-WIFI').uncheck();
+ await expect(page.locator('#mode-minutes')).toBeDisabled();
+ await page.locator('#mode-apply').click();
+ expected.network.modeSelection={preferredMode:'WIFI',userModes:[],maxOverrideMinutes:0};
+ expect(JSON.parse(await page.locator('#plan').inputValue())).toEqual(expected);
+ await page.getByRole('button',{name:'Убрать назначение режима'}).click();
+ expect(JSON.parse(await page.locator('#plan').inputValue())).toEqual(original);
+ expect((await(await request.post(origin+'/fixture/state',{data:{}})).json()).operations).toBe(0);
+});
+test('phone rejects unverified home selection and drops stale mode edits when the recipient changes',async({page,request})=>{
+ await editHomeProof(page,request);
+ const raw=await page.locator('#plan').inputValue();
+ await page.locator('#mode-allow-HOME_WIFI').check();
+ await page.locator('#mode-apply').click();
+ await expect(page.locator('#mode-feedback')).toContainText('Сначала укажите узел');
+ await expect(page.locator('#plan')).toHaveValue(raw);
+ await page.locator('#mode-allow-HOME_WIFI').uncheck();
+ await page.locator('#mode-allow-WIFI').check();await page.locator('#mode-minutes').fill('1441');
+ await page.locator('#mode-apply').click();await expect(page.locator('#mode-minutes')).toBeFocused();
+ await expect(page.locator('#plan')).toHaveValue(raw);
+ await page.locator('#target-id').fill('other-synthetic-device');
+ await expect(page.locator('#mode-allow-WIFI')).not.toBeChecked();
+ await expect(page.locator('#mode-minutes')).toBeDisabled();
+ expect((await(await request.post(origin+'/fixture/state',{data:{}})).json()).operations).toBe(0);
+});

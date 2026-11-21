@@ -127,6 +127,51 @@ function showHomeProof(current, changed) {
  }
  $('home-feedback').textContent='';
 }
+const supportedModes=['HOME_WIFI','WIFI','CELLULAR_RESTRICTED','CELLULAR'];
+function updateDurationControl() {
+ const permitted=supportedModes.some(mode=>$('mode-allow-'+mode).checked);
+ $('mode-minutes').disabled=!permitted;
+}
+function showModeSelection(current,changed) {
+ const form=$('mode-selection'), enabled=!!current?.value.adaptive;
+ form.hidden=!enabled;
+ form.disabled=!enabled||busy||!!pending;
+ const rule=current?.network.modeSelection;
+ $('mode-remove').disabled=!enabled||!rule;
+ if(!changed)return;
+ $('mode-preferred').value=rule?.preferredMode??'AUTO';
+ for(const mode of supportedModes)$('mode-allow-'+mode).checked=Array.isArray(rule?.userModes)&&rule.userModes.includes(mode);
+ $('mode-minutes').value=rule?.maxOverrideMinutes>0?String(rule.maxOverrideMinutes):'60';
+ $('mode-feedback').textContent='';
+ updateDurationControl();
+}
+for(const mode of supportedModes)$('mode-allow-'+mode).onchange=updateDurationControl;
+function changeModeSelection(remove) {
+ if(!authenticated||busy||pending||homeDocument!==$('plan').value||homeSubject!==profileSubject())return;
+ const state=routeDraft();
+ if(!state.value.adaptive)return;
+ const notice=$('mode-feedback');
+ if(remove) delete state.network.modeSelection;
+ else {
+  const preferredMode=$('mode-preferred').value;
+  const userModes=supportedModes.filter(mode=>$('mode-allow-'+mode).checked);
+  const minutes=$('mode-minutes').value.trim();
+  if(!state.network.homeProof&&(preferredMode==='HOME_WIFI'||userModes.includes('HOME_WIFI'))){
+   notice.textContent='Сначала укажите узел для проверки домашнего Wi-Fi.';
+   (preferredMode==='HOME_WIFI'?$('mode-preferred'):$('mode-allow-HOME_WIFI')).focus();return;
+  }
+  if(userModes.length&&(!/^[1-9][0-9]{0,3}$/.test(minutes)||Number(minutes)>1440)){
+   notice.textContent='Выберите срок от 1 до 1440 минут.';$('mode-minutes').focus();return;
+  }
+  state.network.modeSelection={preferredMode,userModes,maxOverrideMinutes:userModes.length?Number(minutes):0};
+ }
+ const next=JSON.stringify(state.value,null,2);
+ if(new TextEncoder().encode(next).length>262144){notice.textContent='План превышает допустимый размер.';return;}
+ $('plan').value=next;drawRouteChecks();
+ notice.textContent=remove?'Назначение режима удалено из черновика.':'Назначение режима записано в черновик.';
+}
+$('mode-apply').onclick=()=>changeModeSelection(false);
+$('mode-remove').onclick=()=>changeModeSelection(true);
 function privateHomeAddress(raw) {
  if(raw.includes(':')) {
   if(!/^f[cd][0-9a-f]{2}:[0-9a-f:]+$/i.test(raw))return false;
@@ -141,7 +186,13 @@ function updateHomeProof(remove) {
  const state=routeDraft();
  if(!state.value.adaptive||homeDocument!==$('plan').value||homeSubject!==profileSubject())return;
  const notice=$('home-feedback');
- if(remove)delete state.network.homeProof;
+ if(remove) {
+  const mode=state.network.modeSelection;
+  if(mode?.preferredMode==='HOME_WIFI'||Array.isArray(mode?.userModes)&&mode.userModes.includes('HOME_WIFI')){
+   notice.textContent='Сначала уберите домашний режим из настроек выбора сети.';return;
+  }
+  delete state.network.homeProof;
+ }
  else {
   const [address,hostname,port,pin]=homeFields.map(key=>$('home-'+key).value.trim());
   const labels=hostname.split('.');
@@ -191,6 +242,7 @@ function drawRouteChecks(){
  let state;
  if(authenticated){try{state=routeDraft();}catch{ /* An incomplete raw draft has no editable fields. */ }}
  showHomeProof(state,changed);
+ showModeSelection(state,changed);
  if(!state)return;
  $('route-explanation').hidden=false;
  $('explain-run').disabled=busy||!!pending||!['domain','address','application'].some(key=>$('explain-'+key).value.trim());

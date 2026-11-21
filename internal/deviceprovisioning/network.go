@@ -48,6 +48,14 @@ const adaptiveNetworkCapability = "route.adaptive-tcp.v1"
 // These are availability claims from the actual independently bound device,
 // never from a grant, draft or metadata declaration. Policy checks remain local.
 func adaptiveNetworkAvailable(plan configuration.NetworkPlan, target enrollment.ConfigurationTarget) error {
+	if plan.Network.ModeSelection != nil {
+		if plan.Adaptive == nil || !plan.Network.ModeSelection.Valid(plan.Network.HomeProof != nil) {
+			return configuration.ErrInvalid
+		}
+		if !slices.Contains(target.Capabilities, policy.NetworkModeSelection) {
+			return enrollment.ErrDenied
+		}
+	}
 	if plan.Network.HomeProof != nil {
 		if plan.Adaptive == nil {
 			return configuration.ErrInvalid
@@ -222,6 +230,9 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	required := []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}
 	if plan.Adaptive != nil {
 		required = append(required, adaptiveNetworkCapability)
+		if plan.Network.ModeSelection != nil {
+			required = append(required, policy.NetworkModeSelection)
+		}
 		if plan.Network.HomeProof != nil {
 			required = append(required, policy.HomeWiFiProof)
 		}
