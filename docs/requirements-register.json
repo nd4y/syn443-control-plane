@@ -1261,9 +1261,10 @@
       "status": "partial",
       "evidence": [
         "docs/control-catalog.md#reserve-probe-cooldown",
-        "docs/control-catalog.md#conservative-failover-algorithm"
+        "docs/control-catalog.md#conservative-failover-algorithm",
+        "docs/control-catalog.md#permanent-control-group"
       ],
-      "implementationScope": "Reviewed device/group configuration can assign a signed built-in algorithm and a separate reserve probe option to a stable percentage of eligible devices. Other devices retain the baseline; an approved zero-percent revision ends a rollout.",
+      "implementationScope": "Reviewed device/group configuration can assign a signed built-in algorithm and a separate reserve probe option to a stable percentage of eligible devices. Other devices retain the baseline; an approved zero-percent revision ends a rollout. A separately reserved stable control group remains on the baseline during a full expansion of either supported rollout.",
       "remainingScope": "General rollout stages, independent decision bundles, metric gates, automated progression and operational rollout status/rollback UI."
     },
     {
@@ -2995,8 +2996,12 @@
     {
       "id": "AC50",
       "specRow": " Cohort rollout и shadow новой policy | Назначение стабильно, control группа сохранена; shadow не меняет маршруты и не создаёт сетевых проб |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md#permanent-control-group"
+      ],
+      "implementationScope": "Stable assignment and permanent baseline control for the built-in decision and reserve cooldown options.",
+      "remainingScope": "Shadow policy evaluation and operational comparison across cohorts."
     },
     {
       "id": "AC51",

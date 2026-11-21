@@ -181,11 +181,21 @@ function drawDeviceRollout(prefix,existing){
  const valid=typeof existing?.id==='string'&&Number.isSafeInteger(existing.basisPoints)&&existing.basisPoints>=0&&existing.basisPoints<=10000;
  $(prefix+'-id').value=valid?existing.id:'';
  $(prefix+'-share').value=valid?String(existing.basisPoints/100):'';
+ $(prefix+'-control').value=valid&&Number.isSafeInteger(existing.controlBasisPoints)?String(existing.controlBasisPoints/100):'';
 }
-function readDeviceRollout(id,share){
- if(!id&&!share)return null;
- if(!/^[a-z0-9][a-z0-9._-]{0,47}$/.test(id)||!/^\d{1,3}(\.\d{1,2})?$/.test(share)||Number(share)>100)throw Error('invalid');
- return {id,basisPoints:Math.round(Number(share)*100)};
+function rolloutFields(prefix){
+ const share=$(prefix+'-share'),control=$(prefix+'-control');
+ return {id:$(prefix+'-id').value.trim(),share:share.value,control:control.value,valid:share.validity.valid&&control.validity.valid};
+}
+function readDeviceRollout(fields){
+ const {id,share,control,valid}=fields;
+ if(!valid)throw Error('invalid');
+ if(!id&&!share&&!control)return null;
+ const percentage=value=>/^\d{1,3}(\.\d{1,2})?$/.test(value)&&Number(value)<=100;
+ if(!/^[a-z0-9][a-z0-9._-]{0,47}$/.test(id)||!percentage(share)||(control&&!percentage(control)))throw Error('invalid');
+ const result={id,basisPoints:Math.round(Number(share)*100)};
+ if(control!=='')result.controlBasisPoints=Math.round(Number(control)*100);
+ return result;
 }
 function internalFailoverPlan(state){
  const failover=state.network.routeFailover;
@@ -427,7 +437,7 @@ $('telemetry-form').onsubmit=event=>{
   }
  });
 };
-async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({timeout:'Сервер не ответил вовремя. Повторите действие.',anonymous:'Войдите с административной учётной записью.',login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',reauth:'Для операции нужно подтвердить вход. Правки и подготовленный запрос остаются в этой вкладке.',popup:'Разрешите новую вкладку для Keycloak и повторите подтверждение входа.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.',error.message==='anonymous'?'info':'danger');}finally{busy=false;controls();if(reauthenticationFocus&&authenticated){reauthenticationFocus=false;$('reauthentication-title').focus();}}}
+async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({timeout:'Сервер не ответил вовремя. Повторите действие.',anonymous:'Войдите с административной учётной записью.',login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',reauth:'Для операции нужно подтвердить вход. Правки и подготовленный запрос остаются в этой вкладке.',popup:'Разрешите новую вкладку для Keycloak и повторите подтверждение входа.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',controlShare:'Для одного идентификатора раскатки задайте одинаковую долю контрольной группы.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.',error.message==='anonymous'?'info':'danger');}finally{busy=false;controls();if(reauthenticationFocus&&authenticated){reauthenticationFocus=false;$('reauthentication-title').focus();}}}
 
 function sessionCapabilities(value){
  if(!value||value.authenticated!==true)throw Error('invalid');
@@ -1038,11 +1048,12 @@ $('route-reserve-cooldown').onchange=()=>{
  });
 };
 $('route-rollout-save').onclick=()=>{
- const id=$('route-rollout-id').value.trim(),share=$('route-rollout-share').value;
+ const fields=rolloutFields('route-rollout');
  work(async()=>{
   const state=routeDraft(),failover=internalFailoverPlan(state);
   if(failover?.probeCooldown!==true)throw Error('invalid');
-  const value=readDeviceRollout(id,share);
+  const value=readDeviceRollout(fields),other=failover.decisionRollout;
+  if(value&&other?.id===value.id&&(other.controlBasisPoints??0)!==(value.controlBasisPoints??0))throw Error('controlShare');
   if(value)failover.probeCooldownRollout=value;else delete failover.probeCooldownRollout;
   applyRouteChecks(state);
  });
@@ -1058,11 +1069,12 @@ $('route-decision').onchange=()=>{
  });
 };
 $('route-decision-save').onclick=()=>{
- const id=$('route-decision-id').value.trim(),share=$('route-decision-share').value;
+ const fields=rolloutFields('route-decision');
  work(async()=>{
   const state=routeDraft(),failover=internalFailoverPlan(state);
   if(failover?.decisionRevision!==confirmedDecision)throw Error('invalid');
-  const value=readDeviceRollout(id,share);
+  const value=readDeviceRollout(fields),other=failover.probeCooldownRollout;
+  if(value&&other?.id===value.id&&(other.controlBasisPoints??0)!==(value.controlBasisPoints??0))throw Error('controlShare');
   if(value)failover.decisionRollout=value;else delete failover.decisionRollout;
   applyRouteChecks(state);
  });

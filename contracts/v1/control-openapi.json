@@ -2699,6 +2699,11 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 10000
+                  },
+                  "controlBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
                   }
                 }
               },
@@ -2720,6 +2725,11 @@
                     "pattern": "^[a-z0-9][a-z0-9._-]*$"
                   },
                   "basisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "controlBasisPoints": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 10000

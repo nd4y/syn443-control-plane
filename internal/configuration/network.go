@@ -378,6 +378,10 @@ func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]an
 		plan.DecisionRollout != nil && (plan.DecisionRevision == "" || !plan.DecisionRollout.valid()) {
 		return nil, ErrInvalid
 	}
+	if a, b := plan.ProbeCooldownRollout, plan.DecisionRollout; a != nil && b != nil &&
+		a.ID == b.ID && a.ControlBasisPoints != b.ControlBasisPoints {
+		return nil, ErrInvalid
+	}
 	if plan.NetworkMode != "wifi" || plan.Intent != "INTERNAL" || plan.Selector == graph.Final || !failoverTag.MatchString(plan.Selector) {
 		return nil, ErrInvalid
 	}

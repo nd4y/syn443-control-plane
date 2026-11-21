@@ -569,7 +569,7 @@ function Drafts() {
               maxLength={48}
             />
             <label htmlFor="route-rollout-share">
-              Доля совместимых устройств, %
+              Доля устройств вне контрольной группы, %
             </label>
             <input
               id="route-rollout-share"
@@ -578,6 +578,21 @@ function Drafts() {
               max="100"
               step={'0.01'}
             />
+            <label htmlFor="route-rollout-control">
+              Постоянная контрольная группа, %
+            </label>
+            <input
+              id="route-rollout-control"
+              type="number"
+              min="0"
+              max="100"
+              step={'0.01'}
+              aria-describedby="route-rollout-control-help"
+            />
+            <p id="route-rollout-control-help">
+              Эта доля совместимых устройств останется на базовой версии даже при полной раскатке.
+              Для общей контрольной группы укажите одинаковые идентификатор и долю.
+            </p>
             <Button id="route-rollout-save" type="button" variant="secondary">
               Применить долю к черновику
             </Button>
@@ -606,7 +621,7 @@ function Drafts() {
               maxLength={48}
             />
             <label htmlFor="route-decision-share">
-              Доля совместимых устройств для алгоритма, %
+              Доля устройств вне контрольной группы, %
             </label>
             <input
               id="route-decision-share"
@@ -615,6 +630,21 @@ function Drafts() {
               max="100"
               step={'0.01'}
             />
+            <label htmlFor="route-decision-control">
+              Постоянная контрольная группа, %
+            </label>
+            <input
+              id="route-decision-control"
+              type="number"
+              min="0"
+              max="100"
+              step={'0.01'}
+              aria-describedby="route-decision-control-help"
+            />
+            <p id="route-decision-control-help">
+              Эта доля совместимых устройств останется на базовой версии даже при полной раскатке.
+              Для общей контрольной группы укажите одинаковые идентификатор и долю.
+            </p>
             <Button id="route-decision-save" type="button" variant="secondary">
               Применить долю для алгоритма к черновику
             </Button>

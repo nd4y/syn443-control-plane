@@ -118,6 +118,12 @@ func TestInternalWifiFailoverRequiresComparableConcreteAuthorizedPaths(t *testin
 	for _, change := range []func(*NetworkSettings){
 		func(v *NetworkSettings) { v.RouteFailover.DecisionRevision = "untrusted-program" },
 		func(v *NetworkSettings) {
+			v.RouteFailover.ProbeCooldown = true
+			v.RouteFailover.DecisionRevision = policy.ConfirmedFailoverAlgorithm
+			v.RouteFailover.ProbeCooldownRollout = &DeviceRollout{ID: "fixture", BasisPoints: &rate}
+			v.RouteFailover.DecisionRollout = &DeviceRollout{ID: "fixture", BasisPoints: &rate, ControlBasisPoints: 100}
+		},
+		func(v *NetworkSettings) {
 			rate := 1250
 			v.RouteFailover.DecisionRollout = &DeviceRollout{ID: "synthetic-variant", BasisPoints: &rate}
 		},

@@ -6,8 +6,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -323,6 +325,24 @@ func TestSQLInternalFailoverCannotUseProfilesApprovedForAnotherMode(t *testing.T
 				!bytes.Equal(result.EngineConfig, prepared.EngineConfig) {
 				t.Fatal("algorithm rollout changed the graph or selected an ineligible device", err)
 			}
+		}
+	}
+	// Use the actual authenticated device's bucket so this exercises both sides
+	// of the cutoff without depending on a particular generated test identity.
+	sum := sha256.Sum256([]byte("syn443/rollout-control/v1\x00fixture-combined\x00" + target.Device))
+	bucket := int(binary.BigEndian.Uint64(sum[:8]) % 10000)
+	for _, reserved := range []int{bucket + 1, bucket} {
+		rollout := fmt.Sprintf(`{"id":"fixture-combined","basisPoints":10000,"controlBasisPoints":%d}`, reserved)
+		fields := `"probeCooldown":true,"probeCooldownRollout":` + rollout +
+			`,"decisionRevision":"m4-confirmed-v1","decisionRollout":` + rollout
+		changes[2].Value = bytes.Replace(explicit, []byte(`"probeCooldown":true`), []byte(fields), 1)
+		result, err := n.authority.Prepare(ctx, target, n.f.now)
+		treatment := reserved == bucket
+		if err != nil || result == nil || !bytes.Equal(result.EngineConfig, prepared.EngineConfig) ||
+			(result.AlgorithmRevision == policy.ConfirmedFailoverAlgorithm) != treatment ||
+			slices.Contains(result.RequiredCapabilities, policy.RouteDecision) != treatment ||
+			slices.Contains(result.RequiredCapabilities, policy.ReserveProbeCooldown) != treatment {
+			t.Fatal("shared control assignment was lost while preparing the authorized policy", err)
 		}
 	}
 }

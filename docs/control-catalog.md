@@ -203,3 +203,15 @@ the cohort stable as the percentage grows. Set zero basis points to return
 the cohort to baseline. The selection is independent of the reserve probe
 cooldown cohort and changes neither routes nor access. With no percentage,
 every targeted device must advertise `route.decision.v1` before publication.
+
+## Permanent control group
+
+For example, `{"id":"synthetic-algorithm","basisPoints":5000,"controlBasisPoints":1000}`
+reserves 10% of eligible devices on the baseline and selects half of the remainder
+for treatment. At 100% treatment those same control devices still receive the baseline.
+Existing plans without a control share retain their original assignments.
+The authenticated device ID determines membership. Keep the rollout ID and reserved
+share fixed while increasing or decreasing treatment. Changing either reassigns
+some devices. Decision and cooldown rollouts can share a control group by using
+the same ID and reserved share. Their treatment assignments remain independent.
+A zero treatment share stops the rollout for the next approved policy.
