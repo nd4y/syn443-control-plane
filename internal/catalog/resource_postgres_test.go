@@ -161,6 +161,16 @@ func TestSQLResourcesAuthorityImpactAndRevisionFence(t *testing.T) {
 	if _, e = worker.Complete(ctx, job, profiles, subscriptions.Quota{}, subscriptions.Cache{}, now); e != nil {
 		t.Fatal(e)
 	}
+	// A reader with an independent encryption key cannot open the provider
+	// ciphertext. Its authorized metadata read still reports the worker attempt.
+	metadataReader, e := NewStore(api.DB, make([]byte, 32))
+	if e != nil {
+		t.Fatal(e)
+	}
+	observed, scope, e := metadataReader.GetResource(ctx, actor, changed.ID, now)
+	if e != nil || observed.LastSync != now.Unix() || observed.Revision != job.ResourceRevision || scope.Sources != 1 {
+		t.Fatal("missing current revision source attempt", e)
+	}
 	if n, e := worker.Schedule(ctx, now); e != nil || n != 0 {
 		t.Fatal("successful revision repeated", n, e)
 	}
@@ -177,6 +187,10 @@ func TestSQLResourcesAuthorityImpactAndRevisionFence(t *testing.T) {
 	}
 	if _, e = api.PutResource(ctx, actor, changed, SecretPatch{Operation: "keep"}, impact.Hash, "disable", now); e != nil {
 		t.Fatal(e)
+	}
+	inactive, _, e := api.GetResource(ctx, actor, changed.ID, now)
+	if e != nil || inactive.LastSync != 0 || inactive.Enabled {
+		t.Fatal("new resource revision inherited a previous revision's sync", e)
 	}
 	state, e := api.GetSource(ctx, actor, source.ID, now)
 	if e != nil || state.State != "resource_disabled" {

@@ -160,7 +160,7 @@ test('phone source editor inspects assigned API resource metadata and distinguis
  await id.fill('panel-b');await expect(details).toBeEmpty();await button.click();await expect(details).toContainText('Отключён');
  await id.fill('future-a');await button.click();
  await expect(details).toContainText('3x-ui');await expect(details).toContainText('Поддержка запланирована');
- await expect(details).not.toContainText('Последняя синхронизация');
+ await expect(details).not.toContainText('Последняя попытка синхронизации');
  await mode.selectOption('manual');await expect(button).toBeHidden();await expect(details).toBeEmpty();
  await mode.selectOption('resource');await button.click();await expect(details).toContainText('Synthetic future-a');
  await id.fill('not-authorized');await button.click();await expect(page.locator('#status')).toContainText('недостаточно прав');

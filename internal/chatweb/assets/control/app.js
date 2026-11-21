@@ -380,7 +380,7 @@ async function inspectProvider(){
  inventoryPair(rows,'Состояние',planned?'Поддержка запланирована':resource.enabled?'Включён':'Отключён');
  inventoryPair(rows,'Ревизия ресурса',resource.revision);
  inventoryPair(rows,'Связанные источники',impact.sources);
- if(!planned)inventoryPair(rows,'Последняя синхронизация',resource.lastSync?inventoryDate(resource.lastSync*1000):'Нет данных');
+ if(!planned)inventoryPair(rows,'Последняя попытка синхронизации',resource.lastSync?inventoryDate(resource.lastSync*1000):'Нет данных');
  details.append(rows);
 }
 function inventoryOrigin(origin){return origin&&typeof origin==='object'&&!Array.isArray(origin)&&typeof origin.layerId==='string'&&typeof origin.kind==='string'&&Number.isSafeInteger(origin.revision)&&origin.revision>=0;}

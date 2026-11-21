@@ -141,9 +141,19 @@ func (s *Store) GetResource(ctx context.Context, actor Actor, id string, now tim
 	if e = authorize(ctx, tx, actor, "resources.read", "resource", id, now.Unix(), false); e != nil {
 		return Resource{}, ResourceImpact{}, e
 	}
-	r, _, e := s.readResource(ctx, tx, id, false)
+	var r Resource
+	// Report attempts by the linked sources at this exact configuration revision.
+	// Reading metadata does not need the provider credential.
+	e = tx.QueryRowContext(ctx, `SELECT r.id,r.name,r.provider_type,r.api_version,r.enabled,r.revision,r.state,
+		COALESCE((SELECT max(s.last_sync) FROM catalog_sources s
+			WHERE s.resource_id=r.id AND s.mode='resource' AND s.last_resource_revision=r.revision),0)
+		FROM catalog_resources r WHERE r.id=$1`, id).
+		Scan(&r.ID, &r.Name, &r.ProviderType, &r.APIVersion, &r.Enabled, &r.Revision, &r.State, &r.LastSync)
+	if e == sql.ErrNoRows {
+		return Resource{}, ResourceImpact{}, ErrDenied
+	}
 	if e != nil {
-		return Resource{}, ResourceImpact{}, e
+		return Resource{}, ResourceImpact{}, ErrUnavailable
 	}
 	impact, e := s.resourceImpact(ctx, tx, id)
 	if e != nil {
