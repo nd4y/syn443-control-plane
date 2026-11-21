@@ -73,6 +73,7 @@ func ascii(s string) bool {
 const ReserveProbeCooldown = "route.reserve-cooldown.v1"
 const RouteExitIP = "route.exit-ip.v1"
 const RouteExitCountry = "route.exit-country.v1"
+const RouteHTTPSStatus = "route.https-status.v1"
 const RouteCheckPlanV2 = "route.check-plan.v2"
 const RouteDecision = "route.decision.v1"
 const RouteAdaptiveTCP = "route.adaptive-tcp.v1"
@@ -97,7 +98,7 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	caps := map[string]bool{}
-	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true, RouteAdaptiveTCP: true, RouteCheckPlanV2: true}
+	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true, RouteAdaptiveTCP: true, RouteCheckPlanV2: true, RouteHTTPSStatus: true}
 	if len(p.RequiredCapabilities) < 1 || len(p.RequiredCapabilities) > 16 ||
 		p.AlgorithmRevision != BaselineAlgorithm && p.AlgorithmRevision != ConfirmedFailoverAlgorithm && p.AlgorithmRevision != AdaptiveTCPAlgorithm {
 		return bad
@@ -131,15 +132,19 @@ func (p Payload) Validate(now time.Time) error {
 	if configErr != nil {
 		return bad
 	}
-	hasExitCheck, hasExitCountry, hasProfile := false, false, false
+	hasExitCheck, hasExitCountry, hasProfile, hasHTTPSStatus := false, false, false, false
 	for _, group := range routePlans {
 		hasProfile = hasProfile || group.Profile != nil
 		for _, check := range group.AllChecks() {
 			hasExitCheck = hasExitCheck || check.Method == "https_exit_ip"
 			hasExitCountry = hasExitCountry || check.Method == "https_exit_country"
+			hasHTTPSStatus = hasHTTPSStatus || check.Method == "https_status"
 		}
 	}
 	if hasProfile != caps[RouteCheckPlanV2] || hasProfile && (p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"]) {
+		return bad
+	}
+	if hasHTTPSStatus != caps[RouteHTTPSStatus] || hasHTTPSStatus && (p.SchemaVersion != 2 || p.Operation != "configure" || !caps["route.health.v1"]) {
 		return bad
 	}
 	if hasExitCheck != caps[RouteExitIP] || hasExitCheck &&

@@ -2830,7 +2830,8 @@
                     "https_204",
                     "ssh_banner",
                     "https_exit_ip",
-                    "https_exit_country"
+                    "https_exit_country",
+                    "https_status"
                   ]
                 },
                 "target": {
@@ -2849,6 +2850,17 @@
                     "RU",
                     "NON_RU"
                   ]
+                },
+                "http_method": {
+                  "enum": [
+                    "GET",
+                    "HEAD"
+                  ]
+                },
+                "expected_status": {
+                  "type": "integer",
+                  "minimum": 200,
+                  "maximum": 599
                 }
               },
               "allOf": [
@@ -2890,6 +2902,42 @@
                     "not": {
                       "required": [
                         "expected_exit_class"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "method": {
+                        "const": "https_status"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "http_method",
+                      "expected_status"
+                    ],
+                    "properties": {
+                      "target": {
+                        "pattern": "^https://"
+                      }
+                    }
+                  },
+                  "else": {
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "http_method"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "expected_status"
+                          ]
+                        }
                       ]
                     }
                   }
@@ -3777,6 +3825,38 @@
               "method",
               "target",
               "expected_exit_class"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "method": {
+                "const": "https_status"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048,
+                "pattern": "^https://"
+              },
+              "http_method": {
+                "enum": [
+                  "GET",
+                  "HEAD"
+                ]
+              },
+              "expected_status": {
+                "type": "integer",
+                "minimum": 200,
+                "maximum": 599
+              }
+            },
+            "required": [
+              "method",
+              "target",
+              "http_method",
+              "expected_status"
             ]
           }
         ]

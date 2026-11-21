@@ -676,6 +676,7 @@ jobs:
           python3 tools/check_operation_reconcile_evidence.py exit-country-postgres-tests.jsonl --stage provisioning
           python3 tools/check_operation_version_evidence.py exit-country-postgres-tests.jsonl --stage provisioning
           python3 tools/check_check_plan_evidence.py exit-country-postgres-tests.jsonl --stage postgres
+          jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/deviceprovisioning" and .Action == "pass" and .Test == "TestSQLNetworkAuthorityIssuesOnlyNegotiatedHTTPSStatus")' exit-country-postgres-tests.jsonl
       - run: python3 tools/check_invitation_coverage.py
       - name: Scan invitation evidence
         id: invitation-scan

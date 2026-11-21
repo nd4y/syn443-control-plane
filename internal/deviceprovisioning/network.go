@@ -62,7 +62,8 @@ func adaptiveNetworkAvailable(plan configuration.NetworkPlan, target enrollment.
 	for _, group := range plan.Network.RouteChecks {
 		for _, check := range group.AllChecks() {
 			if check.Method == "https_exit_country" && !slices.Contains(target.Capabilities, policy.RouteExitCountry) ||
-				check.Method == "https_exit_ip" && !slices.Contains(target.Capabilities, policy.RouteExitIP) {
+				check.Method == "https_exit_ip" && !slices.Contains(target.Capabilities, policy.RouteExitIP) ||
+				check.Method == "https_status" && !slices.Contains(target.Capabilities, policy.RouteHTTPSStatus) {
 				return enrollment.ErrDenied
 			}
 		}
@@ -230,6 +231,7 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 		}
 		for _, method := range []struct{ name, capability string }{
 			{"https_exit_ip", policy.RouteExitIP}, {"https_exit_country", policy.RouteExitCountry},
+			{"https_status", policy.RouteHTTPSStatus},
 		} {
 			for _, group := range plan.Network.RouteChecks {
 				if !slices.ContainsFunc(group.AllChecks(), func(check configuration.OutboundCheck) bool { return check.Method == method.name }) {

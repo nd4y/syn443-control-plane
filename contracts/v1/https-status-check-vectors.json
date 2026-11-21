@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "valid": [
+    {"method":"https_status","target":"https://service.example.invalid/ready","http_method":"HEAD","expected_status":200},
+    {"method":"https_status","target":"https://service.example.invalid/redirect","http_method":"GET","expected_status":302},
+    {"method":"https_status","target":"https://service.example.invalid/error","http_method":"HEAD","expected_status":599}
+  ],
+  "invalid": [
+    {"method":"https_status","target":"http://service.example.invalid/ready","http_method":"GET","expected_status":200},
+    {"method":"https_status","target":"https://service.example.invalid/","expected_status":200},
+    {"method":"https_status","target":"https://service.example.invalid/","http_method":"HEAD"},
+    {"method":"https_status","target":"https://service.example.invalid/","http_method":"POST","expected_status":200},
+    {"method":"https_status","target":"https://service.example.invalid/","http_method":"get","expected_status":200},
+    {"method":"https_status","target":"https://service.example.invalid/","http_method":"GET","expected_status":199},
+    {"method":"https_status","target":"https://service.example.invalid/","http_method":"GET","expected_status":600},
+    {"method":"https_status","target":"https://service.example.invalid/","http_method":"GET","expected_status":"200"},
+    {"method":"https_status","target":"https://service.example.invalid/","http_method":"GET","expected_status":200.5},
+    {"method":"https_status","target":"https://service.example.invalid/","http_method":"GET","expected_status":null},
+    {"method":"https_status","target":"https://service.example.invalid/","http_method":"GET","expected_status":200,"expected_exit_class":"RU"},
+    {"method":"https_204","target":"https://service.example.invalid/","http_method":"GET","expected_status":204}
+  ]
+}
