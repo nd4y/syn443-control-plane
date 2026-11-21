@@ -1923,8 +1923,14 @@
     {
       "id": "OWN-03",
       "text": "Кнопка «Не работает / обратиться в поддержку» создаёт incident с коротким ID и минимальным очищенным snapshot, согласованным с privacy policy. Offline incident сохраняется локально. Расширенный бандл отправляется отдельным подтверждённым действием; пользователю не нужно вручную искать файлы. Администратор по ID видит intent, freshness, последнюю успешную пару и слой ошибки, затем тестирует исправление на одном устройстве и rollout cohort.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/support-chat.md#find-a-support-incident",
+        "internal/enrollment/incident_lookup_postgres_test.go",
+        "web-tests/control-chat.spec.js"
+      ],
+      "implementationScope": "Administrators can look up an exact self-reported incident reference from the mobile console or standalone inbox. Live SQL grants gate each lookup. A missing or ambiguous reference does not expose a message.",
+      "remainingScope": "Physical delivery, readback of the last-known-good configuration and algorithm pair, and targeted remediation through the assigned rollout cohort."
     },
     {
       "id": "OWN-04",

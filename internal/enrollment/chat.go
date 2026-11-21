@@ -109,7 +109,7 @@ func (a *API) chatHTTP(w http.ResponseWriter, r *http.Request) {
 		prefix = "/v1/admin/chat/"
 	}
 	action := strings.TrimPrefix(r.URL.Path, prefix)
-	valid := map[string]bool{"self": true, "inbox": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
+	valid := map[string]bool{"self": true, "inbox": true, "incident/lookup": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
 	if !valid[action] {
 		http.NotFound(w, r)
 		return

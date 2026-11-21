@@ -1,4 +1,4 @@
-import {Button,Card,CardBody,CardTitle,PageSection,TextArea,Title} from '@patternfly/react-core';
+import {Button,Card,CardBody,CardTitle,PageSection,TextArea,TextInput,Title} from '@patternfly/react-core';
 import {mountSupportChat} from '../internal/chatweb/assets/support-controller.js';
 
 export function Support() {
@@ -12,6 +12,12 @@ export function Support() {
       <Card isCompact>
         <CardTitle component="h2">Диалоги</CardTitle>
         <CardBody>
+          <form id="support-incident-form">
+            <label htmlFor="support-incident-ref">Номер обращения</label>
+            <TextInput id="support-incident-ref" aria-label="Номер обращения" maxLength={64} autoComplete="off" placeholder="SYN-…" />
+            <Button id="support-incident-find" type="submit" variant="secondary" isDisabled>Найти обращение</Button>
+          </form>
+          <pre id="support-incident-result" role="status" aria-live="polite" hidden />
           <ul id="support-inbox" className="support-inbox" aria-label="Диалоги поддержки" />
           <p id="support-empty" hidden>Диалогов пока нет.</p>
           <Button id="support-more" variant="secondary" isDisabled>Следующие диалоги</Button>

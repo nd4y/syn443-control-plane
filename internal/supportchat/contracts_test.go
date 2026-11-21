@@ -22,6 +22,8 @@ func TestChatWireContractIsClosedAndMatchesRuntime(t *testing.T) {
 		t.Fatal(e)
 	}
 	values := map[string]any{"Send": SendRequest{Conversation: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ClientID: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", Text: "hello", Attachments: []string{}}, "Begin": UploadRequest{Conversation: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ClientID: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", Name: "fixture.bin", MIME: "application/octet-stream", Kind: "file", Size: MaxFileBytes, SHA256: Hash([]byte("fixture"))}}
+	values["IncidentLookup"] = map[string]any{"reference": "SYN-0123456789ab"}
+	values["IncidentResult"] = incidentResult{Reference: "SYN-0123456789ab", State: "found", Report: &incidentMatch{Text: "synthetic", CreatedAt: 1}}
 	for name, value := range values {
 		schema, e := compiler.Compile(base + "#/components/schemas/" + name)
 		if e != nil {
@@ -51,8 +53,13 @@ func TestChatWireContractIsClosedAndMatchesRuntime(t *testing.T) {
 		}
 	}
 	paths := doc["paths"].(map[string]any)
-	if len(paths) != 22 {
+	if len(paths) != 24 {
 		t.Fatal("API paths")
+	}
+	for _, path := range []string{"/v1/chat/incident/lookup", "/v1/admin/chat/incident/lookup"} {
+		if paths[path] == nil {
+			t.Fatal("missing incident operation", path)
+		}
 	}
 	for _, p := range paths {
 		post := p.(map[string]any)["post"].(map[string]any)

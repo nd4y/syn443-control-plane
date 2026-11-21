@@ -5,6 +5,9 @@ import xml.etree.ElementTree as ET
 root = ET.parse(Path(__file__).resolve().parent.parent / 'web-tests/results.xml').getroot()
 cases = list(root.iter('testcase'))
 expected = {
+    'look up an exact incident without opening or acknowledging a thread on standalone',
+    'look up an exact incident without opening or acknowledging a thread on console',
+    'late incident lookup cannot disclose the previous query on the phone',
     'mobile resource rename replays its exact request after a lost response',
     'sync changes require acknowledged impact and explicit retry after stronger login',
     'a conflicting resource update requires fresh inspection and planned providers stay read-only',

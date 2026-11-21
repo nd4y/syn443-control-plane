@@ -315,3 +315,58 @@ test('console chat has a narrow empty state and rejects oversize attachments loc
  expect((await (await request.post(chatOrigin+'/fixture/state',{data:{}})).json()).uploads).toBe(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
 });
+
+for (const surface of ['standalone','console']) {
+ test(`look up an exact incident without opening or acknowledging a thread on ${surface}`, async ({page})=>{
+  const el=name=>page.locator('#'+(surface==='console'?'support-':'')+name);
+  const ref='SYN-0123456789ab';
+  const text='Обращение '+ref+'\n<svg/onload=invalid>';
+  const lookups=[];
+  let readCalls=0;
+  page.on('request',req=>{if(new URL(req.url()).pathname==='/chat/read')readCalls++;});
+  await page.route('**/chat/incident/lookup',async route=>{
+   const value=route.request().postDataJSON().reference;
+   lookups.push(value);
+   const reply=value===ref?{reference:ref,state:'found',report:{text,createdAt:1700000000}}:
+    {reference:value,state:value.endsWith('1')?'ambiguous':'missing'};
+   await route.fulfill({json:reply});
+  });
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(surface==='console'?origin+'/#support-title':chatOrigin+'/');
+  await expect(el('inbox').getByRole('button',{name:/Пользователь/})).toBeVisible();
+  await el('incident-ref').fill('SYN-0123');
+  await expect(el('incident-find')).toBeDisabled();
+  await el('incident-ref').fill(ref);
+  expect(lookups).toEqual([]);
+  await el('incident-ref').press('Enter');
+  await expect(el('incident-result')).toContainText(text);
+  await expect(el('incident-result').locator('svg')).toHaveCount(0);
+  await el('incident-ref').fill('SYN-000000000001');
+  await expect(el('incident-result')).toBeHidden();
+  await el('incident-find').click();
+  await expect(el('incident-result')).toContainText('совпал у нескольких');
+  await el('incident-ref').fill('SYN-000000000002');
+  await el('incident-find').click();
+  await expect(el('incident-result')).toContainText('не найдено');
+  expect(lookups).toHaveLength(3);
+  expect(readCalls).toBe(0);
+ });
+}
+test('late incident lookup cannot disclose the previous query on the phone',async({page})=>{
+ let release;const pause=new Promise(r=>release=r);
+ const ref='SYN-0123456789ab';
+ await page.route('**/chat/incident/lookup',async route=>{
+  await pause;await route.fulfill({json:{reference:ref,state:'found',report:{text:'Обращение '+ref+'\nprivate fixture text',createdAt:1700000000}}});
+ });
+ await page.goto(origin+'/#support-title');
+ await expect(page.locator('#support-inbox').getByRole('button',{name:/Пользователь/})).toBeVisible();
+ const field=page.locator('#support-incident-ref');
+ await field.fill(ref);
+ const started=page.waitForRequest(request=>new URL(request.url()).pathname==='/chat/incident/lookup');
+ await page.locator('#support-incident-find').click();await started;
+ await field.fill('SYN-000000000001');
+ release();
+ await expect(page.locator('#support-incident-find')).toBeEnabled();
+ await expect(page.locator('#support-incident-result')).toBeHidden();
+ await expect(page.locator('#support-incident-result')).toHaveText('');
+});

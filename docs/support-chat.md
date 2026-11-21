@@ -154,3 +154,16 @@ AC94 still needs the full image-format and memory-bound matrix. AC95 also
 requires the user flows for unsupported encoders and insufficient storage.
 
 Both web chat surfaces send only when the user activates the send button. Enter while composing or an implicit form submission leaves the draft editable. Invalid Unicode stays in the draft for correction before upload. Keyboard users can focus the send button and activate it with Enter or Space.
+
+## Find a support incident
+
+In the administrator inbox, enter the full short reference from the phone and
+select **Найти обращение**. The standalone inbox and the mobile control console
+show the received report and receipt time. Editing the reference or leaving
+the authenticated workspace clears the result.
+
+The SQL operation locks the current administrator grant and matches the exact
+reference in the sender's own conversation. An indexed 12-digit client-key
+prefix and the report header must agree. If two reports share the prefix, the
+response contains only the ambiguity status. Lookup does not advance the
+conversation's read cursor.
