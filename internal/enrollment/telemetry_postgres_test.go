@@ -17,7 +17,7 @@ import (
 
 func TestTelemetrySettledHourUsesDatabaseClockAndSharesManualLock(t *testing.T) {
 	f := newFixture(t, 1)
-	f.api.TelemetryEnabled = true
+	f.enableTelemetry(t)
 	k := key(t)
 	session, _, _ := f.register(t, k)
 	ctx := t.Context()
@@ -118,7 +118,7 @@ func TestTelemetrySettledHourRejectsWrongRoleClockAndExtraWriteAuthority(t *test
 
 func TestTelemetrySummaryUsesScopedRolesAndKeepsLastCompleteHour(t *testing.T) {
 	f := newFixture(t, 1)
-	f.api.TelemetryEnabled = true
+	f.enableTelemetry(t)
 	k := key(t)
 	session, _, _ := f.register(t, k)
 	ctx := t.Context()
@@ -204,7 +204,7 @@ func TestTelemetrySummaryUsesScopedRolesAndKeepsLastCompleteHour(t *testing.T) {
 
 func TestTelemetryReportCountsOnlyKnownDecisionsWithoutRawRevisionAccess(t *testing.T) {
 	f := newFixture(t, 1)
-	f.api.TelemetryEnabled = true
+	f.enableTelemetry(t)
 	k := key(t)
 	session, _, _ := f.register(t, k)
 	ctx := t.Context()
@@ -255,7 +255,7 @@ func TestDeviceTelemetryIsBoundedDeduplicatedAndScopedToItsSession(t *testing.T)
 			Kind: "vpn", Code: "online", Mode: "wifi"}}}
 	body, _ := json.Marshal(batch)
 	expect(t, f.call(t, deviceKey, "POST", telemetryPath, first.AccessToken, first.Nonce, body), http.StatusNotFound)
-	f.api.TelemetryEnabled = true
+	f.enableTelemetry(t)
 	for range 2 {
 		response := f.call(t, deviceKey, "POST", telemetryPath, first.AccessToken, first.Nonce, body)
 		expect(t, response, http.StatusOK)

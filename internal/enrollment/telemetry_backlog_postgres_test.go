@@ -20,7 +20,7 @@ import (
 
 func TestTelemetryAggregateWorkerProcessCommitsStopsAndResumes(t *testing.T) {
 	f := newFixture(t, 1)
-	f.api.TelemetryEnabled = true
+	f.enableTelemetry(t)
 	k := key(t)
 	session, _, _ := f.register(t, k)
 	base := time.Now().UTC().Truncate(time.Hour).Add(-9 * time.Hour)
@@ -82,7 +82,7 @@ func TestTelemetryAggregateWorkerProcessCommitsStopsAndResumes(t *testing.T) {
 
 func TestTelemetryWorkerRecoversRetainedGapsAndWrapsAfterBusyHour(t *testing.T) {
 	f := newFixture(t, 1)
-	f.api.TelemetryEnabled = true
+	f.enableTelemetry(t)
 	k := key(t)
 	session, _, _ := f.register(t, k)
 	ctx := t.Context()

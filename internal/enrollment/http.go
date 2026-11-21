@@ -29,7 +29,7 @@ type InvitationActions interface {
 type API struct {
 	Invitations           InvitationActions
 	ControlPanelDiscovery bool
-	TelemetryEnabled      bool
+	TelemetryStore        *Store
 	DeviceFetch           *catalog.Store
 	// Empty disables addressed credential delivery. Set only from owner configuration.
 	OverlayServiceID string
@@ -38,9 +38,8 @@ type API struct {
 	Origin           string
 	Roots            map[string]*ecdsa.PublicKey
 	Clock            func() time.Time
-	mu               sync.Mutex
-	buckets          map[string]bucket
-	slots            chan struct{}
+	requests         requestAdmission
+	uploads          requestAdmission
 	chatSlots        chan struct{}
 	deviceFetchSlots chan struct{}
 	ChatEnabled      bool
@@ -52,14 +51,28 @@ type bucket struct {
 	count  int
 }
 
+type requestAdmission struct {
+	mu      sync.Mutex
+	buckets map[string]bucket
+	slots   chan struct{}
+}
+
+func newAdmission(concurrent int) requestAdmission {
+	return requestAdmission{buckets: make(map[string]bucket), slots: make(chan struct{}, concurrent)}
+}
+
 func NewAPI(store *Store, verifier Verifier, origin string, roots map[string]*ecdsa.PublicKey, fixture bool) (*API, error) {
 	u, e := url.Parse(origin)
 	if e != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.ForceQuery || u.Host == "" || u.Scheme != "https" && !(fixture && u.Scheme == "http" && u.Hostname() == "127.0.0.1" && u.Port() != "") || len(roots) == 0 || len(roots) > 4 {
 		return nil, identity.ErrInvalid
 	}
-	return &API{Store: store, Verifier: verifier, Origin: origin, Roots: roots, Clock: time.Now, buckets: map[string]bucket{}, slots: make(chan struct{}, 16), chatSlots: make(chan struct{}, 2), deviceFetchSlots: make(chan struct{}, 2)}, nil
+	return &API{
+		Store: store, Verifier: verifier, Origin: origin, Roots: roots, Clock: time.Now,
+		requests: newAdmission(16), uploads: newAdmission(telemetryConnections),
+		chatSlots: make(chan struct{}, 2), deviceFetchSlots: make(chan struct{}, 2),
+	}, nil
 }
-func (a *API) admit(ip string, now time.Time) bool {
+func (a *requestAdmission) admit(ip string, now time.Time) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	minute := now.Unix() / 60
@@ -126,7 +139,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	isActivation := path == activationStatusPath && r.Method == "POST"
 	isRuntime := path == runtimeObservationPath && r.Method == "POST"
 	isControlPanel := a.ControlPanelDiscovery && path == controlPanelPath && r.Method == "GET"
-	isTelemetry := a.TelemetryEnabled && path == telemetryPath && r.Method == "POST"
+	isTelemetry := a.TelemetryStore != nil && path == telemetryPath && r.Method == "POST"
 	fetchV2 := path == deviceFetchV2ClaimPath || path == deviceFetchV2ResultPath
 	isFetchClaim := a.DeviceFetch != nil && (path == deviceFetchClaimPath || path == deviceFetchV2ClaimPath) && r.Method == "GET"
 	isFetchResult := a.DeviceFetch != nil && (path == deviceFetchResultPath || path == deviceFetchV2ResultPath) && r.Method == "POST"
@@ -141,21 +154,28 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(w, identity.ErrInvalid)
 		return
 	}
-	if !a.admit(ip, a.Clock()) {
+	admission, store := &a.requests, a.Store
+	if isTelemetry {
+		admission, store = &a.uploads, a.TelemetryStore
+	}
+	if !admission.admit(ip, a.Clock()) {
 		w.Header().Set("Retry-After", "60")
 		http.Error(w, "rate_limited", 429)
 		return
 	}
 	select {
-	case a.slots <- struct{}{}:
-		defer func() { <-a.slots }()
+	case admission.slots <- struct{}{}:
+		defer func() { <-admission.slots }()
 	default:
+		if isTelemetry {
+			w.Header().Set("Retry-After", "5")
+		}
 		http.Error(w, "capacity_unavailable", 503)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
-	now, e := a.Store.Now(ctx, a.Clock())
+	now, e := store.Now(ctx, a.Clock())
 	if e != nil {
 		failure(w, ErrUnavailable)
 		return
@@ -296,7 +316,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(value)
 		return
 	}
-	binding, e := a.Store.Lookup(ctx, token, path == "/v1/device/session/refresh")
+	binding, e := store.Lookup(ctx, token, path == "/v1/device/session/refresh")
 	if e != nil {
 		failure(w, e)
 		return
@@ -310,7 +330,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			failure(w, identity.ErrInvalid)
 			return
 		}
-		receipt, err := a.receiveTelemetry(ctx, binding, token, proof, raw, now)
+		receipt, err := store.receiveTelemetry(ctx, binding, token, proof, raw, now)
 		if errors.Is(err, telemetry.ErrBudget) {
 			w.Header().Set("Retry-After", "300")
 			http.Error(w, "telemetry_budget_exhausted", http.StatusTooManyRequests)
@@ -456,7 +476,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-SYN443-Device-Source-Fetch", "1")
 		w.Header().Set("X-SYN443-Device-Source-Validators", "1")
 	}
-	if a.TelemetryEnabled {
+	if a.TelemetryStore != nil {
 		w.Header().Set("X-SYN443-Telemetry", "1")
 	}
 	w.Header().Set("Content-Type", "application/jose")

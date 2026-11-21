@@ -20,7 +20,6 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/health"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
-	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 )
 
 func run() error {
@@ -101,12 +100,13 @@ func runEnrollmentAPI(discovery *bootstrap.ServiceDiscovery) error {
 	case "", "0":
 	case "1":
 		check, cancel := context.WithTimeout(ctx, 5*time.Second)
-		err := telemetry.CheckIngestionRole(check, store.DB)
+		uploadStore, err := enrollment.OpenTelemetryStore(check, c)
 		cancel()
 		if err != nil {
 			return err
 		}
-		api.TelemetryEnabled = true
+		defer uploadStore.DB.Close()
+		api.TelemetryStore = uploadStore
 	default:
 		return identity.ErrInvalid
 	}

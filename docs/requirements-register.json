@@ -2252,8 +2252,13 @@
     {
       "id": "SVC-05",
       "text": "Telemetry-ingest отдельно принимает и валидирует batches, rate limits и dedup. Подтверждение означает durable приём, а не завершённый анализ; последующая нормализация/агрегация выполняется worker. Отказ аналитики не блокирует config delivery и локальное решение маршрута.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md",
+        "internal/enrollment/telemetry.go",
+        "internal/enrollment/telemetry_admission_postgres_test.go"
+      ],
+      "remainingScope": "Independent ingest deployment, full storage budgets and mixed-workload operational acceptance remain open."
     },
     {
       "id": "SVC-06",
@@ -2309,8 +2314,12 @@
         "internal/catalog/roles.sql",
         "internal/catalog/http_postgres_test.go",
         "cmd/source-worker/main.go",
-        "cmd/control-api/main.go"
-      ]
+        "cmd/control-api/main.go",
+        "docs/telemetry-ingest.md",
+        "internal/enrollment/telemetry.go",
+        "internal/enrollment/telemetry_admission_postgres_test.go"
+      ],
+      "remainingScope": "Independent ingest deployment, full storage budgets and mixed-workload operational acceptance remain open."
     },
     {
       "id": "SVC-10",
