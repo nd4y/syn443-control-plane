@@ -331,6 +331,7 @@ func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool, managed ..
 			t.Fatal("reserved process grant was not pending", status)
 		}
 		var creates atomic.Int32
+		var providerRequests atomic.Int32
 		var idValue [16]byte
 		if _, e = rand.Read(idValue[:]); e != nil {
 			t.Fatal(e)
@@ -340,6 +341,7 @@ func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool, managed ..
 		var providerExpiry time.Time
 		var providerMu sync.Mutex
 		provider := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			providerRequests.Add(1)
 			providerMu.Lock()
 			defer providerMu.Unlock()
 			w.Header().Set("Content-Type", "application/json")
@@ -369,6 +371,40 @@ func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool, managed ..
 		providerConfig := BrokerRuntimeConfig{Database: fixtureBrokerDSN, EncryptionKey: config.EncryptionKey, FixtureLoopback: true, Resources: []BrokerResource{{ResourceID: "fixture-resource", Revision: 1, AccountID: "account-a", APIOrigin: provider.URL, ManagementOrigin: "https://overlay.example.invalid", NetworkID: "fixture-network", Groups: []string{"group-a"}, Token: "synthetic-netbird-management-token", RootCA: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: provider.Certificate().Raw})), AllowedNetworks: []string{"127.0.0.1/32"}}}}
 		providerFile := filepath.Join(dir, "provider-worker.json")
 		privateJSON(t, providerFile, providerConfig)
+		t.Run("readiness_preserves_pending_provider_work", func(t *testing.T) {
+			runReadiness := func(file string, code int, want string, args ...string) {
+				t.Helper()
+				ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+				defer cancel()
+				binary := filepath.Join(os.Getenv("SYN443_TEST_BINARY_DIR"), "overlay-worker")
+				cmd := exec.CommandContext(ctx, binary, args...)
+				cmd.Env = []string{"SYN443_OVERLAY_BROKER_CONFIG=" + file}
+				output, err := cmd.CombinedOutput()
+				if ctx.Err() != nil || cmd.ProcessState == nil || cmd.ProcessState.ExitCode() != code ||
+					(err == nil) != (code == 0) || string(output) != want+"\n" {
+					t.Fatal("unexpected readiness exit or diagnostic")
+				}
+			}
+			runReadiness(providerFile, 0, "overlay_worker_ready", "--check-ready")
+			catalog := providerConfig
+			catalog.Resources = nil
+			catalog.ResourceCatalog = true
+			catalogKey := sha256.Sum256(append([]byte("synthetic catalog key"), f.encryption...))
+			catalog.ResourceEncryptionKey = base64.StdEncoding.EncodeToString(catalogKey[:])
+			catalogFile := filepath.Join(dir, "catalog-worker.json")
+			privateJSON(t, catalogFile, catalog)
+			runReadiness(catalogFile, 0, "overlay_worker_ready", "--check-ready")
+			catalog.Database = fixtureAPIDSN
+			wrongRole := filepath.Join(dir, "reader-worker.json")
+			privateJSON(t, wrongRole, catalog)
+			runReadiness(wrongRole, 1, "overlay_worker_failed", "--check-ready")
+			runReadiness(providerFile, 2, "usage: overlay-worker [--check-ready]", "--check-read")
+			var queued bool
+			if err := fixtureOwner.QueryRow(`SELECT state='queued' AND attempts=0 AND lease='' AND dispatched_ms=0 AND secret IS NULL
+ FROM identity_overlay_broker WHERE device=$1 AND reference=$2 AND version=$3`, session.DeviceID, ref.SetupReference, ref.SetupVersion).Scan(&queued); err != nil || !queued || providerRequests.Load() != 0 {
+				t.Fatal("preflight changed the reservation or contacted the provider")
+			}
+		})
 		stopProvider, providerLog := startProcess(t, "overlay-worker", []string{"SYN443_OVERLAY_BROKER_CONFIG=" + providerFile})
 		var delivered OverlayReply
 		ready := false

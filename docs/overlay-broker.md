@@ -1,5 +1,20 @@
 # Durable managed-overlay broker (runtime integration in progress)
 
+## Worker readiness
+
+Run `overlay-worker --check-ready` with the service's private
+`SYN443_OVERLAY_BROKER_CONFIG` file, network and database user. Exit status
+0 and `overlay_worker_ready` mean the process parsed its configuration, opened
+the database and verified its broker role. In SQL catalog mode it additionally
+verified the worker's catalog access. The database checks share a five-second
+timeout. A configuration or database failure exits with status 1. An unknown
+command-line option exits with status 2 before opening the configuration.
+
+This command can run with a queued enrollment or an empty catalog. It exits
+before advancing the broker clock, leasing work or contacting the provider.
+Use it for the container readiness check and when preparing a deployment.
+Successful key delivery and a reachable enrolled peer need separate checks.
+
 `internal/enrollment/broker.go` adds a publisher-reserved SQL journal and a
 separately restricted `syn443_overlay_worker` role. It is not enabled by the
 existing enrollment runtime configuration. No live NetBird account is changed by tests.
