@@ -168,6 +168,38 @@
             "target",
             "expected_exit_class"
           ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "const": "https_status"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048,
+              "pattern": "^https://"
+            },
+            "http_method": {
+              "enum": [
+                "GET",
+                "HEAD"
+              ]
+            },
+            "expected_status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 599
+            }
+          },
+          "required": [
+            "method",
+            "target",
+            "http_method",
+            "expected_status"
+          ]
         }
       ]
     },

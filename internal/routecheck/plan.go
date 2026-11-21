@@ -27,6 +27,8 @@ type Check struct {
 	Target            string `json:"target"`
 	ExpectedIP        string `json:"expected_ip,omitempty"`
 	ExpectedExitClass string `json:"expected_exit_class,omitempty"`
+	HTTPMethod        string `json:"http_method,omitempty"`
+	ExpectedStatus    int    `json:"expected_status,omitempty"`
 }
 type Plan struct {
 	Outbound string   `json:"outbound"`
@@ -171,7 +173,7 @@ func decode(raw []byte, dst any) error {
 }
 
 func (c *Check) UnmarshalJSON(raw []byte) error {
-	m, e := object(raw, "method target expected_ip expected_exit_class", "method target")
+	m, e := object(raw, "method target expected_ip expected_exit_class http_method expected_status", "method target")
 	if e != nil {
 		return e
 	}
@@ -182,7 +184,10 @@ func (c *Check) UnmarshalJSON(raw []byte) error {
 	}
 	_, ip := m["expected_ip"]
 	_, country := m["expected_exit_class"]
-	if ip != (v.Method == "https_exit_ip") || country != (v.Method == "https_exit_country") || !ValidTarget(Check(v)) {
+	_, verb := m["http_method"]
+	_, status := m["expected_status"]
+	if ip != (v.Method == "https_exit_ip") || country != (v.Method == "https_exit_country") ||
+		verb != (v.Method == "https_status") || status != (v.Method == "https_status") || !ValidTarget(Check(v)) {
 		return ErrInvalid
 	}
 	*c = Check(v)
@@ -467,6 +472,13 @@ func ValidTarget(c Check) bool {
 	if len(raw) < 1 || len(raw) > 2048 || strings.IndexFunc(raw, func(r rune) bool { return r <= 32 || r > 126 }) >= 0 {
 		return false
 	}
+	if c.Method == "https_status" {
+		if (c.HTTPMethod != "GET" && c.HTTPMethod != "HEAD") || c.ExpectedStatus < 200 || c.ExpectedStatus > 599 {
+			return false
+		}
+	} else if c.HTTPMethod != "" || c.ExpectedStatus != 0 {
+		return false
+	}
 	if c.Method == "https_exit_ip" {
 		a, e := netip.ParseAddr(c.ExpectedIP)
 		if len(c.ExpectedIP) > 45 || e != nil || a.Zone() != "" || a.Is4In6() {
@@ -486,7 +498,7 @@ func ValidTarget(c Check) bool {
 	case "tcp", "ssh_banner":
 		h, p, e := net.SplitHostPort(raw)
 		return e == nil && host(h) && port(p)
-	case "tls", "https_204", "https_exit_ip", "https_exit_country":
+	case "tls", "https_204", "https_exit_ip", "https_exit_country", "https_status":
 		u, e := url.Parse(raw)
 		return e == nil && u.Scheme == "https" && u.User == nil && u.Opaque == "" && !strings.Contains(raw, "#") && !strings.HasSuffix(u.Host, ":") && host(u.Hostname()) && (u.Port() == "" || port(u.Port())) && (c.Method != "https_exit_country" || (u.Path == "" || u.Path == "/") && u.RawPath == "" && u.RawQuery == "" && !u.ForceQuery)
 	default:

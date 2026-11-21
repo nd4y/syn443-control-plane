@@ -6,13 +6,13 @@
     "decision-vectors.json": "2993d7ba0f312b475d34a5142759e7dbc5c605594558e1663b54f48859039d47",
     "decision-result.schema.json": "3239654e14d1ce99b30c0309c7c6519f8fec5f72bf8c04d136eb704da088ffc5",
     "openapi.json": "9a6327cdc04b5d1b91b85a3c600ffa90fe4ece339179230793190f5bdf650359",
-    "policy-payload.schema.json": "e0b24e3223d0d2f21d27c996998ea7716b668dce2ee193e09190d71636f423b7",
+    "policy-payload.schema.json": "6ba6f47e1d80f4301f105cacdf1606a972c3ada4795c7ee4f43ba45d3ace9713",
     "policy-vectors.json": "a4a5381e5bb39b91abe71149f47c7e2ec62790ba9afa0a68e41c58ef6af1b788",
     "policy-openapi.json": "11a4f22cf7ce3a8391499e7fcdbd8ff6ab7e1b5743167377ee236b13d9470c28",
     "enrollment-openapi.json": "8cc3c19c0eadb630d204206f1f37668d861ea3463edf3744c405929684134fc8",
     "policy-device-signature.json": "08d74647c816787c85ddd00a9089e3efdaa278b48848723f51a71e26ce5bf15e",
     "chat-openapi.json": "505800fd34c456c86c31345ec18b20be5009e233b1e69f4d637c6688b9b5e3ed",
-    "control-openapi.json": "d46287f7d79f202cfd22c93a7696262b81cd703bf2b438a66b08aacb503da366",
+    "control-openapi.json": "8d951438709f8451cbf33a547bf0ddfd0872dafa4f538a7e6ee3b2e4a85c3003",
     "bootstrap.schema.json": "694da88729da43385252603f120f2c85eacd7283e119ec3986968f136437918b",
     "bootstrap-wire-vectors.json": "e7ed68b385ba61d0788b74680f3b8d41117f5acc960150a651a5eb2c30f9af19",
     "invitation-openapi.json": "0aaf6cf59826265613ce522c7789ea14ec4a00d0392b42a34728911394cf9d2f",
@@ -22,7 +22,8 @@
     "route-graph-vectors.json": "901e71135c197a887dfae0b048d99ab9bdf34c8e1677ca653971dc6ac459accb",
     "adaptive-runtime.schema.json": "2a94d23f71de9a0bd5eed655bbc99c75c390cc2ad6a113b22a02640019a8fc65",
     "bootstrap-admin-vectors.json": "ca41ae2241bb2dd87fb8eb0a9ab262147dd49023c5b4d76c315fc4065c7d6c8a",
-    "route-check-profile-v2.schema.json": "6215af7c9729ad25f8f09caa4fbf9289f775dceb5ee961920a8084b0dbdd12da",
-    "route-check-profile-v2-vectors.json": "d5fc690b3570afc9a83703cbef49d9721ab9ac48bf2921e1bc70d5f46462d319"
+    "route-check-profile-v2.schema.json": "c2d41d941a5d054d2a0357b6bf86a2b32e47dc425474800753fe0315be8302f3",
+    "route-check-profile-v2-vectors.json": "d5fc690b3570afc9a83703cbef49d9721ab9ac48bf2921e1bc70d5f46462d319",
+    "https-status-check-vectors.json": "f1235f7c218fbb486644bd9942f980045ebd12531f1aafc96ec2f646c0dc2db2"
   }
 }

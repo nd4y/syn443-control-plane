@@ -147,3 +147,26 @@ fences. Actual two-hop wire checks are separate from pure truth-table cases.
 No physical managed-profile, provider, LTE, battery, natural Doze or endurance
 acceptance follows from this document. Deployment and a real capability-approved
 profile on the phone need their own recorded evidence.
+
+## Checking an exact HTTPS response status
+
+An operator can attach an HTTPS check to an assigned outbound. For a dashboard or
+internal service, use HEAD when the endpoint implements it. Use GET when the service
+handles HEAD differently. Both forms compare the final response code exactly.
+
+```json
+{"method":"https_status","target":"https://service.example.invalid/health","http_method":"HEAD","expected_status":200}
+```
+
+The method accepts final status codes from 200 through 599. A redirect can itself
+be the expected result. The probe opens one connection through the selected path,
+validates the TLS certificate and hostname, and reads up to 8192 bytes of headers.
+It skips at most four interim responses, closes the socket at the final headers,
+and never requests a redirect destination or evaluates the response body.
+Cancellation and the existing route deadlines apply. A matching status establishes
+availability of this endpoint. Exit geography still requires a country check.
+
+Both ordered checks and v2 profile leaves support this predicate. Its verb and
+status travel in the signed engine configuration and participate in the proof hash.
+Publication requires the device capability `route.https-status.v1` together with
+`route.health.v1`. Existing clients can continue to receive their existing checks.
