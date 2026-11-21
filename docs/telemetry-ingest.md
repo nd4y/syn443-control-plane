@@ -182,6 +182,9 @@ a support chat session or a device session is insufficient. The read audit
 records the actor, hour and request ID before the result is returned. No raw
 events, identifiers, route tags or targets are returned.
 
+The read deadline is the earlier of the administrator session and the telemetry
+grant expiry. The API checks both again before returning the report.
+
 The optional view is hidden with HTTP 404 when disabled or when a valid
 console administrator has no telemetry grant. A rejected console identity or
 revoked console access still uses the existing session or authorization
