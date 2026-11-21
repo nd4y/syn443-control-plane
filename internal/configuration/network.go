@@ -164,7 +164,7 @@ func requireNetwork(capability GraphCapability, values []string) error {
 
 var androidPackage = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$`)
 
-func emitRouteRule(rule RouteRule, graph CompiledGraph) (map[string]any, error) {
+func routeConditions(rule RouteRule) (map[string]any, error) {
 	result, err := emitHostMatch(rule.HostMatch)
 	if err != nil || !id.MatchString(rule.ID) || !networkStrings(rule.IPPrefixes, 64, func(s string) bool { p, e := netip.ParsePrefix(s); return e == nil && p.Masked().String() == s }) || !networkStrings(rule.Packages, 64, func(s string) bool { return len(s) <= 255 && androidPackage.MatchString(s) }) || !networkStrings(rule.Networks, 2, func(s string) bool { return s == "tcp" || s == "udp" }) || len(rule.Ports) > 32 {
 		return nil, ErrInvalid
@@ -199,6 +199,14 @@ func emitRouteRule(rule RouteRule, graph CompiledGraph) (map[string]any, error) 
 	}
 	if rule.MatchAll != (len(result) == 0) {
 		return nil, ErrInvalid
+	}
+	return result, nil
+}
+
+func emitRouteRule(rule RouteRule, graph CompiledGraph) (map[string]any, error) {
+	result, err := routeConditions(rule)
+	if err != nil {
+		return nil, err
 	}
 	switch rule.Action {
 	case "route":
@@ -455,6 +463,28 @@ func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]an
 		"members": selector.Members}, nil
 }
 
+func validDNSQueryType(s string) bool {
+	switch s {
+	case "A", "AAAA", "CNAME", "MX", "TXT", "PTR", "SRV", "HTTPS", "SVCB", "NS", "SOA":
+		return true
+	}
+	return false
+}
+
+func dnsConditions(rule DNSRule) (map[string]any, error) {
+	node, err := emitHostMatch(rule.HostMatch)
+	if err != nil || !id.MatchString(rule.ID) || !networkStrings(rule.QueryTypes, 16, validDNSQueryType) {
+		return nil, ErrInvalid
+	}
+	if len(rule.QueryTypes) > 0 {
+		node["query_type"] = rule.QueryTypes
+	}
+	if len(node) == 0 {
+		return nil, ErrInvalid
+	}
+	return node, nil
+}
+
 func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMessage, error) {
 	if settings.SchemaVersion != 1 || len(graph.Outbounds) < 1 || len(graph.Outbounds) > 64 || len(settings.Rules) > 128 || len(settings.DNSServers) > 16 || len(settings.DNSRules) > 64 {
 		return nil, ErrInvalid
@@ -508,19 +538,11 @@ func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMess
 	dnsRules := []any{}
 	ids = map[string]bool{}
 	for _, rule := range settings.DNSRules {
-		node, err := emitHostMatch(rule.HostMatch)
-		if err != nil || !id.MatchString(rule.ID) || ids[rule.ID] || !dnsIDs[rule.Server] || !networkStrings(rule.QueryTypes, 16, func(s string) bool {
-			return s == "A" || s == "AAAA" || s == "CNAME" || s == "MX" || s == "TXT" || s == "PTR" || s == "SRV" || s == "HTTPS" || s == "SVCB" || s == "NS" || s == "SOA"
-		}) {
+		node, err := dnsConditions(rule)
+		if err != nil || ids[rule.ID] || !dnsIDs[rule.Server] {
 			return nil, ErrInvalid
 		}
 		ids[rule.ID] = true
-		if len(rule.QueryTypes) > 0 {
-			node["query_type"] = rule.QueryTypes
-		}
-		if len(node) == 0 {
-			return nil, ErrInvalid
-		}
 		node["action"], node["server"] = "route", dnsTag(rule.Server)
 		dnsRules = append(dnsRules, node)
 	}

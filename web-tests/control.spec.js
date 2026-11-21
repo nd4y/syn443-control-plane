@@ -146,6 +146,48 @@ test('source recipient edits require confirmation and retry the same scoped muta
  await expect(list).toHaveText('');await expect(page.locator('#source-shares-save')).toBeDisabled();
 });
 async function draft(page){await page.locator('#draft-id').fill('draft-a');await page.locator('#target-id').fill('device-a');await page.locator('#plan').fill(JSON.stringify(plan,null,2));}
+test('manual route preview sends only on request and shows DNS and proxy dial order on a phone',async({page,request})=>{
+ await reset(request);await page.setViewportSize({width:393,height:852});
+ await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ const value=structuredClone(plan);
+ value.graph.profiles.first={sourceId:'first-source',profileId:'first-profile'};
+ value.graph.chains.work={dialOrder:['first','proxy']};
+ value.network.rules=[{id:'work-rule',match:{domainSuffixes:['example.invalid']},action:'route',outbound:'work',matchAll:false}];
+ await page.locator('#plan').fill(JSON.stringify(value));
+ await page.getByText('Как сработают правила черновика',{exact:true}).click();
+ let calls=0;
+ await page.route('**/control/route-explanation',async route=>{
+  const body=route.request().postDataJSON();expect(route.request().method()).toBe('POST');
+  expect(body).toEqual({routeFinal:'proxy',dnsFinal:'system',rules:value.network.rules,dnsRules:[],
+   query:{domain:'test.example.invalid',network:'tcp',port:443,dnsType:'A'}});
+  calls++;await route.fulfill({json:{route:{status:'matched',rule:'work-rule',target:'work'},dns:{status:'default',target:'system'}}});
+ });
+ const run=page.locator('#explain-run'),result=page.locator('#explain-result');
+ await expect(run).toBeDisabled();
+ await page.getByLabel('Домен',{exact:true}).fill('test.example.invalid');
+ await page.locator('#explain-network').selectOption('tcp');await page.locator('#explain-port').fill('443');
+ await page.locator('#explain-dnsType').selectOption('A');expect(calls).toBe(0);
+ await run.click();await expect(result).toContainText('Правило work-rule · first → proxy');
+ await expect(result).toContainText('По умолчанию · system');expect(calls).toBe(1);
+ await page.locator('#target-id').fill('other-device');
+ await expect(result).toBeEmpty();await expect(page.locator('#explain-domain')).toHaveValue('');await expect(run).toBeDisabled();
+});
+test('manual route preview discards late results and distinguishes missing facts from default',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ await page.getByText('Как сработают правила черновика',{exact:true}).click();
+ const app=page.locator('#explain-application'),out=page.locator('#explain-result'),run=page.locator('#explain-run');
+ let arrived,release,calls=0;const started=new Promise(resolve=>{arrived=resolve;}),hold=new Promise(resolve=>{release=resolve;});
+ await page.route('**/control/route-explanation',async route=>{
+  calls++;if(calls===1){arrived();await hold;}
+  await route.fulfill({json:{route:{status:'incomplete',rule:'ordered'},dns:{status:'incomplete'}}});
+ });
+ await app.fill('org.example.one');await run.click();await started;await app.fill('org.example.two');release();
+ await expect(run).toBeEnabled();await expect(out).toBeEmpty();
+ await run.click();await expect(out).toContainText('Недостаточно данных для правила ordered.');
+ await expect(out).not.toContainText('По умолчанию');await expect(out).not.toContainText('org.example');
+ await page.locator('#plan').fill(JSON.stringify({...plan,graph:{...plan.graph,final:'direct'}}));
+ await expect(app).toHaveValue('');await expect(out).toBeEmpty();
+});
 test('phone-sized editor previews bounded adaptive routes and keeps an excessive draft editable',async({page,request})=>{
  await page.setViewportSize({width:393,height:852});await reset(request);await page.goto(origin+'/#draft-title');
  await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
