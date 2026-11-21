@@ -965,3 +965,26 @@ test('phone drops a late cohort preview after a change of target',async({page,re
  await expect(page.locator('#cohort-device')).toHaveValue('');await expect(page.locator('#cohort-result')).toBeEmpty();
  await expect(page.locator('#cohort-run')).toBeDisabled();
 });
+
+test('phone reads the issued NetBird network and distinguishes direct from emergency VLESS',async({page,request})=>{
+ const binding={tag:'mesh',overlayId:'home',resourceId:'provider-a',networkId:'network-a'};
+ await openIssuedPaths(page,request,{routeFinal:'mesh',outbounds:[{tag:'mesh',type:'netbird'}],netbird:{...binding,transport:'direct'}});
+ const steps=page.locator('#issued-path-steps li');
+ await expect(steps).toHaveCount(1);await expect(steps.first()).toContainText('транспорт по политике: прямое соединение');
+ await expect(steps.first()).toContainText('сеть: network-a · ресурс: provider-a · подключение: home');
+ await page.unroute('**/control/action');await page.goto('about:blank');
+ await openIssuedPaths(page,request,{routeFinal:'mesh',outbounds:[{tag:'mesh',type:'netbird',detour:'entry'},{tag:'entry',type:'vless'}],netbird:{...binding,transport:'vless'}});
+ await expect(steps).toHaveCount(2);await expect(steps.first()).toContainText('entry · VLESS');
+ await expect(steps.last()).toContainText('транспорт по политике: через VLESS (entry)');
+ await expect(steps.last()).not.toContainText(/подключено|relay|P2P/i);
+});
+test('phone keeps a historical NetBird summary unknown and ignores another overlay tag',async({page,request})=>{
+ const legacy={routeFinal:'mesh',outbounds:[{tag:'mesh',type:'netbird'}]};
+ for(const extra of [{},{netbird:{tag:'other-mesh',transport:'direct',networkId:'other-network',overlayId:'home',resourceId:'provider-a'}}]){
+  await openIssuedPaths(page,request,{...legacy,...extra});
+  const steps=page.locator('#issued-path-steps');
+  await expect(steps).toContainText('транспорт не указан в сохранённой сводке');
+  await expect(steps).not.toContainText(/прямое соединение|other-network/i);
+  await page.unroute('**/control/action');await page.goto('about:blank');
+ }
+});

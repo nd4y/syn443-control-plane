@@ -759,8 +759,11 @@
     {
       "id": "PROTO-04",
       "text": "Первая версия поддерживает один активный NetBird account/network на устройстве. Общая модель должна различать providerType, resourceId, networkId и локальную идентичность overlay, не делая NetBird единственным допустимым архитектурным типом. Одновременные overlay-сети, несколько NetBird сетей, Tailscale/ZeroTier и межсетевое объединение не входят в реализацию 1.0.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go"
+      ]
     },
     {
       "id": "NB-01",
@@ -858,9 +861,11 @@
     {
       "id": "OVL-01",
       "text": "NetBird реализуется первым провайдером общей модели OverlayConnection: overlayId, providerType, resourceId, networkId, identityRef, engineRef, providerConfig, route/DNS policy, transportPolicy и capability requirements. Параметры NetBird хранятся в типизированном providerConfig, а не в обязательных полях всех будущих провайдеров.",
-      "status": "planned",
+      "status": "partial",
       "evidence": [
-        "docs/overlay-broker.md"
+        "docs/overlay-broker.md",
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go"
       ]
     },
     {
@@ -890,8 +895,11 @@
     {
       "id": "OVL-05",
       "text": "Прямое соединение, relay, UDP, IPv6, внутренний DNS, маршруты, подключение через VLESS и число одновременных сетей определяются capabilities конкретного провайдера. Свойства текущего NetBird не переносятся автоматически на Tailscale/ZeroTier; неподдержанная цепочка отвергается до активации.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/portable-netbird.md",
+        "internal/configuration/netbird_test.go"
+      ]
     },
     {
       "id": "OVL-06",
@@ -910,8 +918,12 @@
     {
       "id": "OVL-07",
       "text": "Общий UI/health API показывает provider, сеть, управление, data plane, маршруты и фактический путь в пределах capabilities. В 1.0 данные отдаёт только NetBird; planned provider возвращает not_implemented и не получает ложный Connected. Контракт проверяется синтетическими моделями без реальных подключений будущих систем.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/portable-netbird.md",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/policy/issued_settings_test.go"
+      ]
     },
     {
       "id": "MODE-01",

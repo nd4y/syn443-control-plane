@@ -544,6 +544,16 @@ function showIssuedPaths(issued){
    if(['selector','urltest','syn443-adaptive'].includes(row.type)&&Array.isArray(row.outbounds)&&row.outbounds.length&&row.outbounds.length<=256&&row.outbounds.every(validTag)){
     const choices=document.createElement('span');choices.textContent=' · варианты: '+row.outbounds.join(', ');item.append(choices);
    }
+   if(row.type==='netbird'){
+    const overlay=issued.netbird,detail=document.createElement('span');
+    const matches=overlay?.tag===row.tag;
+    const transport=matches&&overlay.transport==='direct'&&!row.detour?'прямое соединение':
+      matches&&overlay.transport==='vless'&&row.detour?'через VLESS ('+row.detour+')':null;
+    let text=transport?' · транспорт по политике: '+transport:' · транспорт не указан в сохранённой сводке';
+    if(transport&&[overlay.overlayId,overlay.resourceId,overlay.networkId].every(validTag))
+     text+=' · сеть: '+overlay.networkId+' · ресурс: '+overlay.resourceId+' · подключение: '+overlay.overlayId;
+    detail.textContent=text;item.append(detail);
+   }
    steps.append(item);
   }
  }

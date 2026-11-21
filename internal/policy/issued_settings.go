@@ -13,10 +13,60 @@ type IssuedSettings struct {
 	AlgorithmRevision string           `json:"algorithmRevision"`
 	OfflineUntilMs    int64            `json:"offlineUntilMs"`
 	Outbounds         []IssuedOutbound `json:"outbounds"`
+	NetBird           *IssuedOverlay   `json:"netbird,omitempty"`
 	RouteFinal        string           `json:"routeFinal,omitempty"`
 	RouteRuleCount    int              `json:"routeRuleCount"`
 	DNSFinal          string           `json:"dnsFinal,omitempty"`
 	Activation        IssuedActivation `json:"activation"`
+}
+
+// IssuedOverlay describes only the transport and namespace in a signed policy.
+// Peer paths, connection state and provider credentials are not inventory data.
+type IssuedOverlay struct {
+	Tag        string `json:"tag"`
+	Transport  string `json:"transport"`
+	OverlayID  string `json:"overlayId,omitempty"`
+	ResourceID string `json:"resourceId,omitempty"`
+	NetworkID  string `json:"networkId,omitempty"`
+}
+
+type issuedEngineOutbound struct {
+	IssuedOutbound
+	ConnectionMode json.RawMessage `json:"connection_mode"`
+	Managed        json.RawMessage `json:"managed"`
+}
+
+func (e issuedEngineOutbound) netBirdSettings() *IssuedOverlay {
+	var mode string
+	if json.Unmarshal(e.ConnectionMode, &mode) != nil || issuedTag(e.Tag) == "" {
+		return nil
+	}
+	switch mode {
+	case "direct":
+		if e.Detour != "" {
+			return nil
+		}
+	case "vless":
+		if issuedTag(e.Detour) == "" || e.Detour == e.Tag {
+			return nil
+		}
+	default:
+		return nil
+	}
+	view := &IssuedOverlay{Tag: e.Tag, Transport: mode}
+	if len(e.Managed) > 0 {
+		var m struct {
+			OverlayID  string `json:"overlayId"`
+			ResourceID string `json:"resourceId"`
+			NetworkID  string `json:"networkId"`
+		}
+		if json.Unmarshal(e.Managed, &m) != nil || issuedTag(m.OverlayID) == "" ||
+			issuedTag(m.ResourceID) == "" || issuedTag(m.NetworkID) == "" {
+			return nil
+		}
+		view.OverlayID, view.ResourceID, view.NetworkID = m.OverlayID, m.ResourceID, m.NetworkID
+	}
+	return view
 }
 
 type IssuedOutbound struct {
@@ -49,7 +99,7 @@ func (p Payload) ConsoleSettings() *IssuedSettings {
 		return nil
 	}
 	var engine struct {
-		Outbounds []IssuedOutbound `json:"outbounds"`
+		Outbounds []issuedEngineOutbound `json:"outbounds"`
 		Route     struct {
 			Final string            `json:"final"`
 			Rules []json.RawMessage `json:"rules"`
@@ -68,7 +118,17 @@ func (p Payload) ConsoleSettings() *IssuedSettings {
 		DNSFinal:   issuedTag(engine.DNS.Final),
 		Activation: IssuedActivation{TimeoutSeconds: p.Activation.TimeoutSeconds, AllowDegraded: p.Activation.AllowDegraded},
 	}
-	for _, outbound := range engine.Outbounds {
+	seenOverlay := false
+	for _, node := range engine.Outbounds {
+		outbound := node.IssuedOutbound
+		if outbound.Type == "netbird" {
+			if seenOverlay {
+				view.NetBird = nil
+			} else {
+				view.NetBird = node.netBirdSettings()
+			}
+			seenOverlay = true
+		}
 		switch outbound.Type {
 		case "direct", "block", "http", "socks", "ssh", "vless", "netbird", "selector", "urltest", "dns", "syn443-adaptive":
 		default:

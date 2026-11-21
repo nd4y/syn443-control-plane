@@ -48,3 +48,14 @@ do not prove external provider availability or physical Android acceptance of
 this exact compiled publication. Full application settings, four-context client
 selection, templates for future devices and remaining mobile administration are
 still required M2/M3 work. Current component acceptance is pending its exact CI.
+
+
+## Inspect an issued overlay
+
+Open the device card and expand the issued policy. Select the NetBird outbound
+to see its declared direct transport or VLESS entry in dialing order. Managed
+policies also display the assigned overlay, resource and network IDs. An older
+saved projection can lack these fields; the card reports the missing detail.
+Endpoints, peer addresses, setup references and SDK state stay out of the
+inventory. Current management connectivity, P2P and relay state come from
+the Android peer report.
