@@ -11,7 +11,8 @@ production deployment.
 - [Control plane and canonical contracts](https://github.com/nd4y/syn443-control-plane)
 - [Technical specification v0.9](docs/spec/TECHNICAL_SPEC_RU.md):292 requirements,98 acceptance scenarios
 - [Implementation and acceptance](docs/implementation-status.md), [roadmap](docs/ROADMAP.md)
-- [Requirements register](docs/requirements-register.json), [test strategy](docs/TESTING.md)
+- [Product requirements across Android and Control Plane](docs/product-requirements.md)
+- [Control Plane requirements register](docs/requirements-register.json), [test strategy](docs/TESTING.md)
 - [Architecture/security review](docs/spec/ARCHITECTURE_REVIEW_RU.md), [public-data rules](docs/PUBLIC_DATA.md)
 
 M1 remains partial; M2 and chat have scoped pilot implementations. Full M2-M5 and
