@@ -68,6 +68,14 @@ function sameRouteCheck(a,b){
  return a?.method===b.method&&a.target===b.target&&a.expected_ip===b.expected_ip&&
   a.expected_exit_class===b.expected_exit_class&&a.http_method===b.http_method&&a.expected_status===b.expected_status;
 }
+function validProbeHTTPS(target){
+ if(!/^https:\/\/(?:\[[0-9a-fA-F:.]+\]|[a-z0-9.-]+)(?::[0-9]{1,5})?(?:[/?]|$)/.test(target)||
+    /[\\#]|%(?![0-9a-f]{2})/i.test(target))return false;
+ try{
+  const url=new URL(target);
+  return url.port!=='0'&&!url.hostname.endsWith('.');
+ }catch{return false;}
+}
 function routeDraft(){
  const value=JSON.parse($('plan').value),graph=value.graph,network=value.network;
  if(!graph||!network||Array.isArray(graph)||Array.isArray(network)||typeof graph!=='object'||typeof network!=='object')throw Error('invalid');
@@ -832,14 +840,12 @@ $('route-check-add').onclick=()=>{
   if(!current.tags.has(path)||!Object.hasOwn(routeCheckMethods,method)||!target||target.length>2048||/[^!-~]/.test(target))throw Error('invalid');
   const check={method,target};
   if(method==='https_exit_ip'){
-   if(!/^[0-9a-fA-F:.]{2,45}$/.test(expectedIP)||new URL(target).protocol!=='https:')throw Error('invalid');
+   if(!/^[0-9a-fA-F:.]{2,45}$/.test(expectedIP)||!validProbeHTTPS(target))throw Error('invalid');
    check.expected_ip=expectedIP;
   }
   if(method==='https_status'){
    const verb=$('route-check-verb').value,code=$('route-check-status').value;
-   const url=new URL(target);
-   if(!target.startsWith('https://')||/[\\#]/.test(target)||url.username||url.password||
-      !['HEAD','GET'].includes(verb)||!/^[2-5][0-9]{2}$/.test(code))throw Error('invalid');
+   if(!validProbeHTTPS(target)||!['HEAD','GET'].includes(verb)||!/^[2-5][0-9]{2}$/.test(code))throw Error('invalid');
    check.http_method=verb;check.expected_status=Number(code);
   }
   let group=current.checks.find(row=>row.outbound===path);

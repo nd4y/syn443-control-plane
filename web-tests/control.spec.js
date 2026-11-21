@@ -168,6 +168,22 @@ test('HTTPS status checks retain the chosen verb and status for each route draft
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });
+test('mobile route editor reports invalid HTTPS addresses without changing the draft',async({page,request})=>{
+ await page.setViewportSize({width:393,height:852});
+ await reset(request);await page.goto(origin+'/#draft-title');await draft(page);
+ const method=page.locator('#route-check-method'),target=page.getByLabel('Адрес проверки');
+ const planField=page.locator('#plan'),original=await planField.inputValue();
+ await method.selectOption('https_status');
+ for(const invalid of ['https://[','https:///path','https://example.invalid:99999/','https://example.invalid/a%','https://@example.invalid/']){
+  await target.fill(invalid);await page.locator('#route-check-add').click();
+  await expect(page.locator('#status')).toContainText('Проверьте поля');await expect(planField).toHaveValue(original);
+ }
+ await target.fill('https://service.example.invalid/ready');await page.locator('#route-check-add').click();
+ await expect(page.locator('#route-check-list li')).toContainText('HEAD · 200');
+ await expect(page.getByLabel('Ожидаемый код ответа')).toBeVisible();
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(0);
+});
 test('reserve probe cooldown requires explicit draft opt in and never publishes',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
  const box=page.locator('#route-reserve-cooldown'),input=page.locator('#plan');
