@@ -189,8 +189,13 @@
     {
       "id": "AUTH-03",
       "text": "Пользователь SYN443 идентифицируется независимо от внешней панели. Существующего пользователя Remnawave связывают по паре resourceId/externalUserId либо одноразовой проверке владения в этом ресурсе. Совпадение email, имени или одинакового externalUserId в двух ресурсах само по себе не выдаёт чужую подписку. Ограничение числа устройств настраивается администратором.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/enrollment/store_postgres_test.go",
+        "web-tests/source-review.spec.js"
+      ]
     },
     {
       "id": "AUTH-04",

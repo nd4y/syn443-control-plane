@@ -7,7 +7,7 @@ const recipientKinds={user:'Пользователь',device:'Устройств
 let authenticated=false,busy=false,pending=null,revision=0,opened=null,next='',listedOwner='';
 let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='',sourceHistoryNext='';
 let reviewEpoch=0,reviewAvailable=false,sourceReview=null,reviewChanges=[],reviewOffset=0;
-let sourceSnapshotEpoch=0;
+let sourceSnapshotEpoch=0,sourceDetailLoading=false;
 let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null;
 let layerComparison=null;
 let layerDraftInventory=null;
@@ -335,7 +335,7 @@ function controls(){
  $('console-shell').classList.toggle('signed-in',authenticated);
  for(const id of ['load-sources','load-inventory','open-draft','save-draft','new-draft','new-source','save-source'])$(id).disabled=busy||!authenticated||!!pending;
  for(const id of ['telemetry-hour','load-telemetry'])$(id).disabled=busy||!authenticated;
- for(const id of sourceFields)$(id).disabled=busy||!authenticated||!!pending||sourceIdentity&&['source-id','source-owner','source-mode'].includes(id);
+ for(const id of sourceFields)$(id).disabled=busy||!authenticated||!!pending||sourceIdentity&&['source-id','source-owner','source-mode','source-resource','source-external'].includes(id);
  const deviceSource=$('source-mode').value==='device';
  $('source-device-settings').hidden=!deviceSource;
  $('source-device').disabled=$('source-device').disabled||!deviceSource||!!sourceIdentity?.fetchDeviceId;
@@ -356,7 +356,8 @@ function controls(){
  $('source-shares-save').disabled=sharesBlocked||!$('source-shares-confirm').checked||!sharesChanged();
  for(const button of $('source-shares-list').querySelectorAll('button'))button.disabled=sharesBlocked;
  $('more-sources').disabled=busy||!authenticated||!next||!!pending;
- for(const id of ['owner','inventory-device',...formFields])$(id).disabled=busy||!authenticated||!!pending;
+ for(const id of ['inventory-device',...formFields])$(id).disabled=busy||!authenticated||!!pending;
+ $('owner').disabled=!authenticated||!!pending||busy&&!sourceDetailLoading;
  $('pending').hidden=!pending;for(const id of ['retry-save','discard-save'])$(id).disabled=busy||!authenticated;
  if(pending&&['layer-preview','layer-publish','layer-discard'].includes(pendingKind))$('discard-save').disabled=true;
  for(const button of $('sources').querySelectorAll('button'))button.disabled=busy||!authenticated||!!pending;
@@ -909,7 +910,7 @@ async function sources(more=false){
  const epoch=sourceSnapshotEpoch;
  const page=await action('source.list',{owner,after:more?next:''});
  if(epoch!==sourceSnapshotEpoch||owner!==$('owner').value.trim())return;
- if(!Array.isArray(page.sources)||typeof page.next!=='string')throw Error('invalid');
+ if(!Array.isArray(page.sources)||typeof page.next!=='string'||page.sources.some(source=>!validSourceBinding(source)||source.owner!==owner))throw Error('invalid');
  if(!more)$('sources').replaceChildren();
  listedOwner=owner;next=page.next;
  for(const source of page.sources){
@@ -920,7 +921,15 @@ async function sources(more=false){
    if(!authenticated||selection!==sourceSnapshotEpoch||owner!==$('owner').value.trim())return;
    showSourceSnapshot(source,view);
    status('Метаданные профилей загружены. Учётные данные прокси не выводятся.');
-  });const edit=actionButton();edit.textContent='Настроить источник';edit.onclick=()=>work(async()=>{showSource(await action('source.get',{id:source.id}));status('Параметры загружены. Прежний секрет не возвращается.');});li.append(document.createElement('br'),button,edit);
+  });const edit=actionButton();edit.textContent='Настроить источник';edit.onclick=()=>work(async()=>{
+    const selection=sourceSnapshotEpoch;
+    sourceDetailLoading=true;controls();
+    try{
+     const details=await action('source.get',{id:source.id});
+     if(!authenticated||selection!==sourceSnapshotEpoch||owner!==$('owner').value.trim())return;
+     showSource(details,source);status('Параметры загружены. Прежний секрет не возвращается.');
+    }finally{sourceDetailLoading=false;}
+  });li.append(document.createElement('br'),button,edit);
  }
  status(page.sources.length?'Источники загружены.':'Источников для этого пользователя нет.');
 }
@@ -968,7 +977,9 @@ async function retry(){
   if(providerEdit?.epoch===providerEpoch&&$('source-resource').value.trim()===wanted.id)await inspectProvider();
   status('Настройки ресурса сохранены.');return;
  }else if(pendingKind==='source'){
-  showSource(result);status('Источник сохранён. Активные политики меняются отдельной публикацией.');
+  const wanted=JSON.parse(pending).payload.source;
+  if(result?.revision!==wanted.revision+1)throw Error('invalid');
+  showSource(result,wanted);status('Источник сохранён. Активные политики меняются отдельной публикацией.');
  }else if(pendingKind==='shares'){
   const attempted=JSON.parse(pending).payload;
   const view=validateShares(result);
@@ -1049,7 +1060,19 @@ async function decideSourceReview(approve){
     !$('source-review-confirm').checked)throw Error('invalid');
  pendingKind='review';pending=envelope('source.review',{...sourceReview,approve});await retry();
 }
-function showSource(s){if(!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');resetSourceReview(Boolean(s.candidateSnapshot));sourceIdentity={id:s.id,owner:s.owner,mode:s.mode,fetchDeviceId:s.fetchDeviceId||''};sourceRevision=s.revision;sourceJob='';clearSourceHistory();clearSourceShares();$('source-import-file').value='';$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-device').value=sourceIdentity.fetchDeviceId;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
+function validSourceBinding(s){
+ if(!s||typeof s.id!=='string'||!/^[A-Za-z0-9_-]{1,48}$/.test(s.id)||
+    typeof s.owner!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(s.owner))return false;
+ if(s.mode==='resource')return typeof s.resourceId==='string'&&/^[A-Za-z0-9_-]{1,48}$/.test(s.resourceId)&&
+    typeof s.externalUserId==='string'&&/^[1-9][0-9]{0,14}$/.test(s.externalUserId);
+ return ['server','manual','device'].includes(s.mode)&&(s.resourceId??'')===''&&(s.externalUserId??'')==='';
+}
+function sameSourceBinding(source,expected){
+ return source.id===expected.id&&source.owner===expected.owner&&source.mode===expected.mode&&
+    (source.resourceId??'')===(expected.resourceId??'')&&(source.externalUserId??'')===(expected.externalUserId??'')&&
+    (!expected.fetchDeviceId||expected.fetchDeviceId===source.fetchDeviceId);
+}
+function showSource(s,expected){if(!validSourceBinding(s)||!sameSourceBinding(s,expected)||!Number.isSafeInteger(s.revision)||s.revision<1||!Array.isArray(s.networkModes))throw Error('invalid');resetSourceReview(Boolean(s.candidateSnapshot));sourceIdentity={id:s.id,owner:s.owner,mode:s.mode,resourceId:s.resourceId||'',externalUserId:s.externalUserId||'',fetchDeviceId:s.fetchDeviceId||''};sourceRevision=s.revision;sourceJob='';clearSourceHistory();clearSourceShares();$('source-import-file').value='';$('source-id').value=s.id;$('source-owner').value=s.owner;$('source-name').value=s.name;$('source-mode').value=s.mode;$('source-device').value=sourceIdentity.fetchDeviceId;$('source-format').value=s.format;$('source-resource').value=s.resourceId||'';$('source-external').value=s.externalUserId||'';$('source-until').value=localDate(s.validUntil);$('source-refresh').value=String(s.refreshSeconds);$('source-stale').value=String(s.maxStaleSeconds);$('source-enabled').checked=s.enabled;for(const option of $('source-modes').options)option.selected=s.networkModes.includes(option.value);$('source-secret-operation').value='keep';$('source-secret').value='';$('source-version').textContent=`Версия источника: ${s.revision} · ${s.state}`;$('job-status').replaceChildren();}
 async function importSource(){
  const field=$('source-import-file'),file=field.files[0];
  if(pending||sourceIdentity?.mode!=='manual'||!file||file.size<1)throw Error('invalid');
@@ -1150,6 +1173,7 @@ async function saveSource(){
   if(!bound||sourceIdentity?.fetchDeviceId&&sourceIdentity.fetchDeviceId!==bound||!source.networkModes.includes('wifi'))throw Error('invalid');
   source.fetchDeviceId=bound;
  }
+ if(!validSourceBinding(source)||sourceIdentity&&!sameSourceBinding(source,sourceIdentity))throw Error('invalid');
  const operation=$('source-secret-operation').value;let secret=JSON.stringify({operation});
  if(operation==='replace'){try{JSON.parse($('source-secret').value);}catch{throw Error('invalid');}secret='{"operation":"replace","value":'+$('source-secret').value+'}';}
  pendingKind='source';pending=JSON.stringify({version:1,action:'source.put',requestId:crypto.randomUUID()}).slice(0,-1)+',"payload":{"source":'+JSON.stringify(source)+',"secret":'+secret+'}}';await retry();
@@ -1413,7 +1437,7 @@ $('route-check-add').onclick=()=>{
   group.required=required;group.checks.push(check);applyRouteChecks(current);$('route-check-target').value='';$('route-check-ip').value='';
  });
 };
-$('discard-save').onclick=()=>work(async()=>{const kind=pendingKind,sourceId=$('source-id').value.trim();pending=null;if(kind==='resource')await inspectProvider();else if(kind.startsWith('layer-')){layerPreview=null;layerJob=null;await loadLayerDraft();}else if(kind==='draft')await openDraft();else if(sourceId)showSource(await action('source.get',{id:sourceId}));});
+$('discard-save').onclick=()=>work(async()=>{const kind=pendingKind,expected=kind==='source'?JSON.parse(pending).payload.source:sourceIdentity;pending=null;if(kind==='resource')await inspectProvider();else if(kind.startsWith('layer-')){layerPreview=null;layerJob=null;await loadLayerDraft();}else if(kind==='draft')await openDraft();else if(expected)showSource(await action('source.get',{id:expected.id}),expected);});
 $('new-source').onclick=()=>work(async()=>{const owner=$('owner').value.trim();clearSource();$('source-id').value=crypto.randomUUID();$('source-owner').value=owner;$('source-until').value=localDate(Math.floor(Date.now()/1000)+30*86400);$('source-version').textContent='Новый источник';status('Заполните параметры. Для нового HTTPS источника укажите новые учётные данные.');});
 $('source-form').onsubmit=event=>{event.preventDefault();work(saveSource);};
 $('source-secret-operation').onchange=controls;$('source-mode').onchange=controls;

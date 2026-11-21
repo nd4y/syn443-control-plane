@@ -103,6 +103,8 @@ expected.update({
     'PatternFly console chat transfers and verifies a full 25 MiB file',
     'explicit send preserves composition and exact Unicode on standalone',
     'explicit send preserves composition and exact Unicode on console',
+    'source editor binds selection and retry to the owner and external pair',
+    'source editor forgets a late selection when the listed owner changes',
     'mismatched send receipts retain the exact draft and files on standalone',
     'mismatched send receipts retain the exact draft and files on console',
     'PatternFly console chat retries a lost acknowledgment without duplicate delivery',
