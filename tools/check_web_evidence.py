@@ -110,6 +110,8 @@ expected.update({
 expected.update({
     'manual route preview sends only on request and shows DNS and proxy dial order on a phone',
     'manual route preview discards late results and distinguishes missing facts from default',
+    'mobile source review compares both versions and retries the identical approved candidate',
+    'changed subscription review requires a fresh comparison before rejecting its successor',
 })
 assert len(cases) >= 79
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'

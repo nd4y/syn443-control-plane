@@ -33,6 +33,8 @@ func validConsoleAction(raw []byte, sourceImport bool) bool {
 		return request.Action == "source.import"
 	}
 	switch request.Action {
+	case "source.review":
+		return len(raw) <= 2048 && validSourceReview(request.Payload)
 	case "resource.put":
 		return len(raw) <= 4096 && validResourceEdit(request.Payload)
 	case "invite.issue", "invite.get", "invite.approve", "invite.revoke":
@@ -46,6 +48,26 @@ func validConsoleAction(raw []byte, sourceImport bool) bool {
 }
 
 var resourceEditID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,48}$`)
+var snapshotReviewID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+
+func validSourceReview(raw json.RawMessage) bool {
+	var body struct {
+		SourceID       string  `json:"sourceId"`
+		SourceRevision int64   `json:"sourceRevision"`
+		Candidate      string  `json:"candidate"`
+		Hash           string  `json:"hash"`
+		Active         *string `json:"active"`
+		Approve        *bool   `json:"approve"`
+	}
+	if identity.Decode(raw, &body, true) != nil || body.Active == nil || body.Approve == nil {
+		return false
+	}
+	digest, err := base64.RawURLEncoding.Strict().DecodeString(body.Hash)
+	return err == nil && len(digest) == 32 && base64.RawURLEncoding.EncodeToString(digest) == body.Hash &&
+		resourceEditID.MatchString(body.SourceID) && snapshotReviewID.MatchString(body.Candidate) &&
+		(*body.Active == "" || snapshotReviewID.MatchString(*body.Active)) && *body.Active != body.Candidate &&
+		body.SourceRevision > 0 && body.SourceRevision <= 9007199254740991
+}
 
 // The browser can change an existing resource's metadata. Credentials and
 // provider construction remain behind the catalog's separate operator path.

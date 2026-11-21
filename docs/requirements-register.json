@@ -376,9 +376,11 @@
         "internal/catalog/store_postgres_test.go",
         "internal/catalog/resource_postgres_test.go",
         "internal/catalog/review_postgres_test.go",
-        "internal/catalog/review_refresh_postgres_test.go"
+        "internal/catalog/review_refresh_postgres_test.go",
+        "internal/chatweb/source_review_test.go",
+        "web-tests/source-review.spec.js"
       ],
-      "implementationScope": "The catalog preserves the approved snapshot after a malformed import and requires review for excessive removals or broken route references. A late malformed or transient response cannot supersede a newer administrative promotion. Confirmed provider revocation and expiry still block selection.",
+      "implementationScope": "The catalog preserves the approved snapshot after a malformed import and requires review for excessive removals or broken route references. A late malformed or transient response cannot supersede a newer administrative promotion. Confirmed provider revocation and expiry still block selection. The mobile console compares both snapshot profile sets and binds an explicit approval or rejection to the candidate, active head and source revision.",
       "remainingScope": "End-to-end administrative and physical device readback of quarantine and provider revocation remains open."
     },
     {
