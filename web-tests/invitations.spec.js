@@ -6,13 +6,13 @@ const opaque=n=>Buffer.alloc(32,n).toString('base64url');
 const owner=opaque(1),grant=opaque(2),id=opaque(3),deviceKey=opaque(4);
 const link='syn443://enroll/v1?'+new URLSearchParams({bootstrap:'synthetic.signed.descriptor',code:opaque(5),
   origin:'https://service.example.invalid',service:'Fixture_1'});
-async function open(page,request){
- await request.post(origin+'/fixture/reset',{data:{}});
+async function open(page,request,options={}){
+ await request.post(origin+'/fixture/reset',{data:options});
  await page.setViewportSize({width:393,height:852});await page.goto(origin+'/#invites-title');
  await expect(page.getByRole('heading',{name:'Приглашения'})).toBeVisible();
 }
 async function propose(page){
- await page.getByLabel('ID получателя',{exact:true}).fill(owner);
+ await page.locator('#invite-issue-form').getByRole('textbox',{name:'ID получателя',exact:true}).fill(owner);
  await page.getByLabel('Отпечаток назначения получателя').fill(grant);
  await page.getByLabel('Сервис привязки').fill('Fixture_1');
  await page.getByLabel('Версия описания сервиса').fill('2');
@@ -20,7 +20,9 @@ async function propose(page){
 }
 test('mobile invitation QR decodes to the exact local link and pairing needs the phone code',async({page,request})=>{
  const calls=[],urls=[];page.on('request',req=>urls.push(req.url()));
- await open(page,request);
+ await open(page,request,{reauthentication:true});
+ await page.getByRole('button',{name:'Обновить подтверждение входа'}).click();
+ await expect(page.locator('#reauthentication-title')).toBeFocused();
  let expires;
  await page.route('**/control/action',async route=>{
   const body=route.request().postDataJSON();if(!body.action.startsWith('invite.'))return route.fallback();

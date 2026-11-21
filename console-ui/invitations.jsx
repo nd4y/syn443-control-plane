@@ -4,6 +4,7 @@ import qrcode from 'qrcode-generator';
 export function Invitations() {
   return <PageSection hasBodyWrapper={false} className="workspace-page" aria-labelledby="invites-title" hidden>
     <Title headingLevel="h1" size="2xl" id="invites-title" tabIndex={-1}>Приглашения</Title>
+    <Button id="invite-reauth" type="button" variant="link" hidden>Обновить подтверждение входа</Button>
     <form id="invite-issue-form" autoComplete="off">
       <fieldset id="invite-issue-fields"><legend>Привязать новое устройство</legend>
         <label htmlFor="invite-owner">ID получателя</label>

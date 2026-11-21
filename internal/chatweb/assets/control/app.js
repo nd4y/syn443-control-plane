@@ -296,6 +296,8 @@ function controls(){
  $('reauthentication').hidden=!authenticated||!reauthenticationNeeded;
  $('reauthentication-unavailable').hidden=reauthenticationAvailable;
  $('reauthentication-start').disabled=busy||!authenticated||!reauthenticationAvailable;
+ $('invite-reauth').hidden=!authenticated||!reauthenticationAvailable;
+ $('invite-reauth').disabled=busy;
  $('reauthentication-check').disabled=busy||!authenticated;
  for(const id of ['refresh-devices','more-devices'])$(id).disabled=busy||!authenticated||!!pending||(id==='more-devices'&&!devicesNext);
  for(const button of $('device-rows').querySelectorAll('button'))button.disabled=busy||!authenticated||!!pending;
@@ -903,6 +905,10 @@ async function saveSource(){
 $('login').onclick=()=>work(async()=>{const device=linkedDevice();const result=await request('/login',device?{device}:{});const target=new URL(result.url);if(target.protocol!=='https:'&&!(location.hostname==='127.0.0.1'&&target.protocol==='http:'&&target.hostname==='127.0.0.1'))throw Error('invalid');location.assign(target.href);});
 $('logout').onclick=()=>work(async()=>{try{await request('/logout',{});}finally{authenticated=false;erase();if(linkedDevice())history.replaceState(null,'','/#inventory-title');}status('Вы вышли. Локальная копия черновика очищена.');});
 $('refresh-devices').onclick=()=>work(()=>loadDevices());
+$('invite-reauth').onclick=()=>{
+ if(!authenticated||!reauthenticationAvailable||busy)return;
+ reauthenticationNeeded=true;controls();$('reauthentication-title').focus();
+};
 $('reauthentication-start').onclick=()=>work(beginReauthentication);
 $('reauthentication-check').onclick=()=>work(checkReauthentication);
 $('refresh-runtime').onclick=()=>work(loadRuntime);
