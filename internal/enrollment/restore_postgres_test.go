@@ -4,13 +4,16 @@ package enrollment
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/policy"
@@ -118,5 +121,75 @@ func TestSQLBackupRestorePreservesPolicyAndChatAttachment(t *testing.T) {
 	chatCall(t, f, other, "download", req, http.StatusForbidden)
 	if _, err := restored.Exec(`TRUNCATE chat_messages CASCADE`); err == nil {
 		t.Fatal("database restore unexpectedly broadened the API role")
+	}
+}
+
+func TestSQLRestoreResumesFullSizeChatAttachment(t *testing.T) {
+	f, client := chatSetup(t)
+	f.api.Clock = func() time.Time { return f.now }
+	other := chatOther(t, f, "synthetic-restore-reader")
+	conversation := chatSelf(t, f, client)
+	data := make([]byte, supportchat.MaxFileBytes)
+	if _, err := rand.NewChaCha8([32]byte{17}).Read(data); err != nil {
+		t.Fatal(err)
+	}
+	upload := chatBegin(t, f, client, conversation, chatID("d"), data, "application/octet-stream", "file")
+	const parts = supportchat.MaxFileBytes / supportchat.ChunkBytes
+	sendPart := func(n int) {
+		chunk := data[n*supportchat.ChunkBytes : (n+1)*supportchat.ChunkBytes]
+		chatCall(t, f, client, "uploads/part", map[string]any{"upload": upload, "part": n, "data": chunk, "sha256": supportchat.Hash(chunk)}, http.StatusOK)
+	}
+	for n := parts - 2; n >= 0; n -= 2 {
+		sendPart(n)
+	}
+	restored := restoreFixture(t)
+	sendPart(1) // This part only reached the old database after the snapshot.
+	store, err := NewStore(restored, f.encryption)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.api.Store = store
+	response := chatCall(t, f, client, "uploads/status", map[string]any{"upload": upload}, http.StatusOK)
+	var state struct {
+		Attachment supportchat.Attachment `json:"attachment"`
+		Complete   bool                   `json:"complete"`
+		Parts      []int                  `json:"parts"`
+	}
+	if err := identity.Decode(response.Body.Bytes(), &state, true); err != nil || state.Complete || state.Attachment.ID != upload || len(state.Parts) != parts/2 {
+		t.Fatal("restored upload did not retain its partial state")
+	}
+	for i, part := range state.Parts {
+		if part != i*2 {
+			t.Fatal("snapshot contained unexpected chunk", part)
+		}
+	}
+	chatCall(t, f, client, "uploads/complete", map[string]any{"upload": upload}, http.StatusConflict)
+	for n := 1; n < parts; n += 2 {
+		sendPart(n)
+	}
+	chatCall(t, f, client, "uploads/complete", map[string]any{"upload": upload}, http.StatusOK)
+	message := supportchat.SendRequest{Conversation: conversation, ClientID: chatID("e"), Attachments: []string{upload}}
+	sent := chatCall(t, f, client, "send", message, http.StatusOK)
+	if replay := chatCall(t, f, client, "send", message, http.StatusOK); !bytes.Equal(sent.Body.Bytes(), replay.Body.Bytes()) {
+		t.Fatal("attachment send receipt changed on retry")
+	}
+
+	// Use the next real admission window for the 100 authenticated chunk reads.
+	f.now = f.now.Add(time.Minute)
+	chatCall(t, f, other, "download", map[string]any{"attachment": upload, "part": parts - 1}, http.StatusForbidden)
+	downloaded := sha256.New()
+	for n := 0; n < parts; n++ {
+		reply := chatCall(t, f, client, "download", map[string]any{"attachment": upload, "part": n}, http.StatusOK)
+		var chunk struct {
+			Data   []byte `json:"data"`
+			SHA256 string `json:"sha256"`
+		}
+		if err := identity.DecodeAttachmentChunk(reply.Body.Bytes(), &chunk); err != nil || len(chunk.Data) != supportchat.ChunkBytes || chunk.SHA256 != supportchat.Hash(chunk.Data) {
+			t.Fatal("restored chunk did not verify", n)
+		}
+		downloaded.Write(chunk.Data)
+	}
+	if hex.EncodeToString(downloaded.Sum(nil)) != supportchat.Hash(data) {
+		t.Fatal("restored and resumed file differs from original")
 	}
 }

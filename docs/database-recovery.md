@@ -22,6 +22,12 @@ source after the snapshot is absent from the restored history. The API role
 still cannot truncate the chat tables. The fixture archive never leaves
 the container.
 
+A second drill takes the backup midway through a 25 MiB upload. It checks
+which of the 100 chunks were committed at the snapshot, resumes the missing
+chunks through the restored API and retries the message. The original owner
+then downloads the whole attachment and verifies its digest. An unrelated
+account is denied. Both drills use disposable synthetic data.
+
 For a real recovery, keep the database backup, encrypted key backups, and
 the versioned role/migration definitions separate. The database dump includes
 chat content and attachments and must be encrypted, access restricted and
