@@ -52,14 +52,7 @@ func TestSupportWebBFFWithActualKeycloakPKCEAndDPoP(t *testing.T) {
 		io.WriteString(w, `{"admin":true}`)
 	}))
 	t.Cleanup(api.Close)
-	handler, e := chatweb.New(context.Background(), chatweb.Config{Origin: origin, APIOrigin: api.URL, Issuer: f.issuer, ClientID: clientID, Audience: audience, FixtureHTTP: true}, nil)
-	if e != nil {
-		t.Fatal("web initialization")
-	}
-	t.Cleanup(handler.Close)
-	ui.Config.Handler = handler
-	ui.Start()
-	t.Cleanup(ui.Close)
+	startWebFrontend(t, ui, chatweb.Config{Origin: origin, APIOrigin: api.URL, Issuer: f.issuer, ClientID: clientID, Audience: audience, FixtureHTTP: true})
 	browser := browser()
 	post := func(path string) *http.Response {
 		req, _ := http.NewRequest("POST", origin+path, strings.NewReader(`{}`))

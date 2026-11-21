@@ -2301,8 +2301,14 @@
     {
       "id": "SVC-04",
       "text": "Frontend - отдельная адаптивная web-сборка/контейнер, обращается к версионированному API. В ней нет служебных provider credentials, ключа подписи или прямого доступа к БД/очереди. Мобильные admin-экраны используют те же business API и permissions.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/web-runtime.md",
+        "deploy/support-chat-web/compose.yaml",
+        "integration/keycloak/packaged_web_test.go"
+      ],
+      "implementationScope": "A separately packaged, nonroot console/support frontend contains the verified release binary and public CA roots. It calls the existing versioned APIs through the bound browser session. Hosted real-Keycloak flows exercise both packaged surfaces.",
+      "remainingScope": "Live migration from the earlier package, production post-login inventory readback from the dedicated image, and broader mobile API permission parity."
     },
     {
       "id": "SVC-05",

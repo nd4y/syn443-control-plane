@@ -49,6 +49,7 @@ jobs:
           persist-credentials: false
       - run: python3 -m unittest discover -s tools -p 'test_product_requirements.py'
       - run: python3 -m unittest discover -s tools -p 'test_overlay_image.py'
+      - run: python3 -m unittest discover -s tools -p 'test_web_image_acceptance.py'
       - run: python3 tools/product_requirements.py .android-register/docs/requirements-register.json --csv "${RUNNER_TEMP}/product-requirements.csv"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -608,7 +609,7 @@ jobs:
             adaptive-catalog-postgres-tests.jsonl
           retention-days: 14
   keycloak:
-    needs: public-data
+    needs: go
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -620,8 +621,31 @@ jobs:
         with:
           go-version: '1.27.4'
           cache: true
-      - run: bash -n tools/test_keycloak.sh
-      - run: bash tools/test_keycloak.sh
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: control-plane-linux-amd64
+          path: ${{ runner.temp }}/control-plane-release
+      - name: Package the verified web runtime
+        run: |
+          bash -n tools/test_keycloak.sh
+          bash tools/package_runtime_image.sh support-chat-web "$RUNNER_TEMP/control-plane-release" "$RUNNER_TEMP/web-runtime-image"
+      - name: Exercise both packaged surfaces with real Keycloak
+        run: |
+          set -euo pipefail
+          revision=$(git rev-parse HEAD)
+          export SYN443_TEST_WEB_IMAGE="syn443-support-chat-web:$revision"
+          GOFLAGS=-json bash tools/test_keycloak.sh | python3 tools/check_web_image_acceptance.py "$RUNNER_TEMP/web-runtime-image/acceptance.json"
+      - name: Verify and scan the accepted image
+        run: |
+          (cd "$RUNNER_TEMP/web-runtime-image" && sha256sum -c SHA256SUMS)
+          python3 tools/check_public_data.py "$RUNNER_TEMP/web-runtime-image"
+          bash tools/scan_secrets.sh "$RUNNER_TEMP/web-runtime-image"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: web-runtime-image-linux-amd64
+          path: ${{ runner.temp }}/web-runtime-image/
+          if-no-files-found: error
+          retention-days: 14
   support-web:
     needs: public-data
     runs-on: ubuntu-24.04

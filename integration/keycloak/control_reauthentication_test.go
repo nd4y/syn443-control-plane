@@ -3,7 +3,6 @@
 package keycloak_test
 
 import (
-	"context"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/binary"
@@ -110,14 +109,7 @@ func TestControlWebReauthenticationWithActualKeycloakOTPAndAssuranceClaims(t *te
 	requireStatus(t, f.api("PUT", "/clients/"+clientInternalID+"/optional-client-scopes/"+scopeID, nil), 204)
 	api := httptest.NewServer(http.NotFoundHandler())
 	t.Cleanup(api.Close)
-	handler, e := chatweb.New(context.Background(), chatweb.Config{Origin: origin, APIOrigin: api.URL, Issuer: f.issuer, ClientID: clientID, Audience: audience, FixtureHTTP: true, ControlConsole: true, ReauthenticationACR: "2"}, nil)
-	if e != nil {
-		t.Fatal("control BFF initialization")
-	}
-	t.Cleanup(handler.Close)
-	ui.Config.Handler = handler
-	ui.Start()
-	t.Cleanup(ui.Close)
+	startWebFrontend(t, ui, chatweb.Config{Origin: origin, APIOrigin: api.URL, Issuer: f.issuer, ClientID: clientID, Audience: audience, FixtureHTTP: true, ControlConsole: true, ReauthenticationACR: "2"})
 	b := browser()
 	post := func(path string) reply {
 		req, _ := http.NewRequest("POST", origin+path, strings.NewReader(`{}`))
