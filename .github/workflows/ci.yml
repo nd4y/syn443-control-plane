@@ -632,7 +632,8 @@ jobs:
       - name: Exercise both packaged surfaces with real Keycloak
         run: |
           set -euo pipefail
-          export SYN443_TEST_WEB_IMAGE="syn443-support-chat-web:$(git rev-parse HEAD)"
+          revision=$(git rev-parse HEAD)
+          export SYN443_TEST_WEB_IMAGE="syn443-support-chat-web:$revision"
           GOFLAGS=-json bash tools/test_keycloak.sh | python3 tools/check_web_image_acceptance.py "$RUNNER_TEMP/web-runtime-image/acceptance.json"
       - name: Verify and scan the accepted image
         run: |
