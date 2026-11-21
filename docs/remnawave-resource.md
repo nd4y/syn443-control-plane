@@ -121,3 +121,5 @@ IPv4-mapped addresses. An internal-network grant cannot enable production
 loopback. Literal loopback fixtures require the separately owner-configured
 `fixtureLoopback` context; it is false by default and cannot apply to a public
 hostname. Fixture flags are not device/admin resource-credential fields.
+
+The source editor associates a selected SYN443 owner with the exact resource ID and external user ID from the catalog. These fields remain fixed when editing an existing source. The catalog checks scoped read and write grants independently. A successful save response must confirm the same binding and next revision before the console clears its pending request.
