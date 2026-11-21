@@ -658,6 +658,19 @@ function Drafts() {
           Сохранить черновик
         </Button>
       </form>
+      <details id="route-replay">
+        <summary>Симуляция выбора маршрута</summary>
+        <p>
+          Сравните исходное и пробное время действия измерений на одинаковых данных.
+          Оставьте поле файла пустым для встроенных сценариев или выберите свой JSON-массив измерений.
+        </p>
+        <label htmlFor="route-replay-ttl">Пробное время действия измерения, мс</label>
+        <input id="route-replay-ttl" type="number" min="1" max="600000" step="1" defaultValue="60000" />
+        <label htmlFor="route-replay-file">Файл сценария (до 64 кадров, 255 КиБ)</label>
+        <input id="route-replay-file" type="file" accept=".json,application/json" />
+        <Button id="route-replay-run" type="button" variant="secondary" isDisabled>Сравнить решения</Button>
+        <div id="route-replay-result" role="status" aria-live="polite"></div>
+      </details>
     </PageSection>
   );
 }

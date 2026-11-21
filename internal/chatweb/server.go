@@ -282,7 +282,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sourceImport := s.config.ControlConsole && r.URL.Path == "/control/source/import"
 	bounds := s.config.ControlConsole && r.URL.Path == "/control/route-bounds"
 	profileCheck := s.config.ControlConsole && r.URL.Path == "/control/route-check-profile"
-	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport || bounds || profileCheck)
+	replay := s.config.ControlConsole && r.URL.Path == "/control/route-replay"
+	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport || bounds || profileCheck || replay)
 	if !control && (s.config.ControlConsole && s.config.ChatAPIOrigin == "" || !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action]) {
 		fail(w, 404)
 		return
@@ -296,6 +297,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if bounds {
 		limit = routeBoundsLimit
+	}
+	if replay {
+		limit = routeReplayLimit
 	}
 	if profileCheck {
 		limit = routeProfileLimit
@@ -319,7 +323,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, 413)
 		return
 	}
-	if control && !bounds && !profileCheck && !validConsoleAction(raw, sourceImport) {
+	if control && !bounds && !profileCheck && !replay && !validConsoleAction(raw, sourceImport) {
 		fail(w, 400)
 		return
 	}
@@ -353,6 +357,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if control {
 		if !v.principal.HasScope("syn443.control") {
 			fail(w, 403)
+			return
+		}
+		if replay {
+			previewRouteReplay(ctx, w, raw)
 			return
 		}
 		if bounds {

@@ -38,6 +38,8 @@ expected = {
     'private layer draft inventory lists metadata and reopens without implicit publication',
     'private layer draft inventory rejects substituted duplicate oversized and unexpected metadata',
     'private layer draft inventory disappears on rights withdrawal and logout',
+    'mobile replay compares both policies on reference and uploaded observations without publishing',
+    'malformed traces and a late comparison cannot replace a changed replay',
     'empty private layer draft inventory preserves an unsaved proposal and does not invent a copy',
 }
 expected.update({

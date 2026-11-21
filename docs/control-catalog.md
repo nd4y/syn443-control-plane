@@ -215,3 +215,23 @@ share fixed while increasing or decreasing treatment. Changing either reassigns
 some devices. Decision and cooldown rollouts can share a control group by using
 the same ID and reserved share. Their treatment assignments remain independent.
 A zero treatment share stops the rollout for the next approved policy.
+
+## Replay the freshness of route evidence
+
+Open the simulation in the drafts section before publishing. The baseline uses
+the evidence TTL from each frame. The trial changes only that TTL, in
+milliseconds. Both passes use the common route selection algorithm on exactly
+the same measurements. The report counts identical routes, changed routes,
+loss of a route, gain of a route, and frames with no route in either pass.
+A longer TTL can select older measurements; a gained route is a simulation
+outcome and does not establish current reachability.
+
+Run the bundled public contract scenarios or supply a JSON array of aggregate
+decision requests matching `contracts/v1/decision-request.schema.json`.
+To make a small synthetic trace, take the `input` objects of two cases in
+`contracts/v1/decision-vectors.json` and put them in one array. Up to 64
+frames and 64 candidates per frame are accepted. The file limit is 255 KiB.
+The console returns aggregate counts, performs no live probes or writes, and
+discards comparisons when the operator changes the inputs. This replay covers
+snapshot ranking; on-device shadow observation and automatic rollout gates
+remain separate requirements.

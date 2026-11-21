@@ -17,6 +17,7 @@ let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticatio
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
 let runtimeRefreshTimer=null,runtimeRequest=null,runtimePolling=false,runtimeLastStarted=0;
 let boundsDraft=null,boundsEpoch=0;
+let replayEpoch=0;
 let routeProfileEdit=null;
 const runtimeRefreshMs=60000;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
@@ -303,6 +304,7 @@ $('route-profile-apply').onclick=()=>work(async()=>{
  applyRouteChecks(current);closeRouteProfile();
 });
 function controls(){
+ $('route-replay-run').disabled=!authenticated||busy;
  $('refresh-runtime').disabled=busy||!!runtimeRequest||!authenticated||!layerInventory;
  $('reauthentication').hidden=!authenticated||!reauthenticationNeeded;
  $('reauthentication-unavailable').hidden=reauthenticationAvailable;
@@ -365,7 +367,7 @@ function clearInventory(){
 function erase(){
  window.dispatchEvent(new Event('syn443-console-session-ended'));
  reauthenticationAvailable=false;reauthenticationNeeded=false;reauthenticationIssuer='';reauthenticationFocus=false;
- clearDevices();clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
+ resetReplay();clearDevices();clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
  for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip','route-check-country-class'])$(id).value='';
  $('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';
  for(const id of ['sources','profiles','source-details','inventory-status'])$(id).replaceChildren();
@@ -998,6 +1000,7 @@ $('console-nav').addEventListener('click',event=>{
  }
 });
 addEventListener('hashchange',()=>{
+ resetReplay();
  updateSectionNav(true);
  setNavExpanded(false);
  if(authenticated&&!pending&&linkedDevice())void work(openLinkedDevice);
@@ -1005,6 +1008,39 @@ addEventListener('hashchange',()=>{
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
 $('plan').oninput=drawRouteChecks;
+function resetReplay(clearInputs=true){
+ replayEpoch++;
+ $('route-replay-result').replaceChildren();
+ if(clearInputs){$('route-replay-file').value='';$('route-replay-ttl').value='60000';}
+}
+$('route-replay-file').onchange=()=>resetReplay(false);
+$('route-replay-ttl').oninput=()=>resetReplay(false);
+$('route-replay-run').onclick=()=>work(async()=>{
+ resetReplay(false);
+ const epoch=replayEpoch,ttl=Number($('route-replay-ttl').value);
+ const file=$('route-replay-file').files[0];
+ if(!Number.isSafeInteger(ttl)||ttl<1||ttl>600000)throw Error('invalid');
+ let body={source:'reference',trialTtlMs:ttl};
+ if(file){
+  if(file.size>255*1024)throw Error('size');
+  const raw=await file.text();
+  if(replayEpoch!==epoch||!authenticated)return;
+  let frames;try{frames=JSON.parse(raw);}catch{throw Error('invalid');}
+  if(!Array.isArray(frames)||!frames.length||frames.length>64)throw Error('invalid');
+  // Preserve the original JSON bytes as text so server-side duplicate-key
+  // validation still sees the submitted fields after local structural checks.
+  body='{"source":"trace","trialTtlMs":'+ttl+',"frames":'+raw+'}';
+ }
+ const report=await request('/control/route-replay',body);
+ if(!authenticated||replayEpoch!==epoch)return;
+ const labels={samePath:'Тот же маршрут',changedPath:'Выбран другой маршрут',lostPath:'Потерян доступный маршрут',gainedPath:'Появился доступный маршрут',neither:'В обоих случаях пути нет'};
+ const keys=Object.keys(labels);
+ if(!Number.isSafeInteger(report.frames)||report.frames<1||report.frames>64||
+  keys.some(k=>!Number.isSafeInteger(report[k])||report[k]<0)||keys.reduce((sum,k)=>sum+report[k],0)!==report.frames)throw Error('invalid');
+ const list=document.createElement('ul');
+ for(const key of keys){const row=document.createElement('li');row.textContent=labels[key]+' - '+report[key];list.append(row);}
+ $('route-replay-result').replaceChildren('Проверено кадров - '+report.frames,list);
+});
 $('route-bounds-preview').onclick=()=>work(async()=>{
  const epoch=boundsEpoch,plan=routeDraft().value.adaptive;
  if(!plan||!authenticated)throw Error('invalid');
