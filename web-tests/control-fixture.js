@@ -168,6 +168,17 @@ const server=http.createServer(async(req,res)=>{
    effective:{document:{note:'<img src=x onerror="window.injected=true">'},fields:{'/network/dnsStrategy':origin},restrictions:[{permission:{path:'/network/dnsStrategy',mode:'choice',choices:['prefer_ipv4','ipv4_only']},origin}]}});break;
  }
  case 'source.list':send(200,{sources:[...sources.values()],next:p.after?'':'source-a'});break;
+ case 'resource.get':{
+  const providers={
+   'panel-a':['panel.remnawave','3.4',true,'unknown'],
+   'panel-b':['panel.remnawave','3.4',false,'disabled'],
+   'future-a':['panel.3x-ui','',false,'not_implemented'],
+  };
+  if(!Object.hasOwn(providers,p.id)){send(403,{});break;}
+  const [providerType,apiVersion,enabled,state]=providers[p.id];
+  send(200,{resource:{id:p.id,name:'Synthetic '+p.id,providerType,apiVersion,enabled,state,revision:3,lastSync:0},
+   impact:{sources:2,hash:'fixture-impact-hash'}});break;
+ }
  case 'source.get':{const source=sources.get(p.id);send(source?200:403,source||{});break;}
  case 'source.shares.get':{
   if(!sources.has(p.id)){send(403,{});break;}

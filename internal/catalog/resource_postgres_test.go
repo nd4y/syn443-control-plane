@@ -26,6 +26,44 @@ func resourceSecret(endpoint string) SecretPatch {
 	return SecretPatch{Operation: "replace", Value: raw}
 }
 func resourceDraft(r Resource) Resource { r.State = ""; r.LastSync = 0; return r }
+
+func TestSQLResourceInspectionKeepsFutureProvidersInactiveAndScoped(t *testing.T) {
+	api, worker, actor, now := databaseFixture(t)
+	ctx := context.Background()
+	foreign := actor
+	foreign.ID = "other-admin"
+	for _, kind := range []string{"panel.x-ui", "panel.3x-ui", "overlay.tailscale", "overlay.zerotier"} {
+		id := strings.ReplaceAll(kind, ".", "-")
+		resource := Resource{ID: id, Name: "Reserved provider", ProviderType: kind, APIVersion: "design-v1"}
+		stored, err := api.PutResource(ctx, actor, resource, SecretPatch{Operation: "keep"}, "", "record-"+id, now)
+		if err != nil || stored.Enabled || stored.State != "not_implemented" || stored.Revision != 1 {
+			t.Fatalf("reserve %s: %v", kind, err)
+		}
+		read, impact, err := api.GetResource(ctx, actor, id, now)
+		if err != nil || read != stored || impact.Sources != 0 {
+			t.Fatalf("read reserved %s: %v", kind, err)
+		}
+		if _, _, err = api.GetResource(ctx, foreign, id, now); !errors.Is(err, ErrDenied) {
+			t.Fatalf("foreign actor could inspect %s: %v", kind, err)
+		}
+		resource = resourceDraft(stored)
+		if _, err = api.PutResource(ctx, actor, resource, resourceSecret("https://unused.example.invalid"), "", "secret-"+id, now); !errors.Is(err, ErrDenied) {
+			t.Fatalf("reserved resource accepted credentials: %s, %v", kind, err)
+		}
+		resource.Enabled = true
+		if _, err = api.PutResource(ctx, actor, resource, SecretPatch{Operation: "keep"}, "", "enable-"+id, now); err == nil {
+			t.Fatalf("reserved resource became active: %s", kind)
+		}
+		after, _, err := api.GetResource(ctx, actor, id, now)
+		if err != nil || after != stored {
+			t.Fatalf("rejected change modified reserved resource: %s, %v", kind, err)
+		}
+	}
+	if scheduled, err := worker.Schedule(ctx, now); err != nil || scheduled != 0 {
+		t.Fatalf("reserved providers scheduled work: %d, %v", scheduled, err)
+	}
+}
+
 func TestSQLResourcesAuthorityImpactAndRevisionFence(t *testing.T) {
 	api, worker, actor, now := databaseFixture(t)
 	ctx := context.Background()
@@ -123,6 +161,16 @@ func TestSQLResourcesAuthorityImpactAndRevisionFence(t *testing.T) {
 	if _, e = worker.Complete(ctx, job, profiles, subscriptions.Quota{}, subscriptions.Cache{}, now); e != nil {
 		t.Fatal(e)
 	}
+	// A reader with an independent encryption key cannot open the provider
+	// ciphertext. Its authorized metadata read still reports the worker attempt.
+	metadataReader, e := NewStore(api.DB, make([]byte, 32))
+	if e != nil {
+		t.Fatal(e)
+	}
+	observed, scope, e := metadataReader.GetResource(ctx, actor, changed.ID, now)
+	if e != nil || observed.LastSync != now.Unix() || observed.Revision != job.ResourceRevision || scope.Sources != 1 {
+		t.Fatal("missing current revision source attempt", e)
+	}
 	if n, e := worker.Schedule(ctx, now); e != nil || n != 0 {
 		t.Fatal("successful revision repeated", n, e)
 	}
@@ -139,6 +187,10 @@ func TestSQLResourcesAuthorityImpactAndRevisionFence(t *testing.T) {
 	}
 	if _, e = api.PutResource(ctx, actor, changed, SecretPatch{Operation: "keep"}, impact.Hash, "disable", now); e != nil {
 		t.Fatal(e)
+	}
+	inactive, _, e := api.GetResource(ctx, actor, changed.ID, now)
+	if e != nil || inactive.LastSync != 0 || inactive.Enabled {
+		t.Fatal("new resource revision inherited a previous revision's sync", e)
 	}
 	state, e := api.GetSource(ctx, actor, source.ID, now)
 	if e != nil || state.State != "resource_disabled" {

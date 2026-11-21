@@ -10,6 +10,7 @@ let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJo
 let layerComparison=null;
 let layerDraftInventory=null;
 let sourceShares=null;
+let providerContext=null,providerEpoch=0;
 let devicesNext='',deviceIds=new Set();
 let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticationIssuer='',reauthenticationFocus=false;
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
@@ -216,6 +217,7 @@ function controls(){
  $('source-device-settings').hidden=!deviceSource;
  $('source-device').disabled=$('source-device').disabled||!deviceSource||!!sourceIdentity?.fetchDeviceId;
  $('source-device').required=deviceSource;
+ updateProviderControls();
  $('sync-source').disabled=busy||!authenticated||!!pending||!sourceIdentity;$('source-job').disabled=busy||!authenticated||!!pending||!sourceJob;
  $('source-history').disabled=busy||!authenticated||!!pending||!sourceIdentity;
  $('source-history-more').disabled=$('source-history').disabled||!sourceHistoryNext;
@@ -347,6 +349,40 @@ async function checkReauthentication(){
 }
 function textItem(list,text){const item=document.createElement('li');item.textContent=text;list.append(item);return item;}
 function inventoryPair(list,name,value){const term=document.createElement('dt');term.textContent=name;const detail=document.createElement('dd');detail.textContent=value;list.append(term,detail);}
+function updateProviderControls(){
+ const visible=authenticated&&$('source-mode').value==='resource';
+ const id=$('source-resource').value.trim();
+ const context=visible?JSON.stringify([$('source-id').value,$('source-owner').value,id]):null;
+ if(context!==providerContext){
+  providerContext=context;providerEpoch++;$('provider-details').replaceChildren();
+ }
+ $('provider-settings').hidden=!visible;
+ $('inspect-provider').disabled=!visible||busy||!!pending||!/^[A-Za-z0-9_-]{1,48}$/.test(id);
+}
+async function inspectProvider(){
+ const id=$('source-resource').value.trim(),epoch=providerEpoch;
+ const details=$('provider-details');details.replaceChildren();
+ const {resource,impact}=await action('resource.get',{id});
+ if(!authenticated||providerEpoch!==epoch)return;
+ const names={'panel.remnawave':'Remnawave','panel.x-ui':'x-ui','panel.3x-ui':'3x-ui','overlay.tailscale':'Tailscale','overlay.zerotier':'ZeroTier'};
+ if(!resource||resource.id!==id||typeof resource.name!=='string'||!resource.name||resource.name.length>256||
+  !Object.hasOwn(names,resource.providerType)||typeof resource.apiVersion!=='string'||resource.apiVersion.length>64||
+  typeof resource.enabled!=='boolean'||!Number.isSafeInteger(resource.revision)||resource.revision<1||
+  !Number.isSafeInteger(resource.lastSync)||resource.lastSync<0||resource.lastSync>8640000000000||
+  !impact||!Number.isSafeInteger(impact.sources)||impact.sources<0)throw Error('invalid');
+ const planned=resource.providerType!=='panel.remnawave';
+ const expected=planned?'not_implemented':resource.enabled?'unknown':'disabled';
+ if(resource.state!==expected||planned&&resource.enabled||!planned&&resource.apiVersion!=='3.4')throw Error('invalid');
+ const rows=document.createDocumentFragment();
+ inventoryPair(rows,'Название',resource.name);
+ inventoryPair(rows,'Провайдер',names[resource.providerType]);
+ if(resource.apiVersion)inventoryPair(rows,'Версия API',resource.apiVersion);
+ inventoryPair(rows,'Состояние',planned?'Поддержка запланирована':resource.enabled?'Включён':'Отключён');
+ inventoryPair(rows,'Ревизия ресурса',resource.revision);
+ inventoryPair(rows,'Связанные источники',impact.sources);
+ if(!planned)inventoryPair(rows,'Последняя попытка синхронизации',resource.lastSync?inventoryDate(resource.lastSync*1000):'Нет данных');
+ details.append(rows);
+}
 function inventoryOrigin(origin){return origin&&typeof origin==='object'&&!Array.isArray(origin)&&typeof origin.layerId==='string'&&typeof origin.kind==='string'&&Number.isSafeInteger(origin.revision)&&origin.revision>=0;}
 function inventoryDate(milliseconds){const date=new Date(milliseconds);if(!Number.isFinite(date.getTime()))throw Error('invalid');return date.toISOString();}
 function showInventory(view){
@@ -919,6 +955,8 @@ $('discard-save').onclick=()=>work(async()=>{const kind=pendingKind,sourceId=$('
 $('new-source').onclick=()=>work(async()=>{const owner=$('owner').value.trim();clearSource();$('source-id').value=crypto.randomUUID();$('source-owner').value=owner;$('source-until').value=localDate(Math.floor(Date.now()/1000)+30*86400);$('source-version').textContent='Новый источник';status('Заполните параметры. Для нового HTTPS источника укажите новые учётные данные.');});
 $('source-form').onsubmit=event=>{event.preventDefault();work(saveSource);};
 $('source-secret-operation').onchange=controls;$('source-mode').onchange=controls;
+$('inspect-provider').onclick=()=>work(inspectProvider);
+for(const id of ['source-id','source-owner','source-resource'])$(id).addEventListener('input',updateProviderControls);
 $('sync-source').onclick=()=>work(async()=>{if(pending||!sourceIdentity)throw Error('invalid');pendingKind='sync';pending=envelope('source.sync',{id:sourceIdentity.id,revision:sourceRevision});await retry();});
 $('source-job').onclick=()=>work(async()=>{if(!sourceJob)throw Error('invalid');$('job-status').textContent=JSON.stringify(await action('job.get',{id:sourceJob}),null,2);status('Состояние задания обновлено.');});
 $('source-history').onclick=()=>work(()=>sourceHistory());

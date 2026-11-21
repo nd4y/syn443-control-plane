@@ -400,8 +400,8 @@
         "internal/remnawave/client_test.go",
         "cmd/resource-inspect/main_test.go"
       ],
-      "implementationScope": "Single owner-configured readonly Remnawave3.4 adapter, scoped IDs and protected bounded HTTPS/CLI with synthetic acceptance tests.",
-      "remainingScope": "Persistent resource/account/grant management, discovery/sync/normalization/publication/admin UI and live operator acceptance; multiple enabled panels and other adapters are not implemented."
+      "implementationScope": "One enabled read-only Remnawave 3.4 adapter; SQL stores resource-scoped credentials and revisions. The mobile web console inspects metadata and linked-source counts through resource.get.",
+      "remainingScope": "Full resource discovery, capability administration, live synchronization and operator acceptance. Additional active panels and other API adapters are deferred."
     },
     {
       "id": "EXT-02",
@@ -448,14 +448,27 @@
     {
       "id": "EXT-05",
       "text": "Архитектура предусматривает несколько ResourceInstance одного типа и смешанные panel.remnawave, panel.x-ui, panel.3x-ui. Для x-ui и 3x-ui фиксируются отдельные типы/версии контрактов: совместимость конкретных API не предполагается. Диспетчер и хранение не завязываются на глобальный единственный URL/token Remnawave.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md#inspect-a-sources-resource-in-the-console",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/resources/resource_test.go"
+      ],
+      "implementationScope": "Distinct provider and API version fields and scoped resource IDs support mixed disabled definitions. One Remnawave instance may be active; its endpoint and credential are stored with that resource.",
+      "remainingScope": "Maintain distinct API contracts as future adapters are specified. Activating several panels is deferred."
     },
     {
       "id": "EXT-06",
       "text": "Работа с несколькими Remnawave и реальные адаптеры x-ui/3x-ui отложены. Для 1.0 не нужны параллельная синхронизация нескольких панелей, реальные запросы к x-ui/3x-ui, объединение каталогов нескольких API-панелей или готовые пользовательские сценарии их подключения. Импорт обычной подписки поддерживаемого формата, даже если её выдала такая панель, остаётся доступным по SUB-03-12 и не считается реализацией её API-адаптера.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md#inspect-a-sources-resource-in-the-console",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/resources/resource_test.go",
+        "internal/subscriptions/import_test.go"
+      ],
+      "implementationScope": "The registry and SQL restrict activation to one supported panel. Planned providers are metadata-only; manual subscription imports use the normal source format independently.",
+      "remainingScope": "Cross-component release acceptance of the declared v1 boundary and imports remains tracked. Real additional panel adapters are outside v1."
     },
     {
       "id": "EXT-07",
@@ -816,8 +829,14 @@
     {
       "id": "OVL-03",
       "text": "Типы overlay.tailscale, overlay.zerotier и дальнейшие провайдеры предусмотрены как точки расширения. Их backend-коннекторы, auth flow, локальные движки/SDK, экраны специфичных настроек, телеметрия протокола, работающие профили и end-to-end испытания не реализуются в 1.0. Нет требования включить их бинарники в первоначальный APK.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md#inspect-a-sources-resource-in-the-console",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/overlay/identity_test.go"
+      ],
+      "implementationScope": "Tailscale and ZeroTier are separately named extension points. Their SQL metadata reports not_implemented, rejects credentials and activation, and schedules no work. The console displays their planned status.",
+      "remainingScope": "Verify the corresponding packaged client capability and release inventory. Provider-specific engines and backend integrations are outside v1."
     },
     {
       "id": "OVL-04",
