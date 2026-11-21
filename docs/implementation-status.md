@@ -18,6 +18,33 @@ The [service protocol eligibility source](operation-outcome-reconciliation.md#se
 
 ## Current accepted checkpoint
 
+### Wi-Fi handover and support chat - 2026-11-21
+
+On an enrolled ARM64 phone running v99, the VPN stayed on as the phone moved
+between two saved Wi-Fi networks and returned to the first. On each of the
+three connections a fresh HTTPS request returned 204. Android reported that
+the actual remote address was covered by the application's TUN and that the
+requesting UID used the VPN. Each handover changed the network epoch and
+preserved the VPN intent generation. The phone finished on its original Wi-Fi
+with the VPN off. Cellular and battery-powered endurance remain open.
+
+A separate physical check found that the issuer could be reachable from one
+Wi-Fi while public HTTPS through the VPN worked on both. Testing the public
+discovery URL with the VPN off isolated the difference to the address returned
+by the second network's resolver. Resolving the same approved hostname to its
+published address returned HTTP 200 through ordinary certificate validation.
+The acceptance test therefore measures authentication and VPN egress separately.
+
+| Control Plane check in main | Observed result |
+| --- | --- |
+| Change support conversation while a history or attachment request is pending | Both web views clear the previous user's content. A late result cannot restore it. [PR 77 and browser checks](https://github.com/nd4y/syn443-control-plane/actions/runs/44840560646) |
+| Read an inbox and history beyond 200 entries | Both views paged 212 conversations and 242 messages. Viewing an older page preserved its position and left new arrivals unread. [PR 78 and 84 browser cases](https://github.com/nd4y/syn443-control-plane/actions/runs/44843769521) |
+| Resume a 25 MiB upload from a PostgreSQL backup | A separate restored database retained exactly 50 of 100 chunks. The authorized user completed the upload and downloaded matching bytes. Another account was denied. [PR 79 and PostgreSQL checks](https://github.com/nd4y/syn443-control-plane/actions/runs/44846515509) |
+
+These three GitHub Actions runs validate the corresponding merged source.
+The pilot web release and restoration of a deployed database have separate
+acceptance checks.
+
 ### Physical Wi-Fi recovery and support - 2026-11-20
 
 A pilot user signed back in through the system browser on Android v98. The
