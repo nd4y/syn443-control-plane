@@ -64,3 +64,74 @@ test('changed subscription review requires a fresh comparison before rejecting i
  expect(sent.map(b=>[b.payload.candidate,b.payload.approve])).toEqual([['new',false],['newer',false]]);
  expect(sent[0].requestId).not.toBe(sent[1].requestId);
 });
+
+const boundSource={
+ id:'source-bound',owner:'synthetic-user',name:'Provider subscription',mode:'resource',format:'uri',enabled:true,state:'active',
+ revision:7,resourceId:'panel-a',externalUserId:'42',networkModes:['wifi'],validUntil:1800990000,refreshSeconds:3600,maxStaleSeconds:86400
+};
+async function sourceEditorPage(page,request){
+ await request.post(origin+'/fixture/reset',{data:{}});
+ await page.setViewportSize({width:393,height:852});
+ await page.goto(origin+'/#sources-title');
+ await page.locator('#owner').fill(boundSource.owner);
+ await page.locator('#load-sources').click();
+ return page.getByRole('button',{name:'Настроить источник'}).first();
+}
+test('source editor binds selection and retry to the owner and external pair',async({page,request})=>{
+ let detail=boundSource;
+ const attempts=[];
+ await page.route('**/control/action',async route=>{
+  const body=route.request().postDataJSON();
+  if(body.action==='source.list')return route.fulfill({json:{sources:[boundSource],next:''}});
+  if(body.action==='source.get')return route.fulfill({json:detail});
+  if(body.action==='source.put'){
+   attempts.push(route.request().postData());
+   const reply={...body.payload.source,revision:8,state:'active'};
+   if(attempts.length===1)reply.externalUserId='43';
+   return route.fulfill({json:reply});
+  }
+  return route.fallback();
+ });
+ const edit=await sourceEditorPage(page,request);
+ for(const change of [{id:'another'},{owner:'foreign'},{resourceId:'panel-b'},{externalUserId:'43'}]){
+  detail={...boundSource,...change};
+  await edit.click();
+  await expect(page.locator('#status')).toContainText('Проверьте');
+  await expect(page.locator('#source-id')).toHaveValue('');
+ }
+ detail=boundSource;
+ await edit.click();
+ await expect(page.locator('#source-resource')).toHaveValue('panel-a');
+ await expect(page.locator('#source-resource')).toBeDisabled();
+ await expect(page.locator('#source-external')).toHaveValue('42');
+ await expect(page.locator('#source-external')).toBeDisabled();
+ await page.locator('#source-name').fill('Edited display name');
+ await page.locator('#save-source').click();
+ await expect(page.locator('#pending')).toBeVisible();
+ await expect(page.locator('#source-external')).toHaveValue('42');
+ await expect(page.locator('#source-version')).toContainText('7');
+ await page.locator('#retry-save').click();
+ await expect(page.locator('#pending')).toBeHidden();
+ await expect(page.locator('#source-version')).toContainText('8');
+ expect(attempts).toHaveLength(2);
+ expect(attempts[1]).toBe(attempts[0]);
+ expect(JSON.parse(attempts[0]).payload.source).toMatchObject({id:boundSource.id,owner:boundSource.owner,resourceId:'panel-a',externalUserId:'42'});
+});
+test('source editor forgets a late selection when the listed owner changes',async({page,request})=>{
+ let release,started;
+ const arrived=new Promise(resolve=>{started=resolve;});
+ const held=new Promise(resolve=>{release=resolve;});
+ await page.route('**/control/action',async route=>{
+  const body=route.request().postDataJSON();
+  if(body.action==='source.list')return route.fulfill({json:{sources:[boundSource],next:''}});
+  if(body.action==='source.get'){started();await held;return route.fulfill({json:boundSource});}
+  return route.fallback();
+ });
+ const edit=await sourceEditorPage(page,request);
+ await edit.click();await arrived;
+ try{await page.locator('#owner').fill('second-owner');}finally{release();}
+ await expect(page.locator('#load-sources')).toBeEnabled();
+ await expect(page.locator('#source-id')).toHaveValue('');
+ await expect(page.locator('#source-external')).toHaveValue('');
+ await expect(page.locator('#sources li')).toHaveCount(0);
+});

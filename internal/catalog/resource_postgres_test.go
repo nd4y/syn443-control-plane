@@ -64,6 +64,58 @@ func TestSQLResourceInspectionKeepsFutureProvidersInactiveAndScoped(t *testing.T
 	}
 }
 
+func TestSQLResourceBindingBelongsToItsSourceOwner(t *testing.T) {
+	api, _, admin, now := databaseFixture(t)
+	ctx := context.Background()
+	resource, err := api.PutResource(ctx, admin, resourceExample(), resourceSecret("https://panel.example.invalid"), "", "add-panel", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := sourceExample(now)
+	first.Mode, first.ResourceID, first.ExternalUserID = "resource", resource.ID, "42"
+	first.Name = "Same display name"
+	second := first
+	second.ID, second.Owner, second.ExternalUserID = "other-source", "other-owner", "43"
+	stored := mustSource(t, api, admin, first, "bind-first", now)
+	mustSource(t, api, admin, second, "bind-second", now)
+	reader := admin
+	reader.ID = "scoped-reader"
+	_, err = fixtureOwner.Exec(`INSERT INTO catalog_acl(actor,action,target_kind,target_id,expires) VALUES($1,'sources.read','user',$2,$3)`, reader.ID, first.Owner, reader.SessionUntil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := api.ListSources(ctx, reader, first.Owner, "", now)
+	if err != nil || len(list.Sources) != 1 {
+		t.Fatalf("owner list: %v", err)
+	}
+	row := list.Sources[0]
+	if row.ID != first.ID || row.ResourceID != resource.ID || row.ExternalUserID != "42" {
+		t.Fatal("incorrect external binding")
+	}
+	if _, err = api.GetSource(ctx, reader, second.ID, now); !errors.Is(err, ErrDenied) {
+		t.Fatalf("foreign source: %v", err)
+	}
+	if _, err = api.ListSources(ctx, reader, second.Owner, "", now); !errors.Is(err, ErrDenied) {
+		t.Fatalf("foreign list: %v", err)
+	}
+	for key, mutate := range map[string]func(*Source){
+		"user":     func(s *Source) { s.ExternalUserID = second.ExternalUserID },
+		"resource": func(s *Source) { s.ResourceID = "panel-b" },
+		"owner":    func(s *Source) { s.Owner = second.Owner },
+	} {
+		changed := first
+		changed.Revision = stored.Revision
+		mutate(&changed)
+		if _, err = api.PutSource(ctx, admin, changed, SecretPatch{Operation: "keep"}, "swap-"+key, now); !errors.Is(err, ErrConflict) {
+			t.Fatalf("changed %s binding: %v", key, err)
+		}
+	}
+	exact, err := api.GetSource(ctx, reader, first.ID, now)
+	if err != nil || exact.Revision != stored.Revision || exact.Owner != first.Owner || exact.ResourceID != first.ResourceID || exact.ExternalUserID != first.ExternalUserID {
+		t.Fatal("binding changed after rejected edits", err)
+	}
+}
+
 func TestSQLResourcesAuthorityImpactAndRevisionFence(t *testing.T) {
 	api, worker, actor, now := databaseFixture(t)
 	ctx := context.Background()

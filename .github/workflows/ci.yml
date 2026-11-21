@@ -587,6 +587,7 @@ jobs:
           set -euo pipefail
           GOFLAGS=-json bash tools/test_catalog.sh | tee adaptive-catalog-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/catalog" and .Test == "TestSQLResourcesAuthorityImpactAndRevisionFence" and .Action == "pass")' adaptive-catalog-postgres-tests.jsonl
+          jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/catalog" and .Test == "TestSQLResourceBindingBelongsToItsSourceOwner" and .Action == "pass")' adaptive-catalog-postgres-tests.jsonl
           jq -es '[.[] | select(.Package == "github.com/nd4y/syn443-control-plane/internal/catalog" and .Action == "pass") | .Test | strings | select(startswith("TestSQLReviewedSnapshotAndLateProviderOutcomes/")) | split("/")[-1]] | sort == ["expired","gone","malformed","unavailable"]' adaptive-catalog-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/catalog" and .Action == "pass" and .Test == "TestSQLResourceInspectionKeepsFutureProvidersInactiveAndScoped")' adaptive-catalog-postgres-tests.jsonl
           python3 tools/check_adaptive_runtime_evidence.py adaptive-catalog-postgres-tests.jsonl --stage catalog
