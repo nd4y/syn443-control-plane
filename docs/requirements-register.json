@@ -2103,6 +2103,7 @@
       "id": "CHAT-14",
       "status": "partial",
       "evidence": [
+        "docs/implementation-status.md#wi-fi-handover-and-support-chat---2026-11-21",
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
@@ -3316,6 +3317,7 @@
       "id": "AC98",
       "status": "partial",
       "evidence": [
+        "docs/implementation-status.md#wi-fi-handover-and-support-chat---2026-11-21",
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
