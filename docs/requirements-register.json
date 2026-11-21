@@ -940,8 +940,17 @@
     {
       "id": "MODE-03",
       "text": "SSID/BSSID используются локально только как селекторы home-кандидата. Дополнительные домашние маршруты активируются после TLS/challenge проверки назначенного endpoint через выбранную физическую Android Network без overlay/прокси. Проверка подтверждает endpoint/путь, но не доверенность Wi-Fi: общий direct bypass, plaintext credentials или ослабление TLS автоматически не разрешаются. Требования шифрования первого участка сохраняются; исключение возможно лишь отдельным административным target/context-scoped risk grant с описанным риском. При сомнении действует обычная Wi-Fi политика. Сырые SSID/BSSID не отправляются серверу.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/policy/home_proof.go",
+        "internal/policy/adaptive_policy_test.go",
+        "internal/configuration/adaptive_compile_test.go",
+        "internal/deviceprovisioning/adaptive_network_test.go",
+        "web-tests/control.spec.js",
+        "docs/managed-adaptive-runtime.md#home-wi-fi-verification"
+      ],
+      "implementationScope": "An addressed adaptive network plan can assign a private TLS endpoint, its verified DNS name and a SHA-256 public-key pin. Publication checks the separate device capability. The console edits the endpoint in its normal draft workflow.",
+      "remainingScope": "Check actual home and guest networks, enterprise certificate trust, renewal and expiry on an enrolled Android device. Optional local SSID/BSSID selectors and their permissions are a device concern."
     },
     {
       "id": "MODE-04",
@@ -2670,8 +2679,15 @@
     {
       "id": "SEC-02",
       "text": "Домашний endpoint подтверждается по MODE-03 через физическую сеть без overlay. Его ответ не доказывает безопасность Wi-Fi и не снимает transport/egress constraints. Risk grant может разрешить только конкретное явно описанное исключение; он не возникает из SSID/BSSID, ping или успешного TLS к публичному домашнему серверу. Идентичность endpoint и grant обновляются подписанной политикой; evil twin не получает более широких прав автоматически.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/policy/home_proof.go",
+        "internal/policy/adaptive_policy_test.go",
+        "internal/configuration/adaptive_compile_test.go",
+        "internal/deviceprovisioning/adaptive_network_test.go"
+      ],
+      "implementationScope": "The signed home proof contract accepts a private unicast address, verified DNS name and SHA-256 public-key pin. Invalid endpoints and unsupported or unaddressed plans are rejected before issue.",
+      "remainingScope": "Exercise home impersonation, live policy rotation and grant bounds on the physical device. Production endpoint reachability and traffic enforcement require independent evidence."
     },
     {
       "id": "SEC-03",
@@ -3542,10 +3558,10 @@
     "verified": "All clauses and required acceptance proved for the declared scope."
   },
   "evidenceSnapshot": {
-    "date": "2026-11-18",
+    "date": "2026-11-21",
     "inventory": "docs/implementation-status.md",
-    "androidSource": "28192704988696015775863bb6fa82911dfc13bd",
-    "controlPlaneSource": "1ac39de2441cff8a07f917b717da82d5f0b013ca",
-    "scope": "Refreshes bounded Android diagnostic and Control Plane telemetry contributions. The evidence inventory retains earlier snapshots and separates source, integration, deployment and physical acceptance."
+    "androidSource": "69c983b744af0e813fcda0fa670e4c11b1478bae",
+    "controlPlaneSource": "41fe0cb1c339240fba9b2f14d6041985c7fff08e",
+    "scope": "Records Android v120 and the addressed home-network policy and editor in Control Plane. Physical and deployment outcomes are recorded independently."
   }
 }
