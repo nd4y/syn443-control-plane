@@ -2550,6 +2550,7 @@
         "docs/database-recovery.md",
         "docs/overlay-broker.md#worker-readiness",
         "deploy/overlay-worker/Dockerfile",
+        "deploy/overlay-worker/compose.yaml",
         "tools/verify_overlay_image.py",
         "internal/enrollment/restore_postgres_test.go",
         "internal/health/handler_test.go",

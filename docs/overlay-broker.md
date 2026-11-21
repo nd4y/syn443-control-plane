@@ -29,11 +29,15 @@ On the host, provision a worker configuration readable only by UID 65532
 Give the service access to its PostgreSQL database and configured provider
 on the deployment network. It needs no published ports, writable root
 filesystem or Linux capabilities. Check the actual role and configuration
-before starting the polling loop, for example with Compose:
+before starting the polling loop. Set `SYN443_OVERLAY_CONFIG_FILE` to the
+absolute file path and `SYN443_BACKEND_NETWORK` to the existing service
+network. Run these commands from the release checkout with the image artifact
+extracted in the current directory:
 
 ```sh
-docker compose run --rm overlay-worker --check-ready
-docker compose up -d overlay-worker
+export SYN443_OVERLAY_IMAGE="syn443-overlay-worker:$(cat SOURCE.txt)"
+docker compose -f deploy/overlay-worker/compose.yaml run --rm overlay-worker --check-ready
+docker compose -f deploy/overlay-worker/compose.yaml up -d overlay-worker
 ```
 
 The workflow exercises that image against disposable PostgreSQL with the

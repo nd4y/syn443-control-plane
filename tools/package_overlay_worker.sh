@@ -13,6 +13,18 @@ trap 'rm -r -- "$context"' EXIT
 install -m 0555 "$runtime/overlay-worker" "$context/overlay-worker"
 docker build --platform linux/amd64 --build-arg "VCS_REF=$revision" \
   --file deploy/overlay-worker/Dockerfile --tag "$image" "$context"
+SYN443_OVERLAY_IMAGE="$image" SYN443_OVERLAY_CONFIG_FILE="$context/fixture.json" SYN443_BACKEND_NETWORK=fixture \
+  docker compose -f deploy/overlay-worker/compose.yaml config --format json | python3 -c '
+import json, sys
+config = json.load(sys.stdin)
+service = config["services"]["overlay-worker"]
+assert service["image"] == sys.argv[1] and service["pull_policy"] == "never"
+assert service["read_only"] and service["user"] == "65532:65532" and service["cap_drop"] == ["ALL"]
+assert not service.get("ports") and not service.get("privileged") and service["pids_limit"] == 64
+mount, = service["volumes"]
+assert mount["type"] == "bind" and mount["read_only"] and not mount["bind"].get("create_host_path", False)
+assert mount["target"] == "/run/secrets/overlay-worker.json" and config["networks"]["backend"]["external"]
+' "$image"
 docker image inspect "$image" | python3 -c '
 import json, sys
 image, = json.load(sys.stdin)
