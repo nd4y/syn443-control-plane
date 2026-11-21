@@ -12,7 +12,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 )
 
-func run() error {
+func run(checkReady bool) error {
 	c, e := enrollment.ReadBrokerRuntimeConfig(os.Getenv("SYN443_OVERLAY_BROKER_CONFIG"))
 	if e != nil {
 		return e
@@ -34,7 +34,7 @@ func run() error {
 		e = catalog.RuntimeRole(check)
 	}
 	cancel()
-	if e != nil {
+	if checkReady || e != nil {
 		return e
 	}
 	for {
@@ -58,8 +58,16 @@ func run() error {
 	}
 }
 func main() {
-	if run() != nil {
+	checkReady := len(os.Args) == 2 && os.Args[1] == "--check-ready"
+	if len(os.Args) != 1 && !checkReady {
+		fmt.Fprintln(os.Stderr, "usage: overlay-worker [--check-ready]")
+		os.Exit(2)
+	}
+	if run(checkReady) != nil {
 		fmt.Fprintln(os.Stderr, "overlay_worker_failed")
 		os.Exit(1)
+	}
+	if checkReady {
+		fmt.Println("overlay_worker_ready")
 	}
 }
