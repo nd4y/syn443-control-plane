@@ -109,6 +109,45 @@ test('source recipient edits require confirmation and retry the same scoped muta
  await expect(list).toHaveText('');await expect(page.locator('#source-shares-save')).toBeDisabled();
 });
 async function draft(page){await page.locator('#draft-id').fill('draft-a');await page.locator('#target-id').fill('device-a');await page.locator('#plan').fill(JSON.stringify(plan,null,2));}
+test('phone-sized editor previews bounded adaptive routes and keeps an excessive draft editable',async({page,request})=>{
+ await page.setViewportSize({width:393,height:852});await reset(request);await page.goto(origin+'/#draft-title');
+ await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ const button=page.getByRole('button',{name:'Оценить число цепочек'}),output=page.locator('#route-bounds-result'),input=page.locator('#plan');
+ await expect(button).toBeHidden();
+ const adaptive={metadataB64:'synthetic',bindingsB64:'synthetic',groups:{work:'adaptive-work',video:'adaptive-video'}};
+ const value=JSON.stringify({...plan,adaptive});
+ await input.fill(value);await expect(button).toBeEnabled();
+ let calls=0;
+ await page.route('**/control/route-bounds',async route=>{
+  expect(route.request().method()).toBe('POST');expect(route.request().postDataJSON()).toEqual(adaptive);calls++;
+  const report=calls===1?{status:'ready',limit:4096,intents:{NON_RU:4096},groups:['video','work'].map(group=>({group,intent:'NON_RU',upperBound:4096,maxHops:3}))}:
+   {status:'over_limit',limit:4096};
+  await route.fulfill({json:report});
+ });
+ await button.click();
+ await expect(output).toContainText('Зарубежный интернет - до 4096');await expect(output).toContainText('work - до 4096 цепочек, переходов до 3');
+ await button.click();await expect(output).toContainText('Сузьте список узлов');await expect(output).not.toContainText('work - до');
+ await expect(input).toHaveValue(value);await expect(page.locator('#save-draft')).toBeEnabled();
+ await input.fill(JSON.stringify(plan));await expect(button).toBeHidden();await expect(output).toBeEmpty();expect(calls).toBe(2);
+});
+
+test('a delayed candidate count cannot repaint a changed draft',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ const input=page.locator('#plan'),button=page.getByRole('button',{name:'Оценить число цепочек'});
+ const adaptive={metadataB64:'synthetic',bindingsB64:'synthetic',groups:{work:'adaptive-work'}};
+ await input.fill(JSON.stringify({...plan,adaptive}));
+ let arrived,release;
+ const requested=new Promise(resolve=>{arrived=resolve;}),gate=new Promise(resolve=>{release=resolve;});
+ await page.route('**/control/route-bounds',async route=>{
+  arrived();await gate;await route.fulfill({json:{status:'over_limit',limit:4096}});
+ });
+ await button.click();await requested;
+ // The editor may keep form controls disabled while the request is active.
+ // Dispatch the same input event as restoring a different saved draft.
+ await input.evaluate((node,next)=>{node.value=next;node.dispatchEvent(new Event('input',{bubbles:true}));},JSON.stringify(plan));
+ release();await expect(page.locator('#save-draft')).toBeEnabled();
+ await expect(page.locator('#route-bounds-result')).toBeEmpty();await expect(button).toBeHidden();
+});
 test('route checks editor changes only its private draft and restores saved checks',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();
  await expect(page.locator('#route-check-add')).toBeDisabled();

@@ -160,6 +160,9 @@ func TestCatalogueAndCandidateBoundaryCannotBeTruncated(t *testing.T) {
 	}
 	tooWide, _ := syntheticGraph(t, 500, []int{17, 16, 16})
 	reject(t, tooWide, catalogue)
+	if g, err := DecodeForPreview(tooWide, catalogue); g != nil || err != ErrCandidateLimit {
+		t.Fatal("editor did not receive the template bound")
+	}
 	overflow, _ := syntheticGraph(t, 500, []int{500, 500, 500, 500})
 	reject(t, overflow, catalogue)
 	tooMany, ids := syntheticGraph(t, 501, []int{1})
@@ -193,6 +196,9 @@ func TestPerIntentSumDeduplicatesTemplatesButNeverSeparateOverflowingGroups(t *t
 			}
 		})
 		reject(t, over, catalogue)
+		if g, err := DecodeForPreview(over, catalogue); g != nil || err != ErrCandidateLimit {
+			t.Fatal("editor did not receive the group or intent bound")
+		}
 	}
 }
 

@@ -14,6 +14,7 @@ let devicesNext='',deviceIds=new Set();
 let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticationIssuer='',reauthenticationFocus=false;
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
 let runtimeRefreshTimer=null,runtimeRequest=null,runtimePolling=false,runtimeLastStarted=0;
+let boundsDraft=null,boundsEpoch=0;
 const runtimeRefreshMs=60000;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
@@ -97,6 +98,9 @@ function routeDraft(){
  return {value,network,tags,checks};
 }
 function drawRouteChecks(){
+ const draft=authenticated?$('plan').value:null;
+ if(boundsDraft!==draft){boundsDraft=draft;boundsEpoch++;$('route-bounds-result').replaceChildren();}
+ $('route-bounds').hidden=true;$('route-bounds-preview').disabled=true;
  const editor=$('route-check-editor'),select=$('route-check-path'),list=$('route-check-list');
  $('route-check-exit').hidden=$('route-check-method').value!=='https_exit_ip';
  $('route-check-http').hidden=$('route-check-method').value!=='https_status';
@@ -110,6 +114,7 @@ function drawRouteChecks(){
  if(!authenticated)return;
  let state;
  try{state=routeDraft();}catch{return;}
+ if(state.value.adaptive){$('route-bounds').hidden=false;$('route-bounds-preview').disabled=busy||!!pending;}
  for(const tag of [...state.tags].sort()){const option=document.createElement('option');option.value=tag;option.textContent=tag;select.append(option);}
  if(state.tags.has(prior))select.value=prior;
  $('route-check-required').checked=state.checks.some(row=>row.outbound===select.value&&row.required===true);
@@ -779,6 +784,39 @@ addEventListener('hashchange',()=>{
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
 $('plan').oninput=drawRouteChecks;
+$('route-bounds-preview').onclick=()=>work(async()=>{
+ const epoch=boundsEpoch,plan=routeDraft().value.adaptive;
+ if(!plan||!authenticated)throw Error('invalid');
+ const target=$('route-bounds-result');target.replaceChildren();
+ const report=await request('/control/route-bounds',plan);
+ if(!authenticated||boundsEpoch!==epoch||boundsDraft!==$('plan').value)return;
+ if(report.limit!==4096)throw Error('invalid');
+ if(report.status==='over_limit'){
+  target.textContent='Превышен предел 4096 цепочек на одно назначение. Сузьте список узлов в переходе или уберите часть шаблонов.';
+  return;
+ }
+ const names={RU:'Российский интернет',NON_RU:'Зарубежный интернет',INTERNAL:'Внутренняя сеть'};
+ const count=n=>Number.isInteger(n)&&n>0&&n<=report.limit;
+ if(report.status!=='ready'||!report.intents||!Array.isArray(report.groups)||!report.groups.length||report.groups.length>16)throw Error('invalid');
+ const intents=Object.entries(report.intents);
+ if(!intents.length||intents.length>3||intents.some(([id,n])=>!Object.hasOwn(names,id)||!count(n)))throw Error('invalid');
+ const groups=report.groups;
+ if(groups.some(g=>!g||!Object.hasOwn(report.intents,g.intent)||typeof g.group!=='string'||!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(g.group)||
+   !count(g.upperBound)||g.upperBound>report.intents[g.intent]||!Number.isInteger(g.maxHops)||g.maxHops<1||g.maxHops>4))throw Error('invalid');
+ const limit=document.createElement('p');
+ limit.textContent='Верхняя граница до проверки доступности. Лимит на назначение - 4096.';
+ const list=document.createElement('ul');
+ for(const [intent,n] of intents){
+  const row=document.createElement('li');row.textContent=names[intent]+' - до '+n;
+  const children=document.createElement('ul');
+  for(const group of groups.filter(g=>g.intent===intent)){
+   const child=document.createElement('li');child.textContent=group.group+' - до '+group.upperBound+' цепочек, переходов до '+group.maxHops;children.append(child);
+  }
+  if(!children.childElementCount)throw Error('invalid');
+  row.append(children);list.append(row);
+ }
+ target.replaceChildren(limit,list);
+});
 $('route-reserve-cooldown').onchange=()=>{
  const enabled=$('route-reserve-cooldown').checked;
  work(async()=>{
