@@ -75,7 +75,7 @@ func (g Grant) Validate(now time.Time) error {
 	if hasCapability(g.Template.RequiredCapabilities, policy.ReserveProbeCooldown) || hasCapability(g.Template.RequiredCapabilities, policy.RouteExitIP) ||
 		hasCapability(g.Template.RequiredCapabilities, policy.RouteExitCountry) || hasCapability(g.Template.RequiredCapabilities, policy.RouteDecision) ||
 		hasCapability(g.Template.RequiredCapabilities, policy.RouteAdaptiveTCP) || hasCapability(g.Template.RequiredCapabilities, policy.RouteCheckPlanV2) ||
-		hasCapability(g.Template.RequiredCapabilities, policy.RouteHTTPSStatus) || hasCapability(g.Template.RequiredCapabilities, policy.HomeWiFiProof) {
+		hasCapability(g.Template.RequiredCapabilities, policy.RouteHTTPSStatus) || hasCapability(g.Template.RequiredCapabilities, policy.HomeWiFiProof) || hasCapability(g.Template.RequiredCapabilities, policy.NetworkModeSelection) {
 		return identity.ErrInvalid
 	}
 	if g.Issuer == "" || g.Subject == "" || g.DeviceLimit < 1 || g.DeviceLimit > 16 || g.Until <= now.Unix() || g.Until > now.Unix()+604800 {

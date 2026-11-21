@@ -120,9 +120,33 @@ func TestSQLPublisherConfigurationRevokeLateExpiryAndCancellationKeepLastGood(t 
 }
 
 func TestSQLDeviceDownloadsKeyBoundHomeProofOnlyAfterApprovedCapabilityChange(t *testing.T) {
-	c := newCapabilityFixture(t)
 	proof := syntheticHomeProof()
 	prepared, _, _ := compiledAdaptivePreparationWithHomeProof(t, &proof)
+	current := requireSQLAssignedNetworkPolicy(t, prepared, policy.HomeWiFiProof)
+	var root struct {
+		Home policy.HomeProof `json:"home_proof"`
+	}
+	if json.Unmarshal(mustDecodeAdaptiveEngine(t, current.EngineConfigB64), &root) != nil || root.Home != proof {
+		t.Fatal("home endpoint or key changed during publication")
+	}
+}
+
+func TestSQLDeviceDownloadsManagedModeOnlyAfterApprovedCapabilityChange(t *testing.T) {
+	expected := policy.NetworkModePolicy{PreferredMode: "WIFI", UserModes: []string{"WIFI"}, MaxOverrideMinutes: 60}
+	prepared, _, _ := compiledAdaptivePreparationWithNetwork(t, nil, &expected)
+	current := requireSQLAssignedNetworkPolicy(t, prepared, policy.NetworkModeSelection)
+	var root struct {
+		Mode policy.NetworkModePolicy `json:"network_mode"`
+	}
+	if json.Unmarshal(mustDecodeAdaptiveEngine(t, current.EngineConfigB64), &root) != nil ||
+		root.Mode.PreferredMode != expected.PreferredMode || root.Mode.MaxOverrideMinutes != 60 || !slices.Equal(root.Mode.UserModes, expected.UserModes) {
+		t.Fatal("mode preference or user limits changed during issuance")
+	}
+}
+
+func requireSQLAssignedNetworkPolicy(t *testing.T, prepared *PreparedConfiguration, feature string) policy.Payload {
+	t.Helper()
+	c := newCapabilityFixture(t)
 	c.publisher.Configurations = fixtureConfigurationAuthority(func(_ context.Context, target ConfigurationTarget, _ time.Time) (*PreparedConfiguration, error) {
 		if target.Device != c.session.DeviceID {
 			t.Fatal("wrong recipient in authority")
@@ -153,24 +177,19 @@ func TestSQLDeviceDownloadsKeyBoundHomeProofOnlyAfterApprovedCapabilityChange(t 
 	}
 	approve([]string{"route.health.v1", policy.RouteDecision, policy.RouteAdaptiveTCP, policy.RouteExitCountry}, "synthetic adaptive client")
 	if err := c.publisher.publish(t.Context(), c.session.DeviceID, c.f.now); !errors.Is(err, ErrDenied) {
-		t.Fatal("publisher did not reject a device missing independent home capability", err)
+		t.Fatal("publisher did not reject a device missing independent network capability", err)
 	}
 	if old := readPolicy(); old.Revision != before.Revision || old.ContentHash != before.ContentHash {
 		t.Fatal("incompatible client lost last usable policy")
 	}
-	approve([]string{policy.HomeWiFiProof}, "synthetic home proof client")
+	approve([]string{feature}, "synthetic network feature client")
 	if err := c.publisher.RunOnce(t.Context(), c.f.now); err != nil {
 		t.Fatal(err)
 	}
 	current := readPolicy()
-	if current.Revision != before.Revision+1 || !slices.Contains(current.RequiredCapabilities, policy.HomeWiFiProof) ||
+	if current.Revision != before.Revision+1 || !slices.Contains(current.RequiredCapabilities, feature) ||
 		!bytes.Equal(mustDecodeAdaptiveEngine(t, current.EngineConfigB64), prepared.EngineConfig) {
 		t.Fatal("fetched addressed policy lost its revision, capability or compiled bytes")
 	}
-	var root struct {
-		Home policy.HomeProof `json:"home_proof"`
-	}
-	if json.Unmarshal(prepared.EngineConfig, &root) != nil || root.Home != proof {
-		t.Fatal("home endpoint or key changed during publication")
-	}
+	return current
 }

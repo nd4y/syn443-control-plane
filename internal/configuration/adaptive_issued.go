@@ -22,14 +22,18 @@ import (
 // cannot turn declared graph metadata into current native probe authority.
 func ValidateAdaptiveIssuedEngine(raw []byte) error {
 	var root struct {
-		Outbounds []json.RawMessage `json:"outbounds"`
-		Route     json.RawMessage   `json:"route"`
-		DNS       json.RawMessage   `json:"dns"`
-		Checks    json.RawMessage   `json:"route_checks"`
-		Adaptive  json.RawMessage   `json:"adaptive_routes"`
-		HomeProof json.RawMessage   `json:"home_proof"`
+		Outbounds     []json.RawMessage `json:"outbounds"`
+		Route         json.RawMessage   `json:"route"`
+		DNS           json.RawMessage   `json:"dns"`
+		Checks        json.RawMessage   `json:"route_checks"`
+		Adaptive      json.RawMessage   `json:"adaptive_routes"`
+		ModeSelection json.RawMessage   `json:"network_mode"`
+		HomeProof     json.RawMessage   `json:"home_proof"`
 	}
 	if len(raw) < 1 || len(raw) > 262144 || identity.DecodeConfiguration(raw, &root) != nil || len(root.Outbounds) < 1 || len(root.Outbounds) > 64 {
+		return ErrInvalid
+	}
+	if root.ModeSelection != nil && !policy.ValidNetworkModeJSON(root.ModeSelection, root.HomeProof != nil) {
 		return ErrInvalid
 	}
 	if root.HomeProof != nil && !policy.ValidHomeProofJSON(root.HomeProof) {

@@ -88,6 +88,10 @@ func applyPreparedConfiguration(payload *policy.Payload, prepared *PreparedConfi
 	if hasProfile != slices.Contains(prepared.RequiredCapabilities, policy.RouteCheckPlanV2) {
 		return ErrDenied
 	}
+	_, modeSelection := root["network_mode"]
+	if modeSelection != slices.Contains(prepared.RequiredCapabilities, policy.NetworkModeSelection) {
+		return ErrDenied
+	}
 	_, homeProof := root["home_proof"]
 	if homeProof != slices.Contains(prepared.RequiredCapabilities, policy.HomeWiFiProof) {
 		return ErrDenied
@@ -148,7 +152,7 @@ func validatePreparedNetwork(raw []byte) error {
 	for name := range root {
 		switch name {
 		case "outbounds", "route", "dns", "route_checks", "route_failover", "adaptive_routes":
-		case "home_proof":
+		case "home_proof", "network_mode":
 			if !adaptive {
 				return identity.ErrInvalid
 			}

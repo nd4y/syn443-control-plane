@@ -123,3 +123,20 @@ func TestHomeProofRequiresAnAdaptivePlanAndAnIndependentlyCapableTarget(t *testi
 		t.Fatal("non-adaptive policy accepted proof", err)
 	}
 }
+
+func TestModeSelectionRequiresTheAssignedAdaptiveClientCapability(t *testing.T) {
+	plan := adaptiveAuthorityPlan(t, []configuration.ProfileReference{{SourceID: "src", ProfileID: "one"}})
+	target := enrollment.ConfigurationTarget{Capabilities: adaptiveAuthorityCapabilities()}
+	plan.Network.ModeSelection = &policy.NetworkModePolicy{PreferredMode: "WIFI", UserModes: []string{}, MaxOverrideMinutes: 0}
+	if adaptiveNetworkAvailable(plan, target) != enrollment.ErrDenied {
+		t.Fatal("unavailable feature accepted")
+	}
+	target.Capabilities = append(target.Capabilities, policy.NetworkModeSelection)
+	if err := adaptiveNetworkAvailable(plan, target); err != nil {
+		t.Fatal(err)
+	}
+	plan.Adaptive = nil
+	if adaptiveNetworkAvailable(plan, target) != configuration.ErrInvalid {
+		t.Fatal("mode applied outside adaptive graph")
+	}
+}

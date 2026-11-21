@@ -75,3 +75,19 @@ device key. The handset
 binds the probe to the current validated physical Wi-Fi and verifies both the
 certificate chain and key pin before selecting home-only routes. A certificate
 renewal with a different public key requires updating and publishing the pin.
+
+## Assigned network mode
+
+An adaptive plan can carry `network.modeSelection`. In the web console open a
+device draft and choose the preferred mode, which modes its user may select,
+and the maximum duration in minutes. An empty list and a limit of zero disable
+manual changes. The preference may be AUTO or a specific network mode. Each
+permission applies only to its physical transport. HOME_WIFI additionally
+requires the assigned home TLS check. A draft can grant between one minute and
+one day per selection. Editing the fields updates the draft locally. Publication
+uses the ordinary review and approval flow.
+
+The publisher requires independent enrollment capability `network.mode-selection.v1`
+and emits the closed `network_mode` object in a key-bound adaptive policy. A
+device without this capability retains its previous policy. Android enforcement
+and pilot acceptance are tracked separately in the device register.

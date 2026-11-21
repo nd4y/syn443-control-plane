@@ -514,6 +514,29 @@ function Drafts() {
           <Button id="home-remove" type="button" variant="link">Удалить узел из черновика</Button>
           <div id="home-feedback" role="status" aria-live="polite"></div>
         </fieldset>
+        <fieldset id="mode-selection" hidden disabled>
+          <legend>Выбор режима сети</legend>
+          <label htmlFor="mode-preferred">Режим по умолчанию</label>
+          <Select id="mode-preferred">
+            <option value="AUTO">Определять автоматически</option>
+            <option value="HOME_WIFI">Домашний Wi-Fi</option>
+            <option value="WIFI">Обычный Wi-Fi</option>
+            <option value="CELLULAR_RESTRICTED">Мобильная сеть с белым списком</option>
+            <option value="CELLULAR">Мобильная сеть</option>
+          </Select>
+          <fieldset>
+            <legend>Пользователь может временно выбрать</legend>
+            <label><input type="checkbox" id="mode-allow-HOME_WIFI" /> Домашний Wi-Fi</label>
+            <label><input type="checkbox" id="mode-allow-WIFI" /> Обычный Wi-Fi</label>
+            <label><input type="checkbox" id="mode-allow-CELLULAR_RESTRICTED" /> Мобильная сеть с белым списком</label>
+            <label><input type="checkbox" id="mode-allow-CELLULAR" /> Мобильная сеть</label>
+          </fieldset>
+          <label htmlFor="mode-minutes">Максимальный срок выбора в минутах</label>
+          <TextInput id="mode-minutes" inputMode="numeric" maxLength={4} />
+          <Button id="mode-apply" type="button" variant="secondary">Записать режим в черновик</Button>
+          <Button id="mode-remove" type="button" variant="link">Убрать назначение режима</Button>
+          <div id="mode-feedback" role="status" aria-live="polite"></div>
+        </fieldset>
         <div id="route-bounds" hidden>
           <Button id="route-bounds-preview" type="button" variant="secondary">
             Оценить число цепочек

@@ -72,16 +72,17 @@ type RouteFailoverPlan struct {
 	DecisionRollout      *DeviceRollout `json:"decisionRollout,omitempty"`
 }
 type NetworkSettings struct {
-	SchemaVersion    int                  `json:"schemaVersion"`
-	RequiredNetworks []string             `json:"requiredNetworks"`
-	Rules            []RouteRule          `json:"rules,omitempty"`
-	DNSServers       map[string]DNSServer `json:"dnsServers,omitempty"`
-	DNSRules         []DNSRule            `json:"dnsRules,omitempty"`
-	DNSFinal         string               `json:"dnsFinal"`
-	DNSStrategy      string               `json:"dnsStrategy"`
-	RouteChecks      []OutboundCheckPlan  `json:"routeChecks,omitempty"`
-	HomeProof        *policy.HomeProof    `json:"homeProof,omitempty"`
-	RouteFailover    *RouteFailoverPlan   `json:"routeFailover,omitempty"`
+	SchemaVersion    int                       `json:"schemaVersion"`
+	RequiredNetworks []string                  `json:"requiredNetworks"`
+	Rules            []RouteRule               `json:"rules,omitempty"`
+	DNSServers       map[string]DNSServer      `json:"dnsServers,omitempty"`
+	DNSRules         []DNSRule                 `json:"dnsRules,omitempty"`
+	DNSFinal         string                    `json:"dnsFinal"`
+	DNSStrategy      string                    `json:"dnsStrategy"`
+	RouteChecks      []OutboundCheckPlan       `json:"routeChecks,omitempty"`
+	ModeSelection    *policy.NetworkModePolicy `json:"modeSelection,omitempty"`
+	HomeProof        *policy.HomeProof         `json:"homeProof,omitempty"`
+	RouteFailover    *RouteFailoverPlan        `json:"routeFailover,omitempty"`
 }
 
 func (NetworkSettings) String() string   { return "NetworkSettings([redacted])" }
@@ -102,7 +103,11 @@ func DecodeNetworkSettings(raw []byte) (NetworkSettings, error) {
 		return NetworkSettings{}, ErrInvalid
 	}
 	root, ok := parsed.(map[string]any)
+	_, hasMode := root["modeSelection"]
 	_, hasProof := root["homeProof"]
+	if hasMode != (value.ModeSelection != nil) || hasMode && !value.ModeSelection.Valid(hasProof) {
+		return NetworkSettings{}, ErrInvalid
+	}
 	if !ok || hasProof != (value.HomeProof != nil) || hasProof && !value.HomeProof.Valid() {
 		return NetworkSettings{}, ErrInvalid
 	}
@@ -556,6 +561,12 @@ func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMess
 		return nil, err
 	}
 	output := map[string]any{"outbounds": graph.Outbounds, "route": map[string]any{"rules": rules, "final": graph.Final}, "dns": map[string]any{"servers": dnsServers, "rules": dnsRules, "final": dnsTag(settings.DNSFinal), "strategy": settings.DNSStrategy}}
+	if settings.ModeSelection != nil {
+		if !settings.ModeSelection.Valid(settings.HomeProof != nil) {
+			return nil, ErrInvalid
+		}
+		output["network_mode"] = settings.ModeSelection
+	}
 	if settings.HomeProof != nil {
 		if !settings.HomeProof.Valid() {
 			return nil, ErrInvalid
