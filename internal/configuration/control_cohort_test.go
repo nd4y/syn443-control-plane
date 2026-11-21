@@ -36,3 +36,32 @@ func TestMalformedPermanentControlCannotClearTheReservation(t *testing.T) {
 		}
 	}
 }
+
+func TestDraftCohortsMatchPublicationAndDistinguishPermanentControl(t *testing.T) {
+	rate := 2129
+	rollout := DeviceRollout{ID: "fixture-canary", BasisPoints: &rate, ControlBasisPoints: 2873}
+	for _, tc := range []struct {
+		device             string
+		decision, cooldown Cohort
+	}{
+		{"synthetic-a", CohortTreatment, CohortBaseline},
+		{"synthetic-b", CohortControl, CohortControl},
+	} {
+		groups, err := PreviewDeviceRollouts(tc.device, &rollout, &rollout)
+		if err != nil || len(groups) != 2 || groups["decision"] != tc.decision || groups["probeCooldown"] != tc.cooldown ||
+			rollout.IncludesDecision(tc.device) != (tc.decision == CohortTreatment) ||
+			rollout.IncludesProbeCooldown(tc.device) != (tc.cooldown == CohortTreatment) {
+			t.Fatalf("assignment diverged for %s: %v %v", tc.device, groups, err)
+		}
+	}
+	other := rollout
+	other.ControlBasisPoints = 10000
+	if _, err := PreviewDeviceRollouts("synthetic-a", &rollout, &other); err == nil {
+		t.Fatal("conflicting shared control accepted")
+	}
+	other.ID = "independent"
+	groups, err := PreviewDeviceRollouts("synthetic-a", &rollout, &other)
+	if err != nil || groups["decision"] != CohortTreatment || groups["probeCooldown"] != CohortControl {
+		t.Fatal("distinct cohorts not independent")
+	}
+}

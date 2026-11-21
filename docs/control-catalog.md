@@ -224,6 +224,13 @@ some devices. Decision and cooldown rollouts can share a control group by using
 the same ID and reserved share. Their treatment assignments remain independent.
 A zero treatment share stops the rollout for the next approved policy.
 
+In the route draft editor, enter the rollout percentages and a device ID, then
+choose **Проверить группу**. Each configured feature reports its own treatment,
+permanent control or unselected baseline assignment. The preview accepts
+unsaved percentages and uses the publication allocator. An ID can be checked
+before enrollment. The device card shows the policy actually issued after
+eligibility and capability checks.
+
 ## Replay the freshness of route evidence
 
 Open the simulation in the drafts section before publishing. The baseline uses

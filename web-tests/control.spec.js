@@ -918,3 +918,50 @@ test('PatternFly resources are same-origin and section history keeps an unsaved 
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(0);
 });
+
+
+async function openCohortDraft(page,request){
+ await reset(request);await page.setViewportSize({width:393,height:852});
+ await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ const fixture=structuredClone(plan);
+ fixture.graph.profiles.reserve={sourceId:'source-a',profileId:'profile-b'};
+ fixture.graph.balancers['internal']={type:'selector',members:['proxy','reserve'],default:'proxy',interruptExisting:false};
+ fixture.network.routeFailover={selector:'internal',networkMode:'wifi',intent:'INTERNAL',probeCooldown:true,
+  decisionRevision:'m4-confirmed-v1',decisionRollout:{id:'fixture-canary',basisPoints:2129,controlBasisPoints:2873},
+  probeCooldownRollout:{id:'fixture-canary',basisPoints:2129,controlBasisPoints:2873}};
+ await page.locator('#plan').fill(JSON.stringify(fixture,null,2));
+ await expect(page.getByLabel('ID устройства для предпросмотра группы')).toBeVisible();
+}
+test('phone previews treatment baseline and permanent control from unsaved fields',async({page,request})=>{
+ await openCohortDraft(page,request);
+ const planBefore=await page.locator('#plan').inputValue(),requests=[];
+ await page.route('**/control/rollout-preview',async route=>{
+  const body=route.request().postDataJSON();requests.push(body);
+  await route.fulfill({json:body.device==='synthetic-b'?{decision:'control',probeCooldown:'control'}:{decision:'treatment',probeCooldown:'baseline'}});
+ });
+ const device=page.getByLabel('ID устройства для предпросмотра группы'),run=page.getByRole('button',{name:'Проверить группу'}),result=page.locator('#cohort-result');
+ await device.fill('synthetic-a');await run.click();
+ await expect(result).toContainText('Алгоритм переключения - тестовая версия');
+ await expect(result).toContainText('Пауза проверок резервного маршрута - базовая версия вне контрольной группы');
+ await page.locator('#route-decision-share').fill('55.23');await expect(result).toBeEmpty();
+ await device.fill('synthetic-b');await run.click();
+ await expect(result.locator('li')).toHaveCount(2);
+ await expect(result.locator('li').first()).toContainText('постоянная контрольная группа');
+ await expect(result.locator('li').last()).toContainText('постоянная контрольная группа');
+ expect(requests[1]).toEqual({device:'synthetic-b',decision:{id:'fixture-canary',basisPoints:5523,controlBasisPoints:2873},probeCooldown:{id:'fixture-canary',basisPoints:2129,controlBasisPoints:2873}});
+ expect(await page.locator('#plan').inputValue()).toBe(planBefore);
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(0);expect(state.calls).not.toContain('configuration.publish');
+});
+test('phone drops a late cohort preview after a change of target',async({page,request})=>{
+ await openCohortDraft(page,request);
+ let entered,release;const started=new Promise(ok=>entered=ok),gate=new Promise(ok=>release=ok);
+ await page.route('**/control/rollout-preview',async route=>{
+  entered();await gate;
+  await route.fulfill({json:{decision:'treatment',probeCooldown:'control'}}).catch(()=>{});
+ });
+ await page.locator('#cohort-device').fill('synthetic-a');await page.locator('#cohort-run').click();await started;
+ await page.locator('#target-id').fill('device-b');release();
+ await expect(page.locator('#cohort-device')).toHaveValue('');await expect(page.locator('#cohort-result')).toBeEmpty();
+ await expect(page.locator('#cohort-run')).toBeDisabled();
+});
