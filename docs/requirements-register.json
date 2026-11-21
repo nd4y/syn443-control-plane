@@ -2087,6 +2087,8 @@
         "docs/support-chat.md",
         "contracts/v1/chat-openapi.json",
         "internal/enrollment/chat_postgres_test.go",
+        "internal/chatweb/assets/support-controller.js",
+        "web-tests/control-chat.spec.js",
         "web-tests/chat.spec.js",
         "docs/implementation-status.md#evidence-index-and-register-semantics"
       ],

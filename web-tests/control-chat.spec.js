@@ -15,6 +15,45 @@ async function open(page){
 }
 
 for (const surface of ['standalone', 'console']) {
+ test(`mismatched send receipts retain the exact draft and files on ${surface}`, async ({page,request}) => {
+  const el=name=>page.locator('#'+(surface==='console'?'support-':'')+name);
+  const attempts=[];
+  await page.route('**/chat/send',async route=>{
+   attempts.push(route.request().postDataJSON());
+   const response=await route.fetch();
+   expect(response.status()).toBe(200);
+   const message=await response.json();
+   switch(attempts.length) {
+    case 1: message.conversation='foreign';break;
+    case 2: message.clientId='unrelated';break;
+    case 3: message.attachments[0].sha256='0'.repeat(64);break;
+    case 4: message.attachments[1]=message.attachments[0];break;
+    case 5: message.sequence=0;break;
+    default: message.attachments.reverse();
+   }
+   await route.fulfill({json:message});
+  });
+  await page.goto(surface==='console'?origin+'/#support-title':chatOrigin+'/');
+  await el('inbox').getByRole('button',{name:/Пользователь/}).click();
+  await el('text').fill('synthetic receipt retry');
+  await el('file').setInputFiles(['one','two'].map(name=>({name:name+'.txt',mimeType:'text/plain',buffer:Buffer.from(name)})));
+  for(let i=0;i<5;i++) {
+   await el('send').click();
+   await expect(el('send')).toBeEnabled();
+   await expect(el('status')).toContainText('повторить');
+   await expect(el('text')).toHaveValue('synthetic receipt retry');
+   await expect(el('text')).toBeDisabled();
+   expect(await el('file').evaluate(input=>input.files.length)).toBe(2);
+  }
+  await el('send').click();
+  await expect(el('text')).toHaveValue('');
+  await expect(el('messages').locator('li')).toHaveCount(1);
+  expect(attempts).toHaveLength(6);
+  for(const attempt of attempts)expect(attempt).toEqual(attempts[0]);
+  const fixture=await (await request.post(chatOrigin+'/fixture/state',{data:{}})).json();
+  expect(fixture.messages).toBe(1);
+  expect(fixture.uploads).toBe(2);
+ });
  test(`long inbox and message history remain navigable on ${surface}`, async ({page}) => {
   const prefix=surface==='console'?'support-':'';
   const el=name=>page.locator('#'+prefix+name);

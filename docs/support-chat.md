@@ -15,6 +15,11 @@ client IDs and publication atomicity. Expired unlinked uploads are deleted after
 24 hours by the bounded owner cleanup command. The full retention editor is not
 implemented. SQL backup/access controls must cover chat BLOBs as sensitive data.
 
+The standalone web chat and the administrative console retain a pending reply
+until its receipt matches the conversation, client ID, text and every uploaded
+file. Retrying sends the same message and file IDs. A valid receipt confirms
+delivery; the read cursor records when the other party reads the message.
+
 `contracts/v1/chat-openapi.json` defines device and administrator routes. The
 device routes use existing DPoP-bound device sessions. Administrator routes use
 a separate Keycloak client/audience plus `chat_admins.enabled`; API runtime roles
