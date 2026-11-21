@@ -317,6 +317,60 @@ test('structured route profile remains intact while editing another route and pr
  await expect(add).toBeDisabled();
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();expect(state.operations).toBe(0);
 });
+test('mobile administrator groups route checks while TLS and exit evidence remain mandatory',async({page,request})=>{
+ await page.setViewportSize({width:393,height:852});
+ await reset(request);await page.goto(origin+'/#draft-title');await draft(page);
+ const input=page.locator('#plan'),selector=page.locator('#route-check-path');
+ const checks=[
+  {method:'tls',target:'https://secure.example.invalid/'},
+  {method:'https_exit_country',target:'https://country.example.invalid/',expected_exit_class:'RU'},
+  {method:'tcp',target:'a.example.invalid:443'},{method:'tcp',target:'b.example.invalid:443'}
+ ];
+ const configured={...plan,network:{...plan.network,routeChecks:[{outbound:'direct',required:false,checks}]}};
+ await input.fill(JSON.stringify(configured));await expect(selector).toHaveValue('proxy');
+ await selector.selectOption('direct');await page.getByRole('button',{name:'Настроить условия проверок'}).click();
+ await page.getByLabel('Как объединить проверки').selectOption('quorum');
+ await page.getByLabel('Минимум успешных',{exact:true}).fill('1');await page.getByLabel('Общий тайм-аут, мс').fill('6500');
+ let validated;
+ await page.route('**/control/route-check-profile',async route=>{
+  validated=route.request().postDataJSON();await route.fulfill({json:{valid:true}});
+ });
+ await page.getByRole('button',{name:'Применить условия к черновику'}).click();
+ await expect(page.locator('#route-check-list')).toContainText('Профиль health-direct');
+ expect(validated.gates).toEqual(['check-1','check-2']);expect(validated.deadlineMs).toBe(6500);
+ expect(validated.stages).toEqual([{quorum:{k:1,of:[{leaf:'check-3'},{leaf:'check-4'}]}}]);
+ const result=JSON.parse(await input.inputValue());
+ expect(result.network.routeChecks).toEqual([{outbound:'direct',required:false,profile:validated}]);
+ expect(result.graph).toEqual(configured.graph);
+ await page.getByRole('button',{name:'Настроить условия проверок'}).click();
+ await expect(page.getByLabel('Как объединить проверки')).toHaveValue('quorum');
+ await page.getByLabel('Как объединить проверки').selectOption('any');
+ await page.getByRole('button',{name:'Применить условия к черновику'}).click();
+ await expect(page.locator('#route-profile-editor')).toBeHidden();
+ expect(validated.revision).toBe(2);expect(validated.stages[0].any).toHaveLength(2);
+ expect((await(await request.post(origin+'/fixture/state',{data:{}})).json()).operations).toBe(0);
+});
+test('complex profile stays editable and late validation cannot overwrite a changed draft',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#draft-title');await draft(page);
+ const input=page.locator('#plan'),open=page.getByRole('button',{name:'Настроить условия проверок'});
+ const leaves=['a','b','c'].map(id=>({id,check:{method:'tcp',target:id+'.example.invalid:443'}}));
+ const profile={schemaVersion:2,id:'service',revision:4,deadlineMs:7000,leaves,gates:[],stages:[{any:[{leaf:'a'},{all:[{leaf:'b'},{leaf:'c'}]}]}]};
+ const original=JSON.stringify({...plan,network:{...plan.network,routeChecks:[{outbound:'proxy',required:true,profile}]}});
+ await input.fill(original);await open.click();
+ const mode=page.getByLabel('Как объединить проверки'),advanced=page.getByLabel('Профиль проверок, JSON');
+ await expect(mode).toHaveValue('custom');expect(JSON.parse(await advanced.inputValue())).toEqual({...profile,revision:5});
+ await expect(mode.locator('option[value="all"]')).toBeDisabled();
+ await page.getByRole('button',{name:'Отмена',exact:true}).click();
+ await expect(input).toHaveValue(original);await open.click();
+ let release;const hold=new Promise(resolve=>{release=resolve;});
+ await page.route('**/control/route-check-profile',async route=>{await hold;await route.fulfill({json:{valid:true}});});
+ const pending=page.waitForRequest('**/control/route-check-profile');
+ await page.getByRole('button',{name:'Применить условия к черновику'}).click();await pending;
+ const replacement=JSON.stringify(plan);
+ await input.evaluate((field,value)=>{field.value=value;field.dispatchEvent(new Event('input',{bubbles:true}));},replacement);
+ release();await expect(page.locator('#route-check-editor')).toBeEnabled();await expect(input).toHaveValue(replacement);
+ await expect(advanced).toHaveValue('');
+});
 test('reserve probe cooldown requires explicit draft opt in and never publishes',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
  const box=page.locator('#route-reserve-cooldown'),input=page.locator('#plan');

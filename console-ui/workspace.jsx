@@ -507,11 +507,42 @@ function Drafts() {
             </Select>
             <p>Укажите корневой HTTPS-адрес сервиса, который возвращает IP и страну текущего подключения в JSON.</p>
           </div>
-          <p id="route-profile-note" hidden>Этот маршрут использует профиль проверок. Его условия можно изменить в JSON плана.</p>
+          <p id="route-profile-note" hidden>Этот маршрут использует профиль проверок.</p>
           <Button id="route-check-add" type="button" variant="secondary">
             Добавить проверку
           </Button>
           <ul id="route-check-list"></ul>
+          <Button id="route-profile-open" type="button" variant="secondary" disabled>
+            Настроить условия проверок
+          </Button>
+          <fieldset id="route-profile-editor" hidden>
+            <legend>Условия выбранного выхода</legend>
+            <label htmlFor="route-profile-mode">Как объединить проверки</label>
+            <Select id="route-profile-mode">
+              <option value="sequence">Последовательно по этапам</option>
+              <option value="all">Все должны пройти</option>
+              <option value="any">Достаточно одной</option>
+              <option value="quorum">Минимум успешных проверок</option>
+              <option value="custom">Свои условия в JSON</option>
+            </Select>
+            <div id="route-profile-threshold" hidden>
+              <label htmlFor="route-profile-count">Минимум успешных</label>
+              <input id="route-profile-count" type="number" min="1" max="4" step="1" defaultValue="1" />
+            </div>
+            <div id="route-profile-timing">
+              <label htmlFor="route-profile-deadline">Общий тайм-аут, мс</label>
+              <input id="route-profile-deadline" type="number" min="1" max="12000" />
+              <p>Проверки TLS, IP и страны выхода обязательны при любом сочетании условий.</p>
+            </div>
+            <div id="route-profile-advanced" hidden>
+              <label htmlFor="route-profile-json">Профиль проверок, JSON</label>
+              <TextArea id="route-profile-json" rows={8} maxLength={24000} spellCheck={false} autoComplete="off" />
+            </div>
+            <Button id="route-profile-apply" type="button" variant="primary">
+              Применить условия к черновику
+            </Button>
+            <Button id="route-profile-cancel" type="button" variant="link">Отмена</Button>
+          </fieldset>
           <label>
             <input id="route-reserve-cooldown" type="checkbox" disabled />{' '}
             Откладывать фоновые проверки резервов после подтверждённых сбоев

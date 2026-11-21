@@ -16,6 +16,7 @@ let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticatio
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
 let runtimeRefreshTimer=null,runtimeRequest=null,runtimePolling=false,runtimeLastStarted=0;
 let boundsDraft=null,boundsEpoch=0;
+let routeProfileEdit=null;
 const runtimeRefreshMs=60000;
 const sourceFields=['source-id','source-owner','source-name','source-mode','source-device','source-format','source-resource','source-external','source-until','source-refresh','source-stale','source-modes','source-enabled','source-secret-operation','source-secret'];
 const formFields=['draft-id','target-kind','target-id','base-revision','base-hash','plan'];
@@ -94,7 +95,7 @@ function routeDraft(){
     !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(tag)||tag==='direct'||tag.startsWith('syn443_')||tags.has(tag)))throw Error('invalid');
   for(const tag of managed)tags.add(tag);
  }
- if(graph.final==='direct')tags.add('direct');
+ tags.add('direct');
  const checks=network.routeChecks??[];
  if(!Array.isArray(checks)||checks.length>16||checks.some(row=>{
   if(!row||typeof row.outbound!=='string')return true;
@@ -105,7 +106,8 @@ function routeDraft(){
 }
 function drawRouteChecks(){
  const draft=authenticated?$('plan').value:null;
- if(boundsDraft!==draft){boundsDraft=draft;boundsEpoch++;$('route-bounds-result').replaceChildren();}
+ if(boundsDraft!==draft){boundsDraft=draft;boundsEpoch++;$('route-bounds-result').replaceChildren();closeRouteProfile();}
+ $('route-profile-open').disabled=true;
  $('route-bounds').hidden=true;$('route-bounds-preview').disabled=true;
  const editor=$('route-check-editor'),select=$('route-check-path'),list=$('route-check-list');
  $('route-check-exit').hidden=$('route-check-method').value!=='https_exit_ip';
@@ -126,7 +128,10 @@ function drawRouteChecks(){
  if(state.value.adaptive){$('route-bounds').hidden=false;$('route-bounds-preview').disabled=busy||!!pending;}
  for(const tag of [...state.tags].sort()){const option=document.createElement('option');option.value=tag;option.textContent=tag;select.append(option);}
  if(state.tags.has(prior))select.value=prior;
+ else if(state.tags.has(state.value.graph.final))select.value=state.value.graph.final;
  const selected=state.checks.find(row=>row.outbound===select.value);
+ if(routeProfileEdit&&routeProfileEdit.path!==select.value)closeRouteProfile();
+ $('route-profile-open').disabled=busy||!!pending||!(selected?.profile||selected?.checks?.length);
  $('route-check-required').checked=selected?.required===true;
  $('route-profile-note').hidden=!selected?.profile;
  for(const id of ['route-check-method','route-check-target','route-check-ip','route-check-verb','route-check-status','route-check-country-class','route-check-add']){
@@ -193,6 +198,99 @@ function applyRouteChecks(state){
  $('plan').value=serialized;
  status('Проверки изменены в черновике. Сохраните его, чтобы не потерять правки.');
 }
+function closeRouteProfile(){
+ routeProfileEdit=null;
+ $('route-profile-editor').hidden=true;
+ $('route-profile-json').value='';
+}
+function flatProfile(profile){
+ const {stages}=profile;
+ const leafRefs=value=>Array.isArray(value)&&value.every(v=>v&&Object.keys(v).length===1&&typeof v.leaf==='string');
+ if(leafRefs(stages))return {mode:'sequence',refs:stages};
+ if(!Array.isArray(stages)||stages.length!==1||!stages[0]||Object.keys(stages[0]).length!==1)return null;
+ const operator=Object.keys(stages[0])[0];
+ if(!['all','any','quorum'].includes(operator))return null;
+ const expr=stages[0][operator],refs=operator==='quorum'?expr?.of:expr;
+ return leafRefs(refs)?{mode:operator,refs,minimum:operator==='quorum'?expr.k:1}:null;
+}
+function profileView(){
+ const mode=$('route-profile-mode').value;
+ $('route-profile-threshold').hidden=mode!=='quorum';
+ $('route-profile-timing').hidden=mode==='custom';
+ $('route-profile-advanced').hidden=mode!=='custom';
+}
+function profileCandidate(edit,mode=$('route-profile-mode').value){
+ if(mode==='custom')return $('route-profile-json').value;
+ if(!edit.flat)throw Error('invalid');
+ const deadline=$('route-profile-deadline').valueAsNumber,refs=edit.flat.refs;
+ if(!Number.isInteger(deadline)||deadline<1||deadline>12000)throw Error('invalid');
+ let stages=refs;
+ if(mode!=='sequence'){
+  if(refs.length<2)throw Error('invalid');
+  if(mode==='quorum'){
+   const k=$('route-profile-count').valueAsNumber;
+   if(!Number.isInteger(k)||k<1||k>refs.length)throw Error('invalid');
+   stages=[{quorum:{k,of:refs}}];
+  }else if(mode==='all'||mode==='any')stages=[{[mode]:refs}];
+  else throw Error('invalid');
+ }
+ return JSON.stringify({...edit.profile,deadlineMs:deadline,stages});
+}
+function profileSubject(){
+ return JSON.stringify(['draft-id','target-kind','target-id'].map(id=>$(id).value));
+}
+function openRouteProfile(){
+ const current=routeDraft(),path=$('route-check-path').value;
+ const row=current.checks.find(r=>r.outbound===path);
+ if(!authenticated||busy||pending||!row)return;
+ let profile;
+ if(row.profile){
+  profile={...row.profile,revision:row.profile.revision+1};
+ }else{
+  const leaves=row.checks.map((check,index)=>({id:'check-'+(index+1),check}));
+  const gates=leaves.filter(l=>['tls','https_exit_ip','https_exit_country'].includes(l.check.method)).map(l=>l.id);
+  const stages=leaves.filter(l=>!gates.includes(l.id)).map(l=>({leaf:l.id}));
+  profile={schemaVersion:2,id:('health-'+path.toLowerCase()).slice(0,64),revision:1,deadlineMs:12000,leaves,gates,stages};
+ }
+ const flat=flatProfile(profile);
+ routeProfileEdit={path,profile,flat,epoch:boundsEpoch,subject:profileSubject(),mode:flat?.mode||'custom'};
+ const mode=$('route-profile-mode');
+ for(const option of mode.options)option.disabled=option.value!=='custom'&&(!flat||(option.value!=='sequence'&&flat.refs.length<2));
+ mode.value=flat?.mode||'custom';
+ $('route-profile-count').value=String(flat?.minimum||1);
+ $('route-profile-deadline').value=String(profile.deadlineMs);
+ $('route-profile-json').value=JSON.stringify(profile,null,2);
+ $('route-profile-editor').hidden=false;
+ profileView();mode.focus();
+}
+$('route-profile-open').onclick=openRouteProfile;
+$('route-profile-cancel').onclick=()=>{closeRouteProfile();$('route-profile-open').focus();};
+$('route-profile-mode').onchange=()=>{
+ const edit=routeProfileEdit,select=$('route-profile-mode');
+ if(!edit)return;
+ if(select.value==='custom'&&edit.mode!=='custom'){
+  try{$('route-profile-json').value=JSON.stringify(JSON.parse(profileCandidate(edit,edit.mode)),null,2);}
+  catch{select.value=edit.mode;status('Проверьте тайм-аут и минимальное число успешных проверок.','danger');return;}
+ }
+ edit.mode=select.value;profileView();
+};
+$('route-profile-json').oninput=()=>{
+ for(const option of $('route-profile-mode').options)option.disabled=option.value!=='custom';
+};
+$('route-profile-apply').onclick=()=>work(async()=>{
+ const edit=routeProfileEdit;
+ if(!edit||edit.subject!==profileSubject())return;
+ const raw=profileCandidate(edit);
+ if(!raw||new TextEncoder().encode(raw).length>24000)throw Error('invalid');
+ const report=await request('/control/route-check-profile',raw);
+ if(!authenticated||routeProfileEdit!==edit||edit.epoch!==boundsEpoch||
+    edit.subject!==profileSubject()||$('route-check-path').value!==edit.path)return;
+ if(report?.valid!==true)throw Error('invalid');
+ const profile=JSON.parse(raw),current=routeDraft(),row=current.checks.find(r=>r.outbound===edit.path);
+ if(!row||profile.revision!==edit.profile.revision||(row.profile&&profile.id!==row.profile.id))throw Error('invalid');
+ delete row.checks;row.profile=profile;
+ applyRouteChecks(current);closeRouteProfile();
+});
 function controls(){
  $('refresh-runtime').disabled=busy||!!runtimeRequest||!authenticated||!layerInventory;
  $('reauthentication').hidden=!authenticated||!reauthenticationNeeded;

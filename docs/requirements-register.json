@@ -1420,7 +1420,7 @@
         "docs/implementation-status.md#evidence-index-and-register-semantics",
         "docs/route-check-profiles-v2.md"
       ],
-      "implementationScope": "Legacy all-of checks are retained. Negotiated bounded all/any/quorum and sequential stages support mandatory security gates. The console preserves existing v2 profiles while editing other outbound checks and previewing adaptive route counts.",
+      "implementationScope": "Legacy all-of checks are retained. Negotiated bounded all/any/quorum and sequential stages support mandatory security gates. The mobile console edits combinations, thresholds and deadlines per outbound, and uses the canonical validator for nested profiles. Changes apply to the open draft.",
       "remainingScope": "Parallel stages, explicit conditional/fallback branches, reusable traffic-rule profiles/editor, ordinary variable/overlay paths and capability-approved managed physical acceptance remain open."
     },
     {

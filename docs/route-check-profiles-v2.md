@@ -7,6 +7,18 @@ assignment and the other CHK-01..12 capabilities.
 
 ## Contract and compatibility
 
+In the mobile console, open a network draft, select the outbound, and add its
+checks. **Настроить условия проверок** groups them into sequential stages, all,
+any or a quorum. TLS, exit IP and exit country remain mandatory gates. The
+threshold applies to the remaining checks. The deadline is shared by the
+profile. The direct outbound is selectable even when the graph defaults to a proxy.
+
+The editor preserves leaf identities, gate order and the required flag when
+revising an existing profile. Nested expressions open in their own JSON field.
+Applying validates the proposed definition with the control-plane decoder and
+updates only the open draft. Saving and publishing follow the regular device
+capability, authority and revision checks.
+
 A `routeChecks` control row, rendered as `route_checks` in the engine document,
 contains exactly one of the existing `checks` array and the new `profile` object.
 It never flattens or silently downgrades a profile. Legacy ordered all-of checks,
