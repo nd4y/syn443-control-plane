@@ -88,6 +88,10 @@ func applyPreparedConfiguration(payload *policy.Payload, prepared *PreparedConfi
 	if hasProfile != slices.Contains(prepared.RequiredCapabilities, policy.RouteCheckPlanV2) {
 		return ErrDenied
 	}
+	_, homeProof := root["home_proof"]
+	if homeProof != slices.Contains(prepared.RequiredCapabilities, policy.HomeWiFiProof) {
+		return ErrDenied
+	}
 	_, adaptive := root["adaptive_routes"]
 	if adaptive != (prepared.AlgorithmRevision == policy.AdaptiveTCPAlgorithm) || adaptive != slices.Contains(prepared.RequiredCapabilities, policy.RouteAdaptiveTCP) {
 		return ErrDenied
@@ -140,12 +144,18 @@ func validatePreparedNetwork(raw []byte) error {
 	if identity.DecodeConfiguration(raw, &root) != nil || root == nil {
 		return identity.ErrInvalid
 	}
+	_, adaptive := root["adaptive_routes"]
 	for name := range root {
-		if name != "outbounds" && name != "route" && name != "dns" && name != "route_checks" && name != "route_failover" && name != "adaptive_routes" {
+		switch name {
+		case "outbounds", "route", "dns", "route_checks", "route_failover", "adaptive_routes":
+		case "home_proof":
+			if !adaptive {
+				return identity.ErrInvalid
+			}
+		default:
 			return identity.ErrInvalid
 		}
 	}
-	_, adaptive := root["adaptive_routes"]
 	if adaptive && configuration.ValidateAdaptiveIssuedEngine(raw) != nil {
 		return identity.ErrInvalid
 	}

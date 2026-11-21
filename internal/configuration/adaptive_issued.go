@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
+	"github.com/nd4y/syn443-control-plane/internal/policy"
 	"github.com/nd4y/syn443-control-plane/internal/routecheck"
 	"github.com/nd4y/syn443-control-plane/internal/routegraph"
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
@@ -26,8 +27,12 @@ func ValidateAdaptiveIssuedEngine(raw []byte) error {
 		DNS       json.RawMessage   `json:"dns"`
 		Checks    json.RawMessage   `json:"route_checks"`
 		Adaptive  json.RawMessage   `json:"adaptive_routes"`
+		HomeProof json.RawMessage   `json:"home_proof"`
 	}
 	if len(raw) < 1 || len(raw) > 262144 || identity.DecodeConfiguration(raw, &root) != nil || len(root.Outbounds) < 1 || len(root.Outbounds) > 64 {
+		return ErrInvalid
+	}
+	if root.HomeProof != nil && !policy.ValidHomeProofJSON(root.HomeProof) {
 		return ErrInvalid
 	}
 	graph, groups, err := decodeAdaptiveIssuedWire(root.Adaptive)
