@@ -4,8 +4,8 @@ Specification 0.9. Each item appears once. The columns show which component regi
 
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Requirements | 292 | 107 | 34 | 59 | 92 |
-| Acceptance scenarios | 98 | 19 | 0 | 4 | 75 |
+| Requirements | 292 | 108 | 37 | 58 | 89 |
+| Acceptance scenarios | 98 | 19 | 2 | 4 | 73 |
 
 ## Requirement families
 
@@ -19,7 +19,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | EXT | 10 | 0 | 0 | 10 | 0 |
 | CFG | 6 | 2 | 0 | 3 | 1 |
 | PROV | 8 | 6 | 0 | 0 | 2 |
-| PROTO | 4 | 0 | 0 | 1 | 3 |
+| PROTO | 4 | 0 | 1 | 1 | 2 |
 | NB | 7 | 5 | 0 | 2 | 0 |
 | OVL | 7 | 1 | 0 | 1 | 5 |
 | MODE | 5 | 0 | 3 | 0 | 2 |
@@ -28,7 +28,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | ALG | 24 | 0 | 13 | 0 | 11 |
 | BAD | 10 | 0 | 7 | 0 | 3 |
 | RLP | 10 | 3 | 1 | 1 | 5 |
-| ROUTE | 6 | 0 | 0 | 2 | 4 |
+| ROUTE | 6 | 1 | 1 | 1 | 3 |
 | CHECK | 7 | 2 | 1 | 0 | 4 |
 | CHK | 12 | 12 | 0 | 0 | 0 |
 | TEL | 12 | 7 | 1 | 2 | 2 |
@@ -41,7 +41,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | SRV | 4 | 0 | 0 | 2 | 2 |
 | SVC | 10 | 0 | 0 | 9 | 1 |
 | ADB | 4 | 4 | 0 | 0 | 0 |
-| BOOT | 15 | 2 | 1 | 6 | 6 |
+| BOOT | 15 | 2 | 2 | 6 | 5 |
 | NFR | 8 | 1 | 0 | 1 | 6 |
 | SEC | 12 | 3 | 2 | 1 | 6 |
 | ENG | 8 | 5 | 0 | 0 | 3 |
@@ -51,7 +51,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 Download `product-requirements` from the CI run for this Control Plane revision. The CSV lists every requirement and acceptance scenario with both original status values. Look up the item ID in its component register for evidence and remaining scope.
 
 - [Control Plane register](requirements-register.json)
-- [Android register at 4b57bbb4187c](https://github.com/nd4y/syn443-android/blob/4b57bbb4187cf2a4028f111eb2a0ad7659f3a9aa/docs/requirements-register.json)
+- [Android register at 585283f911e3](https://github.com/nd4y/syn443-android/blob/585283f911e33c70dcc5bf905ba352a815b5536a/docs/requirements-register.json)
 - [Technical specification](spec/TECHNICAL_SPEC_RU.md)
 - [Live and release acceptance records](implementation-status.md)
 
