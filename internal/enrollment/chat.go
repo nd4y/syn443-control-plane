@@ -140,7 +140,7 @@ func (a *API) chatHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(w, identity.ErrInvalid)
 		return
 	}
-	if !a.admit("chat/"+ip, a.Clock()) {
+	if !a.requests.admit("chat/"+ip, a.Clock()) {
 		w.Header().Set("Retry-After", "60")
 		http.Error(w, "rate_limited", 429)
 		return

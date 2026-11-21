@@ -17,7 +17,7 @@ import (
 func seedRetentionRows(t *testing.T, eventCount int) (time.Time, string) {
 	t.Helper()
 	f := newFixture(t, 1)
-	f.api.TelemetryEnabled = true
+	f.enableTelemetry(t)
 	deviceKey := key(t)
 	session, _, _ := f.register(t, deviceKey)
 	eventID := random()

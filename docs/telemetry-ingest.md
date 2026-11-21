@@ -14,6 +14,27 @@ The response acknowledges exactly the submitted event IDs in order, and is
 sent only after the transaction commits. A retry after response loss receives
 the same acknowledgement within the ingestion budget.
 
+### Capacity during reconnects
+
+When intake is enabled, each enrollment API instance reserves a separate pool
+of two database connections for uploads. The ordinary enrollment pool has four
+connections. Include both pools in the PostgreSQL connection budget for each
+replica. Disabling intake closes the upload path on the next service start.
+
+The upload handler admits two concurrent requests and tracks up to 512 peer
+addresses independently of policy delivery. Each address can submit 120
+requests per minute. A full upload lane returns HTTP 503 with a five-second
+retry hint before waiting for SQL. An exhausted address window returns HTTP
+429. Session refresh and policy fetch retain their own admission budget for
+devices behind the same gateway. A waiting upload checks its device session
+again before inserting. Clients retry with a fresh proof and the same event
+IDs after refreshing an expired or rotated session.
+
+Both pools use the current identity API role in this deployment. The device
+session, revocation checks, and event insertion share one SQL transaction.
+Physical server capacity, database locks and a database outage can still
+affect both pools. Independent process deployment remains an open requirement.
+
 The separate retention role in `internal/telemetry/retention-roles.sql` is
 allowed to read only keys and timestamps and delete expired telemetry. Run
 `enrollment-admin telemetry-prune` with its DSN in

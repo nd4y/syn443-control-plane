@@ -454,17 +454,17 @@ func TestClockExpiryAndAdmission(t *testing.T) {
 	body, _ := json.Marshal(map[string]string{"requestId": random()})
 	expect(t, f.call(t, k, "POST", "/v1/device/session/refresh", s.RefreshToken, s.Nonce, body), 403)
 	for i := 0; i < 120; i++ {
-		f.api.admit("test-ip", f.now)
+		f.api.requests.admit("test-ip", f.now)
 	}
-	if f.api.admit("test-ip", f.now) {
+	if f.api.requests.admit("test-ip", f.now) {
 		t.Fatal("rate limit")
 	}
 	for i := 0; i < 16; i++ {
-		f.api.slots <- struct{}{}
+		f.api.requests.slots <- struct{}{}
 	}
 	expect(t, f.rawCall("GET", "/v1/device/policy", s.AccessToken, "invalid", nil), 503)
 	for i := 0; i < 16; i++ {
-		<-f.api.slots
+		<-f.api.requests.slots
 	}
 	if _, e = NewAPI(f.store, f.v, "http://api.example.invalid", f.api.Roots, false); e == nil {
 		t.Fatal("insecure origin")
@@ -523,7 +523,7 @@ func TestHTTPBoundariesAndIdempotencyConflict(t *testing.T) {
 		}
 	}
 	for i := 0; i < 120; i++ {
-		f.api.admit("127.0.0.1", f.now)
+		f.api.requests.admit("127.0.0.1", f.now)
 	}
 	expect(t, f.rawCall("GET", "/v1/device/policy", s.AccessToken, "invalid", nil), 429)
 }

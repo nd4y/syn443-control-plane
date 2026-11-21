@@ -9,8 +9,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   public-data:
     runs-on: ubuntu-24.04
@@ -756,6 +756,7 @@ jobs:
           GOFLAGS=-json bash tools/test_enrollment.sh | tee session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestActualManagedAPIPublisherAndProviderWorkerProcesses/readiness_preserves_pending_provider_work/container_role_checks" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           python3 tools/check_session_boundary_evidence.py session-boundary-postgres-tests.jsonl
+          jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryPressurePreservesPolicyAndRefresh","TestTelemetryAddressBudgetLeavesPolicyAccessible"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestOperatorPolicyTimingBoundsAndLegacyGrantHash","TestSQLGrantTimingFencesPublisherAndSchedulesSignedRenewal"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryWorkerRecoversRetainedGapsAndWrapsAfterBusyHour","TestTelemetryAggregateWorkerProcessCommitsStopsAndResumes"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryAnalysisProcessRequiresVerifiedPostgresTLS/trusted_name","TestTelemetryAnalysisProcessRequiresVerifiedPostgresTLS/wrong_name","TestTelemetryAnalysisProcessRequiresVerifiedPostgresTLS/unknown_ca"])' session-boundary-postgres-tests.jsonl
