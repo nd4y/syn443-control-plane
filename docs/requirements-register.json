@@ -934,8 +934,14 @@
     {
       "id": "MODE-02",
       "text": "Предлагаемый приоритет: временный ручной override, явно назначенная политика устройства, автоматическое определение. Ручной override виден на главном экране и действует до выбранного пользователем срока или изменения сети. Администратор задаёт разрешённые режимы и право override.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/policy/network_mode.go",
+        "internal/deviceprovisioning/network.go",
+        "internal/enrollment/configuration_authority_postgres_test.go",
+        "web-tests/control.spec.js",
+        "docs/managed-adaptive-runtime.md#assigned-network-mode"
+      ]
     },
     {
       "id": "MODE-03",

@@ -28,6 +28,11 @@ func compiledAdaptivePreparation(t *testing.T) (*PreparedConfiguration, policy.P
 
 func compiledAdaptivePreparationWithHomeProof(t *testing.T, proof *policy.HomeProof) (*PreparedConfiguration, policy.Payload, time.Time) {
 	t.Helper()
+	return compiledAdaptivePreparationWithNetwork(t, proof, nil)
+}
+
+func compiledAdaptivePreparationWithNetwork(t *testing.T, proof *policy.HomeProof, mode *policy.NetworkModePolicy) (*PreparedConfiguration, policy.Payload, time.Time) {
+	t.Helper()
 	metadata, _ := json.Marshal(map[string]any{"schemaVersion": 1,
 		"hops": []any{map[string]any{"id": "hop", "entryModes": []string{"WIFI"}, "exitClass": "PUBLIC", "features": []string{"TCP"}}}, "edges": []any{},
 		"templates": []any{map[string]any{"id": "single", "slots": [][]string{{"hop"}}}},
@@ -38,6 +43,7 @@ func compiledAdaptivePreparationWithHomeProof(t *testing.T, proof *policy.HomePr
 		Activation: policy.Gate{TimeoutSeconds: 30, Checks: []policy.Check{{ID: "internet", Type: "https_204", Target: "https://health.example.invalid/generate_204", Required: true}}},
 		Adaptive:   &configuration.AdaptivePlan{MetadataB64: base64.RawURLEncoding.EncodeToString(metadata), BindingsB64: base64.RawURLEncoding.EncodeToString(bindings), Groups: map[string]string{"external": "managed"}}}
 	plan.Network.HomeProof = proof
+	plan.Network.ModeSelection = mode
 	compiled, err := configuration.CompileNetworkPlan(context.Background(), plan, func(ref configuration.ProfileReference) (subscriptions.Profile, error) {
 		if ref.SourceID != "source-a" || ref.ProfileID != "source_profile" {
 			return subscriptions.Profile{}, configuration.ErrInvalid
@@ -49,6 +55,9 @@ func compiledAdaptivePreparationWithHomeProof(t *testing.T, proof *policy.HomePr
 	}
 	payload, now := configuredPayload()
 	caps := []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2", "route.health.v1", policy.RouteDecision, policy.RouteAdaptiveTCP, policy.RouteExitCountry}
+	if mode != nil {
+		caps = append(caps, policy.NetworkModeSelection)
+	}
 	if proof != nil {
 		caps = append(caps, policy.HomeWiFiProof)
 	}
@@ -271,5 +280,29 @@ func TestPreparedHomeProofKeepsIndependentClosedSchemaAndCapabilityChecks(t *tes
 				t.Fatal("rejected policy mutated the candidate")
 			}
 		})
+	}
+}
+
+func TestPreparedModeSelectionPassesIndependentValidationOfActualCompilerBytes(t *testing.T) {
+	mode := policy.NetworkModePolicy{PreferredMode: "WIFI", UserModes: []string{"WIFI"}, MaxOverrideMinutes: 60}
+	prepared, payload, now := compiledAdaptivePreparationWithNetwork(t, nil, &mode)
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(prepared.EngineConfig, &root); err != nil {
+		t.Fatal(err)
+	}
+	if !policy.ValidNetworkModeJSON(root["network_mode"], false) {
+		t.Fatal("compiled mode schema")
+	}
+	if err := configuration.ValidateAdaptiveIssuedEngine(prepared.EngineConfig); err != nil {
+		t.Fatal("adaptive projection", err)
+	}
+	if err := validatePreparedNetwork(prepared.EngineConfig); err != nil {
+		t.Fatal("prepared network", err)
+	}
+	if err := configuration.ValidateIssuedCheckPlans(prepared.EngineConfig); err != nil {
+		t.Fatal("independent check plans", err)
+	}
+	if err := applyPreparedConfiguration(&payload, prepared, prepared.RequiredCapabilities, now); err != nil {
+		t.Fatal("signed payload", err)
 	}
 }
