@@ -82,6 +82,14 @@ Conditional provider refresh, separate home/cellular classification and actual
 provider/device acceptance remain open. A failed fetch leaves the existing
 authorized snapshot subject to its original expiry.
 
+For a known allowance, `source.snapshot` includes `trafficBytes.used` and
+`trafficBytes.limit` as unsigned decimal strings. The largest counter is
+`18446744073709551615`. A zero limit denotes an unlimited allowance. The
+existing numeric fields in `snapshot.quota` are retained for compatible clients.
+The console uses `snapshot.quota.observedAt` for the time the provider reported
+the counters. A later subscription fetch can update `snapshot.observedAt`
+without refreshing those counters. An unknown quota omits `trafficBytes`.
+
 Runtime files use `SYN443_CONTROL_CONFIG` / `SYN443_SOURCE_CONFIG`. Their schema is
 the closed `catalog.RuntimeConfig`; verified remote PostgreSQL TLS is mandatory.
 API listeners are loopback-bound and serve HTTPS behind an owner-configured ingress.

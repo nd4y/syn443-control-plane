@@ -405,8 +405,13 @@
         "internal/catalog/worker.go",
         "internal/catalog/store_postgres_test.go",
         "internal/catalog/resource_postgres_test.go",
-        "internal/catalog/review_postgres_test.go"
-      ]
+        "internal/catalog/review_postgres_test.go",
+        "internal/catalog/inventory.go",
+        "internal/catalog/provider_traffic_postgres_test.go",
+        "web-tests/provider-traffic.spec.js"
+      ],
+      "implementationScope": "The console shows provider usage, allowance, remaining bytes, expiry and the time of the provider report. Refreshing a snapshot without new quota data preserves the original observation. Decimal counters preserve the full provider uint64 range.",
+      "remainingScope": "Device-side usage attribution and cost-aware selection require separate evidence."
     },
     {
       "id": "SUB-12",

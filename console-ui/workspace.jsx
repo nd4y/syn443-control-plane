@@ -5,6 +5,10 @@ import {
   Card,
   CardBody,
   CardTitle,
+  DescriptionList,
+  DescriptionListDescription,
+  DescriptionListGroup,
+  DescriptionListTerm,
   PageSection,
   TextArea,
   TextInput,
@@ -223,7 +227,22 @@ function Sources() {
       </Button>
       <h3>Профили источника</h3>
       <ul id="profiles"></ul>
-      <pre id="source-details"></pre>
+      <section id="source-details" hidden aria-labelledby="source-details-title">
+        <h3 id="source-details-title">Версия и трафик подписки</h3>
+        <DescriptionList>
+          {[
+            ['source-snapshot-name','Источник и версия'],['source-snapshot-modes','Режимы сети'],
+            ['source-snapshot-time','Версия получена'],['source-snapshot-until','Версия пригодна до'],
+            ['source-traffic-time','Данные о трафике от провайдера'],['source-traffic-used','Использовано'],
+            ['source-traffic-limit','Лимит'],['source-traffic-left','Осталось'],
+            ['source-traffic-expiry','Подписка у провайдера действует до'],
+          ].map(([id, label]) => <DescriptionListGroup key={id}>
+            <DescriptionListTerm>{label}</DescriptionListTerm>
+            <DescriptionListDescription>{['source-snapshot-time','source-snapshot-until','source-traffic-time','source-traffic-expiry'].includes(id)
+              ? <time id={id}></time> : <span id={id}></span>}</DescriptionListDescription>
+          </DescriptionListGroup>)}
+        </DescriptionList>
+      </section>
       <h3>Настройки источника</h3>
       <Button id="new-source" variant="secondary" isDisabled>
         Новый источник
