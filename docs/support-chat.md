@@ -135,3 +135,15 @@ used; device data and raw logs are not public artifacts.
 This is a draft implementation. Permanent production deployment, the full
 retention editor and the complete control-panel milestone remain separate. LTE,
 natural Doze, unplugged energy and long endurance are not accepted by these tests.
+
+## Physical media processing
+
+On an ARM64 Android 14 phone, the v100 client rotated a synthetic 640×480 JPEG
+to 480×640, compressed it within the upload limit and removed its GPS tag.
+The video test produced a smaller MP4 with AVC video and AAC audio, at most
+1280×720 and 25 MiB. The output contained no location metadata. A third test
+cancelled an active conversion and compared the temporary files before and after.
+All three cases passed using local fixtures. [Android media tests](https://github.com/nd4y/syn443-android/blob/59435db187d782766ef99e5b7dc8ceef65bb42dd/app/src/androidTest/kotlin/io/syn443/android/ChatStorageTest.kt)
+
+AC94 still needs the full image-format and memory-bound matrix. AC95 also
+requires the user flows for unsupported encoders and insufficient storage.
