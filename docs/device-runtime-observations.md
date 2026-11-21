@@ -11,6 +11,11 @@ the client's conservative server-time model. It contains no device
 identifier, wall-clock timestamp, free text, address, profile name or credential.
 The authenticated session supplies identity. The body limit is1024 bytes.
 
+The console shows the reported engine state alongside the client phase.
+During recovery, the engine may still be active. A blocked phase supplies
+no reason code. The card labels an unknown engine explicitly and attributes
+an expired report to its original timestamp.
+
 SQL stores only the latest observation per device. An exact sequence/body retry
 is acknowledged without changing receipt time. Changed or regressing sequences
 conflict. New observations are limited to one per30 seconds. Server receipt time,

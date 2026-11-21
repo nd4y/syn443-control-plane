@@ -787,10 +787,11 @@ function renderRuntime(){
  clearTimeout(runtimeTimer);runtimeTimer=null;
  if(!runtimeReport){$('inventory-runtime').textContent='Нет отчёта';$('inventory-runtime-detail').textContent='Клиент ещё не присылал состояние.';return;}
  const r=runtimeReport,recent=performance.now()<runtimeDeadline;
- const phase={off:'VPN выключен',starting:'Запуск VPN',online:'VPN включён',recovering:'Восстановление VPN',no_network:'Нет сети',blocked:'VPN заблокирован политикой',unknown:'Состояние неизвестно'}[r.phase];
+ const phase={off:'VPN выключен',starting:'Запуск VPN',online:'VPN включён',recovering:'Восстановление VPN',no_network:'Нет сети',blocked:'VPN заблокирован',unknown:'Состояние неизвестно'}[r.phase];
+ const engine=!r.engineKnown?'состояние движка неизвестно':r.engineActive?'движок активен':'движок остановлен';
  $('inventory-runtime').textContent=recent?`Сообщено: ${phase}`:'Отчёт устарел';
  $('inventory-runtime').dataset.tone=recent?'info':'warning';
- $('inventory-runtime-detail').textContent=`${recent?'По данным клиента':'Последнее сообщение: '+phase} · ${ {none:'Без сети',wifi:'Wi-Fi',cellular:'Мобильная сеть',unknown:'Сеть неизвестна'}[r.network]} · сборка ${r.build} · политика ${r.policyRevision}`;
+ $('inventory-runtime-detail').textContent=`${recent?'По данным клиента':'Последнее сообщение: '+phase} · ${ {none:'Без сети',wifi:'Wi-Fi',cellular:'Мобильная сеть',unknown:'Сеть неизвестна'}[r.network]} · сборка ${r.build} · политика ${r.policyRevision} · ${engine}`;
  const time=$('inventory-runtime-time');time.dateTime=inventoryDate(r.receivedAtMs);time.textContent='Получен сервером: '+new Date(r.receivedAtMs).toLocaleString('ru-RU');time.hidden=false;
  if(recent&&!document.hidden&&$('inventory-view').getClientRects().length)runtimeTimer=setTimeout(renderRuntime,Math.max(1,runtimeDeadline-performance.now()));
 }

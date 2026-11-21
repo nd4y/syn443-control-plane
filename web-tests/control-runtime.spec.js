@@ -28,6 +28,27 @@ test('runtime observation expires locally without polling or refreshing a histor
  expect((await state(request)).calls.filter(x=>x==='configuration.runtime.get')).toHaveLength(1);
  await open(page,request,{runtime:'stale'});await expect(page.locator('#inventory-runtime')).toHaveText('Отчёт устарел');
 });
+
+test('mobile runtime shows the reported engine independently of the phase and never supplies a missing cause',async({page,request})=>{
+ await page.setViewportSize({width:320,height:900});
+ const summary=page.locator('#inventory-runtime'),detail=page.locator('#inventory-runtime-detail');
+ for(const [runtimeEngine,phase,engine] of [
+  ['blocked_unknown','VPN заблокирован','состояние движка неизвестно'],
+  ['starting_stopped','Запуск VPN','движок остановлен'],
+  ['recovering_active','Восстановление VPN','движок активен'],
+ ]){
+  await open(page,request,{runtime:'recent',runtimeEngine});
+  await expect(summary).toHaveText('Сообщено: '+phase);
+  await expect(detail).toHaveText('По данным клиента · Wi-Fi · сборка 74 · политика 23 · '+engine);
+  await expect(page.locator('#inventory-report')).toContainText('Откат');
+ }
+ await open(page,request,{runtime:'stale',runtimeEngine:'recovering_active'});
+ await expect(summary).toHaveText('Отчёт устарел');
+ await expect(detail).toHaveText('Последнее сообщение: Восстановление VPN · Wi-Fi · сборка 74 · политика 23 · движок активен');
+ await expect(page.locator('#inventory-runtime-time')).toHaveAttribute('datetime',/^20/);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ expect((await state(request)).operations).toBe(0);
+});
 test('runtime observation refuses substituted future extra contradictory and stale sample metadata',async({page,request})=>{
  for(const runtime of ['foreign','extra','future','old-sample','false-online','false-fresh']){
   await open(page,request,{runtime});
