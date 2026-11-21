@@ -1333,14 +1333,23 @@
     {
       "id": "ROUTE-01",
       "text": "Правила поддерживают домен/суффикс, CIDR, порт, протокол, приложение и проверяемые rule sets; каждое правило имеет ID, порядок, источник, режимы и конечное действие direct/block/profile/group/chain. Split DNS компилируется согласованно с маршрутом подключения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/configuration/network.go",
+        "internal/configuration/network_test.go"
+      ]
     },
     {
       "id": "ROUTE-02",
       "text": "Панель и клиент предоставляют объяснение маршрута для введённого пользователем домена/IP или приложения: совпавшее правило, DNS, цепочка и exit. Тест запускается явно; история пользовательских доменов не собирается автоматически.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-console.md",
+        "internal/configuration/route_explanation.go",
+        "internal/configuration/route_explanation_test.go",
+        "internal/chatweb/route_explanation_test.go",
+        "web-tests/control.spec.js"
+      ]
     },
     {
       "id": "ROUTE-03",
