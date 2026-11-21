@@ -281,7 +281,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	allowed := map[string]bool{"self": true, "inbox": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
 	sourceImport := s.config.ControlConsole && r.URL.Path == "/control/source/import"
 	bounds := s.config.ControlConsole && r.URL.Path == "/control/route-bounds"
-	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport || bounds)
+	profileCheck := s.config.ControlConsole && r.URL.Path == "/control/route-check-profile"
+	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport || bounds || profileCheck)
 	if !control && (s.config.ControlConsole && s.config.ChatAPIOrigin == "" || !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action]) {
 		fail(w, 404)
 		return
@@ -295,6 +296,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if bounds {
 		limit = routeBoundsLimit
+	}
+	if profileCheck {
+		limit = routeProfileLimit
 	}
 	if sourceImport {
 		limit = consoleImportLimit
@@ -315,7 +319,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, 413)
 		return
 	}
-	if control && !bounds && !validConsoleAction(raw, sourceImport) {
+	if control && !bounds && !profileCheck && !validConsoleAction(raw, sourceImport) {
 		fail(w, 400)
 		return
 	}
@@ -353,6 +357,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if bounds {
 			previewRouteBounds(w, raw)
+			return
+		}
+		if profileCheck {
+			validateRouteProfile(w, raw)
 			return
 		}
 		uri = s.config.APIOrigin + "/v1/control/action"
