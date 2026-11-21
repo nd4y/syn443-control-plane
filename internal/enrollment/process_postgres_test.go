@@ -399,6 +399,34 @@ func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool, managed ..
 			privateJSON(t, wrongRole, catalog)
 			runReadiness(wrongRole, 1, "overlay_worker_failed", "--check-ready")
 			runReadiness(providerFile, 2, "usage: overlay-worker [--check-ready]", "--check-read")
+			if image := os.Getenv("SYN443_TEST_OVERLAY_IMAGE"); image != "" {
+				t.Run("container_role_checks", func(t *testing.T) {
+					for _, check := range []struct {
+						file   string
+						status int
+						want   string
+					}{{catalogFile, 0, "overlay_worker_ready"}, {wrongRole, 1, "overlay_worker_failed"}} {
+						ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+						mount := filepath.Join(t.TempDir(), "config.json")
+						// Hand just this synthetic, owner-readable file to the image's fixed UID.
+						err := exec.CommandContext(ctx, "sudo", "-n", "install", "-m", "0400", "-o", "65532", "-g", "65532", "--", check.file, mount).Run()
+						if err != nil {
+							cancel()
+							t.Fatal("cannot stage disposable config for the unprivileged worker")
+						}
+						cmd := exec.CommandContext(ctx, "docker", "run", "--rm", "--pull=never", "--network", "host",
+							"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges",
+							"--mount", "type=bind,source="+mount+",target=/run/secrets/overlay-worker.json,readonly", image, "--check-ready")
+						output, err := cmd.CombinedOutput()
+						expired := ctx.Err() != nil
+						cancel()
+						if expired || cmd.ProcessState == nil || cmd.ProcessState.ExitCode() != check.status ||
+							(err == nil) != (check.status == 0) || string(output) != check.want+"\n" {
+							t.Fatal("container readiness returned an unexpected result")
+						}
+					}
+				})
+			}
 			var queued bool
 			if err := fixtureOwner.QueryRow(`SELECT state='queued' AND attempts=0 AND lease='' AND dispatched_ms=0 AND secret IS NULL
  FROM identity_overlay_broker WHERE device=$1 AND reference=$2 AND version=$3`, session.DeviceID, ref.SetupReference, ref.SetupVersion).Scan(&queued); err != nil || !queued || providerRequests.Load() != 0 {

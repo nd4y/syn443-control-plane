@@ -48,6 +48,7 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
       - run: python3 -m unittest discover -s tools -p 'test_product_requirements.py'
+      - run: python3 -m unittest discover -s tools -p 'test_overlay_image.py'
       - run: python3 tools/product_requirements.py .android-register/docs/requirements-register.json --csv "${RUNNER_TEMP}/product-requirements.csv"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -726,7 +727,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   enrollment:
-    needs: public-data
+    needs: go
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -738,11 +739,20 @@ jobs:
         with:
           go-version: '1.27.4'
           cache: true
-      - run: bash -n tools/test_enrollment.sh
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: control-plane-linux-amd64
+          path: ${{ runner.temp }}/control-plane-release
+      - name: Package the scanned overlay worker for the SQL fixture
+        run: |
+          bash -n tools/test_enrollment.sh tools/package_overlay_worker.sh
+          bash tools/package_overlay_worker.sh "$RUNNER_TEMP/control-plane-release" "$RUNNER_TEMP/overlay-worker-image"
+          echo "SYN443_TEST_OVERLAY_IMAGE=syn443-overlay-worker:$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - name: Capture and require PostgreSQL refresh-boundary outcomes
         run: |
           set -euo pipefail
           GOFLAGS=-json bash tools/test_enrollment.sh | tee session-boundary-postgres-tests.jsonl
+          jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestActualManagedAPIPublisherAndProviderWorkerProcesses/readiness_preserves_pending_provider_work/container_role_checks" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           python3 tools/check_session_boundary_evidence.py session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestOperatorPolicyTimingBoundsAndLegacyGrantHash","TestSQLGrantTimingFencesPublisherAndSchedulesSignedRenewal"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryWorkerRecoversRetainedGapsAndWrapsAfterBusyHour","TestTelemetryAggregateWorkerProcessCommitsStopsAndResumes"])' session-boundary-postgres-tests.jsonl
@@ -753,6 +763,19 @@ jobs:
           python3 tools/check_enrollment_coverage.py enrollment-coverage.out
           python3 tools/check_public_data.py enrollment-coverage.out session-boundary-postgres-tests.jsonl
           bash tools/scan_secrets.sh enrollment-coverage.out session-boundary-postgres-tests.jsonl
+      - name: Verify and scan the tested container archive
+        run: |
+          cd "$RUNNER_TEMP/overlay-worker-image"
+          sha256sum -c SHA256SUMS
+          cd "$GITHUB_WORKSPACE"
+          python3 tools/check_public_data.py "$RUNNER_TEMP/overlay-worker-image"
+          bash tools/scan_secrets.sh "$RUNNER_TEMP/overlay-worker-image"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: overlay-worker-image-linux-amd64
+          path: ${{ runner.temp }}/overlay-worker-image/
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: steps.enrollment-scan.outcome == 'success'
         with:
