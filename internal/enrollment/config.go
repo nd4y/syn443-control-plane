@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/x509"
+	"database/sql"
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
@@ -111,7 +112,20 @@ func OpenStore(c Config) (*Store, error) {
 	if e != nil || len(key) != 32 {
 		return nil, identity.ErrInvalid
 	}
-	parsed, e := pgx.ParseConfig(c.Database)
+	defer clear(key)
+	db, e := openDatabase(c.Database)
+	if e != nil {
+		return nil, e
+	}
+	store, e := NewStore(db, key)
+	if e != nil {
+		db.Close()
+	}
+	return store, e
+}
+
+func openDatabase(dsn string) (*sql.DB, error) {
+	parsed, e := pgx.ParseConfig(dsn)
 	if e != nil || parsed.User == "" || parsed.Database == "" {
 		return nil, identity.ErrInvalid
 	}
@@ -126,15 +140,14 @@ func OpenStore(c Config) (*Store, error) {
 		}
 	}
 	parsed.ConnectTimeout = 5 * time.Second
+	if parsed.User == "syn443_telemetry_ingest" {
+		parsed.RuntimeParams["search_path"] = "pg_catalog,public,pg_temp"
+	}
 	db := stdlib.OpenDB(*parsed)
 	db.SetMaxOpenConns(4)
 	db.SetMaxIdleConns(2)
 	db.SetConnMaxLifetime(30 * time.Minute)
-	store, e := NewStore(db, key)
-	if e != nil {
-		db.Close()
-	}
-	return store, e
+	return db, nil
 }
 func PublicRoots(c Config) (map[string]*ecdsa.PublicKey, error) {
 	roots := map[string]*ecdsa.PublicKey{}

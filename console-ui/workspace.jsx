@@ -669,6 +669,29 @@ function Drafts() {
           Сохранить черновик
         </Button>
       </form>
+      <details id="route-explanation" hidden>
+        <summary>Как сработают правила черновика</summary>
+        <p>Введите домен, IP-адрес или пакет приложения. Панель проверит правила без сетевого соединения с адресатом. История запросов не сохраняется.</p>
+        <form id="route-explanation-form" autoComplete="off">
+          <label htmlFor="explain-domain">Домен</label>
+          <TextInput id="explain-domain" maxLength={254} spellCheck={false} autoCapitalize="none" autoComplete="off" />
+          <label htmlFor="explain-address">IP-адрес назначения</label>
+          <TextInput id="explain-address" maxLength={45} spellCheck={false} autoCapitalize="none" autoComplete="off" />
+          <label htmlFor="explain-application">Пакет приложения</label>
+          <TextInput id="explain-application" maxLength={255} spellCheck={false} autoCapitalize="none" autoComplete="off" />
+          <label htmlFor="explain-network">Транспорт</label>
+          <Select id="explain-network"><option value="">Не указан</option><option value="tcp">TCP</option><option value="udp">UDP</option></Select>
+          <label htmlFor="explain-port">Порт назначения</label>
+          <TextInput id="explain-port" type="number" min={1} max={65535} />
+          <label htmlFor="explain-dnsType">Тип DNS-запроса</label>
+          <Select id="explain-dnsType">
+            <option value="">Не указан</option>
+            {['A','AAAA','CNAME','MX','TXT','PTR','SRV','HTTPS','SVCB','NS','SOA'].map(type => <option key={type} value={type}>{type}</option>)}
+          </Select>
+          <Button id="explain-run" variant="secondary" type="submit" isDisabled>Проверить правила</Button>
+        </form>
+        <div id="explain-result" role="status" aria-live="polite" />
+      </details>
       <details id="route-replay">
         <summary>Симуляция выбора маршрута</summary>
         <p>

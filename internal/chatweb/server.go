@@ -283,7 +283,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	bounds := s.config.ControlConsole && r.URL.Path == "/control/route-bounds"
 	profileCheck := s.config.ControlConsole && r.URL.Path == "/control/route-check-profile"
 	replay := s.config.ControlConsole && r.URL.Path == "/control/route-replay"
-	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport || bounds || profileCheck || replay)
+	explain := s.config.ControlConsole && r.URL.Path == "/control/route-explanation"
+	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport || bounds || profileCheck || replay || explain)
 	if !control && (s.config.ControlConsole && s.config.ChatAPIOrigin == "" || !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action]) {
 		fail(w, 404)
 		return
@@ -304,6 +305,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if profileCheck {
 		limit = routeProfileLimit
 	}
+	if explain {
+		limit = routeExplanationLimit
+	}
 	if sourceImport {
 		limit = consoleImportLimit
 		select {
@@ -323,7 +327,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, 413)
 		return
 	}
-	if control && !bounds && !profileCheck && !replay && !validConsoleAction(raw, sourceImport) {
+	if explain {
+		defer clear(raw)
+	}
+	if control && !bounds && !profileCheck && !replay && !explain && !validConsoleAction(raw, sourceImport) {
 		fail(w, 400)
 		return
 	}
@@ -361,6 +368,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if replay {
 			previewRouteReplay(ctx, w, raw)
+			return
+		}
+		if explain {
+			explainDraftRoute(w, raw)
 			return
 		}
 		if bounds {

@@ -107,6 +107,10 @@ expected.update({
     'console chat backs off failures and hidden navigation cannot bypass its admission',
     'console chat has a narrow empty state and rejects oversize attachments locally',
 })
+expected.update({
+    'manual route preview sends only on request and shows DNS and proxy dial order on a phone',
+    'manual route preview discards late results and distinguishes missing facts from default',
+})
 assert len(cases) >= 79
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
 assert all(not any(c.find(tag) is not None for tag in ('skipped','failure','error')) for c in cases)
