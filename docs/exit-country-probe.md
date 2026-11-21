@@ -24,6 +24,19 @@ stale: this is an observation at one time, not a physical-location guarantee or
 authority for future untested connections. Names, flags and profile metadata are
 never exit proof.
 
+## Configure a check in the console
+
+In a network draft, under **Проверки маршрутов**, choose an outbound and
+**Страна выхода по HTTPS**. Enter the root HTTPS URL of your observer and choose
+**Россия** or **За пределами России**. The draft stores the selected class as
+`RU` or `NON_RU`. The same observer can be used on several routes. Saving the
+draft and publishing it are separate actions.
+
+When an outbound already has a version 2 check profile, the editor shows its
+profile ID. You can change whether the profile is required during activation or
+edit its conditions in the plan JSON. Editing another outbound preserves the
+existing profile, including its gates, deadlines and stages.
+
 The existing internal-only Wi-Fi failover pilot still requires comparable checks
 against the internal destination. It rejects both public exit primitives; a
 country response cannot establish access to a home service. Full adaptive public

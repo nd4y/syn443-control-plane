@@ -223,6 +223,60 @@ test('mobile route editor reports invalid HTTPS addresses without changing the d
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(0);
 });
+test('mobile editor saves both exit country classes and removes only the selected predicate',async({page,request})=>{
+ await page.setViewportSize({width:393,height:852});
+ await reset(request);await page.goto(origin+'/#draft-title');await draft(page);
+ const method=page.getByLabel('Способ проверки'),target=page.getByLabel('Адрес проверки');
+ const country=page.getByLabel('Расположение выхода'),add=page.getByRole('button',{name:'Добавить проверку'});
+ const rows=page.locator('#route-check-list li'),input=page.locator('#plan');
+ const original=await input.inputValue(),url='https://country.example.invalid:8443/';
+ await expect(country).toBeHidden();await method.selectOption('https_exit_country');
+ await target.fill(url);await add.click();await expect(input).toHaveValue(original);
+ await country.selectOption('RU');
+ for(const bad of ['http://country.example.invalid/','https://country.example.invalid/ip','https://country.example.invalid/?',
+  'https://country.example.invalid/#','https://country.example.invalid/%2f','https://country.example.invalid/./',
+  'https://user@country.example.invalid/','https://country.example.invalid:65536/']){
+  await target.fill(bad);await add.click();await expect(input).toHaveValue(original);
+ }
+ await target.fill(url);await add.click();await expect(rows).toHaveCount(1);
+ await target.fill(url);await add.click();await expect(rows).toHaveCount(1);
+ await country.selectOption('NON_RU');await add.click();await expect(rows).toHaveCount(2);
+ await page.locator('#save-draft').click();await expect(page.locator('#draft-version')).toContainText('Версия черновика: 1');
+ await input.fill('{}');await page.locator('#open-draft').click();await expect(rows).toHaveCount(2);
+ expect(JSON.parse(await input.inputValue()).network.routeChecks[0].checks).toEqual(['RU','NON_RU'].map(expected_exit_class=>({
+  method:'https_exit_country',target:url,expected_exit_class
+ })));
+ await rows.filter({hasText:'За пределами России'}).getByRole('button',{name:'Удалить проверку'}).click();
+ await expect(rows).toHaveCount(1);await expect(rows).toContainText('· Россия');
+ await method.selectOption('tcp');await expect(country).toBeHidden();
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
+});
+test('structured route profile remains intact while editing another route and previewing the graph',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#draft-title');await draft(page);
+ const input=page.locator('#plan'),selector=page.getByLabel('Выход',{exact:true}),add=page.getByRole('button',{name:'Добавить проверку'});
+ const profile={schemaVersion:2,id:'home-health',revision:1,deadlineMs:3000,
+  leaves:[{id:'home',check:{method:'tcp',target:'home.example.invalid:443'}}],gates:[],stages:[{leaf:'home'}]};
+ const adaptive={metadataB64:'synthetic',bindingsB64:'synthetic',groups:{work:'adaptive-work'}};
+ await input.fill(JSON.stringify({...plan,adaptive,network:{...plan.network,routeChecks:[{outbound:'proxy',required:true,profile}]}}));
+ await selector.selectOption('proxy');await expect(page.getByText('Этот маршрут использует профиль проверок.',{exact:false})).toBeVisible();
+ await expect(add).toBeDisabled();await expect(page.getByLabel('Способ проверки')).toBeDisabled();
+ await expect(page.locator('#route-check-list')).toContainText('Профиль home-health');
+ const required=page.getByLabel('Обязательная проверка при применении');await required.uncheck();
+ await selector.selectOption('adaptive-work');await expect(add).toBeEnabled();await expect(page.locator('#route-profile-note')).toBeHidden();
+ await page.getByLabel('Адрес проверки').fill('private.example.invalid:443');await add.click();
+ const saved=JSON.parse(await input.inputValue()).network.routeChecks;
+ expect(saved).toEqual([{outbound:'proxy',required:false,profile},{outbound:'adaptive-work',required:false,checks:[{method:'tcp',target:'private.example.invalid:443'}]}]);
+ const bounds=page.getByRole('button',{name:'Оценить число цепочек'});await expect(bounds).toBeEnabled();
+ await page.route('**/control/route-bounds',async route=>{
+  expect(route.request().postDataJSON()).toEqual(adaptive);
+  await route.fulfill({json:{status:'ready',limit:4096,intents:{INTERNAL:1},groups:[{group:'work',intent:'INTERNAL',upperBound:1,maxHops:1}]}});
+ });
+ await bounds.click();await expect(page.locator('#route-bounds-result')).toContainText('work');
+ await input.fill(JSON.stringify({...plan,network:{...plan.network,routeChecks:[{outbound:'proxy',checks:[],profile}]}}));
+ await expect(add).toBeDisabled();
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();expect(state.operations).toBe(0);
+});
 test('reserve probe cooldown requires explicit draft opt in and never publishes',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
  const box=page.locator('#route-reserve-cooldown'),input=page.locator('#plan');
