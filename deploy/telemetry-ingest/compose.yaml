@@ -1,0 +1,20 @@
+services:
+  telemetry-ingest:
+    image: ${SYN443_TELEMETRY_IMAGE:?Set the verified telemetry image}
+    pull_policy: never
+    network_mode: "container:${SYN443_INGRESS_CONTAINER:?Set the existing reverse proxy container}"
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 128m
+    pids_limit: 64
+    volumes:
+      - type: bind
+        source: ${SYN443_TELEMETRY_PRIVATE_DIR:?Set the private telemetry configuration directory}
+        target: /run/syn443/telemetry
+        read_only: true
+        bind:
+          create_host_path: false

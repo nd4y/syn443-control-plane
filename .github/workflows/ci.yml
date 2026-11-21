@@ -747,12 +747,16 @@ jobs:
         with:
           name: control-plane-linux-amd64
           path: ${{ runner.temp }}/control-plane-release
-      - name: Package the scanned overlay worker for the SQL fixture
+      - name: Package the scanned services for the SQL fixture
         run: |
-          bash -n tools/test_enrollment.sh tools/package_overlay_worker.sh
+          bash -n tools/test_enrollment.sh
+          bash -n tools/package_runtime_image.sh
+          bash -n tools/package_overlay_worker.sh
           bash tools/package_overlay_worker.sh "$RUNNER_TEMP/control-plane-release" "$RUNNER_TEMP/overlay-worker-image"
+          bash tools/package_runtime_image.sh telemetry-ingest "$RUNNER_TEMP/control-plane-release" "$RUNNER_TEMP/telemetry-ingest-image"
           install -Dm0555 "$RUNNER_TEMP/control-plane-release/telemetry-ingest" bin/telemetry-ingest
           echo "SYN443_TEST_OVERLAY_IMAGE=syn443-overlay-worker:$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "SYN443_TEST_TELEMETRY_IMAGE=syn443-telemetry-ingest:$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - name: Capture and require PostgreSQL refresh-boundary outcomes
         run: |
           set -euo pipefail
@@ -760,6 +764,7 @@ jobs:
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestActualManagedAPIPublisherAndProviderWorkerProcesses/readiness_preserves_pending_provider_work/container_role_checks" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           python3 tools/check_session_boundary_evidence.py session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestStandaloneTelemetryProcessReceivesBoundEvents","TestStandaloneTelemetryRejectsPrivilegeDrift"])' session-boundary-postgres-tests.jsonl
+          jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestPackagedTelemetryProcessReceivesBoundEvents" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryPressurePreservesPolicyAndRefresh","TestTelemetryAddressBudgetLeavesPolicyAccessible"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestOperatorPolicyTimingBoundsAndLegacyGrantHash","TestSQLGrantTimingFencesPublisherAndSchedulesSignedRenewal"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryWorkerRecoversRetainedGapsAndWrapsAfterBusyHour","TestTelemetryAggregateWorkerProcessCommitsStopsAndResumes"])' session-boundary-postgres-tests.jsonl
@@ -777,6 +782,15 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           python3 tools/check_public_data.py "$RUNNER_TEMP/overlay-worker-image"
           bash tools/scan_secrets.sh "$RUNNER_TEMP/overlay-worker-image"
+          (cd "$RUNNER_TEMP/telemetry-ingest-image" && sha256sum -c SHA256SUMS)
+          python3 tools/check_public_data.py "$RUNNER_TEMP/telemetry-ingest-image"
+          bash tools/scan_secrets.sh "$RUNNER_TEMP/telemetry-ingest-image"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: telemetry-ingest-image-linux-amd64
+          path: ${{ runner.temp }}/telemetry-ingest-image/
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: overlay-worker-image-linux-amd64

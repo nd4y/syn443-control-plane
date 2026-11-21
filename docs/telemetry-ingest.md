@@ -56,6 +56,37 @@ Set up the edge proxy in the same network namespace to forward the exact
 body and headers so the device's DPoP proof covers the public URI. Limit
 `/livez` and `/readyz` to the service network.
 
+#### Small-server Compose service
+
+Download `telemetry-ingest-image-linux-amd64` from the protected release
+workflow. Check `SOURCE.txt` against the chosen commit, run
+`sha256sum -c SHA256SUMS` in the extracted directory and load the image with
+`docker load -i telemetry-ingest.tar.gz`. Set `SYN443_TELEMETRY_IMAGE` to
+the resulting `syn443-telemetry-ingest:<commit>` tag.
+
+Set `SYN443_INGRESS_CONTAINER` to the existing reverse proxy container and
+`SYN443_TELEMETRY_PRIVATE_DIR` to a private directory readable by UID 65532.
+Place only the ingest configuration, its DSN and its server TLS files there.
+Name the configuration `config.json` and use paths under
+`/run/syn443/telemetry/` for its files. Give the private configuration,
+DSN and key mode 0400 with that UID as owner. The service shares the
+proxy's network namespace so its numeric loopback listener stays private.
+
+Run `docker compose -f deploy/telemetry-ingest/compose.yaml up -d` and
+inspect the container's health before switching the edge route. The image
+runs as a non-root user with a read-only filesystem, a 128 MiB memory cap,
+half a CPU and 64 processes. Its built-in check sends HEAD to the local
+ingest readiness endpoint and verifies the response belongs to this service.
+TLS uses the configured certificate bundle and the public origin's hostname.
+Set the optional `readinessServerName` when the local listener's certificate
+names an internal ingress host. The probe always dials the configured
+loopback socket. It sends no device proof and opens no additional SQL pool.
+
+The hosted container fixture uses the packaged binary and a disposable SQL
+server on runner loopback. It checks Docker health, signed uploads, replay,
+revocation, deduplication and continued policy delivery after stopping
+ingest. The separate Compose service requires its own live cutover check.
+
 Once the listener passes readiness and the ingress route is in place, set
 `SYN443_TELEMETRY_INGEST=external` on enrollment. Policy responses advertise
 telemetry. Enrollment itself serves only its other routes in this mode.
