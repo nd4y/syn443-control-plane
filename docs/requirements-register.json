@@ -253,14 +253,30 @@
     {
       "id": "SUB-01",
       "text": "Remnawave подключается к SYN443 control plane как внешний API-ресурс через отдельный backend-адаптер; это не внутренняя БД, обязательный backend пользователей SYN443 или источник глобальных ролей. Remnawave продолжает управлять своими пользователями, доступом к нодам и лимитами. В 1.0 требуется подключение одного такого ресурса с минимальными правами: серверный API получает доступные пользователю назначения/метаданные и разрешённую выдачу, включая получение subscription payload при необходимости. Прямой доступ SYN443 к БД Remnawave и встроенный fork её панели не требуются.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md#inspect-a-sources-resource-in-the-console",
+        "internal/remnawave/client_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/chatweb/control_test.go",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "The pinned Remnawave adapter and SQL worker retrieve the scoped user and protected subscription by numeric external ID. The mobile control console can rename an existing resource or change whether it synchronizes.",
+      "remainingScope": "A real deployed provider, minimal operator permissions, an assigned device and a verified resource refresh in the pilot."
     },
     {
       "id": "SUB-02",
       "text": "Связь с Remnawave учитывает реально выданные пользователю профили и исключения хостов. Новая панель может сужать права источника, но не расширять их до полного каталога нод. Internal Squads задают доступ к inbound, External Squads могут менять выдачу и шаблоны. Формат подписки зависит от клиента. [Remnawave Squads](https://docs.rw/learn-en/squads/), [Templates](https://docs.rw/learn-en/templates/). Все внешние идентификаторы и правила сверяются в контексте resourceId. API endpoint, credentialRef, версия API, права и состояние ресурса задаются в SYN443; служебные credentials остаются на сервере.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md#inspect-a-sources-resource-in-the-console",
+        "internal/remnawave/client_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/chatweb/control_test.go",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "Protected user and subscription responses must agree on identity and expiry. The worker imports only the profiles returned for the bound user. The resource metadata editor preserves the server-side credential.",
+      "remainingScope": "Observe the effective Internal and External Squad templates and host exclusions for the bound user on a real provider and compare the delivered profiles."
     },
     {
       "id": "SUB-03",
@@ -2178,8 +2194,16 @@
     {
       "id": "SRV-01",
       "text": "Администратор может через API/адаптивную панель менять настройки нашей системы управления: интеграции и источники, шаблоны/правила назначения, проверки и автоматику, retention/телеметрию, приглашения и устройства, rollout и релизные каналы. На каждую область есть отдельное право.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md#inspect-a-sources-resource-in-the-console",
+        "internal/remnawave/client_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/chatweb/control_test.go",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "Existing resource read and write grants authorize viewing and editing the single supported Remnawave resource from the console. Enabling or disabling synchronization requires strong authentication.",
+      "remainingScope": "The full set of system settings, update channels, rollout and retention administration."
     },
     {
       "id": "SRV-02",
@@ -2190,8 +2214,16 @@
     {
       "id": "SRV-03",
       "text": "Для серверной правки есть validate, diff, область влияния, expectedRevision и результат применения. Сохранение desired настройки отдельно от фактического состояния узла: в интерфейсе видно pending/applied/failed/unknown и последнее подтверждение. Смена listeners, сертификатов или путей управления требует отдельного плана применения и возврата, если такая операция поддержана адаптером.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/remnawave-resource.md#inspect-a-sources-resource-in-the-console",
+        "internal/remnawave/client_test.go",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/chatweb/control_test.go",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "The resource editor displays the affected source count, submits the observed revision and impact, handles conflict and reconciles uncertain replies. The UI separates configured status from the latest synchronization attempt.",
+      "remainingScope": "Other server mutation types, complete reviewed diffs, rollout observation and production acceptance."
     },
     {
       "id": "SRV-04",

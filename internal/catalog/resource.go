@@ -206,7 +206,7 @@ func (s *Store) PutResource(ctx context.Context, actor Actor, r Resource, secret
 			return Resource{}, ErrConflict
 		}
 		if old.Enabled != r.Enabled && actor.MFAUntil <= now.Unix() {
-			return Resource{}, ErrDenied
+			return Resource{}, ErrReauthentication
 		}
 	} else if r.Revision != 0 {
 		return Resource{}, ErrConflict
