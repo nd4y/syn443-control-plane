@@ -20,6 +20,7 @@ let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticatio
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
 let runtimeRefreshTimer=null,runtimeRequest=null,runtimePolling=false,runtimeLastStarted=0;
 let boundsDraft=null,boundsEpoch=0;
+let cohortRequest=null,cohortInputs=null;
 let explanationEpoch=0,explanationContext='';
 let replayEpoch=0;
 let routeProfileEdit=null;
@@ -113,7 +114,9 @@ function routeDraft(){
 function drawRouteChecks(){
  const draft=authenticated?$('plan').value:null;
  const context=JSON.stringify([authenticated,$('draft-id').value,$('target-kind').value,$('target-id').value]);
- if(explanationContext!==context||boundsDraft!==draft){explanationContext=context;resetExplanation(true);}
+ if(explanationContext!==context)$('cohort-device').value='';
+ if(explanationContext!==context||boundsDraft!==draft){explanationContext=context;resetExplanation(true);clearCohortPreview();}
+ $('cohort-preview').hidden=true;
  $('route-explanation').hidden=true;
  $('explain-run').disabled=true;
  if(boundsDraft!==draft){boundsDraft=draft;boundsEpoch++;$('route-bounds-result').replaceChildren();closeRouteProfile();}
@@ -158,6 +161,7 @@ function drawRouteChecks(){
   decision.value=failover.decisionRevision===confirmedDecision?confirmedDecision:'';
   $('route-decision-rollout').hidden=!decision.value;
   if(decision.value)drawDeviceRollout('route-decision',failover.decisionRollout);
+  updateCohortButton();
  }
  for(const row of state.checks){
   if(row.profile){
@@ -207,6 +211,25 @@ function readDeviceRollout(fields){
  const result={id,basisPoints:Math.round(Number(share)*100)};
  if(control!=='')result.controlBasisPoints=Math.round(Number(control)*100);
  return result;
+}
+const cohortFeatures=[
+ {key:'decision',prefix:'route-decision',section:'route-decision-rollout',label:'Алгоритм переключения'},
+ {key:'probeCooldown',prefix:'route-rollout',section:'route-cooldown-rollout',label:'Пауза проверок резервного маршрута'}
+];
+function enteredCohorts(){
+ return cohortFeatures.filter(({prefix,section})=>!$(section).hidden&&
+  ['id','share','control'].some(field=>$(prefix+'-'+field).value!==''));
+}
+function clearCohortPreview(){
+ cohortRequest?.abort();cohortRequest=null;
+ $('cohort-result').replaceChildren();
+}
+function updateCohortButton(){
+ const group=$('cohort-preview'),features=enteredCohorts();
+ const inputs=JSON.stringify([$('cohort-device').value,...features.map(({key,prefix})=>[key,rolloutFields(prefix)])]);
+ if(inputs!==cohortInputs){clearCohortPreview();cohortInputs=inputs;}
+ group.hidden=!features.length;
+ $('cohort-run').disabled=group.hidden||busy||!!pending||!!cohortRequest||!$('cohort-device').value.trim();
 }
 function internalFailoverPlan(state){
  const failover=state.network.routeFailover;
@@ -384,6 +407,7 @@ function clearInventory(){
 function erase(){
  window.dispatchEvent(new Event('syn443-console-session-ended'));
  reauthenticationAvailable=false;reauthenticationNeeded=false;reauthenticationIssuer='';reauthenticationFocus=false;
+ clearCohortPreview();$('cohort-device').value='';
  resetReplay();clearDevices();clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
  for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip','route-check-country-class'])$(id).value='';
  $('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';
@@ -1365,6 +1389,36 @@ $('route-reserve-cooldown').onchange=()=>{
   if(enabled)failover.probeCooldown=true;else{delete failover.probeCooldown;delete failover.probeCooldownRollout;}
   applyRouteChecks(state);
  });
+};
+for(const id of ['cohort-device',...cohortFeatures.flatMap(({prefix})=>['id','share','control'].map(field=>prefix+'-'+field))]){
+ $(id).addEventListener('input',()=>{clearCohortPreview();updateCohortButton();});
+}
+$('cohort-run').onclick=async()=>{
+ clearCohortPreview();
+ const job=new AbortController();
+ cohortRequest=job;updateCohortButton();
+ const target=$('cohort-result');
+ try{
+  const device=$('cohort-device').value.trim(),features=enteredCohorts(),body={device};
+  if(!/^[A-Za-z0-9_-]{8,128}$/.test(device)||!features.length)throw Error('invalid');
+  for(const {key,prefix} of features)body[key]=readDeviceRollout(rolloutFields(prefix));
+  target.textContent='Проверяем группу…';
+  const assignments=await request('/control/rollout-preview',body,job.signal);
+  if(cohortRequest!==job)return;
+  const names={control:'постоянная контрольная группа',baseline:'базовая версия вне контрольной группы',treatment:'тестовая версия'};
+  if(!assignments||Object.keys(assignments).length!==features.length||
+    features.some(({key})=>!Object.hasOwn(assignments,key)||!Object.hasOwn(names,assignments[key])))throw Error('invalidResult');
+  const list=document.createElement('ul');
+  for(const {key,label} of features){
+   const row=document.createElement('li');row.textContent=label+' - '+names[assignments[key]];list.append(row);
+  }
+  target.replaceChildren(list);
+ }catch(error){
+  if(cohortRequest===job)target.textContent=error.message==='invalid'?'Проверьте ID устройства, идентификаторы и доли групп.':'Не удалось проверить группу. Повторите запрос.';
+ }finally{
+  if(cohortRequest===job){cohortRequest=null;updateCohortButton();}
+  if(!authenticated)controls();
+ }
 };
 $('route-rollout-save').onclick=()=>{
  const fields=rolloutFields('route-rollout');

@@ -692,6 +692,17 @@ function Drafts() {
               Применить долю для алгоритма к черновику
             </Button>
           </div>
+          <div id="cohort-preview" hidden>
+            <label htmlFor="cohort-device">ID устройства для предпросмотра группы</label>
+            <TextInput id="cohort-device" autoComplete="off" maxLength={128}
+              aria-describedby="cohort-help" />
+            <p id="cohort-help">
+              Расчёт по введённым долям для совместимого устройства. Выданную
+              версию можно посмотреть в карточке устройства.
+            </p>
+            <Button id="cohort-run" type="button" variant="secondary">Проверить группу</Button>
+            <div id="cohort-result" role="status" aria-live="polite" />
+          </div>
         </fieldset>
         <p>
           Профили задаются ссылками sourceId/profileId. Ключи, пароли и
