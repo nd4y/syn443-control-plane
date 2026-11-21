@@ -142,6 +142,32 @@ test('route checks editor changes only its private draft and restores saved chec
  state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });
+test('HTTPS status checks retain the chosen verb and status for each route draft',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#draft-title');await draft(page);
+ const method=page.locator('#route-check-method'),target=page.locator('#route-check-target');
+ const verb=page.getByLabel('Метод HTTP',{exact:true}),code=page.getByLabel('Ожидаемый код ответа',{exact:true});
+ const add=page.locator('#route-check-add'),list=page.locator('#route-check-list li');
+ const url='https://service.example.invalid/ready';
+ await expect(verb).toBeHidden();await method.selectOption('https_status');
+ await expect(verb).toHaveValue('HEAD');await expect(code).toHaveValue('200');
+ await target.fill(url);await code.fill('199');await add.click();await expect(list).toHaveCount(0);
+ await code.fill('200');await target.fill('http://service.example.invalid/ready');await add.click();await expect(list).toHaveCount(0);
+ await target.fill(url);await add.click();await expect(list).toHaveCount(1);
+ await target.fill(url);await add.click();await expect(list).toHaveCount(1);
+ await verb.selectOption('GET');await add.click();await expect(list).toHaveCount(2);
+ await target.fill(url);await code.fill('302');await add.click();await expect(list).toHaveCount(3);
+ await list.filter({hasText:'GET · 200'}).getByRole('button',{name:'Удалить проверку'}).click();
+ await expect(list).toHaveCount(2);await expect(list.filter({hasText:'GET · 302'})).toHaveCount(1);
+ await page.locator('#save-draft').click();await expect(page.locator('#draft-version')).toContainText('Версия черновика: 1');
+ await page.locator('#plan').fill('{}');await page.locator('#open-draft').click();
+ await expect(list).toHaveCount(2);await expect(list.filter({hasText:'HEAD · 200'})).toHaveCount(1);
+ const saved=JSON.parse(await page.locator('#plan').inputValue()).network.routeChecks[0].checks;
+ expect(saved).toEqual([{method:'https_status',target:url,http_method:'HEAD',expected_status:200},
+  {method:'https_status',target:url,http_method:'GET',expected_status:302}]);
+ await method.selectOption('tcp');await expect(verb).toBeHidden();
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
+});
 test('reserve probe cooldown requires explicit draft opt in and never publishes',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
  const box=page.locator('#route-reserve-cooldown'),input=page.locator('#plan');
