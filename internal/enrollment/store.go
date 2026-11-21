@@ -103,6 +103,7 @@ type Store struct {
 	Reservations         ReservationCounter
 	DB                   *sql.DB
 	box                  cipher.AEAD
+	telemetryOnly        bool
 }
 
 func NewStore(db *sql.DB, key []byte) (*Store, error) {
@@ -121,7 +122,11 @@ func NewStore(db *sql.DB, key []byte) (*Store, error) {
 }
 func (s *Store) Now(ctx context.Context, wall time.Time) (time.Time, error) {
 	var n int64
-	e := s.DB.QueryRowContext(ctx, `UPDATE identity_clock SET second=GREATEST(second,$1) WHERE id=true RETURNING second`, wall.Unix()).Scan(&n)
+	query := `UPDATE identity_clock SET second=GREATEST(second,$1) WHERE id=true RETURNING second`
+	if s.telemetryOnly {
+		query = `UPDATE identity_telemetry_clock SET second=GREATEST(second,$1,(SELECT second FROM identity_clock WHERE id)) WHERE id RETURNING second`
+	}
+	e := s.DB.QueryRowContext(ctx, query, wall.Unix()).Scan(&n)
 	return time.Unix(n, 0).UTC(), e
 }
 func random() string {
@@ -169,6 +174,10 @@ func replay(ctx context.Context, tx *sql.Tx, p identity.Proof, now int64) error 
 	if e != nil {
 		return e
 	}
+	return insertReplay(ctx, tx, p, now)
+}
+
+func insertReplay(ctx context.Context, tx *sql.Tx, p identity.Proof, now int64) error {
 	r, e := tx.ExecContext(ctx, `INSERT INTO identity_replays(jkt,jti,expires) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`, p.Thumbprint, p.Claims.Jti, now+180)
 	if e != nil {
 		return e
@@ -434,6 +443,11 @@ func (s *Store) lockSession(ctx context.Context, tx *sql.Tx, b Binding, proof id
 	}
 	if proof.Claims.Nonce != b.Nonce {
 		return a, b, NonceRequired{b.Nonce}
+	}
+	if s.telemetryOnly {
+		// Enrollment and session refresh own replay expiry. The ingest role
+		// can consume a unique proof but cannot erase one from either process.
+		return a, b, insertReplay(ctx, tx, proof, now)
 	}
 	return a, b, replay(ctx, tx, proof, now)
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/policy"
-	"github.com/nd4y/syn443-control-plane/internal/telemetry"
 )
 
 type Verifier interface {
@@ -30,6 +29,7 @@ type API struct {
 	Invitations           InvitationActions
 	ControlPanelDiscovery bool
 	TelemetryStore        *Store
+	ExternalTelemetry     bool
 	DeviceFetch           *catalog.Store
 	// Empty disables addressed credential delivery. Set only from owner configuration.
 	OverlayServiceID string
@@ -92,6 +92,48 @@ func (a *requestAdmission) admit(ip string, now time.Time) bool {
 	a.buckets[ip] = b
 	return b.count <= 120
 }
+
+func (a *requestAdmission) acquire(w http.ResponseWriter, r *http.Request, now time.Time, retry string) bool {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		failure(w, identity.ErrInvalid)
+		return false
+	}
+	if !a.admit(ip, now) {
+		w.Header().Set("Retry-After", "60")
+		http.Error(w, "rate_limited", http.StatusTooManyRequests)
+		return false
+	}
+	select {
+	case a.slots <- struct{}{}:
+		return true
+	default:
+		if retry != "" {
+			w.Header().Set("Retry-After", retry)
+		}
+		http.Error(w, "capacity_unavailable", http.StatusServiceUnavailable)
+		return false
+	}
+}
+
+func requestToken(r *http.Request) (string, error) {
+	if len(r.Header.Values("Authorization")) != 1 || len(r.Header.Values("DPoP")) != 1 {
+		return "", identity.ErrInvalid
+	}
+	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "DPoP ")
+	if !ok || len(token) < 24 || len(token) > 16384 {
+		return "", identity.ErrInvalid
+	}
+	return token, nil
+}
+
+func boundRequestProof(r *http.Request, publicURI, token string, body []byte, now time.Time) (identity.Proof, error) {
+	hash := ""
+	if r.Method == http.MethodPost {
+		hash = identity.Hash(body)
+	}
+	return identity.RequestProof(r.Header.Get("DPoP"), identity.ProofContext{Method: r.Method, URI: publicURI, Token: token, BodyHash: hash, Now: now})
+}
 func failure(w http.ResponseWriter, err error) {
 	code, status := "temporarily_unavailable", http.StatusServiceUnavailable
 	var nonce NonceRequired
@@ -139,43 +181,26 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	isActivation := path == activationStatusPath && r.Method == "POST"
 	isRuntime := path == runtimeObservationPath && r.Method == "POST"
 	isControlPanel := a.ControlPanelDiscovery && path == controlPanelPath && r.Method == "GET"
-	isTelemetry := a.TelemetryStore != nil && path == telemetryPath && r.Method == "POST"
+	if a.TelemetryStore != nil && path == telemetryPath && r.Method == http.MethodPost {
+		serveTelemetry(w, r, a.TelemetryStore, a.Origin, a.Clock, &a.uploads)
+		return
+	}
 	fetchV2 := path == deviceFetchV2ClaimPath || path == deviceFetchV2ResultPath
 	isFetchClaim := a.DeviceFetch != nil && (path == deviceFetchClaimPath || path == deviceFetchV2ClaimPath) && r.Method == "GET"
 	isFetchResult := a.DeviceFetch != nil && (path == deviceFetchResultPath || path == deviceFetchV2ResultPath) && r.Method == "POST"
 	isInvite := path == "/v1/invitations/time" || path == "/v1/invitations/claim" || path == "/v1/invitations/status" || path == "/v1/invitations/complete" || path == "/v1/invitations/abandon"
 	allowed := isCapabilities && (r.Method == "GET" || r.Method == "POST") || isOverlay && r.Method == "POST" || isInvite && a.Invitations != nil && (r.Method == "POST" && path != "/v1/invitations/time" || r.Method == "GET" && path == "/v1/invitations/time") || r.Method == "POST" && (path == "/v1/devices/enroll" || path == "/v1/identity/devices/revoke" || path == "/v1/device/session/refresh" || path == "/v1/device/revoke") || r.Method == "GET" && path == "/v1/device/policy"
-	if !allowed && !isActivation && !isRuntime && !isControlPanel && !isFetchClaim && !isFetchResult && !isTelemetry {
+	if !allowed && !isActivation && !isRuntime && !isControlPanel && !isFetchClaim && !isFetchResult {
 		http.NotFound(w, r)
 		return
 	}
-	ip, _, e := net.SplitHostPort(r.RemoteAddr)
-	if e != nil {
-		failure(w, identity.ErrInvalid)
+	if !a.requests.acquire(w, r, a.Clock(), "") {
 		return
 	}
-	admission, store := &a.requests, a.Store
-	if isTelemetry {
-		admission, store = &a.uploads, a.TelemetryStore
-	}
-	if !admission.admit(ip, a.Clock()) {
-		w.Header().Set("Retry-After", "60")
-		http.Error(w, "rate_limited", 429)
-		return
-	}
-	select {
-	case admission.slots <- struct{}{}:
-		defer func() { <-admission.slots }()
-	default:
-		if isTelemetry {
-			w.Header().Set("Retry-After", "5")
-		}
-		http.Error(w, "capacity_unavailable", 503)
-		return
-	}
+	defer func() { <-a.requests.slots }()
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
-	now, e := store.Now(ctx, a.Clock())
+	now, e := a.Store.Now(ctx, a.Clock())
 	if e != nil {
 		failure(w, ErrUnavailable)
 		return
@@ -220,13 +245,9 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(r.Header.Values("Authorization")) != 1 || len(r.Header.Values("DPoP")) != 1 {
-		failure(w, identity.ErrInvalid)
-		return
-	}
-	token := strings.TrimPrefix(r.Header.Get("Authorization"), "DPoP ")
-	if token == r.Header.Get("Authorization") || len(token) < 24 || len(token) > 16384 {
-		failure(w, identity.ErrInvalid)
+	token, e := requestToken(r)
+	if e != nil {
+		failure(w, e)
 		return
 	}
 	maxBody := int64(8192)
@@ -250,9 +271,6 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			maxBody = catalog.MaxDeviceFetchWireBytes + deviceFetchFrameSize
 		}
 	}
-	if isTelemetry {
-		maxBody = telemetry.MaxBatchBytes
-	}
 	raw, e := io.ReadAll(io.LimitReader(r.Body, maxBody+1))
 	if isFetchResult {
 		defer func() { clear(raw) }()
@@ -265,11 +283,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(w, identity.ErrInvalid)
 		return
 	}
-	hash := ""
-	if r.Method == "POST" {
-		hash = identity.Hash(raw)
-	}
-	proof, e := identity.RequestProof(r.Header.Get("DPoP"), identity.ProofContext{Method: r.Method, URI: a.Origin + path, Token: token, BodyHash: hash, Now: now})
+	proof, e := boundRequestProof(r, a.Origin+path, token, raw, now)
 	if e != nil {
 		failure(w, e)
 		return
@@ -316,32 +330,13 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(value)
 		return
 	}
-	binding, e := store.Lookup(ctx, token, path == "/v1/device/session/refresh")
+	binding, e := a.Store.Lookup(ctx, token, path == "/v1/device/session/refresh")
 	if e != nil {
 		failure(w, e)
 		return
 	}
 	if (!binding.Active && path != "/v1/device/revoke") || binding.Jkt != proof.Thumbprint {
 		failure(w, ErrDenied)
-		return
-	}
-	if isTelemetry {
-		if r.Header.Get("Origin") != "" {
-			failure(w, identity.ErrInvalid)
-			return
-		}
-		receipt, err := store.receiveTelemetry(ctx, binding, token, proof, raw, now)
-		if errors.Is(err, telemetry.ErrBudget) {
-			w.Header().Set("Retry-After", "300")
-			http.Error(w, "telemetry_budget_exhausted", http.StatusTooManyRequests)
-			return
-		}
-		if err != nil {
-			failure(w, err)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(receipt)
 		return
 	}
 	if isFetchClaim || isFetchResult {
@@ -438,7 +433,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			failure(w, identity.ErrInvalid)
 			return
 		}
-		value, e := a.Store.Refresh(ctx, binding, token, req.RequestID, hash, proof, now)
+		value, e := a.Store.Refresh(ctx, binding, token, req.RequestID, proof.Claims.RequestHash, proof, now)
 		if e != nil {
 			failure(w, e)
 			return
@@ -455,7 +450,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			failure(w, identity.ErrInvalid)
 			return
 		}
-		if e = a.Store.Revoke(ctx, binding, token, req.RequestID, hash, proof, now); e != nil {
+		if e = a.Store.Revoke(ctx, binding, token, req.RequestID, proof.Claims.RequestHash, proof, now); e != nil {
 			failure(w, e)
 			return
 		}
@@ -476,7 +471,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-SYN443-Device-Source-Fetch", "1")
 		w.Header().Set("X-SYN443-Device-Source-Validators", "1")
 	}
-	if a.TelemetryStore != nil {
+	if a.TelemetryStore != nil || a.ExternalTelemetry {
 		w.Header().Set("X-SYN443-Telemetry", "1")
 	}
 	w.Header().Set("Content-Type", "application/jose")

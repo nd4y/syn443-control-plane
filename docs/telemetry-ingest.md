@@ -33,7 +33,37 @@ IDs after refreshing an expired or rotated session.
 Both pools use the current identity API role in this deployment. The device
 session, revocation checks, and event insertion share one SQL transaction.
 Physical server capacity, database locks and a database outage can still
-affect both pools. Independent process deployment remains an open requirement.
+affect both pools.
+
+### Standalone ingest process
+
+The Linux release includes `telemetry-ingest`. Apply the enrollment schema
+migration, create the `syn443_telemetry_ingest` login with NOINHERIT and
+NOBYPASSRLS, and apply `internal/enrollment/ingest-roles.sql` as the owner.
+The new process checks its role and its public-table column privileges at
+startup and on readiness. Its login can lock the rows that bind each request
+to a live device session. Device session refresh and enrollment handle expiry
+of the shared proof replay records. Ingest can insert a proof once. It has
+no access to refresh hashes, signed policies or historical event contents.
+
+Set `SYN443_TELEMETRY_CONFIG` to an owner-only JSON file with `listen` (a
+loopback address and port), `origin` (the existing public enrollment HTTPS
+origin), `databaseFile` (the owner-only DSN file), `certificate` and
+`certificateKey`. The ingest process uses its own two SQL connections. No
+policy encryption key, identity provider credential or signing key is required.
+Set up the edge proxy in the same network namespace to forward the exact
+`/v1/device/telemetry` path to this listener. Preserve the original request
+body and headers so the device's DPoP proof covers the public URI. Limit
+`/livez` and `/readyz` to the service network.
+
+Once the listener passes readiness and the ingress route is in place, set
+`SYN443_TELEMETRY_INGEST=external` on enrollment. Policy responses advertise
+telemetry. Enrollment itself serves only its other routes in this mode.
+Existing deployments can continue to use `1` for embedded intake. During
+cutover both modes share the same session, replay and event records. For a
+rollback, restore embedded intake on enrollment and point the edge route
+back to it before stopping the separate process. A failed ingest request
+can be retried with a fresh proof and the same event IDs.
 
 The separate retention role in `internal/telemetry/retention-roles.sql` is
 allowed to read only keys and timestamps and delete expired telemetry. Run
