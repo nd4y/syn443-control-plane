@@ -788,6 +788,7 @@ jobs:
           GOFLAGS=-json bash tools/test_enrollment.sh | tee session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestActualManagedAPIPublisherAndProviderWorkerProcesses/readiness_preserves_pending_provider_work/container_role_checks" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           python3 tools/check_session_boundary_evidence.py session-boundary-postgres-tests.jsonl
+          jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestSQLIncidentLookupRequiresLiveGrantAndRejectsCollisionsAndForeignThreads" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestSQLDeviceDownloadsKeyBoundHomeProofOnlyAfterApprovedCapabilityChange" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestStandaloneTelemetryProcessReceivesBoundEvents","TestStandaloneTelemetryRejectsPrivilegeDrift"])' session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestPackagedTelemetryProcessReceivesBoundEvents" and .Action == "pass")' session-boundary-postgres-tests.jsonl

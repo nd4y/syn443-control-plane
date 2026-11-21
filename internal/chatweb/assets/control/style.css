@@ -376,3 +376,5 @@ pre:not(:empty) {
 #invite-link{width:100%;overflow-wrap:anywhere}
 #invite-detail,#invite-confirm-text{overflow-wrap:anywhere}
 @media(max-width:1000px){.support-grid{grid-template-columns:minmax(0,1fr)}}
+
+#support-incident-result { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }

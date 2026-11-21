@@ -23,6 +23,9 @@ func Dispatch(ctx context.Context, tx *sql.Tx, owner, action string, raw []byte,
 	if e != nil && !errors.Is(e, sql.ErrNoRows) {
 		return nil, e
 	}
+	if action == "incident/lookup" {
+		return lookupIncident(ctx, tx, admin, raw)
+	}
 	if action == "self" {
 		var r struct{}
 		if identity.Decode(raw, &r, true) != nil {

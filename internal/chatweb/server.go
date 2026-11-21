@@ -279,7 +279,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	action := strings.TrimPrefix(r.URL.Path, "/chat/")
-	allowed := map[string]bool{"self": true, "inbox": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
+	allowed := map[string]bool{"self": true, "inbox": true, "incident/lookup": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
 	sourceImport := s.config.ControlConsole && r.URL.Path == "/control/source/import"
 	cohorts := s.config.ControlConsole && r.URL.Path == "/control/rollout-preview"
 	bounds := s.config.ControlConsole && r.URL.Path == "/control/route-bounds"

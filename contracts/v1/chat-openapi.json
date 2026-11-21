@@ -1412,6 +1412,134 @@
           }
         }
       }
+    },
+    "/v1/chat/incident/lookup": {
+      "post": {
+        "description": "Look up one exact short incident reference under the current SQL chat administrator grant. Returns no report on a missing or ambiguous match. The operation does not advance a read cursor.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentLookup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
+    },
+    "/v1/admin/chat/incident/lookup": {
+      "post": {
+        "description": "Look up one exact short incident reference under the current SQL chat administrator grant. Returns no report on a missing or ambiguous match. The operation does not advance a read cursor.",
+        "security": [
+          {
+            "DPoP": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "DPoP",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentLookup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shape or content"
+          },
+          "401": {
+            "description": "Reauthentication, nonce or replay rejection"
+          },
+          "403": {
+            "description": "Live authority denied"
+          },
+          "409": {
+            "description": "Idempotency conflict or incomplete upload"
+          },
+          "413": {
+            "description": "Size or quota exceeded"
+          },
+          "429": {
+            "description": "Rate budget exhausted"
+          },
+          "503": {
+            "description": "Capacity or dependency unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1882,6 +2010,82 @@
             "pattern": "^[0-9a-f]{64}$"
           }
         }
+      },
+      "IncidentLookup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reference"
+        ],
+        "properties": {
+          "reference": {
+            "type": "string",
+            "pattern": "^SYN-[0-9a-f]{12}$"
+          }
+        }
+      },
+      "IncidentResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reference",
+          "state"
+        ],
+        "properties": {
+          "reference": {
+            "type": "string",
+            "pattern": "^SYN-[0-9a-f]{12}$"
+          },
+          "state": {
+            "enum": [
+              "found",
+              "missing",
+              "ambiguous"
+            ]
+          },
+          "report": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "text",
+              "createdAt"
+            ],
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "createdAt": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "found"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "report"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "report"
+                ]
+              }
+            }
+          }
+        ]
       }
     }
   }

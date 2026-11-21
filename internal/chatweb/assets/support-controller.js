@@ -3,7 +3,7 @@
 export function mountSupportChat({prefix='',embedded=false,visible=()=>!document.hidden}={}) {
 const $=id=>document.getElementById(prefix+id);
 const MAX=25*1024*1024,CHUNK=256*1024;
-const actions=new Set(['self','inbox','messages','send','read','uploads/begin','uploads/part','uploads/status','uploads/complete','uploads/cancel','download']);
+const actions=new Set(['self','inbox','incident/lookup','messages','send','read','uploads/begin','uploads/part','uploads/status','uploads/complete','uploads/cancel','download']);
 const wireId=/^[0-9a-f]{32}$/;
 const fileTypes=new Set(['application/pdf','application/zip','text/plain','image/jpeg','image/png','image/webp','video/mp4']);
 function confirmsMessage(receipt, draft, uploaded) {
@@ -33,8 +33,18 @@ function base64(bytes){let value='';for(let i=0;i<bytes.length;i+=8192)value+=St
 function unbase64(value){if(typeof value!=='string'||value.length>349528)throw Error('invalid');return Uint8Array.from(atob(value),c=>c.charCodeAt(0));}
 function status(text){$('status').textContent=text;}
 function resetHistory(){messages=[];historyPage=null;olderEnd=false;newerEnd=false;}
-function forget(){if(embedded)$('empty').hidden=true;releasePrepared();epoch++;authenticated=false;thread='';resetHistory();inbox=[];inboxPage=null;inboxEnd=null;moreInbox=false;pending=null;composing=false;$('text').value='';$('file').value='';$('attachment').textContent='';$('messages').replaceChildren();$('inbox').replaceChildren();$('thread-title').textContent='Выберите диалог';}
+const refPattern=/^SYN-[0-9a-f]{12}$/;
+let lookupChange=0;
+function clearLookup(clearField=false){
+ lookupChange++;
+ if(clearField)$('incident-ref').value='';
+ $('incident-result').textContent='';
+ $('incident-result').hidden=true;
+}
+function forget(){clearLookup(true);if(embedded)$('empty').hidden=true;releasePrepared();epoch++;authenticated=false;thread='';resetHistory();inbox=[];inboxPage=null;inboxEnd=null;moreInbox=false;pending=null;composing=false;$('text').value='';$('file').value='';$('attachment').textContent='';$('messages').replaceChildren();$('inbox').replaceChildren();$('thread-title').textContent='Выберите диалог';}
 function controls(){
+ $('incident-find').disabled=!authenticated||busy||!refPattern.test($('incident-ref').value);
+
  if(embedded)$('retry').disabled=busy||Date.now()<manualAt;
  for(const name of ['text','file','send'])$(name).disabled=!authenticated||!thread||busy||!!pending&&name!=='send';
  $('send').disabled||=composing||!pending&&!$('text').value.trim()&&!$('file').files.length;
@@ -134,6 +144,31 @@ $('logout').onclick=()=>work(async()=>{await request('/logout');forget();status(
 for(const action of ['older','newer','latest'])$(action).onclick=()=>work(()=>refresh(action));
 $('more').onclick=()=>work(()=>loadInbox('more'));
 $('inbox-first').onclick=()=>work(()=>loadInbox('first'));
+$('incident-ref').oninput=()=>{clearLookup();controls();};
+$('incident-form').onsubmit=event=>{
+ event.preventDefault();
+ const reference=$('incident-ref').value;
+ if(!authenticated||busy||!refPattern.test(reference))return;
+ clearLookup();
+ const generation=lookupChange;
+ work(async()=>{
+  const result=await api('incident/lookup',{reference});
+  if(generation!==lookupChange||reference!==$('incident-ref').value)return;
+  if(result?.reference!==reference)throw Error('invalid');
+  let text;
+  if(result.state==='missing'&&!('report' in result))text='Обращение не найдено.';
+  else if(result.state==='ambiguous'&&!('report' in result))text='Номер совпал у нескольких обращений. Уточните диалог у пользователя.';
+  else if(result.state==='found'&&typeof result.report?.text==='string'&&
+    result.report.text.split('\n',1)[0]==='Обращение '+reference&&[...result.report.text].length<=4096&&
+    Number.isSafeInteger(result.report.createdAt)&&result.report.createdAt>0){
+   const date=new Date(result.report.createdAt*1000);
+   if(!Number.isFinite(date.getTime()))throw Error('invalid');
+   text=result.report.text+'\nПолучено '+date.toLocaleString();
+  }else throw Error('invalid');
+  $('incident-result').textContent=text;
+  $('incident-result').hidden=false;
+ });
+};
 $('text').oninput=controls;
 const composer=$('text');
 function composition(event){composing=event.type==='compositionstart';controls();}
@@ -182,7 +217,7 @@ function resume(){
  if(destroyed||!visible()||busy||authorityRequired||Date.now()<nextPoll)return;
  void work(async()=>{if(!authenticated)await boot();else await loadInbox();await refresh();status(pending?'Связь восстановлена. Повторите отправку.':thread?'На связи.':'Выберите диалог.');});
 }
-function suspend(){epoch++;for(const request of requests)request.abort();releasePrepared();}
+function suspend(){clearLookup(true);epoch++;for(const request of requests)request.abort();releasePrepared();}
 function clear(){suspend();forget();authorityRequired=false;failures=0;nextPoll=0;manualAt=0;controls();}
 function visibility(){if(document.hidden)suspend();else resume();}
 if(embedded){$('retry').onclick=()=>{if(Date.now()<manualAt||busy)return;manualAt=Date.now()+30000;authorityRequired=false;nextPoll=0;resume();};}

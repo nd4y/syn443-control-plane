@@ -43,3 +43,5 @@ CREATE INDEX IF NOT EXISTS chat_inbox ON chat_conversations(updated_at DESC,id);
 CREATE INDEX IF NOT EXISTS chat_upload_expiry ON chat_uploads(expires_at) WHERE message_id IS NULL;
 CREATE INDEX IF NOT EXISTS chat_upload_sender ON chat_uploads(sender);
 CREATE INDEX IF NOT EXISTS chat_attachments ON chat_uploads(message_id);
+CREATE INDEX IF NOT EXISTS chat_incident_reference ON chat_messages ((left(client_id,12)))
+ WHERE split_part(text,chr(10),1)='Обращение SYN-' || left(client_id,12);
