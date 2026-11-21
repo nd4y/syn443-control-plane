@@ -18,7 +18,9 @@ var ingestAuthority string
 
 // StandaloneIngest never loads the policy encryption key or an OIDC provider.
 type StandaloneIngest struct {
-	api *API
+	store   *Store
+	origin  string
+	uploads requestAdmission
 }
 
 func OpenStandaloneIngest(ctx context.Context, dsn, origin string, fixtureHTTP bool) (*StandaloneIngest, error) {
@@ -32,8 +34,10 @@ func OpenStandaloneIngest(ctx context.Context, dsn, origin string, fixtureHTTP b
 		return nil, err
 	}
 	db.SetMaxOpenConns(telemetryConnections)
-	s := &StandaloneIngest{api: &API{TelemetryStore: &Store{DB: db, telemetryOnly: true},
-		Origin: origin, Clock: time.Now, uploads: newAdmission(telemetryConnections)}}
+	s := &StandaloneIngest{
+		store: &Store{DB: db, telemetryOnly: true}, origin: origin,
+		uploads: newAdmission(telemetryConnections),
+	}
 	if err := s.Ready(ctx); err != nil {
 		db.Close()
 		return nil, err
@@ -41,20 +45,16 @@ func OpenStandaloneIngest(ctx context.Context, dsn, origin string, fixtureHTTP b
 	return s, nil
 }
 
-func (s *StandaloneIngest) Close() error { return s.api.TelemetryStore.DB.Close() }
+func (s *StandaloneIngest) Close() error { return s.store.DB.Close() }
 
 func (s *StandaloneIngest) Ready(ctx context.Context) error {
 	var allowed bool
-	if err := s.api.TelemetryStore.DB.QueryRowContext(ctx, ingestAuthority).Scan(&allowed); err != nil || !allowed {
+	if err := s.store.DB.QueryRowContext(ctx, ingestAuthority).Scan(&allowed); err != nil || !allowed {
 		return ErrUnavailable
 	}
 	return nil
 }
 
 func (s *StandaloneIngest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != telemetryPath || r.Method != http.MethodPost {
-		http.NotFound(w, r)
-		return
-	}
-	s.api.ServeHTTP(w, r)
+	serveTelemetry(w, r, s.store, s.origin, time.Now, &s.uploads)
 }
