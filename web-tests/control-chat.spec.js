@@ -15,6 +15,39 @@ async function open(page){
 }
 
 for (const surface of ['standalone', 'console']) {
+ test(`explicit send preserves composition and exact Unicode on ${surface}`, async ({page,request}) => {
+  const el=name=>page.locator('#'+(surface==='console'?'support-':'')+name);
+  const attempts=[];
+  page.on('request',req=>{if(new URL(req.url()).pathname==='/chat/send')attempts.push(req.postDataJSON().text);});
+  await page.goto(surface==='console'?origin+'/#support-title':chatOrigin+'/');
+  await el('inbox').getByRole('button',{name:/Пользователь/}).click();
+  const draft=el('text'),send=el('send');
+  await draft.fill('編');
+  await draft.dispatchEvent('compositionstart',{data:'編'});
+  await expect(send).toBeDisabled();
+  await draft.dispatchEvent('keydown',{key:'Enter',isComposing:true});
+  await el('compose').evaluate(form=>form.requestSubmit());
+  await expect(send).toBeDisabled();
+  await send.evaluate(button=>button.click());
+  await expect(draft).toHaveValue('編');
+  await draft.dispatchEvent('compositionend',{data:'編'});
+  await expect(send).toBeEnabled();
+  await el('compose').evaluate(form=>form.requestSubmit());
+  await draft.evaluate(input=>{input.value=String.fromCharCode(0xd800);input.dispatchEvent(new Event('input'));});
+  await send.click();
+  await expect(el('status')).toContainText('недопустимый символ');
+  expect(await draft.evaluate(input=>input.value.charCodeAt(0))).toBe(0xd800);
+  expect(attempts).toEqual([]);
+  const finalText='編\n🛰️ \uFFFD';
+  await draft.fill(finalText);
+  await send.focus();
+  await page.keyboard.press('Enter');
+  await expect(el('messages').locator('li')).toHaveCount(1);
+  await expect(draft).toHaveValue('');
+  expect(attempts).toEqual([finalText]);
+  const fixture=await (await request.post(chatOrigin+'/fixture/state',{data:{}})).json();
+  expect(fixture.messages).toBe(1);
+ });
  test(`mismatched send receipts retain the exact draft and files on ${surface}`, async ({page,request}) => {
   const el=name=>page.locator('#'+(surface==='console'?'support-':'')+name);
   const attempts=[];

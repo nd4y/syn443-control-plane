@@ -152,3 +152,5 @@ All three cases passed using local fixtures. [Android media tests](https://githu
 
 AC94 still needs the full image-format and memory-bound matrix. AC95 also
 requires the user flows for unsupported encoders and insufficient storage.
+
+Both web chat surfaces send only when the user activates the send button. Enter while composing or an implicit form submission leaves the draft editable. Invalid Unicode stays in the draft for correction before upload. Keyboard users can focus the send button and activate it with Enter or Space.

@@ -22,6 +22,7 @@ function confirmsMessage(receipt, draft, uploaded) {
 let preparedURL='',preparedTimer=null;
 function releasePrepared(){if(preparedTimer)clearTimeout(preparedTimer);preparedTimer=null;if(preparedURL)URL.revokeObjectURL(preparedURL);preparedURL='';$('download-ready').replaceChildren();}
 let authenticated=false,thread='',messages=[],inbox=[],pending=null,busy=false,epoch=0,nextPoll=0;
+let composing=false;
 let historyPage=null,olderEnd=false,newerEnd=false,inboxPage=null,moreInbox=false,inboxEnd=null;
 let workEpoch=null,authorityRequired=false,failures=0,manualAt=0,destroyed=false;
 const requests=new Set();
@@ -32,11 +33,11 @@ function base64(bytes){let value='';for(let i=0;i<bytes.length;i+=8192)value+=St
 function unbase64(value){if(typeof value!=='string'||value.length>349528)throw Error('invalid');return Uint8Array.from(atob(value),c=>c.charCodeAt(0));}
 function status(text){$('status').textContent=text;}
 function resetHistory(){messages=[];historyPage=null;olderEnd=false;newerEnd=false;}
-function forget(){if(embedded)$('empty').hidden=true;releasePrepared();epoch++;authenticated=false;thread='';resetHistory();inbox=[];inboxPage=null;inboxEnd=null;moreInbox=false;pending=null;$('text').value='';$('file').value='';$('attachment').textContent='';$('messages').replaceChildren();$('inbox').replaceChildren();$('thread-title').textContent='Выберите диалог';}
+function forget(){if(embedded)$('empty').hidden=true;releasePrepared();epoch++;authenticated=false;thread='';resetHistory();inbox=[];inboxPage=null;inboxEnd=null;moreInbox=false;pending=null;composing=false;$('text').value='';$('file').value='';$('attachment').textContent='';$('messages').replaceChildren();$('inbox').replaceChildren();$('thread-title').textContent='Выберите диалог';}
 function controls(){
  if(embedded)$('retry').disabled=busy||Date.now()<manualAt;
  for(const name of ['text','file','send'])$(name).disabled=!authenticated||!thread||busy||!!pending&&name!=='send';
- $('send').disabled||=!pending&&!$('text').value.trim()&&!$('file').files.length;
+ $('send').disabled||=composing||!pending&&!$('text').value.trim()&&!$('file').files.length;
  $('discard').disabled=busy||!pending;$('login').disabled=authenticated||busy;$('logout').disabled=!authenticated||busy;
  $('older').disabled=busy||!messages.length||olderEnd;
  $('newer').hidden=$('latest').hidden=!historyPage;
@@ -83,6 +84,7 @@ async function openConversation(row){
   $('text').value='';
   $('file').value='';
   $('attachment').textContent='';
+  composing=false;
   thread=row.id;
  }
  $('thread-title').textContent='Диалог '+row.owner.slice(0,10);
@@ -133,10 +135,20 @@ for(const action of ['older','newer','latest'])$(action).onclick=()=>work(()=>re
 $('more').onclick=()=>work(()=>loadInbox('more'));
 $('inbox-first').onclick=()=>work(()=>loadInbox('first'));
 $('text').oninput=controls;
+const composer=$('text');
+function composition(event){composing=event.type==='compositionstart';controls();}
+composer.addEventListener('compositionstart',composition);
+composer.addEventListener('compositionend',composition);
 $('file').onchange=()=>{$('attachment').textContent=Array.from($('file').files).map(f=>f.name+' ('+Math.ceil(f.size/1024)+' КБ)').join(', ');controls();};
 $('discard').onclick=()=>{pending=null;status('Локальная попытка удалена. Уже доставленное сообщение остаётся у собеседника.');controls();};
-$('compose').onsubmit=e=>{e.preventDefault();work(async()=>{
- if(!pending){const text=$('text').value,files=Array.from($('file').files);if([...text].length>4096||new TextEncoder().encode(text).length>16384||text.includes('\0')||!text.trim()&&!files.length||files.length>4||files.some(f=>!f.size||f.size>MAX))throw Error('invalid');pending={clientId:id(),conversation:thread,text,files:files.map(file=>({file,clientId:id(),sha256:null}))};}
+$('compose').onsubmit=event=>event.preventDefault();
+$('send').onclick=()=>{
+ if(composing||$('send').disabled)return;
+ const draft=$('text').value;
+ if(!draft.isWellFormed()||draft.includes('\0')){status('Исправьте недопустимый символ в сообщении.');return;}
+ if([...draft].length>4096||new TextEncoder().encode(draft).length>16384){status('Сократите сообщение до 4096 символов.');return;}
+ work(async()=>{
+ if(!pending){const text=draft,files=Array.from($('file').files);if(!text.trim()&&!files.length||files.length>4||files.some(f=>!f.size||f.size>MAX))throw Error('invalid');pending={clientId:id(),conversation:thread,text,files:files.map(file=>({file,clientId:id(),sha256:null}))};}
  const uploaded=new Map();
  for(const item of pending.files) {
   const file=item.file;
@@ -177,5 +189,10 @@ if(embedded){$('retry').onclick=()=>{if(Date.now()<manualAt||busy)return;manualA
 const timer=setInterval(()=>{if(embedded)$('retry').disabled=busy||Date.now()<manualAt;resume();},10000);
 document.addEventListener('visibilitychange',visibility);
 controls();if(!embedded)resume();
-return {resume,suspend,clear,dispose(){destroyed=true;suspend();forget();clearInterval(timer);document.removeEventListener('visibilitychange',visibility);}};
+return {resume,suspend,clear,dispose(){
+ destroyed=true;suspend();forget();clearInterval(timer);
+ document.removeEventListener('visibilitychange',visibility);
+ composer.removeEventListener('compositionstart',composition);
+ composer.removeEventListener('compositionend',composition);
+}};
 }

@@ -101,6 +101,8 @@ expected.update({
 expected.update({
     'PatternFly console chat sends hostile text safely without leaving device administration',
     'PatternFly console chat transfers and verifies a full 25 MiB file',
+    'explicit send preserves composition and exact Unicode on standalone',
+    'explicit send preserves composition and exact Unicode on console',
     'mismatched send receipts retain the exact draft and files on standalone',
     'mismatched send receipts retain the exact draft and files on console',
     'PatternFly console chat retries a lost acknowledgment without duplicate delivery',

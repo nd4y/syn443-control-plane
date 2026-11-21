@@ -33,7 +33,7 @@ export function Support() {
             <p id="support-attachment" />
             <progress id="support-progress" max="100" value="0" aria-label="Передача файла" hidden />
             <div className="support-actions">
-              <Button id="support-send" type="submit" variant="primary" isDisabled>Отправить</Button>
+              <Button id="support-send" type="button" variant="primary" isDisabled>Отправить</Button>
               <Button id="support-discard" type="button" variant="secondary" isDisabled>Удалить локальную попытку</Button>
             </div>
           </form>
