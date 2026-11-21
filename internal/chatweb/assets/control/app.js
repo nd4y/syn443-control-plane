@@ -12,6 +12,7 @@ let layerDraftInventory=null;
 let inventoryEpoch=0;
 let sourceShares=null;
 let providerContext=null,providerEpoch=0;
+let providerEdit=null;
 let devicesNext='',deviceIds=new Set();
 let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticationIssuer='',reauthenticationFocus=false;
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
@@ -507,19 +508,41 @@ function showIssuedPaths(issued){
  }
  $('issued-path').hidden=false;select.onchange=draw;draw();
 }
+function clearProviderEditor(){
+ providerEdit=null;
+ $('provider-editor').open=false;
+ $('provider-editor').hidden=true;
+ $('provider-edit-name').value='';
+ $('provider-edit-enabled').checked=false;
+ $('provider-impact-confirm').checked=false;
+ $('provider-impact-text').textContent='';
+ $('provider-impact').hidden=true;
+}
 function updateProviderControls(){
  const visible=authenticated&&$('source-mode').value==='resource';
  const id=$('source-resource').value.trim();
  const context=visible?JSON.stringify([$('source-id').value,$('source-owner').value,id]):null;
  if(context!==providerContext){
-  providerContext=context;providerEpoch++;$('provider-details').replaceChildren();
+  providerContext=context;providerEpoch++;$('provider-details').replaceChildren();clearProviderEditor();
  }
  $('provider-settings').hidden=!visible;
  $('inspect-provider').disabled=!visible||busy||!!pending||!/^[A-Za-z0-9_-]{1,48}$/.test(id);
+ if(!providerEdit)return;
+ const name=$('provider-edit-name').value.trim(),enabled=$('provider-edit-enabled').checked;
+ const toggled=enabled!==providerEdit.resource.enabled;
+ $('provider-impact').hidden=!toggled;
+ if(toggled){
+  const state=enabled?'будет разрешена':'будет остановлена';
+  $('provider-impact-text').textContent=`Синхронизация ${state}. Связанные источники: ${providerEdit.impact.sources}.`;
+ }
+ const blocked=!visible||busy||!!pending;
+ for(const field of ['provider-edit-name','provider-edit-enabled','provider-impact-confirm'])$(field).disabled=blocked;
+ $('provider-edit-save').disabled=blocked||!name||new TextEncoder().encode(name).length>256||
+  (toggled?!$('provider-impact-confirm').checked:name===providerEdit.resource.name);
 }
 async function inspectProvider(){
  const id=$('source-resource').value.trim(),epoch=providerEpoch;
- const details=$('provider-details');details.replaceChildren();
+ const details=$('provider-details');details.replaceChildren();clearProviderEditor();
  const {resource,impact}=await action('resource.get',{id});
  if(!authenticated||providerEpoch!==epoch)return;
  const names={'panel.remnawave':'Remnawave','panel.x-ui':'x-ui','panel.3x-ui':'3x-ui','overlay.tailscale':'Tailscale','overlay.zerotier':'ZeroTier'};
@@ -540,6 +563,20 @@ async function inspectProvider(){
  inventoryPair(rows,'Связанные источники',impact.sources);
  if(!planned)inventoryPair(rows,'Последняя попытка синхронизации',resource.lastSync?inventoryDate(resource.lastSync*1000):'Нет данных');
  details.append(rows);
+ if(!planned&&typeof impact.hash==='string'&&/^[A-Za-z0-9_-]{43}$/.test(impact.hash)){
+  providerEdit={resource,impact,epoch};
+  $('provider-edit-name').value=resource.name;$('provider-edit-enabled').checked=resource.enabled;
+  $('provider-editor').hidden=false;
+ }
+}
+async function saveProvider(){
+ if(!providerEdit||providerEdit.epoch!==providerEpoch||pending)throw Error('invalid');
+ const {resource,impact}=providerEdit,name=$('provider-edit-name').value.trim(),enabled=$('provider-edit-enabled').checked;
+ if(!name||new TextEncoder().encode(name).length>256||enabled===resource.enabled&&name===resource.name||
+  enabled!==resource.enabled&&!$('provider-impact-confirm').checked)throw Error('invalid');
+ const draft={id:resource.id,providerType:resource.providerType,apiVersion:resource.apiVersion,revision:resource.revision,name,enabled};
+ pendingKind='resource';pending=envelope('resource.put',{resource:draft,secret:{operation:'keep'},impactHash:impact.hash});
+ await retry();
 }
 function inventoryOrigin(origin){return origin&&typeof origin==='object'&&!Array.isArray(origin)&&typeof origin.layerId==='string'&&typeof origin.kind==='string'&&Number.isSafeInteger(origin.revision)&&origin.revision>=0;}
 function inventoryDate(milliseconds){const date=new Date(milliseconds);if(!Number.isFinite(date.getTime()))throw Error('invalid');return date.toISOString();}
@@ -830,8 +867,21 @@ async function retry(){
  if(!pending)throw Error('invalid');
  let result;
  try{result=await request(pendingKind==='import'?sourceImportPath:'/control/action',pending);}
- catch(error){if(['invalid','size','importSize'].includes(error.message))pending=null;throw error;}
- if(pendingKind==='source'){
+ catch(error){
+  if(pendingKind==='resource'&&error.message==='conflict'){
+   pending=null;clearProviderEditor();$('provider-details').replaceChildren();
+   status('Ресурс или его источники изменились. Нажмите «Посмотреть ресурс» и проверьте актуальные настройки.','danger');return;
+  }
+  if(['invalid','size','importSize'].includes(error.message))pending=null;throw error;
+ }
+ if(pendingKind==='resource'){
+  const wanted=JSON.parse(pending).payload.resource;
+  if(!result||result.id!==wanted.id||result.revision!==wanted.revision+1||result.enabled!==wanted.enabled||
+    result.name!==wanted.name||result.providerType!==wanted.providerType||result.apiVersion!==wanted.apiVersion)throw Error('invalid');
+  pending=null;
+  if(providerEdit?.epoch===providerEpoch&&$('source-resource').value.trim()===wanted.id)await inspectProvider();
+  status('Настройки ресурса сохранены.');return;
+ }else if(pendingKind==='source'){
   showSource(result);status('Источник сохранён. Активные политики меняются отдельной публикацией.');
  }else if(pendingKind==='shares'){
   const attempted=JSON.parse(pending).payload;
@@ -1154,11 +1204,18 @@ $('route-check-add').onclick=()=>{
   group.required=required;group.checks.push(check);applyRouteChecks(current);$('route-check-target').value='';$('route-check-ip').value='';
  });
 };
-$('discard-save').onclick=()=>work(async()=>{const kind=pendingKind,sourceId=$('source-id').value.trim();pending=null;if(kind.startsWith('layer-')){layerPreview=null;layerJob=null;await loadLayerDraft();}else if(kind==='draft')await openDraft();else if(sourceId)showSource(await action('source.get',{id:sourceId}));});
+$('discard-save').onclick=()=>work(async()=>{const kind=pendingKind,sourceId=$('source-id').value.trim();pending=null;if(kind==='resource')await inspectProvider();else if(kind.startsWith('layer-')){layerPreview=null;layerJob=null;await loadLayerDraft();}else if(kind==='draft')await openDraft();else if(sourceId)showSource(await action('source.get',{id:sourceId}));});
 $('new-source').onclick=()=>work(async()=>{const owner=$('owner').value.trim();clearSource();$('source-id').value=crypto.randomUUID();$('source-owner').value=owner;$('source-until').value=localDate(Math.floor(Date.now()/1000)+30*86400);$('source-version').textContent='Новый источник';status('Заполните параметры. Для нового HTTPS источника укажите новые учётные данные.');});
 $('source-form').onsubmit=event=>{event.preventDefault();work(saveSource);};
 $('source-secret-operation').onchange=controls;$('source-mode').onchange=controls;
 $('inspect-provider').onclick=()=>work(inspectProvider);
+$('provider-edit-name').oninput=updateProviderControls;
+$('provider-edit-name').onkeydown=event=>{
+ if(event.key==='Enter'&&!event.isComposing){event.preventDefault();if(!$('provider-edit-save').disabled)$('provider-edit-save').click();}
+};
+$('provider-edit-enabled').onchange=()=>{$('provider-impact-confirm').checked=false;updateProviderControls();};
+$('provider-impact-confirm').onchange=updateProviderControls;
+$('provider-edit-save').onclick=()=>work(saveProvider);
 for(const id of ['source-id','source-owner','source-resource'])$(id).addEventListener('input',updateProviderControls);
 $('sync-source').onclick=()=>work(async()=>{if(pending||!sourceIdentity)throw Error('invalid');pendingKind='sync';pending=envelope('source.sync',{id:sourceIdentity.id,revision:sourceRevision});await retry();});
 $('source-job').onclick=()=>work(async()=>{if(!sourceJob)throw Error('invalid');$('job-status').textContent=JSON.stringify(await action('job.get',{id:sourceJob}),null,2);status('Состояние задания обновлено.');});

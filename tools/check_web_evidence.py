@@ -5,6 +5,9 @@ import xml.etree.ElementTree as ET
 root = ET.parse(Path(__file__).resolve().parent.parent / 'web-tests/results.xml').getroot()
 cases = list(root.iter('testcase'))
 expected = {
+    'mobile resource rename replays its exact request after a lost response',
+    'sync changes require acknowledged impact and explicit retry after stronger login',
+    'a conflicting resource update requires fresh inspection and planned providers stay read-only',
     'switching conversations clears the previous history and file on standalone',
     'long inbox and message history remain navigable on standalone',
     'long inbox and message history remain navigable on console',
