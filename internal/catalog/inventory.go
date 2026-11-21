@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"database/sql"
+	"strconv"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
@@ -63,8 +64,15 @@ func (s *Store) ListSources(ctx context.Context, actor Actor, owner, after strin
 }
 
 type SnapshotView struct {
-	Snapshot Snapshot                `json:"snapshot"`
-	Profiles []subscriptions.Profile `json:"profiles"`
+	Snapshot     Snapshot                `json:"snapshot"`
+	Profiles     []subscriptions.Profile `json:"profiles"`
+	TrafficBytes *SnapshotTrafficBytes   `json:"trafficBytes,omitempty"`
+}
+
+// Decimal strings preserve provider uint64 counters in browser clients.
+type SnapshotTrafficBytes struct {
+	Used  string `json:"used"`
+	Limit string `json:"limit"`
 }
 
 func (s *Store) GetSnapshot(ctx context.Context, actor Actor, id, snapshot string, now time.Time) (SnapshotView, error) {
@@ -87,7 +95,11 @@ func (s *Store) GetSnapshot(ctx context.Context, actor Actor, id, snapshot strin
 	if e != nil {
 		return SnapshotView{}, e
 	}
-	return SnapshotView{value, profiles}, tx.Commit()
+	view := SnapshotView{Snapshot: value, Profiles: profiles}
+	if value.Quota.Known {
+		view.TrafficBytes = &SnapshotTrafficBytes{Used: strconv.FormatUint(value.Quota.Used, 10), Limit: strconv.FormatUint(value.Quota.Limit, 10)}
+	}
+	return view, tx.Commit()
 }
 
 type JobView struct {

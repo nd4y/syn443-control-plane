@@ -7,6 +7,7 @@ const recipientKinds={user:'Пользователь',device:'Устройств
 let authenticated=false,busy=false,pending=null,revision=0,opened=null,next='',listedOwner='';
 let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='',sourceHistoryNext='';
 let reviewEpoch=0,reviewAvailable=false,sourceReview=null,reviewChanges=[],reviewOffset=0;
+let sourceSnapshotEpoch=0;
 let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null;
 let layerComparison=null;
 let layerDraftInventory=null;
@@ -383,7 +384,8 @@ function erase(){
  resetReplay();clearDevices();clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
  for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip','route-check-country-class'])$(id).value='';
  $('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';
- for(const id of ['sources','profiles','source-details','inventory-status'])$(id).replaceChildren();
+ clearSourceSnapshot();
+ for(const id of ['sources','inventory-status'])$(id).replaceChildren();
 }
 async function request(path,body,signal){
  const raw=typeof body==='string'?body:JSON.stringify(body);
@@ -845,20 +847,70 @@ function showDraft(draft){
  $('base-revision').value=String(draft.baseRevision);$('base-hash').value=draft.baseHash;$('plan').value=JSON.stringify(draft.plan,null,2);$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';
  $('draft-version').textContent=`Версия черновика: ${draft.revision}`;
 }
+function clearSourceSnapshot(){
+ sourceSnapshotEpoch++;
+ $('source-details').hidden=true;
+ for(const node of $('source-details').querySelectorAll('dd span[id], dd time[id]')){
+  node.textContent='';node.removeAttribute('datetime');
+ }
+ $('profiles').replaceChildren();
+}
+function sourceDate(id,seconds,unknown){
+ const field=$(id),date=new Date(seconds*1000);
+ if(Number.isSafeInteger(seconds)&&seconds>0&&Number.isFinite(date.getTime())){
+  field.dateTime=date.toISOString();
+  field.textContent=date.toLocaleString('ru');
+ }else{
+  field.removeAttribute('datetime');field.textContent=unknown;
+ }
+}
+function byteCount(exact,legacy){
+ if(typeof exact==='string'&&/^(0|[1-9][0-9]{0,19})$/.test(exact)){
+  const value=BigInt(exact);
+  return value<=18446744073709551615n?value:null;
+ }
+ return exact===undefined&&Number.isSafeInteger(legacy)&&legacy>=0?BigInt(legacy):null;
+}
+function showSourceSnapshot(source,view){
+ const snapshot=view?.snapshot;
+ if(!snapshot||!Array.isArray(view.profiles)||typeof snapshot.id!=='string'||
+    (snapshot.sourceId!==undefined&&snapshot.sourceId!==source.id)||
+    (source.activeSnapshot&&snapshot.id!==source.activeSnapshot))throw Error('conflict');
+ const modes={home_wifi:'Домашний Wi-Fi',wifi:'Wi-Fi',cellular_restricted:'Мобильная сеть с ограничениями',cellular:'Мобильная сеть'};
+ $('source-snapshot-name').textContent=source.name+' · '+source.id+' · v'+source.revision+' · '+snapshot.id;
+ $('source-snapshot-modes').textContent=source.networkModes.map(mode=>modes[mode]||mode).join(', ');
+ sourceDate('source-snapshot-time',snapshot.observedAt,'Неизвестно');
+ sourceDate('source-snapshot-until',snapshot.validUntil,'Неизвестно');
+ const quota=snapshot.quota,known=quota?.known===true;
+ const used=known?byteCount(view.trafficBytes?.used,quota.used):null;
+ const limit=known?byteCount(view.trafficBytes?.limit,quota.limit):null;
+ const bytes=new Intl.NumberFormat('ru');
+ const fmt=n=>n===null?'Неизвестно':bytes.format(n)+' Б';
+ $('source-traffic-used').textContent=fmt(used);
+ $('source-traffic-limit').textContent=limit===0n?'Без ограничения':fmt(limit);
+ $('source-traffic-left').textContent=limit===0n?'Без ограничения':fmt(used===null||limit===null?null:(used<limit?limit-used:0n));
+ sourceDate('source-traffic-time',known?quota.observedAt:null,'Сведений нет');
+ sourceDate('source-traffic-expiry',known?quota.expiresAt:null,'Не указан');
+ for(const profile of view.profiles)textItem($('profiles'),profile.name+' · '+profile.kind+' · '+profile.id);
+ $('source-details').hidden=false;
+}
 async function sources(more=false){
  const owner=$('owner').value.trim();if(!owner)throw Error('invalid');
  if(more&&owner!==listedOwner)throw Error('invalid');
+ if(!more)clearSourceSnapshot();
+ const epoch=sourceSnapshotEpoch;
  const page=await action('source.list',{owner,after:more?next:''});
+ if(epoch!==sourceSnapshotEpoch||owner!==$('owner').value.trim())return;
  if(!Array.isArray(page.sources)||typeof page.next!=='string')throw Error('invalid');
- if(!more){$('sources').replaceChildren();$('profiles').replaceChildren();$('source-details').replaceChildren();}
+ if(!more)$('sources').replaceChildren();
  listedOwner=owner;next=page.next;
  for(const source of page.sources){
   const li=textItem($('sources'),`${source.name} (${source.id}) · ${source.state} · v${source.revision}`);
   const button=actionButton();button.textContent='Показать профили';button.onclick=()=>work(async()=>{
+   clearSourceSnapshot();const selection=sourceSnapshotEpoch;
    const view=await action('source.snapshot',{id:source.id,snapshot:source.activeSnapshot||''});
-   if(!Array.isArray(view.profiles))throw Error('invalid');$('profiles').replaceChildren();
-   for(const profile of view.profiles)textItem($('profiles'),`${profile.name} · ${profile.kind} · ${profile.id}`);
-   $('source-details').textContent=JSON.stringify({sourceId:source.id,revision:source.revision,networkModes:source.networkModes,snapshot:view.snapshot.id,observedAt:view.snapshot.observedAt,validUntil:view.snapshot.validUntil},null,2);
+   if(!authenticated||selection!==sourceSnapshotEpoch||owner!==$('owner').value.trim())return;
+   showSourceSnapshot(source,view);
    status('Метаданные профилей загружены. Учётные данные прокси не выводятся.');
   });const edit=actionButton();edit.textContent='Настроить источник';edit.onclick=()=>work(async()=>{showSource(await action('source.get',{id:source.id}));status('Параметры загружены. Прежний секрет не возвращается.');});li.append(document.createElement('br'),button,edit);
  }
@@ -1135,6 +1187,7 @@ $('console-nav').addEventListener('click',event=>{
  }
 });
 addEventListener('hashchange',()=>{
+ if(location.hash!=='#sources-title')clearSourceSnapshot();
  if(location.hash!=='#sources-title')resetSourceReview(reviewAvailable);
  resetExplanation(true);
  resetReplay();
@@ -1374,6 +1427,11 @@ $('source-import').onclick=()=>work(importSource);
 $('source-shares-load').onclick=()=>work(loadSourceShares);
 $('source-shares-add').onclick=()=>work(addSourceRecipient);
 $('source-shares-confirm').onchange=controls;
+$('owner').addEventListener('input',()=>{
+ if(listedOwner&&$('owner').value.trim()!==listedOwner){
+  clearSourceSnapshot();$('sources').replaceChildren();next='';listedOwner='';controls();
+ }
+});
 $('source-review-load').onclick=()=>work(compareSourceReview);
 $('source-review-more').onclick=moreReviewChanges;
 $('source-review-confirm').onchange=controls;

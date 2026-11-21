@@ -112,6 +112,8 @@ expected.update({
     'manual route preview discards late results and distinguishes missing facts from default',
     'mobile source review compares both versions and retries the identical approved candidate',
     'changed subscription review requires a fresh comparison before rejecting its successor',
+    'mobile provider usage preserves exact counters and the original provider timestamp',
+    'unknown unlimited and exhausted provider quotas keep distinct labels on the phone',
 })
 assert len(cases) >= 79
 assert expected <= {c.get('name') for c in cases}, 'Required browser scenarios missing'
