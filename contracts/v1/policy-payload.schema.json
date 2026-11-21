@@ -89,6 +89,7 @@
           "route.exit-ip.v1",
           "route.exit-country.v1",
           "route.https-status.v1",
+          "network.home-proof.v1",
           "route.adaptive-tcp.v1",
           "route.check-plan.v2"
         ]
@@ -244,6 +245,14 @@
         "schemaVersion": {"const": 2},
         "operation": {"const": "configure"},
         "requiredCapabilities": {"contains": {"const": "route.health.v1"}}
+      }}
+    },
+    {
+      "if": {"properties": {"requiredCapabilities": {"contains": {"const": "network.home-proof.v1"}}}},
+      "then": {"properties": {
+        "schemaVersion": {"const": 2},
+        "operation": {"const": "configure"},
+        "requiredCapabilities": {"contains": {"const": "route.adaptive-tcp.v1"}}
       }}
     },
     {

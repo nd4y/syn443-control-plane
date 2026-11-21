@@ -98,7 +98,7 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	caps := map[string]bool{}
-	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true, RouteAdaptiveTCP: true, RouteCheckPlanV2: true, RouteHTTPSStatus: true}
+	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true, RouteAdaptiveTCP: true, RouteCheckPlanV2: true, RouteHTTPSStatus: true, HomeWiFiProof: true}
 	if len(p.RequiredCapabilities) < 1 || len(p.RequiredCapabilities) > 16 ||
 		p.AlgorithmRevision != BaselineAlgorithm && p.AlgorithmRevision != ConfirmedFailoverAlgorithm && p.AlgorithmRevision != AdaptiveTCPAlgorithm {
 		return bad
@@ -122,6 +122,10 @@ func (p Payload) Validate(now time.Time) error {
 	}
 	var extensions map[string]json.RawMessage
 	if identity.DecodeConfiguration(engine, &extensions) != nil || extensions == nil {
+		return bad
+	}
+	proof, hasProof := extensions["home_proof"]
+	if hasProof != caps[HomeWiFiProof] || hasProof && (p.SchemaVersion != 2 || p.Operation != "configure" || !caps[RouteAdaptiveTCP] || !validHomeProof(proof)) {
 		return bad
 	}
 	var routePlans []routecheck.Plan
