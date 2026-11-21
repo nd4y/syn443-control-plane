@@ -1,0 +1,24 @@
+services:
+  overlay-worker:
+    image: ${SYN443_OVERLAY_IMAGE:?Set the verified worker image}
+    pull_policy: never
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 128m
+    pids_limit: 64
+    volumes:
+      - type: bind
+        source: ${SYN443_OVERLAY_CONFIG_FILE:?Set the absolute path to the private worker configuration}
+        target: /run/secrets/overlay-worker.json
+        read_only: true
+        bind:
+          create_host_path: false
+    networks: [backend]
+networks:
+  backend:
+    external: true
+    name: ${SYN443_BACKEND_NETWORK:?Set the existing service network}
