@@ -63,7 +63,11 @@ function linkedDevice(){
  return deviceID.test(id)?id:'';
 }
 const confirmedDecision='m4-confirmed-v1';
-const routeCheckMethods={tcp:'TCP',tls:'TLS',https_204:'HTTPS 204',ssh_banner:'SSH banner',https_exit_ip:'IP выхода по HTTPS'};
+const routeCheckMethods={tcp:'TCP',tls:'TLS',https_204:'HTTPS 204',https_status:'Код ответа HTTPS',ssh_banner:'SSH banner',https_exit_ip:'IP выхода по HTTPS'};
+function sameRouteCheck(a,b){
+ return a?.method===b.method&&a.target===b.target&&a.expected_ip===b.expected_ip&&
+  a.expected_exit_class===b.expected_exit_class&&a.http_method===b.http_method&&a.expected_status===b.expected_status;
+}
 function routeDraft(){
  const value=JSON.parse($('plan').value),graph=value.graph,network=value.network;
  if(!graph||!network||Array.isArray(graph)||Array.isArray(network)||typeof graph!=='object'||typeof network!=='object')throw Error('invalid');
@@ -87,6 +91,7 @@ function routeDraft(){
 function drawRouteChecks(){
  const editor=$('route-check-editor'),select=$('route-check-path'),list=$('route-check-list');
  $('route-check-exit').hidden=$('route-check-method').value!=='https_exit_ip';
+ $('route-check-http').hidden=$('route-check-method').value!=='https_status';
  const cooldown=$('route-reserve-cooldown');cooldown.checked=false;cooldown.disabled=true;
  const rollout=$('route-cooldown-rollout');rollout.hidden=true;
  drawDeviceRollout('route-rollout',null);
@@ -115,12 +120,14 @@ function drawRouteChecks(){
    if(!item||typeof item.method!=='string'||typeof item.target!=='string')continue;
    const li=document.createElement('li'),remove=actionButton();
    const method=Object.hasOwn(routeCheckMethods,item.method)?routeCheckMethods[item.method]:item.method;
-   const expected=item.method==='https_exit_ip'&&typeof item.expected_ip==='string'?` · ${item.expected_ip}`:'';
+   let expected='';
+   if(item.method==='https_exit_ip'&&typeof item.expected_ip==='string')expected=` · ${item.expected_ip}`;
+   if(item.method==='https_status')expected=` · ${item.http_method} · ${item.expected_status}`;
    li.textContent=`${row.outbound} · ${method} · ${item.target}${expected}${row.required===true?' · обязательная':''} `;
    remove.type='button';remove.textContent='Удалить проверку';
    remove.onclick=()=>work(async()=>{
     const current=routeDraft(),group=current.checks.find(r=>r.outbound===row.outbound);
-    const index=group?.checks.findIndex(c=>c?.method===item.method&&c?.target===item.target&&c?.expected_ip===item.expected_ip);
+    const index=group?.checks.findIndex(c=>sameRouteCheck(c,item));
     if(!group||index===undefined||index<0)throw Error('invalid');
     group.checks.splice(index,1);
     if(!group.checks.length)current.checks.splice(current.checks.indexOf(group),1);
@@ -828,9 +835,16 @@ $('route-check-add').onclick=()=>{
    if(!/^[0-9a-fA-F:.]{2,45}$/.test(expectedIP)||new URL(target).protocol!=='https:')throw Error('invalid');
    check.expected_ip=expectedIP;
   }
+  if(method==='https_status'){
+   const verb=$('route-check-verb').value,code=$('route-check-status').value;
+   const url=new URL(target);
+   if(!target.startsWith('https://')||/[\\#]/.test(target)||url.username||url.password||
+      !['HEAD','GET'].includes(verb)||!/^[2-5][0-9]{2}$/.test(code))throw Error('invalid');
+   check.http_method=verb;check.expected_status=Number(code);
+  }
   let group=current.checks.find(row=>row.outbound===path);
   if(!group){if(current.checks.length>=16)throw Error('invalid');group={outbound:path,required,checks:[]};current.checks.push(group);}
-  if(group.checks.length>=4||group.checks.some(row=>row?.method===method&&row?.target===target))throw Error('invalid');
+  if(group.checks.length>=4||group.checks.some(row=>sameRouteCheck(row,check)))throw Error('invalid');
   group.required=required;group.checks.push(check);applyRouteChecks(current);$('route-check-target').value='';$('route-check-ip').value='';
  });
 };

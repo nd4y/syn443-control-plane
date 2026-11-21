@@ -454,6 +454,7 @@ function Drafts() {
             <option value="tcp">{'TCP'}</option>
             <option value="tls">{'TLS'}</option>
             <option value="https_204">{'HTTPS 204'}</option>
+            <option value="https_status">{'Код ответа HTTPS'}</option>
             <option value="ssh_banner">{'SSH banner'}</option>
             <option value="https_exit_ip">{'IP выхода по HTTPS'}</option>
           </Select>
@@ -474,6 +475,15 @@ function Drafts() {
               autoComplete="off"
               spellCheck={false}
             />
+          </div>
+          <div id="route-check-http" hidden>
+            <label htmlFor="route-check-verb">Метод HTTP</label>
+            <Select id="route-check-verb" defaultValue="HEAD">
+              <option value="HEAD">HEAD</option>
+              <option value="GET">GET</option>
+            </Select>
+            <label htmlFor="route-check-status">Ожидаемый код ответа</label>
+            <TextInput id="route-check-status" type="number" min={200} max={599} step={1} defaultValue="200" />
           </div>
           <Button id="route-check-add" type="button" variant="secondary">
             Добавить проверку
