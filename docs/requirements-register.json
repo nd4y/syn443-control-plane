@@ -2804,14 +2804,21 @@
     {
       "id": "AC02",
       "specRow": " Remnawave плюс две внешние подписки | Итоговые профили назначены правильно, секреты источников не раскрыты посторонним |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/deviceprovisioning/mixed_sources_postgres_test.go"
+      ],
+      "remainingScope": "The hosted case binds a signed publication to an actual SQL fixture device. Physical use of the three-provider policy and live provider credentials remain separate."
     },
     {
       "id": "AC03",
       "specRow": " Пустой/сломанный/HTML ответ источника | Последняя рабочая выдача сохранена, кандидат в quarantine, другие источники обновляются |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/catalog/store_postgres_test.go",
+        "internal/deviceprovisioning/mixed_sources_postgres_test.go"
+      ],
+      "remainingScope": "A malformed HTTPS feed is rejected while its retained snapshot is usable and another feed advances. Whole-scenario quarantine UI and physical readback remain separate."
     },
     {
       "id": "AC04",
