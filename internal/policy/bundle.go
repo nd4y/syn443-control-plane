@@ -125,7 +125,7 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	proof, hasProof := extensions["home_proof"]
-	if hasProof != caps[HomeWiFiProof] || hasProof && (p.SchemaVersion != 2 || p.Operation != "configure" || !caps[RouteAdaptiveTCP] || !validHomeProof(proof)) {
+	if hasProof != caps[HomeWiFiProof] || hasProof && (p.SchemaVersion != 2 || p.Operation != "configure" || !caps[RouteAdaptiveTCP] || !ValidHomeProofJSON(proof)) {
 		return bad
 	}
 	var routePlans []routecheck.Plan

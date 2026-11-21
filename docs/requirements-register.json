@@ -947,7 +947,9 @@
         "internal/configuration/adaptive_compile_test.go",
         "internal/deviceprovisioning/adaptive_network_test.go",
         "web-tests/control.spec.js",
-        "docs/managed-adaptive-runtime.md#home-wi-fi-verification"
+        "docs/managed-adaptive-runtime.md#home-wi-fi-verification",
+        "internal/enrollment/configuration_authority.go",
+        "internal/enrollment/configuration_authority_postgres_test.go"
       ],
       "implementationScope": "An addressed adaptive network plan can assign a private TLS endpoint, its verified DNS name and a SHA-256 public-key pin. Publication checks the separate device capability. The console edits the endpoint in its normal draft workflow.",
       "remainingScope": "Check actual home and guest networks, enterprise certificate trust, renewal and expiry on an enrolled Android device. Optional local SSID/BSSID selectors and their permissions are a device concern."
@@ -2684,7 +2686,9 @@
         "internal/policy/home_proof.go",
         "internal/policy/adaptive_policy_test.go",
         "internal/configuration/adaptive_compile_test.go",
-        "internal/deviceprovisioning/adaptive_network_test.go"
+        "internal/deviceprovisioning/adaptive_network_test.go",
+        "internal/enrollment/configuration_authority.go",
+        "internal/enrollment/configuration_authority_postgres_test.go"
       ],
       "implementationScope": "The signed home proof contract accepts a private unicast address, verified DNS name and SHA-256 public-key pin. Invalid endpoints and unsupported or unaddressed plans are rejected before issue.",
       "remainingScope": "Exercise home impersonation, live policy rotation and grant bounds on the physical device. Production endpoint reachability and traffic enforcement require independent evidence."

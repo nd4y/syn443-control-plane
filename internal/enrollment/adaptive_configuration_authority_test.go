@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"net/netip"
 	"reflect"
 	"slices"
 	"strings"
@@ -22,6 +23,11 @@ import (
 
 func compiledAdaptivePreparation(t *testing.T) (*PreparedConfiguration, policy.Payload, time.Time) {
 	t.Helper()
+	return compiledAdaptivePreparationWithHomeProof(t, nil)
+}
+
+func compiledAdaptivePreparationWithHomeProof(t *testing.T, proof *policy.HomeProof) (*PreparedConfiguration, policy.Payload, time.Time) {
+	t.Helper()
 	metadata, _ := json.Marshal(map[string]any{"schemaVersion": 1,
 		"hops": []any{map[string]any{"id": "hop", "entryModes": []string{"WIFI"}, "exitClass": "PUBLIC", "features": []string{"TCP"}}}, "edges": []any{},
 		"templates": []any{map[string]any{"id": "single", "slots": [][]string{{"hop"}}}},
@@ -31,6 +37,7 @@ func compiledAdaptivePreparation(t *testing.T) (*PreparedConfiguration, policy.P
 		Network:    configuration.NetworkSettings{SchemaVersion: 1, RequiredNetworks: []string{"tcp"}, DNSFinal: "system", DNSStrategy: "prefer_ipv4", RouteChecks: []configuration.OutboundCheckPlan{{Outbound: "managed", Checks: []configuration.OutboundCheck{{Method: "https_exit_country", Target: "https://country.example.invalid/", ExpectedExitClass: "NON_RU"}}}}},
 		Activation: policy.Gate{TimeoutSeconds: 30, Checks: []policy.Check{{ID: "internet", Type: "https_204", Target: "https://health.example.invalid/generate_204", Required: true}}},
 		Adaptive:   &configuration.AdaptivePlan{MetadataB64: base64.RawURLEncoding.EncodeToString(metadata), BindingsB64: base64.RawURLEncoding.EncodeToString(bindings), Groups: map[string]string{"external": "managed"}}}
+	plan.Network.HomeProof = proof
 	compiled, err := configuration.CompileNetworkPlan(context.Background(), plan, func(ref configuration.ProfileReference) (subscriptions.Profile, error) {
 		if ref.SourceID != "source-a" || ref.ProfileID != "source_profile" {
 			return subscriptions.Profile{}, configuration.ErrInvalid
@@ -41,8 +48,12 @@ func compiledAdaptivePreparation(t *testing.T) (*PreparedConfiguration, policy.P
 		t.Fatal("actual adaptive compiler fixture failed", err)
 	}
 	payload, now := configuredPayload()
+	caps := []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2", "route.health.v1", policy.RouteDecision, policy.RouteAdaptiveTCP, policy.RouteExitCountry}
+	if proof != nil {
+		caps = append(caps, policy.HomeWiFiProof)
+	}
 	return &PreparedConfiguration{EngineConfig: compiled.EngineConfig, Activation: compiled.Activation, AlgorithmRevision: compiled.AlgorithmRevision,
-		RequiredCapabilities: []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2", "route.health.v1", policy.RouteDecision, policy.RouteAdaptiveTCP, policy.RouteExitCountry},
+		RequiredCapabilities: caps,
 		UntilMs:              now.Add(time.Minute).UnixMilli(), Fence: &fixtureConfigurationFence{}, Source: ConfigurationSource{Revision: 2, Hash: strings.Repeat("a", 64)}}, payload, now
 }
 
@@ -210,5 +221,55 @@ func TestPreparedAdaptiveConfigurationNeedsNegotiationAndCannotBecomeSharedGrant
 	}
 	if err := applyPreparedConfiguration(nil, prepared, prepared.RequiredCapabilities, now); err == nil {
 		t.Fatal("nil candidate accepted")
+	}
+}
+
+func syntheticHomeProof() policy.HomeProof {
+	return policy.HomeProof{
+		Hostname: "gateway.example.invalid", Address: netip.AddrFrom4([4]byte{10, 0, 0, 7}).String(),
+		Port: 443, SPKISHA256: base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{17}, 32)),
+	}
+}
+
+func TestPreparedHomeProofKeepsIndependentClosedSchemaAndCapabilityChecks(t *testing.T) {
+	proof := syntheticHomeProof()
+	prepared, payload, now := compiledAdaptivePreparationWithHomeProof(t, &proof)
+	if err := applyPreparedConfiguration(&payload, prepared, prepared.RequiredCapabilities, now); err != nil {
+		t.Fatal("compiled home proof was not accepted", err)
+	}
+	for _, failure := range []string{"unadvertised", "missing capability", "missing field", "null", "untrusted address", "unknown member", "unknown root"} {
+		t.Run(failure, func(t *testing.T) {
+			p, candidate, now := compiledAdaptivePreparationWithHomeProof(t, &proof)
+			original, _ := json.Marshal(candidate)
+			caps := slices.Clone(p.RequiredCapabilities)
+			switch failure {
+			case "unadvertised":
+				caps = slices.DeleteFunc(caps, func(c string) bool { return c == policy.HomeWiFiProof })
+			case "missing capability":
+				p.RequiredCapabilities = slices.DeleteFunc(p.RequiredCapabilities, func(c string) bool { return c == policy.HomeWiFiProof })
+			default:
+				mutateAdaptivePreparedEngine(t, p, func(root, _ map[string]any) {
+					switch failure {
+					case "missing field":
+						delete(root, "home_proof")
+					case "null":
+						root["home_proof"] = nil
+					case "untrusted address":
+						root["home_proof"].(map[string]any)["address"] = "192.0.2.1"
+					case "unknown member":
+						root["home_proof"].(map[string]any)["fallback"] = true
+					case "unknown root":
+						root["home_override"] = true
+					}
+				})
+			}
+			if err := applyPreparedConfiguration(&candidate, p, caps, now); err == nil {
+				t.Fatal("invalid home policy was admitted")
+			}
+			got, _ := json.Marshal(candidate)
+			if !bytes.Equal(original, got) {
+				t.Fatal("rejected policy mutated the candidate")
+			}
+		})
 	}
 }

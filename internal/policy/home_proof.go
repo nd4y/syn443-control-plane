@@ -52,7 +52,8 @@ func (p HomeProof) Valid() bool {
 	return err == nil && len(pin) == 32 && base64.RawURLEncoding.EncodeToString(pin) == p.SPKISHA256
 }
 
-func validHomeProof(raw []byte) bool {
+// ValidHomeProofJSON accepts only the closed physical Wi-Fi TLS check.
+func ValidHomeProofJSON(raw []byte) bool {
 	var value HomeProof
 	return identity.DecodeConfiguration(raw, &value) == nil && value.Valid()
 }

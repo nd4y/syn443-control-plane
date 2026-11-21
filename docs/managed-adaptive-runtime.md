@@ -67,7 +67,11 @@ it through the usual device policy flow. **Удалить узел из черн
 its removal through the same flow. The field group is available on phone and
 desktop. It edits only `network.homeProof`.
 
-The addressed device must advertise `network.home-proof.v1`. The handset
+The addressed device must advertise `network.home-proof.v1`. Its capability
+update must be approved before the publisher can sign this setting. Until
+then the device can fetch its previous policy while its lease is valid. The
+publisher validates the endpoint again and binds the issued bytes to the same
+device key. The handset
 binds the probe to the current validated physical Wi-Fi and verifies both the
 certificate chain and key pin before selecting home-only routes. A certificate
 renewal with a different public key requires updating and publishing the pin.
