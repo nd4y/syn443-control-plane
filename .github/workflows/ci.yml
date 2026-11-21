@@ -758,7 +758,7 @@ jobs:
   enrollment:
     needs: go
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -795,6 +795,25 @@ jobs:
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestOperatorPolicyTimingBoundsAndLegacyGrantHash","TestSQLGrantTimingFencesPublisherAndSchedulesSignedRenewal"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryWorkerRecoversRetainedGapsAndWrapsAfterBusyHour","TestTelemetryAggregateWorkerProcessCommitsStopsAndResumes"])' session-boundary-postgres-tests.jsonl
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Action == "pass")) | map(.Test) | contains(["TestTelemetryAnalysisProcessRequiresVerifiedPostgresTLS/trusted_name","TestTelemetryAnalysisProcessRequiresVerifiedPostgresTLS/wrong_name","TestTelemetryAnalysisProcessRequiresVerifiedPostgresTLS/unknown_ca"])' session-boundary-postgres-tests.jsonl
+      - name: Measure small-service capacity with a new disposable database
+        id: capacity
+        run: bash tools/test_enrollment.sh capacity
+      - name: Validate and scan the capacity report
+        id: capacity-scan
+        if: ${{ always() && (steps.capacity.outcome == 'success' || steps.capacity.outcome == 'failure') }}
+        run: |
+          file="$RUNNER_TEMP/small-service-capacity.json"
+          test -s "$file"
+          jq -e 'keys == ["activeClients","clientStartSpacingMs","policyRead","profilesPerDevice","registeredDevices","storedEvents","telemetryBatch","users"] and .users == 100 and .registeredDevices == 300 and .activeClients == 100 and .profilesPerDevice == 500 and .clientStartSpacingMs == 200 and ([.policyRead,.telemetryBatch]|all(keys == ["p95Ms","scheduled","verified"] and .scheduled == 100 and (.verified|type=="number") and (.p95Ms == null or (.p95Ms|type=="number"))))' "$file"
+          python3 tools/check_public_data.py "$file"
+          bash tools/scan_secrets.sh "$file"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() && steps.capacity-scan.outcome == 'success' }}
+        with:
+          name: small-service-capacity
+          path: ${{ runner.temp }}/small-service-capacity.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Check and scan enrollment evidence
         id: enrollment-scan
         run: |

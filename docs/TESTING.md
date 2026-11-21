@@ -147,3 +147,23 @@ The new capability remains unadvertised by normal enrollment until coordinated
 rollout. Source, CI, protected-main, installed-APK and real managed-profile gates
 are distinct. No composition fixture closes parallel/conditional/fallback plans,
 physical managed chains, LTE, battery, natural Doze or endurance acceptance.
+
+## Small service reference load
+
+The enrollment job starts a second disposable PostgreSQL instance (half a CPU
+and 256 MiB). The production policy handler and separate telemetry handler serve
+loopback TLS. A synthetic identity verifier is used for setup. The actual
+publisher prepares a signed, device-key-bound revision for each of 300 devices
+across 100 accounts. Every revision contains the output of the 500-profile
+adaptive compiler fixture. The report counts approved publications in SQL.
+
+One authenticated client per account is active. The 100 clients start at
+fixed 200 ms intervals. Each reads the complete prepared policy and sends an
+eight-event telemetry batch. A response counts only with the correct device
+signature and content hash or all eight durable event receipts. The final SQL
+count must be 800. Each endpoint must have 100 eligible results and nearest-rank
+p95 at most 500 ms. The response interval includes the TLS request and all
+response bytes, before client-side signature verification. A missing or
+incorrect response leaves p95 unavailable. The separate capacity artifact
+contains counts and durations. Production traffic patterns and simultaneous
+reconnect bursts are outside this reference load.
