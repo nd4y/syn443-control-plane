@@ -253,9 +253,11 @@ func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool, managed ..
 		t.Fatal("real session response")
 	}
 	proof := signed(t, k, "GET", origin+"/v1/device/policy", session.AccessToken, session.Nonce, nil, time.Now())
-	status, _, _ = call("GET", "/v1/device/policy", session.AccessToken, session.Nonce, proof, nil)
-	if status != 202 {
-		t.Fatal("pending assignment")
+	status, pendingHeaders, pendingBody := call("GET", "/v1/device/policy", session.AccessToken, session.Nonce, proof, nil)
+	var pending map[string]string
+	if status != http.StatusAccepted || pendingHeaders.Get("Retry-After") != "2" ||
+		json.Unmarshal(pendingBody, &pending) != nil || len(pending) != 1 || pending["code"] != "provisioning_pending" {
+		t.Fatal("assignment without a running publisher must report pending with retry advice")
 	}
 	stopAPI()
 	if bytes.Contains(apiLog.Bytes(), []byte(token)) || bytes.Contains(apiLog.Bytes(), []byte(session.AccessToken)) {
@@ -464,6 +466,31 @@ func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool, managed ..
 		}
 	}
 	stopWorker()
+	if !withBroker {
+		t.Run("ready_delivery_survives_publisher_outage_and_api_restart", func(t *testing.T) {
+			roots := map[string]*ecdsa.PublicKey{"fixture-root": &f.key.PublicKey}
+			readCurrent := func() {
+				t.Helper()
+				status, header, current := call("GET", "/v1/device/policy", session.AccessToken, session.Nonce, "", nil)
+				if status != http.StatusOK || !bytes.Equal(current, bundle) || header.Get("Cache-Control") != "no-store" {
+					t.Fatal("API did not independently deliver the original policy", status)
+				}
+				issued, err := policy.VerifyBound(string(current), roots, session.DeviceID, thumb, time.Now())
+				if err != nil || issued.Revision < 1 {
+					t.Fatal("cached policy is no longer bound to its device", err)
+				}
+				if _, err = policy.VerifyBound(string(current), roots, session.DeviceID, thumb, time.UnixMilli(issued.OfflineUntilMs)); err == nil {
+					t.Fatal("reading a cached policy extended its signed lease")
+				}
+			}
+			readCurrent()
+			stopAPI()
+			stopRestored, _ := startProcess(t, "enrollment-api", []string{"SYN443_ENROLLMENT_CONFIG=" + apiFile})
+			defer stopRestored()
+			waitForAPI()
+			readCurrent()
+		})
+	}
 	if strings.Contains(workerLog.String(), token) || strings.Contains(workerLog.String(), f.grant.Template.EngineConfigB64) {
 		t.Fatal("worker private payload in output")
 	}
