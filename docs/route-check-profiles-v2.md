@@ -182,3 +182,15 @@ Both ordered checks and v2 profile leaves support this predicate. Its verb and
 status travel in the signed engine configuration and participate in the proof hash.
 Publication requires the device capability `route.https-status.v1` together with
 `route.health.v1`. Existing clients can continue to receive their existing checks.
+
+### Editing different routes
+
+The console keeps unsubmitted probe addresses, methods, expected results and
+the required flag with the selected outbound while the same draft is open.
+Switching routes restores the corresponding input. Changing the draft target
+or replacing the raw plan clears pending input. Pressing Add changes only the
+selected route in the local draft. Saving and publishing remain separate actions.
+
+AC57 has server and browser evidence for independently chosen SSH, HTTPS and
+TCP targets. [Compiler tests](../internal/configuration/network_test.go) ·
+[Browser tests](../web-tests/control.spec.js)

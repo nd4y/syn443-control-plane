@@ -3323,8 +3323,14 @@
     {
       "id": "AC57",
       "specRow": " Разные проверки домашнего/RU/NON_RU и произвольных иных маршрутов | Targets/методы задаются данными, нет жёсткой привязки к 2ip/gstatic; интерфейсы server/client/ADB согласованы |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/configuration/network_test.go",
+        "internal/configuration/check_plan_test.go",
+        "internal/chatweb/assets/control/app.js",
+        "web-tests/control.spec.js",
+        "docs/route-check-profiles-v2.md"
+      ]
     },
     {
       "id": "AC58",

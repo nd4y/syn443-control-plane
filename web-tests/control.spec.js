@@ -384,6 +384,42 @@ test('route checks editor changes only its private draft and restores saved chec
  state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });
+test('each route retains only its own pending probe and required flag on a phone',async({page,request})=>{
+ await reset(request);await page.setViewportSize({width:393,height:852});
+ await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ const value=structuredClone(plan);
+ value.graph.profiles.home={sourceId:'source-a',profileId:'home-a'};
+ value.graph.profiles.office={sourceId:'source-a',profileId:'office-a'};
+ const raw=page.locator('#plan');await raw.fill(JSON.stringify(value));
+ const path=page.locator('#route-check-path'),method=page.locator('#route-check-method');
+ const target=page.locator('#route-check-target'),required=page.locator('#route-check-required');
+ const add=page.locator('#route-check-add'),verb=page.locator('#route-check-verb'),code=page.locator('#route-check-status');
+ await path.selectOption('home');await required.check();await method.selectOption('ssh_banner');
+ await expect(required).toBeChecked();await target.fill('home.example.invalid:22');
+ await path.selectOption('office');await expect(target).toHaveValue('');await expect(required).not.toBeChecked();
+ await method.selectOption('https_status');await target.fill('https://office.example.invalid/health');await verb.selectOption('GET');await code.fill('204');
+ await path.selectOption('home');await expect(target).toHaveValue('home.example.invalid:22');await expect(method).toHaveValue('ssh_banner');await expect(required).toBeChecked();await add.click();
+ await path.selectOption('office');await expect(method).toHaveValue('https_status');await expect(target).toHaveValue('https://office.example.invalid/health');
+ await expect(verb).toHaveValue('GET');await expect(code).toHaveValue('204');await expect(required).not.toBeChecked();await add.click();
+ await path.selectOption('proxy');await expect(target).toHaveValue('');await expect(method).toHaveValue('tcp');await target.fill('third.example.invalid:443');await add.click();
+ const rows=JSON.parse(await raw.inputValue()).network.routeChecks;
+ expect(rows).toEqual([
+  {outbound:'home',required:true,checks:[{method:'ssh_banner',target:'home.example.invalid:22'}]},
+  {outbound:'office',required:false,checks:[{method:'https_status',target:'https://office.example.invalid/health',http_method:'GET',expected_status:204}]},
+  {outbound:'proxy',required:false,checks:[{method:'tcp',target:'third.example.invalid:443'}]},
+ ]);
+});
+
+test('changing draft ownership or replacing the document drops unsubmitted route parameters',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ const target=page.locator('#route-check-target'),method=page.locator('#route-check-method'),required=page.locator('#route-check-required');
+ await method.selectOption('https_exit_ip');await target.fill('https://first.example.invalid/address');await page.locator('#route-check-ip').fill('192.0.2.27');await required.check();
+ await page.locator('#target-id').fill('another-device');await expect(target).toHaveValue('');await expect(method).toHaveValue('tcp');await expect(required).not.toBeChecked();
+ await page.locator('#target-id').fill('device-a');await expect(target).toHaveValue('');await method.selectOption('https_exit_ip');await expect(page.locator('#route-check-ip')).toHaveValue('');
+ await target.fill('https://unsaved.example.invalid/address');const raw=page.locator('#plan');await raw.fill(JSON.stringify(plan));
+ await expect(target).toHaveValue('');await expect(method).toHaveValue('tcp');expect(JSON.parse(await raw.inputValue()).network.routeChecks).toBeUndefined();
+});
+
 test('HTTPS status checks retain the chosen verb and status for each route draft',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#draft-title');await draft(page);
  const method=page.locator('#route-check-method'),target=page.locator('#route-check-target');
