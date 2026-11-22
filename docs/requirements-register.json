@@ -2840,8 +2840,16 @@
     {
       "id": "ENG-03",
       "text": "Release manifest подписан, включает package/signing identity, versionCode, channel, ABI/SDK, engine/evaluator/schema capabilities, hash/size и совместимость миграции. Установка требует штатного действия Android; отказ/отсрочка не удаляет рабочую разрешённую конфигурацию. Обновление сохраняет intent, enrollment, drafts и identity. Поддельная/неподходящая сборка отклоняется до установки.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/apk-release.md",
+        "cmd/apk-release/main.go",
+        "internal/bootstrap/release_manifest.go",
+        "cmd/apk-release/main_test.go",
+        "internal/bootstrap/release_manifest_test.go"
+      ],
+      "implementationScope": "The offline operator tool binds a signed APK to a specific service, device, channel, signing certificate and migration range using a typed ES256 release envelope. ABI, SDK, engine capabilities, evaluators and schemas are checked against independent installation context.",
+      "remainingScope": "Device-side delivery, persisted release trust and revision floors, user-confirmed Android installation, cancellation and real-device forward migration remain open."
     },
     {
       "id": "ENG-04",
