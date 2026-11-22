@@ -120,11 +120,12 @@ profile's real leaves and mandatory gates. Shared enrollment grants cannot reque
 this advanced capability or bypass per-device configuration approval. Missing
 client capability is a rejection before publication, with no fallback to all-of.
 
-Normal enrollment's advertised capabilities and approved device capability history
-remain unchanged in this component. The new evaluator remains unadvertised pending
-a coordinated capability rollout; existing assignment checks continue rejecting
-unsupported delivery. Source or synthetic-client tests do not constitute approval
-to change a real enrollment or managed policy.
+New Android enrollments advertise `route.check-plan.v2` as an optional capability.
+After an app update, an enrolled device can propose the capability against its
+existing approved capability revision. An outstanding enrollment retry keeps
+its original request. Before assigning a profile, check the device's approved
+capabilities and publish the reviewed configuration for that device.
+[Android enrollment and capability refresh](https://github.com/nd4y/syn443-android/pull/135)
 
 The native owner copies and validates the whole plan. For v2 its proof hash is
 SHA256 over the UTF-8 prefix `syn443-route-check-plan-v2\n` followed by typed Go JSON:

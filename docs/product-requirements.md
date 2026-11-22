@@ -16,7 +16,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 | Requirements | Android | 119 | 173 | 0 | 0 |
 | Requirements | Control Plane | 102 | 190 | 0 | 0 |
 | Acceptance scenarios | Android | 76 | 22 | 0 | 0 |
-| Acceptance scenarios | Control Plane | 66 | 31 | 0 | 1 |
+| Acceptance scenarios | Control Plane | 66 | 29 | 0 | 3 |
 
 ## Requirement families
 
@@ -62,7 +62,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 Download `product-requirements` from the CI run for this Control Plane revision. The CSV lists every requirement and acceptance scenario with both original status values. Look up the item ID in its component register for evidence and remaining scope.
 
 - [Control Plane register](requirements-register.json)
-- [Android register at 08618a199b0f](https://github.com/nd4y/syn443-android/blob/08618a199b0f8613ecc14a1cad8db482c13039c6/docs/requirements-register.json)
+- [Android register at 5b70e4611bf7](https://github.com/nd4y/syn443-android/blob/5b70e4611bf7fd1b8cc0d10007f1cac05ce59963/docs/requirements-register.json)
 - [Technical specification](spec/TECHNICAL_SPEC_RU.md)
 - [Live and release acceptance records](implementation-status.md)
 

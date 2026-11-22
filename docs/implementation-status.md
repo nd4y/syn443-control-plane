@@ -2,14 +2,23 @@
 
 The [bounded check-profile v2 component](route-check-profiles-v2.md) adds source
 support for all/any/quorum and sequential stages while preserving legacy checks,
-mandatory transport/exit gates and local proof/resource limits. Its Actions,
-integration and physical regression gates must be recorded separately. Normal
-enrollment still advertises the previous capability set; this source component
-does not activate a managed profile or close the full CHK-04 / AC58 requirement.
+mandatory transport/exit gates and local proof/resource limits. Android advertises
+the optional capability on new enrollment and can request it after an upgrade.
+Assigning a profile requires a device with the approved capability. CHK-04 and
+AC58 still require broader expression support and checks on an enrolled handset.
+[Android capability negotiation](https://github.com/nd4y/syn443-android/pull/135)
 
 Snapshot updated on 2026-11-22. Specification 0.9 contains 292 requirements and 98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
+
+## Personal policies (AC01)
+
+Two independent test users signed in through Keycloak using authorization code flow with PKCE. They enrolled three devices and received distinct signed policies. Each device retrieved its own policy. The API rejected all six combinations that presented one device's token with another device's proof. This verifies the Control Plane scenario in hosted integration. Opening the pilot device from the deployed console uses a separate account and deployment. [Integration test](../integration/keycloak/personal_issuance_test.go) · [Protected run](https://github.com/nd4y/syn443-control-plane/actions/runs/45016543420)
+
+## Failed subscription refresh (AC03)
+
+In the PostgreSQL integration test, an HTTPS provider returned an empty body, a malformed URI and an HTML document on consecutive refreshes. Each time the worker retained the last usable source snapshot and advanced a second provider independently. The publisher then issued a signed policy containing the retained profiles. In the mobile console, the source card offers review only for a distinct parsed candidate. It also reports a failed first download when there are no published profiles. [Worker and publisher test](../internal/deviceprovisioning/mixed_sources_postgres_test.go) · [Mobile console tests](../web-tests/source-review.spec.js) · [Protected run](https://github.com/nd4y/syn443-control-plane/actions/runs/45021785780)
 
 ## Subscription chain replacement (AC04)
 
