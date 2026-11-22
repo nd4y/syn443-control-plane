@@ -378,3 +378,6 @@ pre:not(:empty) {
 @media(max-width:1000px){.support-grid{grid-template-columns:minmax(0,1fr)}}
 
 #support-incident-result { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.device-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr)); gap:var(--pf-t--global--spacer--md); max-inline-size:44rem; margin-block:1rem; }
+.device-filters label { display:block; margin-block-end:var(--pf-t--global--spacer--xs); }
+#device-rows td:first-child button { display:block; }

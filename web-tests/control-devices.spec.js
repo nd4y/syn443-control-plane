@@ -79,3 +79,78 @@ test('device inventory clears withdrawn or expired sessions and keeps manual loo
  await request.post(origin+'/fixture/expire',{data:{}});await page.locator('#refresh-devices').click();await expect(page.locator('#workspace')).toBeHidden();await expect(page.locator('#device-rows')).toBeEmpty();
  await reset(request,{emptyDevices:true});await page.goto(origin);await expect(page.locator('#devices-status')).toContainText('Доступных устройств нет');await expect(page.locator('#device-rows')).toBeEmpty();
 });
+
+test('mobile device search filters the loaded pages and opens the newly matching card',async({page,request})=>{
+ await reset(request,{devicePages:true});await page.setViewportSize({width:360,height:800});await page.goto(origin);
+ await expect(page.locator('#device-rows tr')).toHaveCount(32);
+ await page.getByLabel('Поиск по загруженным ID').fill('VICE-A');
+ await expect(page.locator('#devices-status')).toContainText('0 из 32. Можно загрузить ещё.');
+ await expect(page.locator('#devices-region')).toBeHidden();
+ await page.getByRole('button',{name:'Ещё устройства'}).click();
+ await expect(page.locator('#devices-status')).toContainText('1 из 33.');
+ await expect(page.locator('#device-rows tr:visible')).toHaveCount(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ const open=page.getByRole('button',{name:'Открыть устройство device-a',exact:true});await open.focus();await open.press('Enter');
+ await expect(page.locator('#inventory-view')).toBeFocused();await expect(page.locator('#inventory-device')).toHaveValue('device-a');
+});
+
+test('phone attention filter distinguishes current degraded and rollback receipts from previous or missing reports',async({page,request})=>{
+ await reset(request);await page.setViewportSize({width:360,height:800});
+ await page.route('**/control/action',async route=>{
+  if(route.request().postDataJSON().action!=='configuration.devices.list')return route.continue();
+  const item=(device,state,outcome)=>({device,desiredRevision:7,policyRevision:23,report:outcome?
+   {state,outcome,receivedAtMs:1800000000000,policyRevision:state==='historical'?22:23,activePolicyRevision:22}:{state}});
+  await route.fulfill({json:{devices:[item('device-a','historical','rolled_back'),item('device-b','reported','degraded'),
+   item('device-c','reported','rolled_back'),item('device-d','reported','committed'),item('device-e','awaiting_report')],
+   next:'',observedAtMs:1800000000000}});
+ });
+ await page.goto(origin);const filter=page.getByLabel('Показать',{exact:true});await filter.selectOption('attention');
+ await expect(page.locator('#device-rows tr:visible')).toHaveCount(2);
+ await expect(page.locator('#device-rows tr:visible').first()).toContainText('device-b');
+ await expect(page.locator('#device-rows tr:visible').last()).toContainText('device-c');
+ await expect(page.locator('#devices-status')).toContainText('2 из 5.');
+});
+
+test('session favorites use only the authorized list and clear on loss of access',async({page,request})=>{
+ await reset(request);await page.goto(origin);const saved=page.getByRole('button',{name:'Избранное для device-a',exact:true});
+ await expect(saved).toBeEnabled();const initial=(await(await request.post(origin+'/fixture/state',{data:{}})).json()).calls;
+ await saved.focus();await saved.press('Space');await expect(saved).toHaveAttribute('aria-pressed','true');
+ const filter=page.getByLabel('Показать',{exact:true});await filter.selectOption('favorites');
+ await expect(page.locator('#device-rows tr:visible')).toHaveCount(1);await saved.press('Space');
+ await expect(filter).toBeFocused();await expect(page.locator('#device-rows tr:visible')).toHaveCount(0);
+ await filter.selectOption('all');await saved.press('Space');await filter.selectOption('favorites');
+ const current=(await(await request.post(origin+'/fixture/state',{data:{}})).json()).calls;expect(current).toEqual(initial);
+ expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
+ await page.locator('#refresh-devices').click();await expect(saved).toHaveAttribute('aria-pressed','true');
+ await request.post(origin+'/fixture/revoke',{data:{}});await page.locator('#refresh-devices').click();
+ await expect(page.locator('#workspace')).toBeHidden();await expect(page.locator('#device-rows')).toBeEmpty();
+ await expect(filter).toHaveValue('all');
+ await reset(request);await page.goto(origin);await expect(saved).toHaveAttribute('aria-pressed','false');
+});
+
+test('late authorized inventory response stays cleared after a concurrent session expiry',async({page,request})=>{
+ await page.clock.install();await reset(request,{runtime:'recent'});await page.goto(origin);
+ await page.getByRole('button',{name:'Открыть устройство device-a',exact:true}).click();
+ await expect(page.locator('#inventory-status')).toHaveText('Конфигурация загружена.');
+ await page.clock.pauseAt(new Date(Date.now()+1000));
+ let startRuntime,startList,releaseRuntime,releaseList;
+ const runtimeStarted=new Promise(resolve=>{startRuntime=resolve;});
+ const listStarted=new Promise(resolve=>{startList=resolve;});
+ const runtimeGate=new Promise(resolve=>{releaseRuntime=resolve;});
+ const listGate=new Promise(resolve=>{releaseList=resolve;});
+ await page.route('**/control/action',async route=>{
+  const action=route.request().postDataJSON().action;
+  if(action==='configuration.runtime.get'){startRuntime();await runtimeGate;return route.fulfill({status:401,json:{}});}
+  if(action==='configuration.devices.list'){const response=await route.fetch();startList();await listGate;return route.fulfill({response});}
+  return route.continue();
+ });
+ try{
+  await page.clock.runFor(60000);await runtimeStarted;
+  await page.locator('#devices-disclosure > summary').click();await page.locator('#refresh-devices').click();
+  await listStarted;releaseRuntime();await expect(page.locator('#workspace')).toBeHidden();
+  const received=page.waitForResponse(r=>r.url().endsWith('/control/action')&&r.request().postDataJSON().action==='configuration.devices.list');
+  releaseList();await (await received).finished();await expect(page.locator('#login')).toBeEnabled();
+  await expect(page.locator('#device-rows')).toBeEmpty();await expect(page.locator('#device-filters')).toBeHidden();
+  await expect(page.locator('#devices-status')).toHaveText('');
+ }finally{releaseRuntime();releaseList();}
+});

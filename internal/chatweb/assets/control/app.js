@@ -15,7 +15,8 @@ let inventoryEpoch=0;
 let sourceShares=null;
 let providerContext=null,providerEpoch=0;
 let providerEdit=null;
-let devicesNext='',deviceIds=new Set();
+let devicesNext='',deviceIds=new Set(),devicesEpoch=0;
+const deviceFavorites=new Set();
 let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticationIssuer='',reauthenticationFocus=false;
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
 let runtimeRefreshTimer=null,runtimeRequest=null,runtimePolling=false,runtimeLastStarted=0;
@@ -515,7 +516,7 @@ function erase(){
  window.dispatchEvent(new Event('syn443-console-session-ended'));
  reauthenticationAvailable=false;reauthenticationNeeded=false;reauthenticationIssuer='';reauthenticationFocus=false;
  clearCohortPreview();$('cohort-device').value='';
- resetReplay();clearDevices();clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
+ resetReplay();clearDevices(true);clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
  for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip','route-check-country-class'])$(id).value='';
  $('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';
  clearSourceSnapshot();
@@ -836,8 +837,52 @@ function showInventory(view){
  if(!restrictionList.children.length)textItem(restrictionList,'Ограничения не возвращены.');
  $('inventory-view').hidden=false;
 }
-function clearDevices(){
+function clearDevices(dropPreferences=false){
+ devicesEpoch++;
  devicesNext='';deviceIds=new Set();$('device-rows').replaceChildren();$('devices-status').textContent='';$('devices-region').hidden=true;$('more-devices').hidden=true;
+ $('device-filters').hidden=true;
+ if(dropPreferences){
+  deviceFavorites.clear();
+  $('device-search').value='';
+  $('device-filter').value='all';
+ }
+}
+function filterDevices(){
+ const query=$('device-search').value.trim().toLowerCase(),mode=$('device-filter').value;
+ let visible=0;
+ for(const row of $('device-rows').children){
+  const id=row.dataset.id;
+  const matchesMode=mode==='all'||mode==='attention'&&row.dataset.attention==='true'||mode==='favorites'&&deviceFavorites.has(id);
+  row.hidden=!matchesMode||!id.toLowerCase().includes(query);
+  if(!row.hidden)visible++;
+ }
+ $('devices-region').hidden=visible===0;
+ $('device-filters').hidden=!deviceIds.size;
+ if(!deviceIds.size){
+  $('devices-status').textContent='Доступных устройств нет. Проверьте назначение и срок доступа.';
+ }else if(!query&&mode==='all'){
+  $('devices-status').textContent=`Загружено устройств: ${deviceIds.size}.`;
+ }else{
+  $('devices-status').textContent=`Найдено среди загруженных: ${visible} из ${deviceIds.size}.`+(devicesNext?' Можно загрузить ещё.':'');
+ }
+}
+function favoriteButton(id){
+ const button=actionButton();
+ button.type='button';
+ button.setAttribute('aria-label',`Избранное для ${id}`);
+ const update=()=>{
+  const saved=deviceFavorites.has(id);
+  button.textContent=saved?'В избранном':'В избранное';
+  button.setAttribute('aria-pressed',String(saved));
+ };
+ button.onclick=()=>{
+  if(!authenticated||busy||pending||!deviceIds.has(id))return;
+  if(deviceFavorites.has(id))deviceFavorites.delete(id);else deviceFavorites.add(id);
+  update();filterDevices();
+  if(button.closest('tr')?.hidden)$('device-filter').focus();
+ };
+ update();
+ return button;
 }
 const deviceReportStates={not_issued:'Политика не выдана',awaiting_report:'Ожидается отчёт',historical:'Архивный отчёт',reported:'Отчёт о выданной политике'};
 const deviceOutcomes={committed:'Применена',degraded:'Применена частично',rolled_back:'Откат'};
@@ -847,10 +892,12 @@ async function loadDevices(more=false){
  const after=more?devicesNext:'';
  if(more&&!after)throw Error('invalid');
  if(!more)clearDevices();
+ const epoch=devicesEpoch;
  $('devices-disclosure').open=true;
  $('devices-status').textContent='Загружаем устройства…';
  try{
   const page=await action('configuration.devices.list',{after});
+  if(epoch!==devicesEpoch||!authenticated)return;
   if(!closedObject(page,['devices','next','observedAtMs'])||!Array.isArray(page.devices)||page.devices.length>32||typeof page.next!=='string'||page.next&&!deviceID.test(page.next)||!Number.isSafeInteger(page.observedAtMs)||page.observedAtMs<1)throw Error('invalid');
   const seen=more?new Set(deviceIds):new Set();let previous=after;
   for(const row of page.devices){
@@ -868,16 +915,20 @@ async function loadDevices(more=false){
   for(const row of page.devices){
    const tr=document.createElement('tr'),cell=document.createElement('td'),open=actionButton();
    open.type='button';open.textContent=row.device;open.setAttribute('aria-label',`Открыть устройство ${row.device}`);
-   open.onclick=()=>work(async()=>{$('inventory-device').value=row.device;await loadInventory();});cell.append(open);tr.append(cell);
+   open.onclick=()=>work(async()=>{$('inventory-device').value=row.device;await loadInventory();});
+   cell.append(open,favoriteButton(row.device));tr.append(cell);
+   tr.dataset.id=row.device;tr.dataset.attention=String(row.report.state==='reported'&&['degraded','rolled_back'].includes(row.report.outcome));
    const report=row.report;const label=report.outcome?`${deviceReportStates[report.state]} · ${deviceOutcomes[report.outcome]}`:deviceReportStates[report.state];
    for(const value of [row.desiredRevision?String(row.desiredRevision):'Слои не назначены',row.policyRevision?String(row.policyRevision):'Не выдана',label,report.receivedAtMs?inventoryDate(report.receivedAtMs):'—']){const td=document.createElement('td');td.textContent=value;tr.append(td);}
    fragment.append(tr);
   }
   if(!more)$('device-rows').replaceChildren();$('device-rows').append(fragment);
-  deviceIds=seen;devicesNext=page.next;$('devices-region').hidden=!deviceIds.size;$('more-devices').hidden=!devicesNext;
-  $('devices-status').textContent=deviceIds.size?`Загружено устройств: ${deviceIds.size}.`:'Доступных устройств нет. Проверьте назначение и срок доступа.';
+  deviceIds=seen;devicesNext=page.next;$('more-devices').hidden=!devicesNext;
+  if(!devicesNext)for(const id of deviceFavorites)if(!seen.has(id))deviceFavorites.delete(id);
+  filterDevices();
  }catch(error){
-  clearDevices();
+  if(epoch!==devicesEpoch||!authenticated){if(['login','denied'].includes(error.message))throw error;return;}
+  clearDevices(true);
   $('devices-status').textContent=error.message==='invalid'?'Сервер вернул некорректный список. Устройства скрыты.':'Список устройств недоступен. Можно открыть карточку по ID.';
   if(['login','denied'].includes(error.message))throw error;
  }
@@ -1328,6 +1379,8 @@ async function saveSource(){
 }
 $('login').onclick=()=>work(async()=>{const device=linkedDevice();const result=await request('/login',device?{device}:{});const target=new URL(result.url);if(target.protocol!=='https:'&&!(location.hostname==='127.0.0.1'&&target.protocol==='http:'&&target.hostname==='127.0.0.1'))throw Error('invalid');location.assign(target.href);});
 $('logout').onclick=()=>work(async()=>{try{await request('/logout',{});}finally{authenticated=false;erase();if(linkedDevice())history.replaceState(null,'','/#inventory-title');}status('Вы вышли. Локальная копия черновика очищена.');});
+$('device-search').oninput=filterDevices;
+$('device-filter').onchange=filterDevices;
 $('refresh-devices').onclick=()=>work(()=>loadDevices());
 $('invite-reauth').onclick=()=>{
  if(!authenticated||!reauthenticationAvailable||busy)return;
