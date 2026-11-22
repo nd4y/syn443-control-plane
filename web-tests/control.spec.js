@@ -942,9 +942,12 @@ test('console shell keeps the active section and keyboard focus visible on deskt
  await expect.poll(()=>rgbContrast(page.locator('#logout'),'.masthead')).toBeGreaterThanOrEqual(4.5);
  await page.screenshot({path:'test-results/console-visual/desktop.png',animations:'disabled'});
  const skip=page.getByRole('link',{name:'К рабочей области'});
+ const historyBeforeSkip=await page.evaluate(()=>history.length);
  await skip.focus();
  await skip.press('Enter');
  await expect(page.locator('#workspace')).toBeFocused();
+ await expect(page).toHaveURL(/#device=device-a$/);
+ expect(await page.evaluate(()=>history.length)).toBe(historyBeforeSkip);
  const sources=nav.getByRole('link',{name:'Источники'});
  await sources.focus();
  await sources.press('Enter');
@@ -958,6 +961,11 @@ test('console shell keeps the active section and keyboard focus visible on deskt
   return {heading:top('sources-title'),banner:document.getElementById('status').getBoundingClientRect().bottom};
  });
  expect(geometry.heading).toBeGreaterThanOrEqual(geometry.banner);
+ await skip.focus();await skip.press('Enter');
+ await expect(page.locator('#workspace')).toBeFocused();
+ await expect(page).toHaveURL(/#sources-title$/);
+ await expect(sources).toHaveAttribute('aria-current','page');
+ await expect(page.locator('#sources-title')).toBeVisible();
  await page.goBack();
  await expect(nav.getByRole('link',{name:'Устройства'})).toHaveAttribute('aria-current','page');
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();

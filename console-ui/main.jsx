@@ -171,10 +171,18 @@ function SignIn() {
   );
 }
 
+function focusWorkspace(event) {
+  if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  const workspace = document.getElementById('workspace');
+  if (!workspace || workspace.hidden) return;
+  event.preventDefault();
+  workspace.focus();
+}
+
 function Console() {
   return (
     <>
-      <a className="skip-link" href="#workspace" id="skip-workspace" hidden>
+      <a className="skip-link" href="#workspace" id="skip-workspace" onClick={focusWorkspace} hidden>
         К рабочей области
       </a>
       <Header />
