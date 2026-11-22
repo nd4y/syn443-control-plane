@@ -169,6 +169,42 @@ test('full inventory prefix search finds a later authorized device without walki
  await expect(search).toBeFocused();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
+test('device favorites survive unrelated prefix searches and expire when their own scope is empty',async({page,request})=>{
+ await reset(request);
+ await page.setViewportSize({width:360,height:800});
+ await page.goto(origin);
+ const favorite=page.getByRole('button',{name:'Избранное для device-a',exact:true});
+ const search=page.locator('#device-search');
+ const clear=page.locator('#clear-device-prefix');
+ const rows=page.locator('#device-rows tr');
+ await favorite.click();
+ await expect(favorite).toHaveAttribute('aria-pressed','true');
+ await search.fill('other');
+ await search.press('Enter');
+ await expect(page.locator('#devices-status')).toContainText('«other»');
+ await expect(rows).toHaveCount(0);
+ await clear.click();
+ await expect(favorite).toHaveAttribute('aria-pressed','true');
+ await page.getByLabel('Показать',{exact:true}).selectOption('favorites');
+ await expect(page.locator('#device-rows tr:visible')).toHaveCount(1);
+ await page.getByRole('button',{name:'Открыть устройство device-a',exact:true}).click();
+ await expect(page.locator('#inventory-status')).toHaveText('Конфигурация загружена.');
+ await page.locator('#devices-disclosure > summary').click();
+ await page.route('**/control/action',async route=>{
+  const op=route.request().postDataJSON();
+  if(op.action!=='configuration.devices.list'||op.payload.prefix!=='DEV')return route.continue();
+  const response=await route.fetch({postData:{...op,payload:{after:'',prefix:'absent'}}});
+  return route.fulfill({response});
+ });
+ await search.fill('DEV');await search.press('Enter');
+ await expect(page.locator('#devices-status')).toContainText('«DEV»');
+ await expect(rows).toHaveCount(0);
+ await clear.click();
+ await page.getByLabel('Показать',{exact:true}).selectOption('all');
+ await expect(favorite).toHaveAttribute('aria-pressed','false');
+ await expect(page.locator('#device-rows tr:visible')).toHaveCount(1);
+});
+
 test('remote device search rejects an answer belonging to a different prefix',async({page,request})=>{
  await reset(request);await page.goto(origin);await expect(page.locator('#device-rows tr')).toHaveCount(1);
  await page.route('**/control/action',async route=>{
