@@ -136,14 +136,19 @@ func (f *fixture) token(fields url.Values) reply {
 }
 func (f *fixture) proof(endpoint string, key *ecdsa.PrivateKey) string {
 	f.t.Helper()
+	return signFixtureProof(f.t, key, identity.ProofClaims{Jti: random(), Htm: "POST", Htu: endpoint, Iat: time.Now().Unix(), Nonce: f.mobileNonce})
+}
+
+func signFixtureProof(t *testing.T, key *ecdsa.PrivateKey, proof identity.ProofClaims) string {
+	t.Helper()
 	header, _ := json.Marshal(map[string]any{"typ": "dpop+jwt", "alg": "ES256", "jwk": identity.PublicJWK(&key.PublicKey)})
-	claims, _ := json.Marshal(identity.ProofClaims{Jti: random(), Htm: "POST", Htu: endpoint, Iat: time.Now().Unix(), Nonce: f.mobileNonce})
+	claims, _ := json.Marshal(proof)
 	b64 := base64.RawURLEncoding
 	input := b64.EncodeToString(header) + "." + b64.EncodeToString(claims)
 	sum := sha256.Sum256([]byte(input))
 	r, s, e := ecdsa.Sign(rand.Reader, key, sum[:])
 	if e != nil {
-		f.t.Fatal("proof signing")
+		t.Fatal("proof signing")
 	}
 	return input + "." + b64.EncodeToString(append(r.FillBytes(make([]byte, 32)), s.FillBytes(make([]byte, 32))...))
 }

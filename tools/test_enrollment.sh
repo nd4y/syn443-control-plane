@@ -28,6 +28,12 @@ for ((i=0; i<45; i++)); do
 done
 if [ "$ready" != true ]; then echo 'Temporary PostgreSQL fixture did not become ready'; exit 1; fi
 
+if [[ "${1:-}" == keycloak ]]; then
+  [[ "$#" == 1 && -n "${SYN443_TEST_ISSUER:-}" ]]
+  go test -tags keycloak -race -count=1 -timeout=4m -v ./integration/keycloak
+  exit 0
+fi
+
 # Only the disposable PostgreSQL container receives this short-lived server key.
 # Both trust files and credentials remain outside the checkout and CI artifacts.
 (

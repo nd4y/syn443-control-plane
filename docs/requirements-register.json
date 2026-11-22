@@ -2965,8 +2965,12 @@
     {
       "id": "AC01",
       "specRow": " Два пользователя и несколько устройств входят через Keycloak | У каждого своя выдача; попытка прочитать чужую отклоняется |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "integration/keycloak/personal_issuance_test.go",
+        "tools/test_keycloak.sh",
+        "tools/check_web_image_acceptance.py"
+      ]
     },
     {
       "id": "AC02",

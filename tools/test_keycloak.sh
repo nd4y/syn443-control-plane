@@ -35,4 +35,4 @@ if [ "$ready" != true ]; then
   docker logs "$container_id" 2>&1 | python3 -c 'import os,sys; s=sys.stdin.read(); p=os.environ["KC_BOOTSTRAP_ADMIN_PASSWORD"]; print(s.replace(p,"[redacted]")[-8000:])'
   exit 1
 fi
-go test -tags keycloak -race -count=1 -timeout=3m -v ./integration/keycloak
+bash tools/test_enrollment.sh keycloak
