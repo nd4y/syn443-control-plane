@@ -9,7 +9,9 @@ addresses, headers, raw errors, credentials and log attachments have no fields.
 
 The SQL intake is insert-only for events. The primary key deduplicates event
 IDs per device, and a separate counter limits ingestion to 256 events per
-device per hour, including retry attempts. The API cannot read event bodies.
+device per hour, including retry attempts. The API cannot read event bodies. Exhausting the per-device quota returns HTTP 429
+with the seconds remaining until the next UTC quota window. This delay is separate
+from address admission and temporary database pressure.
 The response acknowledges exactly the submitted event IDs in order, and is
 sent only after the transaction commits. A retry after response loss receives
 the same acknowledgement within the ingestion budget.
