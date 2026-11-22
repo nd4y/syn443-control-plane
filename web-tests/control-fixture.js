@@ -163,7 +163,7 @@ const server=http.createServer(async(req,res)=>{
  case 'configuration.preview.request':{
   const old=operations.get(body.requestId);if(old){send(old.raw===raw?200:409,old.value);break;}
   const id=body.requestId,value={id,state:'queued'},proposal=p.proposal;
-  const result={previewId:'synthetic-preview-'+id,ticket:'synthetic-ticket-for-browser-fixture',preview:{schemaVersion:1,draftId:options.previewMismatch?'different-draft':proposal.draftId,draftRevision:proposal.draftRevision,targetKind:proposal.targetKind,targetId:proposal.targetId,mode:proposal.mode,expiresAtMs:Date.now()+(options.previewExpired?-1000:120000),recipients:proposal.bundles.map(b=>({device:b.device,owner:'synthetic-user',baseRevision:b.baseRevision,baseHash:b.baseHash})),effectiveHash:'b'.repeat(64),dependencyHash:'c'.repeat(64)}};
+  const result={previewId:'synthetic-preview-'+id,ticket:'synthetic-ticket-for-browser-fixture',preview:{schemaVersion:1,draftId:options.previewMismatch?'different-draft':proposal.draftId,draftRevision:proposal.draftRevision,targetKind:proposal.targetKind,targetId:proposal.targetId,mode:proposal.mode,expiresAtMs:Date.now()+(options.previewExpired?-1000:120000),recipients:proposal.bundles.map(b=>({device:b.device,owner:b.device==='device-b'?'synthetic-second':'synthetic-user',baseRevision:b.baseRevision,baseHash:b.baseHash})),effectiveHash:'b'.repeat(64),dependencyHash:'c'.repeat(64)}};
   configurationJobs.set(id,{id,state:options.previewConflict?'rejected':'ready',error:options.previewConflict?'configuration_conflict':'',result});operations.set(id,{raw,value});send(200,value);break;
  }
  case 'configuration.publish':{
