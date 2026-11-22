@@ -11,6 +11,10 @@ Snapshot updated on 2026-11-22. Specification 0.9 contains 292 requirements and 
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
 
+## Subscription chain replacement (AC04)
+
+The Control Plane verifies AC04 through the subscription worker, persisted source snapshots and the configuration publisher. When the first hop disappears from a six-profile feed, the previous snapshot remains active. Manual approval of the candidate conflicts while the published chain still uses the missing profile. After the administrator publishes a replacement, the same candidate can be promoted and the retained exit stays available. Four PostgreSQL cases passed on the reviewed source and again on protected main. [Integration fixture](../internal/deviceprovisioning/profile_dependencies_postgres_test.go) · [Source run](https://github.com/nd4y/syn443-control-plane/actions/runs/45008915397) · [Protected run](https://github.com/nd4y/syn443-control-plane/actions/runs/45011456943)
+
 ## Enrollment and overlay evidence
 
 The invitation link parser authenticates the service descriptor before discovery. The PostgreSQL tests follow an approved claim through publication into an ordinary device session. They also exercise an unavailable invitation database, prevent reassignment of an existing key and check that a revoked approval cannot complete publication. These tests cover the server portion of BOOT-02 and BOOT-03. Resolving the identity provider, reaching the enrollment API on a restricted network and fetching a usable first policy require separate network acceptance. [Invitation tests](../internal/invitation/boundaries_postgres_test.go) · [Publication tests](../internal/deviceprovisioning/invitations_postgres_test.go)
