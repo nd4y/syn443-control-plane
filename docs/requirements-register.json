@@ -2032,8 +2032,15 @@
     {
       "id": "MOB-06",
       "text": "Мобильная панель пригодна для работы одной рукой: поиск, избранные устройства, фильтр неисправных, короткий путь к смене политики/проверке/откату. Операции с нескольких экранов сохраняются серверным черновиком; возврат из браузера не теряет локальные правки и задание.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "console-ui/workspace.jsx",
+        "internal/chatweb/assets/control/app.js",
+        "web-tests/control-devices.spec.js",
+        "internal/deviceprovisioning/device_inventory_postgres_test.go"
+      ],
+      "implementationScope": "The PatternFly console searches loaded, authorized device IDs, filters current degraded and rolled-back activation reports, and keeps explicit favorites in memory in the current tab. Pagination and card selection work with the keyboard on a narrow display. An explicit case-insensitive ID prefix search runs on the server across all permitted devices before pagination. Every returned row retains the card ACL and account and device validity checks.",
+      "remainingScope": "Cross-session favorites, direct maintenance actions and physical mobile UX acceptance."
     },
     {
       "id": "MOB-07",

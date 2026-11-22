@@ -349,3 +349,10 @@ condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"chat-openapi\.json": "8b26f61450e695efb53ce7cd94db7960c62616100656a57c6ec68eb472986a39",?\s*$''']
+
+[[rules.allowlists]]
+description = "Verified public control contract digest for authorized device prefix search"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "dad386d4ee1fd9ad4404cb8764005750beaf4d37443709dfab87885cd28054af",?\s*$''']

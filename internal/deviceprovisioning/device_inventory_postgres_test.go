@@ -160,15 +160,15 @@ func TestDeviceInventorySeparatesReportedHistoricalAndUnissuedPolicies(t *testin
 func TestDeviceInventoryRefusesExpiredAuthorityCancellationAndUnauditedReads(t *testing.T) {
 	n, c, _ := deviceInventoryFixture(t)
 	request := identity.Hash([]byte("device-list-boundary"))
-	if _, e := c.deviceInventory(context.Background(), n.actor.ID, "", request, n.f.now.Unix(), n.f.now); !errors.Is(e, enrollment.ErrDenied) {
+	if _, e := c.deviceInventory(context.Background(), n.actor.ID, "", "", request, n.f.now.Unix(), n.f.now); !errors.Is(e, enrollment.ErrDenied) {
 		t.Fatal("expired authority", e)
 	}
-	if _, e := c.deviceInventory(nil, n.actor.ID, "", request, n.f.now.Unix()+300, n.f.now); !errors.Is(e, enrollment.ErrUnavailable) {
+	if _, e := c.deviceInventory(nil, n.actor.ID, "", "", request, n.f.now.Unix()+300, n.f.now); !errors.Is(e, enrollment.ErrUnavailable) {
 		t.Fatal("missing context", e)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, e := c.deviceInventory(ctx, n.actor.ID, "", request, n.f.now.Unix()+300, n.f.now); !errors.Is(e, enrollment.ErrUnavailable) {
+	if _, e := c.deviceInventory(ctx, n.actor.ID, "", "", request, n.f.now.Unix()+300, n.f.now); !errors.Is(e, enrollment.ErrUnavailable) {
 		t.Fatal("cancelled discovery", e)
 	}
 	if _, e := fixtureOwner.Exec(`REVOKE INSERT ON catalog_audit FROM syn443_control_api`); e != nil {
@@ -192,7 +192,7 @@ func TestDeviceInventoryRechecksAuthorityAfterWaitingForDeviceLock(t *testing.T)
 	}
 	done := make(chan error, 1)
 	go func() {
-		_, e := c.deviceInventory(context.Background(), n.actor.ID, "", identity.Hash([]byte("delayed device list")), n.f.now.Unix()+1, n.f.now)
+		_, e := c.deviceInventory(context.Background(), n.actor.ID, "", "", identity.Hash([]byte("delayed device list")), n.f.now.Unix()+1, n.f.now)
 		done <- e
 	}()
 	deadline := time.Now().Add(time.Second)
@@ -218,5 +218,55 @@ func TestDeviceInventoryRechecksAuthorityAfterWaitingForDeviceLock(t *testing.T)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("device discovery exceeded its deadline")
+	}
+}
+
+func TestDeviceInventorySearchMatchesAuthorizedLiteralPrefixBeforePagination(t *testing.T) {
+	n, c, _ := deviceInventoryFixture(t)
+	f := storedLayersFixture{n: n}
+	for i := 0; i < 35; i++ {
+		seedConfigurationDevice(t, f, fmt.Sprintf("a-%02d", i), true)
+	}
+	for _, id := range []string{"z_A", "z_A-1", "z_a-2", "zBa", "z_hidden"} {
+		seedConfigurationDevice(t, f, id, true)
+	}
+	if _, err := fixtureOwner.Exec(`DELETE FROM catalog_acl WHERE actor=$1`, n.actor.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixtureOwner.Exec(`INSERT INTO catalog_acl(actor,action,target_kind,target_id,expires)
+       SELECT $1,'configuration.drafts.read','device',id,$2 FROM identity_devices
+       WHERE id <> 'z_hidden'`, n.actor.ID, n.f.now.Unix()+300); err != nil {
+		t.Fatal(err)
+	}
+	search := func(prefix any, after string) (DeviceInventory, error) {
+		payload := map[string]any{"after": after, "prefix": prefix}
+		raw, token, proof := configurationCall(t, n, c, "configuration.devices.list", identity.Hash([]byte(fmt.Sprint(prefix, after))), payload)
+		value, err := c.Dispatch(context.Background(), token, proof, raw, n.f.now)
+		if err != nil {
+			return DeviceInventory{}, err
+		}
+		return value.(DeviceInventory), nil
+	}
+	page, err := search("Z_a", "")
+	if err != nil || page.Next != "" || len(page.Devices) != 3 || page.Devices[0].Device != "z_A" ||
+		page.Devices[1].Device != "z_A-1" || page.Devices[2].Device != "z_a-2" {
+		t.Fatal("literal folded prefix was widened or truncated", err)
+	}
+	page, err = search("a-", "")
+	if err != nil || len(page.Devices) != 32 || page.Next != "a-31" {
+		t.Fatal("first search page", err)
+	}
+	page, err = search("a-", page.Next)
+	if err != nil || len(page.Devices) != 3 || page.Devices[0].Device != "a-32" || page.Next != "" {
+		t.Fatal("continuation search page", err)
+	}
+	page, err = search("z_hidden", "")
+	if err != nil || len(page.Devices) != 0 || page.Next != "" {
+		t.Fatal("foreign device exposed by search", err)
+	}
+	for _, bad := range []any{nil, "", "a%", "x/", strings.Repeat("x", 65), 7} {
+		if _, err = search(bad, ""); !errors.Is(err, enrollment.ErrDenied) {
+			t.Fatal("invalid search accepted")
+		}
 	}
 }

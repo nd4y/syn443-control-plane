@@ -105,6 +105,26 @@ function Devices() {
       <Button id="refresh-devices" variant="secondary" isDisabled>
         Обновить список
       </Button>
+      <div id="device-filters" className="device-filters" hidden>
+        <div>
+          <label htmlFor="device-search">Поиск по загруженным ID</label>
+          <TextInput id="device-search" type="search" maxLength={64} autoComplete="off" spellCheck={false} />
+        </div>
+        <div>
+          <label htmlFor="device-filter">Показать</label>
+          <Select id="device-filter" defaultValue="all">
+            <option value="all">Все устройства</option>
+            <option value="attention">Проблемы применения</option>
+            <option value="favorites">Избранные в этой вкладке</option>
+          </Select>
+        </div>
+        <Button id="search-all-devices" type="button" variant="secondary" isDisabled>
+          Найти по началу ID во всей базе
+        </Button>
+        <Button id="clear-device-prefix" type="button" variant="link" hidden>
+          Сбросить поиск по базе
+        </Button>
+      </div>
       <p id="devices-status" role="status" aria-atomic="true"></p>
       <div id="devices-region" className="device-list-scroll" role="region" aria-label="Доступные устройства" tabIndex={0} hidden>
         <table className="pf-v6-c-table pf-m-compact">

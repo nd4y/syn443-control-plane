@@ -96,10 +96,12 @@ const server=http.createServer(async(req,res)=>{
   send(200,{device,observedAtMs:now,state,report});break;
  }
  case 'configuration.devices.list':{
-  if(Object.keys(p).some(k=>k!=='after')||typeof(p.after??'')!=='string'){send(400,{});break;}
+  if(Object.keys(p).some(k=>!['after','prefix'].includes(k))||typeof(p.after??'')!=='string'||('prefix' in p&&!/^[A-Za-z0-9_-]{1,64}$/.test(p.prefix))){send(400,{});break;}
   const row=id=>({device:id,policyRevision:23,desiredRevision:7,report:{state:'historical',policyRevision:22,outcome:'rolled_back',activePolicyRevision:21,receivedAtMs:1800000000000}});
   let devices=options.emptyDevices?[]:[row('device-a')],next='';
-  if(options.devicePages){devices=p.after?[row('device-a')]:Array.from({length:32},(_,i)=>row('device-'+String(i).padStart(2,'0')));if(!p.after)next='device-31';}
+  if(options.devicePages)devices=[...Array.from({length:32},(_,i)=>row('device-'+String(i).padStart(2,'0'))),row('device-a')];
+  devices=devices.filter(v=>v.device>(p.after||'')&&(!p.prefix||v.device.toLowerCase().startsWith(p.prefix.toLowerCase())));
+  if(devices.length>32){devices=devices.slice(0,32);next=devices.at(-1).device;}
   if(options.invalidDeviceList==='duplicate')devices.push(row('device-a'));
   if(options.invalidDeviceList==='extra')devices[0].secret='<img src=x onerror="window.injected=true">';
   if(options.invalidDeviceList==='cursor')next='different-device';
