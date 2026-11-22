@@ -326,3 +326,19 @@ A phone can resume its current lease. The next time shown for a *new* download
 respects that lease, the eight-attempt limit, the job deadline and source expiry.
 Once the phone uploads the response, the history shows the server processing
 stage and its own retry budget.
+
+### Explain a connection with an unavailable hostname
+
+In the draft route preview, enter the destination IP. If the connection was made
+to a literal IP, leave the address context at its default. If DNS was encrypted
+or only an IP was observed, choose the option for an unavailable domain. The
+preview then stops at an earlier domain-dependent rule whose outcome could
+change the route. A matching CIDR can still confirm that rule, and a conflicting
+application, port or transport can rule it out. The same reasoning applies to
+IPv4 and IPv6. An IP shared by several hostnames supplies no domain evidence.
+
+The preview uses only the facts entered for this query. It performs no lookup
+and retains no destination history. DNS is reported as unknown when the hostname
+is unavailable. The DNS step is inapplicable to a connection made to a literal
+IP. OWN-04 remains partial pending equivalent evidence across live packet
+classification and portable rule sets.

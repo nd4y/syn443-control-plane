@@ -8,12 +8,13 @@ import (
 )
 
 type TrafficQuery struct {
-	Domain      string `json:"domain,omitempty"`
-	Address     string `json:"address,omitempty"`
-	Application string `json:"application,omitempty"`
-	Port        int    `json:"port,omitempty"`
-	Network     string `json:"network,omitempty"`
-	DNSType     string `json:"dnsType,omitempty"`
+	Domain            string `json:"domain,omitempty"`
+	Address           string `json:"address,omitempty"`
+	DomainUnavailable bool   `json:"domainUnavailable,omitempty"`
+	Application       string `json:"application,omitempty"`
+	Port              int    `json:"port,omitempty"`
+	Network           string `json:"network,omitempty"`
+	DNSType           string `json:"dnsType,omitempty"`
 }
 
 func (TrafficQuery) String() string   { return "TrafficQuery([redacted])" }
@@ -63,7 +64,7 @@ func destinationMatch(q TrafficQuery, address netip.Addr, h HostMatch, prefixes 
 		return confirmedMatch
 	}
 	out := noMatch
-	if hasDomain && q.Domain == "" && !address.IsValid() {
+	if hasDomain && q.Domain == "" && (!address.IsValid() || q.DomainUnavailable) {
 		out = missingFact
 	}
 	if q.Domain != "" {
@@ -128,6 +129,7 @@ func ruleDecision(match ruleMatch, rule, target string) RuleDecision {
 func ExplainTraffic(s NetworkSettings, final string, q TrafficQuery) (TrafficExplanation, error) {
 	var result TrafficExplanation
 	if s.SchemaVersion != 1 || !id.MatchString(final) || !id.MatchString(s.DNSFinal) || len(s.Rules) > 128 || len(s.DNSRules) > 64 ||
+		q.DomainUnavailable && (q.Address == "" || q.Domain != "") ||
 		q.Domain == "" && q.Address == "" && q.Application == "" || q.Port < 0 || q.Port > 65535 ||
 		q.Network != "" && q.Network != "tcp" && q.Network != "udp" || q.DNSType != "" && !validDNSQueryType(q.DNSType) ||
 		q.Application != "" && (len(q.Application) > 255 || !androidPackage.MatchString(q.Application)) {
@@ -171,11 +173,11 @@ func ExplainTraffic(s NetworkSettings, final string, q TrafficQuery) (TrafficExp
 	if result.Route.Status == "" {
 		result.Route = RuleDecision{Status: "default", Target: final}
 	}
-	if q.Domain == "" && address.IsValid() {
-		result.DNS = RuleDecision{Status: "not_applicable"}
-	}
-	if q.Domain == "" && !address.IsValid() {
+	if q.Domain == "" {
 		result.DNS = RuleDecision{Status: "incomplete"}
+		if address.IsValid() && !q.DomainUnavailable {
+			result.DNS = RuleDecision{Status: "not_applicable"}
+		}
 	}
 	clear(seen)
 	for _, rule := range s.DNSRules {
