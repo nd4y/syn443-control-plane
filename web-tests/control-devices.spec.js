@@ -99,12 +99,13 @@ test('phone attention filter distinguishes current degraded and rollback receipt
  await page.route('**/control/action',async route=>{
   if(route.request().postDataJSON().action!=='configuration.devices.list')return route.continue();
   const item=(device,state,outcome)=>({device,desiredRevision:7,policyRevision:23,report:outcome?
-   {state,outcome,receivedAtMs:1800000000000,policyRevision:state==='historical'?22:23,activePolicyRevision:22}:{state}});
+   {state,outcome,receivedAtMs:1800000000000,policyRevision:state==='historical'?22:23,activePolicyRevision:outcome==='rolled_back'?22:23}:{state,activePolicyRevision:0}});
   await route.fulfill({json:{devices:[item('device-a','historical','rolled_back'),item('device-b','reported','degraded'),
    item('device-c','reported','rolled_back'),item('device-d','reported','committed'),item('device-e','awaiting_report')],
    next:'',observedAtMs:1800000000000}});
  });
- await page.goto(origin);const filter=page.getByLabel('Показать',{exact:true});await filter.selectOption('attention');
+ await page.goto(origin);await expect(page.locator('#device-rows tr')).toHaveCount(5);
+ const filter=page.getByLabel('Показать',{exact:true});await filter.selectOption('attention');
  await expect(page.locator('#device-rows tr:visible')).toHaveCount(2);
  await expect(page.locator('#device-rows tr:visible').first()).toContainText('device-b');
  await expect(page.locator('#device-rows tr:visible').last()).toContainText('device-c');
