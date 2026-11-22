@@ -286,8 +286,8 @@ func TestDeviceTelemetryIsBoundedDeduplicatedAndScopedToItsSession(t *testing.T)
 	}
 	limited := f.call(t, deviceKey, "POST", telemetryPath, first.AccessToken, first.Nonce, body)
 	expect(t, limited, http.StatusTooManyRequests)
-	if limited.Header().Get("Retry-After") == "" {
-		t.Fatal("missing bounded upload retry advice")
+	if limited.Header().Get("Retry-After") != "3600" {
+		t.Fatal("full UTC hour must be observed before retry", limited.Header().Get("Retry-After"))
 	}
 	if _, err := fixtureOwner.Exec(`UPDATE identity_telemetry_events SET received_at_ms=$2 WHERE device=$1`, first.DeviceID, f.now.Add(-telemetry.DetailRetention-time.Second).UnixMilli()); err != nil {
 		t.Fatal(err)
@@ -298,6 +298,45 @@ func TestDeviceTelemetryIsBoundedDeduplicatedAndScopedToItsSession(t *testing.T)
 	}
 	if err := fixtureOwner.QueryRow(`SELECT count(*) FROM identity_telemetry_events WHERE device=$1`, second.DeviceID).Scan(&stored); err != nil || stored != 1 {
 		t.Fatal("recent event was not retained", err)
+	}
+}
+
+func TestTelemetryRetryAdviceEndsAtTheActualSQLQuotaWindow(t *testing.T) {
+	f := newFixture(t, 1)
+	f.now = f.now.UTC().Truncate(time.Hour).Add(time.Hour - 2*time.Second)
+	f.api.Clock = func() time.Time { return f.now }
+	f.enableTelemetry(t)
+	k := key(t)
+	session, _, _ := f.register(t, k)
+	period := f.now.Truncate(time.Hour).Unix()
+	if _, err := fixtureOwner.Exec(`INSERT INTO identity_telemetry_windows(device,period,used) VALUES($1,$2,$3)`,
+		session.DeviceID, period, telemetry.EventsPerDeviceHour); err != nil {
+		t.Fatal(err)
+	}
+	batch := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 55, AlgorithmRevision: 1,
+		Events: []telemetry.Event{{ID: random(), AtMS: f.now.UnixMilli(), Kind: "vpn", Code: "online", Mode: "wifi"}}}
+	body, err := json.Marshal(batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, wait := range []string{"2", "1"} {
+		response := f.call(t, k, http.MethodPost, telemetryPath, session.AccessToken, session.Nonce, body)
+		expect(t, response, http.StatusTooManyRequests)
+		if response.Header().Get("Retry-After") != wait {
+			t.Fatal("wrong quota boundary", response.Header().Get("Retry-After"), wait)
+		}
+		f.now = f.now.Add(time.Second)
+	}
+	response := f.call(t, k, http.MethodPost, telemetryPath, session.AccessToken, session.Nonce, body)
+	expect(t, response, http.StatusOK)
+	var receipt telemetry.Receipt
+	if err := json.Unmarshal(response.Body.Bytes(), &receipt); err != nil || len(receipt.EventIDs) != 1 || receipt.EventIDs[0] != batch.Events[0].ID {
+		t.Fatal("missing event receipt at the quota boundary", err)
+	}
+	var received int64
+	if err := fixtureOwner.QueryRow(`SELECT received_at_ms FROM identity_telemetry_events WHERE device=$1 AND event_id=$2`,
+		session.DeviceID, batch.Events[0].ID).Scan(&received); err != nil || received != f.now.UnixMilli() {
+		t.Fatal("throttled attempts stored an event or the accepted attempt was lost", err)
 	}
 }
 
