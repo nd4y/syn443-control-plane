@@ -303,6 +303,8 @@ func TestDeviceTelemetryIsBoundedDeduplicatedAndScopedToItsSession(t *testing.T)
 
 func TestTelemetryLateBatchesPreserveFirstReceiptAndObservation(t *testing.T) {
 	f := newFixture(t, 1)
+	// Advance the signed requests and server admission on the same fixture clock.
+	f.api.Clock = func() time.Time { return f.now }
 	f.enableTelemetry(t)
 	k := key(t)
 	session, _, _ := f.register(t, k)
