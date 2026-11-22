@@ -204,10 +204,12 @@ console administrator has no telemetry grant. A rejected console identity or
 revoked console access still uses the existing session or authorization
 failure. The browser clears administrative state in that case.
 
-The UI distinguishes an unavailable hour from an available aggregate and shows
-the mean duration only for timed events. It keeps the result in page memory and
-clears it when the selected hour changes, on logout and on session expiry.
-The console is a read-only operational view.
+The administrative table shows the number of events and the number with a
+duration measurement next to each mean. The selected UTC hour can change
+while a report is loading. Changing it discards the earlier response, including
+when the operator returns to the original hour. Repeated buckets and totals
+above the 100,000-event hourly limit invalidate the entire report. Missing
+data stays unknown. The table contains no device-level success rate.
 
 Enabling ingestion does not turn on Android uploads without device consent.
 End-to-end delivery, live scheduling, cohort comparisons, incident analysis,

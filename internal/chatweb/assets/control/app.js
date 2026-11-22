@@ -505,7 +505,8 @@ function controls(){
  }
  $('console-shell').classList.toggle('signed-in',authenticated);
  for(const id of ['load-sources','load-inventory','open-draft','save-draft','new-draft','new-source','save-source'])$(id).disabled=busy||!authenticated||!!pending;
- for(const id of ['telemetry-hour','load-telemetry'])$(id).disabled=busy||!authenticated;
+ $('telemetry-hour').disabled=!authenticated;
+ $('load-telemetry').disabled=busy||!authenticated;
  for(const id of sourceFields)$(id).disabled=busy||!authenticated||!!pending||sourceIdentity&&['source-id','source-owner','source-mode','source-resource','source-external'].includes(id);
  const deviceSource=$('source-mode').value==='device';
  $('source-device-settings').hidden=!deviceSource;
@@ -597,25 +598,33 @@ export async function sendInvitation(body,signal){
  finally{controls();}
 }
 const action=(name,payload,signal)=>request('/control/action',envelope(name,payload),signal);
+let telemetryEpoch=0;
 function clearTelemetry(){
+ telemetryEpoch++;
  $('telemetry-status').textContent='';$('telemetry-rows').replaceChildren();$('telemetry-view').hidden=true;
 }
 $('telemetry-hour').value=new Date(Math.floor(Date.now()/3600000-2)*3600000).toISOString().slice(0,16);
+$('telemetry-hour').oninput=clearTelemetry;
 $('telemetry-hour').onchange=clearTelemetry;
 $('telemetry-form').onsubmit=event=>{
  event.preventDefault();
  if(!authenticated||busy)return;
  clearTelemetry();
- const hour=$('telemetry-hour').value+'Z';
+ const hour=$('telemetry-hour').value+'Z',epoch=telemetryEpoch;
  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:00Z$/.test(hour)){$('telemetry-status').textContent='Укажите начало часа без минут.';return;}
  void work(async()=>{
   try{
    const report=await action('telemetry.summary.get',{hour});
+   if(!authenticated||epoch!==telemetryEpoch)return;
    if(report?.schemaVersion!==1||report.hourStartMs!==Date.parse(hour)||!Array.isArray(report.rows)||report.rows.length>256||report.available!==(report.rows.length>0))throw Error('network');
    if(!report.available){$('telemetry-status').textContent='За этот час нет готовой сводки.';return;}
-   const rows=document.createDocumentFragment();
+   const rows=document.createDocumentFragment(),buckets=new Set();
+   let total=0;
    for(const row of report.rows){
     if(!row||![row.kind,row.code,row.mode].every(s=>typeof s==='string'&&/^[a-z0-9_]{1,48}$/.test(s))||![row.events,row.timed,row.duration].every(Number.isSafeInteger)||row.events<=0||row.timed<0||row.timed>row.events||row.duration<0||row.duration>row.timed*600000)throw Error('network');
+    const bucket=[row.kind,row.code,row.mode].join('/');
+    if(buckets.has(bucket)||row.events>100000-total)throw Error('network');
+    buckets.add(bucket);total+=row.events;
     const baseline=row.baselineReselections??0,conservative=row.conservativeReselections??0,adaptive=row.adaptiveReselections===undefined?0:row.adaptiveReselections;
     if(![baseline,conservative,adaptive].every(Number.isSafeInteger)||baseline<0||conservative<0||adaptive<0||
       baseline>row.events||conservative>row.events-baseline||adaptive>row.events-baseline-conservative||
@@ -624,7 +633,7 @@ $('telemetry-form').onsubmit=event=>{
     const counts=adaptive?(baseline||conservative?`${legacyCounts}, адаптивный: ${adaptive}`:`адаптивный: ${adaptive}`):
       (baseline||conservative?legacyCounts:'—');
     const tr=document.createElement('tr');
-    for(const value of [row.kind,row.code,row.mode,row.events,row.timed?`${Math.round(row.duration/row.timed)} мс`:'—',counts]){
+    for(const value of [row.kind,row.code,row.mode,row.events,row.timed,row.timed?`${Math.round(row.duration/row.timed)} мс`:'—',counts]){
      const cell=document.createElement('td');cell.textContent=value;tr.append(cell);
     }
     rows.append(tr);
@@ -632,6 +641,7 @@ $('telemetry-form').onsubmit=event=>{
    $('telemetry-rows').append(rows);$('telemetry-view').hidden=false;
    $('telemetry-status').textContent='Сводка за '+hour;
   }catch(error){
+   if(epoch!==telemetryEpoch&&!['login','denied'].includes(error.message))return;
    $('telemetry-status').textContent=({not_found:'Нет доступа к сводкам или просмотр выключен.',denied:'Доступ к панели отозван или недостаточно прав.',login:'Сессия завершена. Войдите снова.',invalid:'Час недоступен. Выберите завершившийся час за последние 180 суток.'})[error.message]||'Не удалось загрузить сводку.';
   }
  });

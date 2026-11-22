@@ -988,6 +988,7 @@ function Telemetry() {
                 <th scope="col">Результат</th>
                 <th scope="col">Режим</th>
                 <th scope="col">Число событий</th>
+                <th scope="col">События с замером</th>
                 <th scope="col">Среднее время</th>
                 <th scope="col">Переключения по алгоритмам</th>
               </tr>
