@@ -46,7 +46,7 @@ test('hourly telemetry distinguishes data empty and mismatched reports and clear
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
  await expect(status).toHaveText('Сводка за 2026-01-02T01:00Z');
- await expect(rows.locator('td')).toHaveText(['probe','ok','wifi','3','26 мс','—']);
+ await expect(rows.locator('td')).toHaveText(['probe','ok','wifi','3','2','26 мс','—']);
  await hour.fill('2026-01-02T02:00');await button.click();
  await expect(status).toContainText('нет готовой сводки');await expect(rows).toHaveText('');
  await hour.fill('2026-01-02T03:00');await button.click();
@@ -58,12 +58,47 @@ test('hourly telemetry distinguishes data empty and mismatched reports and clear
  await expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
 });
 
+test('mobile telemetry discards delayed data and errors after selecting an hour again',async({page,request})=>{
+ await page.setViewportSize({width:393,height:852});await reset(request);await page.goto(origin+'/#telemetry-title');
+ const hour=page.locator('#telemetry-hour'),load=page.locator('#load-telemetry'),status=page.locator('#telemetry-status'),rows=page.locator('#telemetry-rows');
+ await expect(load).toBeEnabled();
+ for(const code of [200,500]){
+  let entered,finish;const started=new Promise(r=>entered=r),hold=new Promise(r=>finish=r);
+  const handler=async route=>{
+   if(route.request().postDataJSON().action!=='telemetry.summary.get')return route.fallback();
+   entered();await hold;
+   await route.fulfill({status:code,json:{schemaVersion:1,hourStartMs:Date.parse('2026-01-02T01:00Z'),available:true,
+     rows:[{kind:'probe',code:'ok',mode:'wifi',events:4,timed:1,duration:22}]}});
+  };
+  await page.route('**/control/action',handler);
+  await hour.fill('2026-01-02T01:00');await load.click();await started;
+  await expect(hour).toBeEnabled();await hour.fill('2026-01-02T02:00');await hour.fill('2026-01-02T01:00');finish();
+  await expect(load).toBeEnabled();await expect(status).toBeEmpty();await expect(rows).toBeEmpty();
+  await page.unroute('**/control/action',handler);
+ }
+ await load.click();await expect(rows.locator('td')).toHaveText(['probe','ok','wifi','3','2','26 мс','—']);
+});
+test('hourly telemetry rejects duplicate buckets and totals above the server limit as a whole',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#telemetry-title');
+ const hour=page.locator('#telemetry-hour'),load=page.locator('#load-telemetry'),status=page.locator('#telemetry-status'),rows=page.locator('#telemetry-rows');
+ await expect(load).toBeEnabled();await hour.fill('2026-01-02T01:00');
+ let payload;
+ await page.route('**/control/action',async route=>{
+  if(route.request().postDataJSON().action!=='telemetry.summary.get')return route.fallback();
+  await route.fulfill({json:{schemaVersion:1,hourStartMs:Date.parse('2026-01-02T01:00Z'),available:true,rows:payload}});
+ });
+ const bucket={kind:'probe',code:'ok',mode:'wifi',events:60000,timed:0,duration:0};
+ for(const extra of [{...bucket,events:1},{...bucket,mode:'unknown',events:40001}]){
+  payload=[bucket,extra];await load.click();await expect(status).toContainText('Не удалось загрузить');await expect(rows).toBeEmpty();
+ }
+ payload=[bucket,{...bucket,mode:'unknown',events:40000}];await load.click();await expect(rows.locator('tr')).toHaveCount(2);
+});
 test('hourly route summary shows only valid counts for the two decision algorithms',async({page,request})=>{
  await reset(request,{decisionTelemetry:true});await page.goto(origin+'/#telemetry-title');
  const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows');
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
- await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','—','Базовый: 1, консервативный: 2']);
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','0','—','Базовый: 1, консервативный: 2']);
  await hour.fill('2026-01-02T04:00');await button.click();
  await expect(page.locator('#telemetry-status')).toContainText('Не удалось загрузить');
  await expect(rows).toHaveText('');
@@ -75,7 +110,7 @@ test('hourly route summary preserves legacy counts when the adaptive count is ab
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
  await expect(page.locator('#telemetry-status')).toHaveText('Сводка за 2026-01-02T01:00Z');
- await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','—','Базовый: 1, консервативный: 2']);
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','0','—','Базовый: 1, консервативный: 2']);
 });
 
 test('hourly route summary adds a positive adaptive count to the existing counts',async({page,request})=>{
@@ -83,11 +118,11 @@ test('hourly route summary adds a positive adaptive count to the existing counts
  const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows');
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
- await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','—','Базовый: 1, консервативный: 1, адаптивный: 2']);
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','0','—','Базовый: 1, консервативный: 1, адаптивный: 2']);
  await reset(request,{adaptiveTelemetry:'only'});await page.reload();
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
- await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','3','—','адаптивный: 2']);
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','3','0','—','адаптивный: 2']);
 });
 
 test('hourly route summary rejects invalid adaptive aggregates without partial stats',async({page,request})=>{
@@ -907,9 +942,12 @@ test('console shell keeps the active section and keyboard focus visible on deskt
  await expect.poll(()=>rgbContrast(page.locator('#logout'),'.masthead')).toBeGreaterThanOrEqual(4.5);
  await page.screenshot({path:'test-results/console-visual/desktop.png',animations:'disabled'});
  const skip=page.getByRole('link',{name:'К рабочей области'});
+ const historyBeforeSkip=await page.evaluate(()=>history.length);
  await skip.focus();
  await skip.press('Enter');
  await expect(page.locator('#workspace')).toBeFocused();
+ await expect(page).toHaveURL(/#device=device-a$/);
+ expect(await page.evaluate(()=>history.length)).toBe(historyBeforeSkip);
  const sources=nav.getByRole('link',{name:'Источники'});
  await sources.focus();
  await sources.press('Enter');
@@ -923,6 +961,11 @@ test('console shell keeps the active section and keyboard focus visible on deskt
   return {heading:top('sources-title'),banner:document.getElementById('status').getBoundingClientRect().bottom};
  });
  expect(geometry.heading).toBeGreaterThanOrEqual(geometry.banner);
+ await skip.focus();await skip.press('Enter');
+ await expect(page.locator('#workspace')).toBeFocused();
+ await expect(page).toHaveURL(/#sources-title$/);
+ await expect(sources).toHaveAttribute('aria-current','page');
+ await expect(page.locator('#sources-title')).toBeVisible();
  await page.goBack();
  await expect(nav.getByRole('link',{name:'Устройства'})).toHaveAttribute('aria-current','page');
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
