@@ -167,3 +167,29 @@ test('dependency preview keeps a source draft and distinguishes unknown from unu
  await page.locator('#source-dependencies-refresh').click();await expect(summary).toContainText('пока неизвестны');
  await expect(list).toBeHidden();await page.locator('#new-source').click();await expect(page.locator('#source-dependencies')).toBeHidden();
 });
+
+test('mobile quarantine distinguishes an unreadable refresh from a reviewable source version',async({page,request})=>{
+ const source={...boundSource,mode:'server',resourceId:'',externalUserId:'',state:'quarantined',activeSnapshot:'previous',candidateSnapshot:'previous'};
+ const actions=[];
+ await page.route('**/control/action',async route=>{
+  const body=route.request().postDataJSON();
+  actions.push(body.action);
+  if(body.action==='source.list')return route.fulfill({json:{sources:[source],next:''}});
+  if(body.action==='source.get')return route.fulfill({json:source});
+  return route.fallback();
+ });
+ const edit=await sourceEditorPage(page,request);
+ await edit.click();
+ await expect(page.locator('#source-version')).toContainText('Предыдущая версия профилей сохранена');
+ await expect(page.locator('#source-version')).toContainText('истории обновлений');
+ await expect(page.locator('#source-review')).toBeHidden();
+ delete source.activeSnapshot;delete source.candidateSnapshot;
+ await edit.click();
+ await expect(page.locator('#source-version')).toContainText('Опубликованных профилей пока нет');
+ await expect(page.locator('#source-version')).not.toContainText('сохранена');
+ await expect(page.locator('#source-review')).toBeHidden();
+ await page.locator('#new-source').click();
+ await expect(page.locator('#source-version')).not.toContainText('карантине');
+ expect(actions).not.toContain('source.review');
+ expect(actions).not.toContain('source.snapshot');
+});

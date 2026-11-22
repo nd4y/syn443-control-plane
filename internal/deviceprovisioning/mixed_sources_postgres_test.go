@@ -38,13 +38,13 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 		Final:     "pool",
 	}
 	var protected [][]byte
-	var malformed atomic.Bool
+	var badBody atomic.Pointer[string]
 	var feedCalls [3]atomic.Int32
 	active := map[string]string{}
 	sources := map[string]catalog.Source{}
 	foreign := n.actor
 	foreign.ID = "unassigned-reader"
-	refresh := func(tag, operation string, wantSuccess bool) {
+	refresh := func(t *testing.T, tag, operation string, wantSuccess bool) catalog.Job {
 		t.Helper()
 		source := sources[tag]
 		job, err := n.api.Queue(ctx, n.actor, tag, source.Revision, operation, nil, now)
@@ -55,6 +55,7 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 		if err != nil || got.ID != job.ID || (wantSuccess && got.Phase != "succeeded") || (!wantSuccess && got.Phase != "failed") {
 			t.Fatal("unexpected source sync", tag, got.Phase, err)
 		}
+		return got
 	}
 	for i, tag := range tags {
 		token, err := random()
@@ -75,8 +76,9 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 					http.NotFound(w, r)
 					return
 				}
-				if i == 1 && malformed.Load() {
-					fmt.Fprint(w, "<html>not a subscription</html>")
+				if body := badBody.Load(); i == 1 && body != nil {
+					w.Header().Set("Content-Type", "text/plain")
+					fmt.Fprint(w, *body)
 					return
 				}
 				fmt.Fprint(w, outbound)
@@ -122,7 +124,7 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		refresh(tag, "import-"+tag, true)
+		refresh(t, tag, "import-"+tag, true)
 		view, err := n.api.GetSnapshot(ctx, n.actor, tag, "", now)
 		if err != nil || view.Snapshot.State != "active" || len(view.Profiles) != 1 {
 			t.Fatal("missing source profile", tag, err)
@@ -133,15 +135,32 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 			t.Fatal("foreign inventory", err)
 		}
 	}
-	malformed.Store(true)
-	refresh("feed-one", "bad-refresh", false)
-	refresh("feed-two", "good-refresh", true)
-	for _, tag := range tags {
-		view, err := n.api.GetSource(ctx, n.actor, tag, now)
-		if err != nil || view.ActiveSnapshot == "" || (view.ActiveSnapshot != active[tag]) != (tag == "feed-two") ||
-			(view.State == "quarantined") != (tag == "feed-one") {
-			t.Fatal("refresh isolation", tag, err)
-		}
+	for i, response := range []struct{ name, body, reason string }{
+		{"empty", "", "subscription_empty_response"},
+		{"malformed", "http://[", "subscription_invalid"},
+		{"html", "<html>not a subscription</html>", "subscription_invalid"},
+	} {
+		t.Run(response.name, func(t *testing.T) {
+			badBody.Store(&response.body)
+			if got := refresh(t, "feed-one", "bad-"+response.name, false); got.Reason != response.reason {
+				t.Fatalf("unexpected failed job reason %q", got.Reason)
+			}
+			refresh(t, "feed-two", "good-"+response.name, true)
+			for _, tag := range tags {
+				view, err := n.api.GetSource(ctx, n.actor, tag, now)
+				if err != nil || view.ActiveSnapshot == "" || view.CandidateSnapshot != view.ActiveSnapshot ||
+					(view.ActiveSnapshot != active[tag]) != (tag == "feed-two") ||
+					(view.State == "quarantined") != (tag == "feed-one") {
+					t.Fatal("source isolation", tag, err)
+				}
+				if tag == "feed-two" {
+					active[tag] = view.ActiveSnapshot
+				}
+			}
+			if feedCalls[1].Load() != int32(i+2) || feedCalls[2].Load() != int32(i+2) {
+				t.Fatal("one independent refresh per source expected")
+			}
+		})
 	}
 	graphBody, err := json.Marshal(graph)
 	if err != nil {
@@ -202,7 +221,7 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 			seen["pool"] = true
 		}
 	}
-	if len(seen) != 4 || feedCalls[0].Load() != 2 || feedCalls[1].Load() != 2 || feedCalls[2].Load() != 2 {
+	if len(seen) != 4 || feedCalls[0].Load() != 2 || feedCalls[1].Load() != 4 || feedCalls[2].Load() != 4 {
 		t.Fatal("missing selected profile, selector or independent fetch")
 	}
 }
