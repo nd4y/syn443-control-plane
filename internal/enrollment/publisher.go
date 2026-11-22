@@ -73,6 +73,7 @@ func (g Grant) Validate(now time.Time) error {
 	// These capabilities require the approved per-device configuration.
 	// A shared grant cannot bypass rollout selection or exit-check approval.
 	if hasCapability(g.Template.RequiredCapabilities, policy.ReserveProbeCooldown) || hasCapability(g.Template.RequiredCapabilities, policy.RouteExitIP) ||
+		g.Template.DecisionBundle != "" || hasCapability(g.Template.RequiredCapabilities, policy.DecisionBundleCapability) ||
 		hasCapability(g.Template.RequiredCapabilities, policy.RouteExitCountry) || hasCapability(g.Template.RequiredCapabilities, policy.RouteDecision) ||
 		hasCapability(g.Template.RequiredCapabilities, policy.RouteAdaptiveTCP) || hasCapability(g.Template.RequiredCapabilities, policy.RouteCheckPlanV2) ||
 		hasCapability(g.Template.RequiredCapabilities, policy.RouteHTTPSStatus) || hasCapability(g.Template.RequiredCapabilities, policy.HomeWiFiProof) || hasCapability(g.Template.RequiredCapabilities, policy.NetworkModeSelection) {
@@ -281,6 +282,7 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 	}
 	var configurationFence ApprovalFence
 	var configurationSource ConfigurationSource
+	var decisionProgram *policy.FailoverProgram
 	if p.Configurations != nil {
 		prepared, prepareErr := p.Configurations.Prepare(ctx, ConfigurationTarget{Device: id, Owner: s.Owner, Thumbprint: s.Jkt, GrantHash: s.Grant, CurrentRevision: s.Revision, Capabilities: append([]string(nil), request.Capabilities...)}, now)
 		if prepareErr != nil {
@@ -297,6 +299,14 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 		}
 		configurationFence = prepared.Fence
 		configurationSource = prepared.Source
+		if prepared.DecisionProgram != nil {
+			if !caps[policy.DecisionBundleCapability] || !prepared.DecisionProgram.Valid() ||
+				payload.AlgorithmRevision != policy.ConfirmedFailoverAlgorithm || !hasCapability(payload.RequiredCapabilities, policy.RouteDecision) {
+				return ErrDenied
+			}
+			program := *prepared.DecisionProgram
+			decisionProgram = &program
+		}
 	}
 	var brokerFence ApprovalFence
 	if p.Brokers != nil {
@@ -304,6 +314,13 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 		if e != nil {
 			return e
 		}
+	}
+	if decisionProgram != nil {
+		payload.DecisionBundle, e = policy.IssueFailoverProgram(payload, *decisionProgram, p.KeyID, p.Key)
+		if e != nil {
+			return e
+		}
+		payload.RequiredCapabilities = append(payload.RequiredCapabilities, policy.DecisionBundleCapability)
 	}
 	raw, e := json.Marshal(payload)
 	if e != nil {

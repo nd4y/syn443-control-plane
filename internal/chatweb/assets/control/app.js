@@ -293,7 +293,13 @@ function drawRouteChecks(){
   decision.disabled=editor.disabled;
   decision.value=failover.decisionRevision===confirmedDecision?confirmedDecision:'';
   $('route-decision-rollout').hidden=!decision.value;
-  if(decision.value)drawDeviceRollout('route-decision',failover.decisionRollout);
+  if(decision.value){
+   drawDeviceRollout('route-decision',failover.decisionRollout);
+   const program=failover.decisionProgram;
+   $('program-revision').value=program?.revision??'';
+   $('program-confirmations').value=program?.confirmations??3;
+   $('program-interval').value=program?.minSwitchIntervalMs??60000;
+  }
   updateCohortButton();
  }
  for(const row of state.checks){
@@ -1727,7 +1733,23 @@ $('route-decision').onchange=()=>{
   const state=routeDraft(),failover=internalFailoverPlan(state);
   if(!failover)throw Error('invalid');
   if(selected===confirmedDecision)failover.decisionRevision=selected;
-  else{delete failover.decisionRevision;delete failover.decisionRollout;}
+  else{delete failover.decisionRevision;delete failover.decisionRollout;delete failover.decisionProgram;}
+  applyRouteChecks(state);
+ });
+};
+$('program-save').onclick=()=>{
+ const revision=$('program-revision').value, confirmations=Number($('program-confirmations').value);
+ const minSwitchIntervalMs=Number($('program-interval').value);
+ work(async()=>{
+  const state=routeDraft(),failover=internalFailoverPlan(state);
+  if(failover?.decisionRevision!==confirmedDecision)throw Error('invalid');
+  if(revision==='')delete failover.decisionProgram;
+  else{
+   const value=Number(revision);
+   if(!Number.isSafeInteger(value)||value<1||!Number.isInteger(confirmations)||confirmations<3||confirmations>6||
+     !Number.isInteger(minSwitchIntervalMs)||minSwitchIntervalMs<60000||minSwitchIntervalMs>300000)throw Error('invalid');
+   failover.decisionProgram={revision:value,confirmations,minSwitchIntervalMs};
+  }
   applyRouteChecks(state);
  });
 };

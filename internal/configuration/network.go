@@ -63,13 +63,14 @@ type OutboundCheckQuorum = routecheck.Quorum
 // Initial failover is explicit and scoped to an internal destination rule.
 // Public exit classes require independent exit evidence before adoption.
 type RouteFailoverPlan struct {
-	Selector             string         `json:"selector"`
-	NetworkMode          string         `json:"networkMode"`
-	Intent               string         `json:"intent"`
-	ProbeCooldown        bool           `json:"probeCooldown,omitempty"`
-	ProbeCooldownRollout *DeviceRollout `json:"probeCooldownRollout,omitempty"`
-	DecisionRevision     string         `json:"decisionRevision,omitempty"`
-	DecisionRollout      *DeviceRollout `json:"decisionRollout,omitempty"`
+	Selector             string                  `json:"selector"`
+	NetworkMode          string                  `json:"networkMode"`
+	Intent               string                  `json:"intent"`
+	ProbeCooldown        bool                    `json:"probeCooldown,omitempty"`
+	ProbeCooldownRollout *DeviceRollout          `json:"probeCooldownRollout,omitempty"`
+	DecisionRevision     string                  `json:"decisionRevision,omitempty"`
+	DecisionProgram      *policy.FailoverProgram `json:"decisionProgram,omitempty"`
+	DecisionRollout      *DeviceRollout          `json:"decisionRollout,omitempty"`
 }
 type NetworkSettings struct {
 	SchemaVersion    int                       `json:"schemaVersion"`
@@ -391,6 +392,9 @@ func routeFailover(graph CompiledGraph, settings NetworkSettings) (map[string]an
 		}
 	}
 	if plan.ProbeCooldownRollout != nil && (!plan.ProbeCooldown || !plan.ProbeCooldownRollout.valid()) {
+		return nil, ErrInvalid
+	}
+	if plan.DecisionProgram != nil && (plan.DecisionRevision != policy.ConfirmedFailoverAlgorithm || !plan.DecisionProgram.Valid()) {
 		return nil, ErrInvalid
 	}
 	if plan.DecisionRevision != "" && plan.DecisionRevision != policy.ConfirmedFailoverAlgorithm ||

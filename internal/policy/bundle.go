@@ -54,6 +54,7 @@ type Payload struct {
 	AlgorithmRevision    string   `json:"algorithmRevision"`
 	EngineConfigB64      string   `json:"engineConfigB64"`
 	ContentHash          string   `json:"contentHash"`
+	DecisionBundle       string   `json:"decisionBundle,omitempty"`
 	Activation           Gate     `json:"activation"`
 	Operation            string   `json:"operation"`
 }
@@ -98,7 +99,7 @@ func (p Payload) Validate(now time.Time) error {
 		return bad
 	}
 	caps := map[string]bool{}
-	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true, RouteAdaptiveTCP: true, RouteCheckPlanV2: true, RouteHTTPSStatus: true, HomeWiFiProof: true, NetworkModeSelection: true}
+	allowed := map[string]bool{"engine-config.v1": true, "policy.es256.v1": true, "policy.keybound.v2": true, "tun.lease.v1": true, "netbird.direct": true, "netbird.vless": true, "overlay.credentials.v1": true, "route.health.v1": true, "route.failover.v1": true, ReserveProbeCooldown: true, RouteExitIP: true, RouteExitCountry: true, RouteDecision: true, DecisionBundleCapability: true, RouteAdaptiveTCP: true, RouteCheckPlanV2: true, RouteHTTPSStatus: true, HomeWiFiProof: true, NetworkModeSelection: true}
 	if len(p.RequiredCapabilities) < 1 || len(p.RequiredCapabilities) > 16 ||
 		p.AlgorithmRevision != BaselineAlgorithm && p.AlgorithmRevision != ConfirmedFailoverAlgorithm && p.AlgorithmRevision != AdaptiveTCPAlgorithm {
 		return bad
@@ -118,6 +119,10 @@ func (p Payload) Validate(now time.Time) error {
 	engine, err := base64.RawURLEncoding.Strict().DecodeString(p.EngineConfigB64)
 	sum := sha256.Sum256(engine)
 	if err != nil || len(engine) < 1 || len(engine) > 262144 || !utf8.Valid(engine) || !json.Valid(engine) || hex.EncodeToString(sum[:]) != p.ContentHash {
+		return bad
+	}
+	if caps[DecisionBundleCapability] != (p.DecisionBundle != "") || len(p.DecisionBundle) > maxDecisionBundle ||
+		p.DecisionBundle != "" && (p.SchemaVersion != 2 || p.Operation != "configure" || p.AlgorithmRevision != ConfirmedFailoverAlgorithm || !caps[RouteDecision]) {
 		return bad
 	}
 	var extensions map[string]json.RawMessage
@@ -342,8 +347,18 @@ func Sign(raw []byte, kid string, key *ecdsa.PrivateKey, device string, revision
 	if key == nil || key.Curve != elliptic.P256() || !identifier.MatchString(kid) || p.TargetDevice != device || p.Revision != revision {
 		return "", errors.New("publication scope mismatch")
 	}
+	if err := verifyDecisionBundle(p, map[string]*ecdsa.PublicKey{kid: &key.PublicKey}, now); err != nil {
+		return "", err
+	}
 	payload, _ := Canonical(raw)
-	header, _ := Canonical([]byte(fmt.Sprintf(`{"alg":"ES256","kid":%q,"typ":"syn443-policy+jws"}`, kid)))
+	return signDocument(payload, kid, "syn443-policy+jws", key)
+}
+
+func signDocument(payload []byte, kid, kind string, key *ecdsa.PrivateKey) (string, error) {
+	header, err := Canonical([]byte(fmt.Sprintf(`{"alg":"ES256","kid":%q,"typ":%q}`, kid, kind)))
+	if err != nil {
+		return "", err
+	}
 	enc := base64.RawURLEncoding
 	input := enc.EncodeToString(header) + "." + enc.EncodeToString(payload)
 	digest := sha256.Sum256([]byte(input))

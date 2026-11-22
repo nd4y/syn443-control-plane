@@ -14,8 +14,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/configuration"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/policy"
+	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
 )
 
 func publishedConfiguration(t *testing.T, f *fixture, device string) (int64, []byte, string) {
@@ -69,6 +71,58 @@ func TestSQLPublisherUsesActualTargetCompiledDocumentAndFinalConfigurationFences
 	after, retained, _ := publishedConfiguration(t, f, session.DeviceID)
 	if after != revision || string(retained) != string(cipher) {
 		t.Fatal("outage replaced authorized publication")
+	}
+}
+
+func TestSQLPublisherSignsApprovedFailoverProgramForActualEnrolledKey(t *testing.T) {
+	f := newFixture(t, 2)
+	deviceKey := key(t)
+	capabilities := []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2", "route.health.v1", "route.failover.v1", policy.RouteDecision, policy.DecisionBundleCapability}
+	session, _, _ := f.registerWithCapabilities(t, deviceKey, capabilities)
+	thumb, _ := identity.PublicJWK(&deviceKey.PublicKey).Thumbprint()
+	members := []string{"entry", "reserve"}
+	graph, err := configuration.CompileGraph(configuration.Graph{
+		Profiles:  map[string]configuration.ProfileReference{"entry": {SourceID: "source", ProfileID: "entry"}, "reserve": {SourceID: "source", ProfileID: "reserve"}},
+		Balancers: map[string]configuration.Balancer{"internal": {Type: "selector", Members: members, Default: "entry"}}, Final: "entry",
+	}, func(ref configuration.ProfileReference) (subscriptions.Profile, error) {
+		raw, err := json.Marshal(map[string]any{"type": "http", "tag": ref.ProfileID, "server": ref.ProfileID + ".example.invalid", "server_port": 443})
+		return subscriptions.Profile{ID: ref.ProfileID, Kind: "http", Outbound: raw}, err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := policy.FailoverProgram{Revision: 7, Confirmations: 4, MinSwitchIntervalMs: 120000}
+	settings := configuration.NetworkSettings{SchemaVersion: 1, RequiredNetworks: []string{"tcp"}, DNSFinal: "system", DNSStrategy: "prefer_ipv4",
+		Rules:         []configuration.RouteRule{{ID: "home", HostMatch: configuration.HostMatch{Domains: []string{"node.home.example.invalid"}}, Networks: []string{"tcp"}, Action: "route", Outbound: "internal"}},
+		RouteFailover: &configuration.RouteFailoverPlan{Selector: "internal", NetworkMode: "wifi", Intent: "INTERNAL", DecisionRevision: policy.ConfirmedFailoverAlgorithm, DecisionProgram: &program}}
+	for _, tag := range []string{"internal", "entry", "reserve"} {
+		settings.RouteChecks = append(settings.RouteChecks, configuration.OutboundCheckPlan{Outbound: tag, Required: tag == "internal", Checks: []configuration.OutboundCheck{{Method: "tcp", Target: "node.home.example.invalid:22"}}})
+	}
+	engine, err := configuration.CompileNetwork(graph, settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared, _, _ := configuredPreparation(t)
+	prepared.EngineConfig = engine
+	prepared.AlgorithmRevision = policy.ConfirmedFailoverAlgorithm
+	prepared.DecisionProgram = &program
+	prepared.RequiredCapabilities = slices.Clone(capabilities[3:6])
+	fence := &fixtureConfigurationFence{}
+	prepared.Fence = fence
+	publisher := f.publisher()
+	publisher.Configurations = fixtureConfigurationAuthority(func(_ context.Context, target ConfigurationTarget, _ time.Time) (*PreparedConfiguration, error) {
+		if target.Device != session.DeviceID || target.Thumbprint != thumb || !slices.Contains(target.Capabilities, policy.DecisionBundleCapability) {
+			t.Fatal("wrong authenticated target")
+		}
+		return prepared, nil
+	})
+	if err = publisher.publish(context.Background(), session.DeviceID, f.now); err != nil {
+		t.Fatal(err)
+	}
+	revision, _, bundle := publishedConfiguration(t, f, session.DeviceID)
+	payload, err := policy.VerifyBound(bundle, f.api.Roots, session.DeviceID, thumb, f.now)
+	if err != nil || revision != 1 || fence.calls != 2 || payload.DecisionBundle == "" || !slices.Contains(payload.RequiredCapabilities, policy.DecisionBundleCapability) {
+		t.Fatal("bound publication or transactional fence missing", err)
 	}
 }
 

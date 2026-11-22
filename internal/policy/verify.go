@@ -28,9 +28,25 @@ func VerifyBound(envelope string, keys map[string]*ecdsa.PublicKey, device, jkt 
 func Verify(envelope string, keys map[string]*ecdsa.PublicKey, device string, now time.Time) (Payload, error) {
 	var p Payload
 	bad := errors.New("untrusted publication")
-	parts := strings.Split(envelope, ".")
-	if len(envelope) > MaxBundle || len(parts) != 3 || len(parts[0]) > 1024 {
+	payload, e := verifiedDocument(envelope, keys, "syn443-policy+jws", MaxBundle)
+	if e != nil {
 		return p, bad
+	}
+	p, e = Decode(payload, now)
+	if e != nil || p.TargetDevice != device || verifyDecisionBundle(p, keys, now) != nil {
+		return p, bad
+	}
+	return p, nil
+}
+
+func verifiedDocument(envelope string, keys map[string]*ecdsa.PublicKey, kind string, limit int) ([]byte, error) {
+	bad := errors.New("untrusted signed document")
+	if len(envelope) == 0 || len(envelope) > limit {
+		return nil, bad
+	}
+	parts := strings.SplitN(envelope, ".", 4)
+	if len(parts) != 3 || len(parts[0]) > 1024 || len(parts[2]) != base64.RawURLEncoding.EncodedLen(64) {
+		return nil, bad
 	}
 	decode := func(s string) ([]byte, error) {
 		b, e := base64.RawURLEncoding.Strict().DecodeString(s)
@@ -41,45 +57,35 @@ func Verify(envelope string, keys map[string]*ecdsa.PublicKey, device string, no
 	}
 	header, e := decode(parts[0])
 	if e != nil {
-		return p, bad
+		return nil, bad
 	}
 	canonical, e := Canonical(header)
 	if e != nil || !bytes.Equal(canonical, header) {
-		return p, bad
+		return nil, bad
 	}
-	var h struct {
-		Alg  string `json:"alg"`
-		Kid  string `json:"kid"`
-		Type string `json:"typ"`
+	var h map[string]string
+	if json.Unmarshal(header, &h) != nil || len(h) != 3 || h["alg"] != "ES256" || h["typ"] != kind || !identifier.MatchString(h["kid"]) {
+		return nil, bad
 	}
-	decoder := json.NewDecoder(bytes.NewReader(header))
-	decoder.DisallowUnknownFields()
-	if decoder.Decode(&h) != nil || h.Alg != "ES256" || h.Type != "syn443-policy+jws" || !identifier.MatchString(h.Kid) {
-		return p, bad
-	}
-	key := keys[h.Kid]
+	key := keys[h["kid"]]
 	if key == nil || key.Curve != elliptic.P256() {
-		return p, bad
+		return nil, bad
 	}
 	signature, e := decode(parts[2])
 	if e != nil || len(signature) != 64 {
-		return p, bad
+		return nil, bad
 	}
 	digest := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
 	if !ecdsa.Verify(key, digest[:], new(big.Int).SetBytes(signature[:32]), new(big.Int).SetBytes(signature[32:])) {
-		return p, bad
+		return nil, bad
 	}
 	payload, e := decode(parts[1])
 	if e != nil {
-		return p, bad
+		return nil, bad
 	}
 	canonical, e = Canonical(payload)
 	if e != nil || !bytes.Equal(canonical, payload) {
-		return p, bad
+		return nil, bad
 	}
-	p, e = Decode(payload, now)
-	if e != nil || p.TargetDevice != device {
-		return p, bad
-	}
-	return p, nil
+	return payload, nil
 }

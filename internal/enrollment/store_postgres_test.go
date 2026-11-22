@@ -208,8 +208,12 @@ func expect(t *testing.T, r *httptest.ResponseRecorder, status int) {
 }
 func (f *fixture) register(t *testing.T, key *ecdsa.PrivateKey) (Session, []byte, string) {
 	t.Helper()
+	return f.registerWithCapabilities(t, key, []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"})
+}
+func (f *fixture) registerWithCapabilities(t *testing.T, key *ecdsa.PrivateKey, capabilities []string) (Session, []byte, string) {
+	t.Helper()
 	token := f.token(key)
-	raw, _ := json.Marshal(Request{random(), identity.PublicJWK(&key.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}})
+	raw, _ := json.Marshal(Request{random(), identity.PublicJWK(&key.PublicKey), capabilities})
 	r := f.call(t, key, "POST", "/v1/devices/enroll", token, "", raw)
 	expect(t, r, 401)
 	nonce := r.Header().Get("DPoP-Nonce")
