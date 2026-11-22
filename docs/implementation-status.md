@@ -360,3 +360,19 @@ both protocol directions and the full rule budget. The PostgreSQL publisher
 test reads the terminal UDP rule from the verified device-bound envelope.
 Full per-transport traffic and address-family checks on supported physical
 devices remain open for AC08.
+
+## Android v142 and the operator console
+
+The [protected Android run](https://github.com/nd4y/syn443-android/actions/runs/45070035378)
+passed 557 JVM cases and 654 cases on each of API 29, 35 and 37. In six
+two-hop recovery trials, an independent payload succeeded after loss of either
+the entry or exit proxy. Observed recovery took 8.9 to 10.3 seconds. Android
+release packaging and the system installer cancellation path were also checked.
+These measurements cover the hosted emulators. Physical-device and mobile-data tests have
+separate acceptance records.
+
+The [protected Control Plane run](https://github.com/nd4y/syn443-control-plane/actions/runs/45076320332)
+covers ordered route previews with missing hostname evidence, keyboard
+navigation and hourly telemetry report selection. Eight browser cases and eight
+server cases verify those changes, including the PostgreSQL authorization and
+ingestion paths. Pilot deployment and signed-in device readback are separate.
