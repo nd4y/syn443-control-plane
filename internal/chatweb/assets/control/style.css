@@ -381,3 +381,6 @@ pre:not(:empty) {
 .device-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr)); gap:var(--pf-t--global--spacer--md); max-inline-size:44rem; margin-block:1rem; }
 .device-filters label { display:block; margin-block-end:var(--pf-t--global--spacer--xs); }
 #device-rows td:first-child button { display:block; }
+
+#layer-impact { overflow-wrap: anywhere; }
+#layer-impact details { margin-block: var(--pf-t--global--spacer--sm); }

@@ -77,6 +77,43 @@ test('empty private layer draft inventory preserves an unsaved proposal and does
  await expect(page.locator('#layer-open-saved')).toBeDisabled();await expect(page.locator('#layer-proposal')).toHaveValue(before);expect((await state(request)).operations).toBe(0);
 });
 
+test('group publication review shows each owner and the network dependencies declared for that device',async({page,request})=>{
+ const proposal=await start(page,request);
+ await page.setViewportSize({width:360,height:800});
+ proposal.targetKind='group';proposal.targetId='guest-group';
+ const first=proposal.bundles[0];
+ const second=structuredClone(first);second.device='device-b';second.baseRevision=0;second.baseHash='';
+ first.layers[0].changes=[{path:'/graph/profiles',operation:'set',value:{entry:{sourceId:'synthetic-source',profileId:'synthetic-private-profile'}}}];
+ second.layers[0].changes=[{path:'/graph/netbird',operation:'delete'},
+  {path:'/network',operation:'set',value:{dnsServers:{home:{address:'dns.example.invalid'}},homeProof:{}}}];
+ proposal.bundles.push(second);
+ await page.locator('#layer-proposal').fill(JSON.stringify(proposal));
+ await save(page);await preview(page);
+ const review=page.locator('#layer-impact');
+ await expect(review.getByRole('heading',{name:'Затронутые устройства (2)'})).toBeVisible();
+ const rows=review.locator(':scope > ul > li');
+ await expect(rows).toHaveCount(2);
+ await expect(rows.nth(0)).toContainText('device-a · владелец synthetic-user · исходная версия 7');
+ await expect(rows.nth(1)).toContainText('device-b · владелец synthetic-second · первая конфигурация');
+ await expect(rows.nth(0).getByText('Разделы предложения',{exact:false})).toContainText('Профили подписок');
+ await expect(rows.nth(1).getByText('Разделы предложения',{exact:false})).toContainText('DNS-серверы');
+ await expect(rows.nth(1)).toContainText('Признаки домашней сети');await expect(rows.nth(1)).toContainText('NetBird');
+ await expect(review).not.toContainText('dns.example.invalid');await expect(review).not.toContainText('synthetic-private-profile');
+ await rows.nth(1).locator('summary').click();await expect(rows.nth(1).getByText('Шаблон template-a',{exact:false})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await expect(page.locator('#layer-publish')).toBeDisabled();expect((await state(request)).calls).not.toContain('configuration.publish');
+});
+
+test('a confirmed publication review expires while the administrator is reading it',async({page,request})=>{
+ await page.clock.install();
+ await start(page,request);await save(page);await preview(page);
+ await page.locator('#layer-confirm').check();await expect(page.locator('#layer-publish')).toBeEnabled();
+ await page.clock.fastForward(125000);
+ await expect(page.locator('#layer-review')).toBeHidden();await expect(page.locator('#layer-impact')).toBeEmpty();
+ await expect(page.locator('#layer-publish')).toBeDisabled();await expect(page.locator('#layer-confirm')).not.toBeChecked();
+ await expect(page.locator('#layer-preview')).toBeEnabled();expect((await state(request)).calls).not.toContain('configuration.publish');
+});
+
 test('layer editor preserves inheritance and requires explicit reviewed publication',async({page,request})=>{
  const proposal=await start(page,request);await save(page);await preview(page);
  await expect(page.locator('#layer-review')).toBeVisible();await expect(page.locator('#layer-impact')).toContainText('template-a');await expect(page.locator('#layer-impact')).toContainText('device-a');

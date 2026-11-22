@@ -33,6 +33,8 @@ expected = {
     'desired device view keeps revision provenance and hostile content separate from activation',
     'desired device view distinguishes unassigned expired and mismatched responses',
     'unassigned device can stage its first layer draft from an explicit plan',
+    'group publication review shows each owner and the network dependencies declared for that device',
+    'a confirmed publication review expires while the administrator is reading it',
     'layer editor preserves inheritance and requires explicit reviewed publication',
     'layer save lost acknowledgment replays one private revision and remains reopenable',
     'layer publication lost acknowledgment reuses operation even after terminal commit',
