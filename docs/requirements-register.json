@@ -2987,9 +2987,10 @@
       "status": "partial",
       "evidence": [
         "internal/catalog/store_postgres_test.go",
-        "internal/deviceprovisioning/mixed_sources_postgres_test.go"
+        "internal/deviceprovisioning/mixed_sources_postgres_test.go",
+        "web-tests/source-review.spec.js"
       ],
-      "remainingScope": "A malformed HTTPS feed is rejected while its retained snapshot is usable and another feed advances. Whole-scenario quarantine UI and physical readback remain separate."
+      "remainingScope": "SQL/TLS integration covers empty, malformed and HTML inputs, retention of the last published profiles and independent provider progress. The console distinguishes an unreadable response from a parsed candidate for manual review. Physical readback remains separate."
     },
     {
       "id": "AC04",
