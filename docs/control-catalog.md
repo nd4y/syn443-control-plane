@@ -212,6 +212,31 @@ the cohort to baseline. The selection is independent of the reserve probe
 cooldown cohort and changes neither routes nor access. With no percentage,
 every targeted device must advertise `route.decision.v1` before publication.
 
+## Signed failover thresholds
+
+In the configuration draft, choose **Консервативный** under **Алгоритм переключения** for an internal Wi-Fi selector. Enter a positive program revision, choose 3 to 6 independent failed checks, and choose a minimum interval of 60000 to 300000 milliseconds between switches. Click **Применить пороги к черновику**, save the draft, then publish it to the intended devices. A switch also needs a fresh successful check of an authorized alternative.
+
+For example, a program at revision 7 with four confirmations and a two-minute interval uses the following fields in the existing failover plan.
+
+```json
+{
+  "decisionRevision": "m4-confirmed-v1",
+  "decisionProgram": {
+    "revision": 7,
+    "confirmations": 4,
+    "minSwitchIntervalMs": 120000
+  },
+  "decisionRollout": {
+    "id": "example-pilot",
+    "basisPoints": 2500
+  }
+}
+```
+
+The publisher selects eligible devices using the existing cohort assignment. Devices in treatment must advertise both `decision.bundle.v1` and `route.decision.v1`. With a percentage rollout, incompatible devices retain the baseline. An explicit assignment without a percentage requires both capabilities. The issuer signs the program against the enrolled device key, configuration hash and lease expiry, then includes it in that device's policy.
+
+To restore the conservative defaults of three confirmations and 60 seconds, clear the program revision, apply the thresholds to the draft and publish a new policy. To send the percentage cohort back to the baseline algorithm, set its treatment share to zero and publish.
+
 ## Permanent control group
 
 For example, `{"id":"synthetic-algorithm","basisPoints":5000,"controlBasisPoints":1000}`

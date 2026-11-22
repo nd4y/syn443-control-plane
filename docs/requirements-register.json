@@ -1323,20 +1323,41 @@
     {
       "id": "RLP-01",
       "text": "Decision policy bundle - отдельный подписанный артефакт, связанный с конфигом устройства. Он задаёт разрешённые правила/переходы, probe plans, генерацию цепочек, условия сравнения, hystereses, cooldown, бюджеты, исключения и обработку классов ошибок. Клиентский evaluator и transport primitives поставляются в APK.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md#signed-failover-thresholds",
+        "contracts/v1/decision-program.schema.json",
+        "internal/policy/decision_bundle_test.go",
+        "internal/enrollment/configuration_authority_postgres_test.go"
+      ],
+      "implementationScope": "The publisher issues a separately signed device-bound failover program with its own revision and digest. It controls confirmations and minimum switch interval on the approved Wi-Fi selector.",
+      "remainingScope": "Additional primitives for probe plans, chain generation, budgets, exceptions and error-class rules remain open."
     },
     {
       "id": "RLP-02",
       "text": "В evaluator v1 supervisor, lifecycle, admission scheduler, классы ошибок, допустимые переходы и safety recovery остаются в APK. Policy выбирает из конечного набора действий/шаблонов, задаёт типизированные predicates, пороги и ограниченные DAG-планы проверок. Нет рекурсии, произвольных циклов, JS/Python/shell/native code. Изменение semantics либо нового primitive требует APK/capability; комбинации поддержанных правил обновляются отдельно.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md#signed-failover-thresholds",
+        "contracts/v1/decision-program.schema.json",
+        "internal/policy/decision_bundle_test.go",
+        "internal/enrollment/configuration_authority_postgres_test.go"
+      ],
+      "implementationScope": "A closed schema selects the implemented confirmed failover algorithm and bounds both editable thresholds. The program reaches the app through device capability negotiation.",
+      "remainingScope": "General typed predicates and bounded probe DAGs remain open. Android execution has a separate acceptance gate."
     },
     {
       "id": "RLP-03",
       "text": "Bundle содержит algorithmId/revision, schema/evaluator version range, required capabilities, policyHash, expiry и compatibility metadata. До активации проверяются подпись, типы, ссылки, достижимость состояний, bounded loops/retries, допустимые действия и верхние пределы потребления. Неизвестное действие даёт отказ, не тихое игнорирование. V1 ограничивает число DAG nodes/depth и instruction fuel на event; исчерпание fuel даёт явный отказ и не отключает cancel/supervisor. Общий цикл повторов выполняет APK scheduler, а не неконтролируемый policy graph.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md#signed-failover-thresholds",
+        "contracts/v1/decision-program.schema.json",
+        "internal/policy/decision_bundle_test.go",
+        "internal/enrollment/configuration_authority_postgres_test.go"
+      ],
+      "implementationScope": "The signed document binds the program hash, evaluator range, algorithm, required capabilities, device, key, configuration and lease. The signer and verifier reject invalid scope or bounds.",
+      "remainingScope": "DAG reachability, instruction fuel and the broader primitive set remain open."
     },
     {
       "id": "RLP-04",
@@ -1351,10 +1372,14 @@
       "evidence": [
         "docs/control-catalog.md#reserve-probe-cooldown",
         "docs/control-catalog.md#conservative-failover-algorithm",
-        "docs/control-catalog.md#permanent-control-group"
+        "docs/control-catalog.md#permanent-control-group",
+        "docs/control-catalog.md#signed-failover-thresholds",
+        "contracts/v1/decision-program.schema.json",
+        "internal/policy/decision_bundle_test.go",
+        "internal/enrollment/configuration_authority_postgres_test.go"
       ],
-      "implementationScope": "Reviewed device/group configuration can assign a signed built-in algorithm and a separate reserve probe option to a stable percentage of eligible devices. Other devices retain the baseline; an approved zero-percent revision ends a rollout. A separately reserved stable control group remains on the baseline during a full expansion of either supported rollout.",
-      "remainingScope": "General rollout stages, independent decision bundles, metric gates, automated progression and operational rollout status/rollback UI."
+      "implementationScope": "Reviewed device or group configuration selects a stable percentage of eligible devices. The failover program requires both negotiated capabilities and retains the existing control-group assignment.",
+      "remainingScope": "Additional rollout stages, automatic progression, metric gates and operational acceptance remain open."
     },
     {
       "id": "RLP-06",
@@ -1383,10 +1408,14 @@
       "text": "Config и decision policy активируются совместимой парой. Локальный эксперимент администратора и будущая серверная публикация имеют видимые версии; повторный запуск сохраняет выбранную стабильную версию cohort. Старый клиент получает совместимый bundle либо понятный отказ с последней разрешённой версией.",
       "status": "partial",
       "evidence": [
-        "docs/control-catalog.md#reserve-probe-cooldown"
+        "docs/control-catalog.md#reserve-probe-cooldown",
+        "docs/control-catalog.md#signed-failover-thresholds",
+        "contracts/v1/decision-program.schema.json",
+        "internal/policy/decision_bundle_test.go",
+        "internal/enrollment/configuration_authority_postgres_test.go"
       ],
-      "implementationScope": "One fixed optional algorithm behavior is signed with its approved device-key-bound route configuration and capability, separately from the legacy choice.",
-      "remainingScope": "Independent versioned decision bundles, complete cohort compatibility, and operator experiment/version UI."
+      "implementationScope": "The issuer pairs an independently signed failover program with an exact device configuration hash and expiry. An incompatible client receives the baseline in a percentage rollout or a denial for explicit assignment.",
+      "remainingScope": "Device-side acceptance, operator experiments and rollout compatibility across additional decision primitives remain open."
     },
     {
       "id": "RLP-10",
@@ -3390,8 +3419,13 @@
     {
       "id": "AC62",
       "specRow": " Worker/frontend outage при готовых разрешённых артефактах | API/config delivery и автономный клиент продолжают работать в пределах lease; async jobs честно pending/failed |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/enrollment/process_postgres_test.go",
+        "tools/test_enrollment.sh"
+      ],
+      "implementationScope": "With the frontend absent, real HTTP and TLS API processes deliver the previously signed device policy after the publisher stops and after the API restarts. Unpublished work returns HTTP 202 with bounded retry advice. The original signed expiry still applies.",
+      "remainingScope": "Live frontend interruption, additional asynchronous queues and autonomous physical-device operation during the combined outage remain open."
     },
     {
       "id": "AC63",
