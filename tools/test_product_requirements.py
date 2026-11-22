@@ -19,6 +19,16 @@ class ProductRequirementsTests(unittest.TestCase):
         self.control["requirements"] = [item(f"T-{i}{j}", c) for i in range(len(statuses))
                                         for j, c in enumerate(statuses)]
 
+    def test_component_acceptance_counts_keep_each_side_and_section_separate(self):
+        self.android["acceptanceCases"] = [{"id": "AC01", "specRow": "row", "status": "planned", "evidence": []}]
+        self.control["acceptanceCases"] = [{"id": "AC01", "specRow": "row", "status": "verified", "evidence": ["proof"]}]
+        self.control["requirements"][0] = item("T-00", "partial")
+        report = markdown("0.9", "a" * 40, compare(self.android, self.control))
+        self.assertIn("| Requirements | Android | 4 | 4 | 4 | 4 |", report)
+        self.assertIn("| Requirements | Control Plane | 3 | 5 | 4 | 4 |", report)
+        self.assertIn("| Acceptance scenarios | Android | 1 | 0 | 0 | 0 |", report)
+        self.assertIn("| Acceptance scenarios | Control Plane | 0 | 0 | 0 | 1 |", report)
+
     def test_every_component_combination_preserves_original_status(self):
         rows = compare(self.android, self.control)
         self.assertEqual([sum(row[-1] == zone for row in rows)

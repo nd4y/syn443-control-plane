@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-STATUSES = {"planned", "partial", "implemented", "verified"}
+STATUSES = ("planned", "partial", "implemented", "verified")
 COLUMNS = ("both", "android", "control", "neither")
 
 
@@ -58,10 +58,19 @@ def markdown(version, revision, rows):
         raise ValueError("pin an immutable Android Git revision")
     totals = defaultdict(Counter)
     areas = defaultdict(Counter)
-    for section, item_id, _, _, coverage in rows:
+    component_status = defaultdict(Counter)
+    for section, item_id, android, control, coverage in rows:
+        component_status[section, "Android"][android] += 1
+        component_status[section, "Control Plane"][control] += 1
         totals[section][coverage] += 1
         if section == "requirements":
             areas[item_id.split("-")[0]][coverage] += 1
+    status_rows = []
+    for section, label in (("requirements", "Requirements"), ("acceptanceCases", "Acceptance scenarios")):
+        for component in ("Android", "Control Plane"):
+            counts = component_status[section, component]
+            numbers = " | ".join(str(counts[status]) for status in STATUSES)
+            status_rows.append(f"| {label} | {component} | {numbers} |")
     header = "| Scope | Total | Both | Android only | Control Plane only | Neither |"
     rule = "| --- | ---: | ---: | ---: | ---: | ---: |"
     lines = [
@@ -69,6 +78,11 @@ def markdown(version, revision, rows):
         f"Specification {version}. Each item appears once. The columns show which component registers link evidence for a status above `planned`. A partial implementation counts in its component. Product acceptance requires the checks specified for that item.", "",
         header, rule, table_row("Requirements", totals["requirements"]),
         table_row("Acceptance scenarios", totals["acceptanceCases"]), "",
+        "## Component acceptance", "",
+        "Each cell counts items at that exact status in the component register. Scenarios spanning Android and the Control Plane also require the end-to-end checks specified for that scenario.", "",
+        "| Scope | Component | Planned | Partial | Implemented | Verified |",
+        "| --- | --- | ---: | ---: | ---: | ---: |",
+        *status_rows, "",
         "## Requirement families", "", header, rule,
         *(table_row(area, counts) for area, counts in areas.items()), "",
         "## Trace an item", "",
