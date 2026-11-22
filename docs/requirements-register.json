@@ -2986,8 +2986,13 @@
     {
       "id": "AC04",
       "specRow": " Обновление с исчезновением профиля цепочки | Публикация блокируется или требует явной замены зависимости |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/deviceprovisioning/profile_dependencies_postgres_test.go",
+        "internal/catalog/review_postgres_test.go",
+        ".github/workflows/ci.yml"
+      ],
+      "remainingScope": "The PostgreSQL case publishes two distinct hops, removes only the entry from a six-profile feed, and keeps the accepted snapshot until a reviewed exit-only replacement is published. The deployed panel and enrolled client remain separate acceptance stages."
     },
     {
       "id": "AC05",
