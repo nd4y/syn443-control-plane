@@ -52,6 +52,10 @@ panel.remnawave instance. Disabled extension descriptors may be retained, but
 x-ui/3x-ui, multiple enabled panels and unknown API versions are not working
 adapters. A later device endpoint must intersect authenticated SYN443 assignment
 authority with the external binding; the owner CLI is not such an endpoint.
+The catalog can retain two instance records with the same upstream user ID.
+Each source keeps its owner and resource ID when the active instance changes.
+The worker reads the credentials attached to that instance. Activation of a
+second simultaneous Remnawave instance is rejected before its state changes.
 
 The endpoint is an HTTPS origin without userinfo/path/query/fragment. Ordinary
 TLS and optional owner-installed CA roots are verified. Redirects, environment
