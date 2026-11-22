@@ -148,7 +148,7 @@ func TestSQLRemnawaveAndTwoIndependentFeedsPublishOneBoundPolicy(t *testing.T) {
 			refresh(t, "feed-two", "good-"+response.name, true)
 			for _, tag := range tags {
 				view, err := n.api.GetSource(ctx, n.actor, tag, now)
-				if err != nil || view.ActiveSnapshot == "" || view.CandidateSnapshot != "" ||
+				if err != nil || view.ActiveSnapshot == "" || view.CandidateSnapshot != view.ActiveSnapshot ||
 					(view.ActiveSnapshot != active[tag]) != (tag == "feed-two") ||
 					(view.State == "quarantined") != (tag == "feed-one") {
 					t.Fatal("source isolation", tag, err)

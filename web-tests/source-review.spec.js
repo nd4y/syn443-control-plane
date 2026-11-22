@@ -169,7 +169,7 @@ test('dependency preview keeps a source draft and distinguishes unknown from unu
 });
 
 test('mobile quarantine distinguishes an unreadable refresh from a reviewable source version',async({page,request})=>{
- const source={...boundSource,mode:'server',resourceId:'',externalUserId:'',state:'quarantined',activeSnapshot:'previous'};
+ const source={...boundSource,mode:'server',resourceId:'',externalUserId:'',state:'quarantined',activeSnapshot:'previous',candidateSnapshot:'previous'};
  const actions=[];
  await page.route('**/control/action',async route=>{
   const body=route.request().postDataJSON();
@@ -183,7 +183,7 @@ test('mobile quarantine distinguishes an unreadable refresh from a reviewable so
  await expect(page.locator('#source-version')).toContainText('Предыдущая версия профилей сохранена');
  await expect(page.locator('#source-version')).toContainText('истории обновлений');
  await expect(page.locator('#source-review')).toBeHidden();
- delete source.activeSnapshot;
+ delete source.activeSnapshot;delete source.candidateSnapshot;
  await edit.click();
  await expect(page.locator('#source-version')).toContainText('Опубликованных профилей пока нет');
  await expect(page.locator('#source-version')).not.toContainText('сохранена');
