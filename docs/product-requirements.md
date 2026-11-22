@@ -4,8 +4,8 @@ Specification 0.9. Each item appears once. The columns show which component regi
 
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Requirements | 292 | 120 | 53 | 70 | 49 |
-| Acceptance scenarios | 98 | 20 | 2 | 12 | 64 |
+| Requirements | 292 | 120 | 55 | 70 | 47 |
+| Acceptance scenarios | 98 | 20 | 2 | 13 | 63 |
 
 ## Component acceptance
 
@@ -13,10 +13,10 @@ Each cell counts items at that exact status in the component register. Scenarios
 
 | Scope | Component | Planned | Partial | Implemented | Verified |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Requirements | Android | 119 | 173 | 0 | 0 |
+| Requirements | Android | 117 | 175 | 0 | 0 |
 | Requirements | Control Plane | 102 | 190 | 0 | 0 |
 | Acceptance scenarios | Android | 76 | 22 | 0 | 0 |
-| Acceptance scenarios | Control Plane | 66 | 29 | 0 | 3 |
+| Acceptance scenarios | Control Plane | 65 | 28 | 0 | 5 |
 
 ## Requirement families
 
@@ -36,7 +36,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 | MODE | 5 | 2 | 3 | 0 | 0 |
 | AUTO | 10 | 0 | 9 | 0 | 1 |
 | REC | 6 | 6 | 0 | 0 | 0 |
-| ALG | 24 | 0 | 14 | 0 | 10 |
+| ALG | 24 | 0 | 16 | 0 | 8 |
 | BAD | 10 | 0 | 8 | 0 | 2 |
 | RLP | 10 | 3 | 1 | 1 | 5 |
 | ROUTE | 6 | 1 | 2 | 1 | 2 |
@@ -62,7 +62,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 Download `product-requirements` from the CI run for this Control Plane revision. The CSV lists every requirement and acceptance scenario with both original status values. Look up the item ID in its component register for evidence and remaining scope.
 
 - [Control Plane register](requirements-register.json)
-- [Android register at 5b70e4611bf7](https://github.com/nd4y/syn443-android/blob/5b70e4611bf7fd1b8cc0d10007f1cac05ce59963/docs/requirements-register.json)
+- [Android register at d45555115d07](https://github.com/nd4y/syn443-android/blob/d45555115d07ee6229c3aeab25881a045257be16/docs/requirements-register.json)
 - [Technical specification](spec/TECHNICAL_SPEC_RU.md)
 - [Live and release acceptance records](implementation-status.md)
 
