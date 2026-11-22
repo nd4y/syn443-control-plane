@@ -724,6 +724,15 @@ function Drafts() {
             </option>
           </Select>
           <div id="route-decision-rollout" hidden>
+            <label htmlFor="program-revision">Версия правил переключения</label>
+            <TextInput id="program-revision" type="number" min={1} max={Number.MAX_SAFE_INTEGER}
+              aria-describedby="program-help" />
+            <p id="program-help">Оставьте версию пустой, чтобы использовать встроенные пороги.</p>
+            <label htmlFor="program-confirmations">Сколько проверок должны подтвердить сбой (3-6)</label>
+            <TextInput id="program-confirmations" type="number" min={3} max={6} />
+            <label htmlFor="program-interval">Минимальный интервал между переключениями, мс (60000-300000)</label>
+            <TextInput id="program-interval" type="number" min={60000} max={300000} />
+            <Button id="program-save" type="button" variant="secondary">Применить пороги к черновику</Button>
             <label htmlFor="route-decision-id">
               Идентификатор раскатки алгоритма
             </label>

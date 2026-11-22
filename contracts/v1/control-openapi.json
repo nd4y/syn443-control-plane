@@ -2742,6 +2742,32 @@
                     "maximum": 10000
                   }
                 }
+              },
+              "decisionProgram": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "revision",
+                  "confirmations",
+                  "minSwitchIntervalMs"
+                ],
+                "properties": {
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "confirmations": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 6
+                  },
+                  "minSwitchIntervalMs": {
+                    "type": "integer",
+                    "minimum": 60000,
+                    "maximum": 300000
+                  }
+                }
               }
             },
             "dependentSchemas": {
@@ -2757,6 +2783,16 @@
                 "properties": {
                   "probeCooldown": {
                     "const": true
+                  }
+                }
+              },
+              "decisionProgram": {
+                "required": [
+                  "decisionRevision"
+                ],
+                "properties": {
+                  "decisionRevision": {
+                    "const": "m4-confirmed-v1"
                   }
                 }
               }

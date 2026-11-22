@@ -180,13 +180,16 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 		rolloutEnabled = supported && (failover.ProbeCooldownRollout == nil || failover.ProbeCooldownRollout.IncludesProbeCooldown(target.Device))
 	}
 	algorithmRevision := ""
+	var decisionProgram *policy.FailoverProgram
 	if failover := plan.Network.RouteFailover; failover != nil && failover.DecisionRevision != "" {
-		supported := slices.Contains(target.Capabilities, policy.RouteDecision)
+		supported := slices.Contains(target.Capabilities, policy.RouteDecision) &&
+			(failover.DecisionProgram == nil || slices.Contains(target.Capabilities, policy.DecisionBundleCapability))
 		if failover.DecisionRollout == nil && !supported {
 			return nil, enrollment.ErrDenied
 		}
 		if supported && (failover.DecisionRollout == nil || failover.DecisionRollout.IncludesDecision(target.Device)) {
 			algorithmRevision = failover.DecisionRevision
+			decisionProgram = failover.DecisionProgram
 		}
 	}
 	// Duplicate graph aliases may address one immutable source profile. Sort
@@ -283,7 +286,7 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 		required = append(required, "overlay.credentials.v1")
 	}
 	return &enrollment.PreparedConfiguration{EngineConfig: compiled.EngineConfig, Activation: compiled.Activation,
-		RequiredCapabilities: required, AlgorithmRevision: algorithmRevision, UntilMs: until, Source: approved.Source,
+		RequiredCapabilities: required, AlgorithmRevision: algorithmRevision, DecisionProgram: decisionProgram, UntilMs: until, Source: approved.Source,
 		Fence: &networkFence{layers: approved.Fence, sources: selection, untilMs: until}}, nil
 }
 

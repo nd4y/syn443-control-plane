@@ -85,6 +85,7 @@
           "route.health.v1",
           "route.failover.v1",
           "route.decision.v1",
+          "decision.bundle.v1",
           "route.reserve-cooldown.v1",
           "route.exit-ip.v1",
           "route.exit-country.v1",
@@ -111,6 +112,7 @@
     "algorithmRevision": {
       "enum": ["m1-local-v1", "m4-confirmed-v1", "m4-graph-tcp-v1"]
     },
+    "decisionBundle": {"type":"string","minLength":1,"maxLength":8192,"pattern":"^[A-Za-z0-9_-]+[.][A-Za-z0-9_-]+[.][A-Za-z0-9_-]+$"},
     "engineConfigB64": {
       "type": "string",
       "minLength": 1,
@@ -204,6 +206,8 @@
     }
   },
   "allOf": [
+    {"if":{"required":["decisionBundle"]},"then":{"properties":{"algorithmRevision":{"const":"m4-confirmed-v1"},"schemaVersion":{"const":2},"operation":{"const":"configure"},"requiredCapabilities":{"contains":{"const":"decision.bundle.v1"}}}}},
+    {"if":{"properties":{"requiredCapabilities":{"contains":{"const":"decision.bundle.v1"}}}},"then":{"required":["decisionBundle"]}},
     {
       "if": {"properties": {"algorithmRevision": {"const": "m4-confirmed-v1"}}},
       "then": {"properties": {
