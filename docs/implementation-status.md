@@ -7,9 +7,18 @@ integration and physical regression gates must be recorded separately. Normal
 enrollment still advertises the previous capability set; this source component
 does not activate a managed profile or close the full CHK-04 / AC58 requirement.
 
-Snapshot: 2026-11-21. Specification0.9 contains292 requirements and98 acceptance
+Snapshot updated on 2026-11-22. Specification 0.9 contains 292 requirements and 98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
+
+## Enrollment and overlay evidence
+
+The invitation link parser authenticates the service descriptor before discovery. The PostgreSQL tests follow an approved claim through publication into an ordinary device session. They also exercise an unavailable invitation database, prevent reassignment of an existing key and check that a revoked approval cannot complete publication. These tests cover the server portion of BOOT-02 and BOOT-03. Resolving the identity provider, reaching the enrollment API on a restricted network and fetching a usable first policy require separate network acceptance. [Invitation tests](../internal/invitation/boundaries_postgres_test.go) · [Publication tests](../internal/deviceprovisioning/invitations_postgres_test.go)
+
+The NetBird broker issues credentials for a specific overlay and provider resource. Its management API updates and queries provider-side objects. Android separately verifies the embedded engine, route and traffic path. OVL-02 remains partial pending full lifecycle and device diagnostics acceptance. [Managed overlay](managed-overlay.md) · [Provider tests](../internal/netbirdapi/peers_test.go)
+
+The Android snapshot includes version 133. The source run passed 553 JVM tests and 622 cases on each of API 29, 35 and 37. It installed a signed higher-version fixture with ADB, checked the existing enrollment and sent real traffic through the restored VPN. The handset's latest observed installation was version 132. An authenticated VPN run on the current release and the end-to-end system-installer cancellation check remain open. [Android build and test evidence](https://github.com/nd4y/syn443-android/actions/runs/44990432637)
+
 
 
 The accepted operation-reconciliation source adds an immutable SQL ledger, same-transaction native-effect guards and a fixed authenticated endpoint; see [the contract and limits](operation-outcome-reconciliation.md). Its28 new actual PostgreSQL/HTTP outcomes (23 provisioning,5 catalogue) and6 evidence-validator unit cases passed Actions43973718639 and resulting main43975423153. The separate safe Go-wire producer passed19 roots in43988560182 and resulting main43991701436; its public artifact contains only a bounded report, never signed specimens. No migration, live service activation, client reconciliation or restore/import acceptance is claimed. Shared IP/DPoP admission can still transiently throttle recovery.

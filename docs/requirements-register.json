@@ -889,8 +889,15 @@
     {
       "id": "OVL-02",
       "text": "Контракт overlay-адаптера разделяет серверные management операции и клиентский data plane. Он предусматривает enrollment/revoke/status по объявленным возможностям, lifecycle движка, получение назначенных маршрутов/DNS, состояние peers или аналогичных объектов и diagnostics. Провайдер без peer API не обязан имитировать модель NetBird.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-overlay.md",
+        "docs/overlay-resource-catalog.md",
+        "internal/overlay/credential.go",
+        "internal/netbirdapi/peers_test.go",
+        "internal/enrollment/overlay_postgres_test.go",
+        "docs/implementation-status.md#enrollment-and-overlay-evidence"
+      ]
     },
     {
       "id": "OVL-03",
@@ -2527,14 +2534,25 @@
     {
       "id": "BOOT-02",
       "text": "Первый запуск требует достижимости сервера регистрации; при входе через Keycloak также необходим доступ к IdP. Ручная привязка через ссылку/QR исключает вход в Keycloak, но не необходимость получить конфиг от сервера. Для белых списков нужен проверенный доступный маршрут регистрации либо заранее выданный индивидуальный сетевой bootstrap.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/bootstrap/link_test.go",
+        "internal/invitation/boundaries_postgres_test.go",
+        "internal/deviceprovisioning/invitations_postgres_test.go",
+        "docs/implementation-status.md#enrollment-and-overlay-evidence"
+      ]
     },
     {
       "id": "BOOT-03",
       "text": "QR-приглашение выполняет привязку устройства и не создаёт сетевую доступность само по себе. Общий секретный VLESS, встроенный во все APK, не принимается как универсальное решение. При полностью недоступном сервере регистрации нужен доступный Wi-Fi или отдельный проверенный сетевой bootstrap. OIDC и ручная привязка проверяются как независимые сценарии.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/bootstrap-trust.md",
+        "internal/bootstrap/link.go",
+        "internal/bootstrap/link_test.go",
+        "internal/deviceprovisioning/invitations_postgres_test.go",
+        "docs/implementation-status.md#enrollment-and-overlay-evidence"
+      ]
     },
     {
       "id": "BOOT-04",
