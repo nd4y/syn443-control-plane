@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/catalog"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 )
 
@@ -20,7 +21,10 @@ func (ConfigurationPublishedHead) GoString() string { return "ConfigurationPubli
 
 // Called only after the independent producer repeats all actual authority and
 // source fences in this transaction. No public API accepts a snapshot object.
-func (s *configurationLayerSnapshot) publish(ctx context.Context, tx *sql.Tx, w configurationWork, preview, hash string, at time.Time) (json.RawMessage, error) {
+func (s *configurationLayerSnapshot) publish(ctx context.Context, tx *sql.Tx, w configurationWork, preview, hash string, at time.Time, fences []*networkFence) (json.RawMessage, error) {
+	if len(fences) != len(s.Targets) {
+		return nil, enrollment.ErrDenied
+	}
 	for _, c := range s.Changes {
 		if c.OldRevision == c.Revision && c.OldHash == c.Hash {
 			continue
@@ -65,6 +69,16 @@ func (s *configurationLayerSnapshot) publish(ctx context.Context, tx *sql.Tx, w 
 		}
 		if n, e := result.RowsAffected(); e != nil || n != 1 {
 			return nil, enrollment.ErrConflict
+		}
+		var refs []catalog.ProfileReference
+		if fences[i] == nil {
+			return nil, enrollment.ErrDenied
+		}
+		if fences[i].sources != nil {
+			refs = fences[i].sources.ProfileReferences()
+		}
+		if e = replaceProfileReferences(ctx, tx, target.Device, revision, refs); e != nil {
+			return nil, e
 		}
 		if _, e = tx.ExecContext(ctx, `DELETE FROM managed_configuration_assignments WHERE device=$1`, target.Device); e != nil {
 			return nil, enrollment.ErrUnavailable

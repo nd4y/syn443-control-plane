@@ -40,24 +40,39 @@ func (s *Store) readSource(ctx context.Context, tx *sql.Tx, id string, lock bool
 	source.AccessState = access
 	return source, nil
 }
+
+// SourceDetail adds read-only dependency metadata to an ordinary source read.
+type SourceDetail struct {
+	Source
+	RouteDependencies SourceReferencePreview `json:"routeDependencies"`
+}
+
 func (s *Store) GetSource(ctx context.Context, actor Actor, id string, now time.Time) (Source, error) {
-	tx, e := s.DB.BeginTx(ctx, nil)
+	detail, err := s.sourceDetail(ctx, actor, id, now)
+	return detail.Source, err
+}
+func (s *Store) sourceDetail(ctx context.Context, actor Actor, id string, now time.Time) (SourceDetail, error) {
+	tx, e := s.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
 	if e != nil {
-		return Source{}, ErrUnavailable
+		return SourceDetail{}, ErrUnavailable
 	}
 	defer tx.Rollback()
 	source, e := s.readSource(ctx, tx, id, false)
 	if e != nil {
-		return Source{}, e
+		return SourceDetail{}, e
 	}
 	if e = authorize(ctx, tx, actor, "sources.read", "user", source.Owner, now.Unix(), false); e != nil {
-		return Source{}, e
+		return SourceDetail{}, e
 	}
 	source, e = sourceStatus(ctx, tx, source, now)
 	if e != nil {
-		return Source{}, e
+		return SourceDetail{}, e
 	}
-	return source, tx.Commit()
+	impact, e := sourceReferencePreview(ctx, tx, id)
+	if e != nil {
+		return SourceDetail{}, e
+	}
+	return SourceDetail{Source: source, RouteDependencies: impact}, tx.Commit()
 }
 func sourceStatus(ctx context.Context, tx *sql.Tx, source Source, now time.Time) (Source, error) {
 	var e error

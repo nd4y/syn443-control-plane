@@ -173,3 +173,15 @@ BEGIN
 END; $$;
 DROP TRIGGER IF EXISTS catalog_network_draft_invariants ON catalog_network_drafts;
 CREATE TRIGGER catalog_network_draft_invariants BEFORE UPDATE ON catalog_network_drafts FOR EACH ROW EXECUTE FUNCTION catalog_network_draft_guard();
+
+-- Standalone catalogs have no managed configuration heads. Between old-schema
+-- and publisher migrations treat existing desired configurations as unknown.
+DO $$BEGIN
+ IF to_regclass('public.catalog_published_references') IS NULL THEN
+  IF to_regclass('public.managed_configuration_heads') IS NULL THEN
+   EXECUTE 'CREATE VIEW catalog_published_references AS SELECT NULL::text AS source_id,NULL::text AS profile_id WHERE false';
+  ELSE
+   EXECUTE 'CREATE VIEW catalog_published_references AS SELECT NULL::text AS source_id,NULL::text AS profile_id WHERE EXISTS (SELECT 1 FROM managed_configuration_heads)';
+  END IF;
+ END IF;
+END$$;

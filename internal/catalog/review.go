@@ -222,25 +222,23 @@ func (s *Store) ReviewSnapshot(ctx context.Context, actor Actor, review Review, 
 		for _, p := range profiles {
 			ids[p.ID] = true
 		}
-		rows, e := tx.QueryContext(ctx, `SELECT DISTINCT profile_id FROM catalog_dependencies WHERE source_id=$1`, source.ID)
+		refs, pending, e := publishedReferences(ctx, tx, source.ID)
 		if e != nil {
-			return Snapshot{}, ErrUnavailable
+			return Snapshot{}, e
 		}
-		for rows.Next() {
-			var id string
-			if rows.Scan(&id) != nil {
-				rows.Close()
-				return Snapshot{}, ErrUnavailable
+		if pending && source.ActiveSnapshot != "" {
+			_, active, err := s.readSnapshot(ctx, tx, source.ID, source.ActiveSnapshot)
+			if err != nil {
+				return Snapshot{}, err
 			}
+			for _, profile := range active {
+				refs[profile.ID] = true
+			}
+		}
+		for id := range refs {
 			if !ids[id] {
-				rows.Close()
 				return Snapshot{}, ErrConflict
 			}
-		}
-		e = rows.Err()
-		rows.Close()
-		if e != nil {
-			return Snapshot{}, ErrUnavailable
 		}
 		if source.ActiveSnapshot != "" {
 			if _, e = tx.ExecContext(ctx, `UPDATE catalog_snapshots SET state='superseded' WHERE id=$1`, source.ActiveSnapshot); e != nil {

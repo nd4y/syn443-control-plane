@@ -385,3 +385,30 @@ func TestPatternFlyAssetsAreScopedToControlConsole(t *testing.T) {
 		})
 	}
 }
+
+func TestOnlySourceDetailCanReturnAllBoundedProfileIdentifiers(t *testing.T) {
+	s, _, principal := webFixture(t)
+	s.config.ControlConsole = true
+	principal.Scope = "syn443.control"
+	upstream := s.client.Transport
+	size := 600 * 1024
+	s.client.Transport = consoleTransportFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path != "/v1/control/action" {
+			return upstream.RoundTrip(r)
+		}
+		data := `"` + strings.Repeat("p", size-2) + `"`
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(data))}, nil
+	})
+	cookie := loginWeb(t, s)
+	raw := `{"version":1,"action":"source.get","requestId":"fixture-dependency-result","payload":{"id":"source-a"}}`
+	if w := webCall(s, "/control/action", raw, cookie); w.Code != 200 || w.Body.Len() != size {
+		t.Fatal("source detail was truncated", w.Code)
+	}
+	if w := webCall(s, "/control/action", strings.Replace(raw, "source.get", "source.shares.get", 1), cookie); w.Code != 502 {
+		t.Fatal("foreign action received the larger allowance", w.Code)
+	}
+	size = 704*1024 + 1
+	if w := webCall(s, "/control/action", raw, cookie); w.Code != 502 {
+		t.Fatal("oversize source detail succeeded", w.Code)
+	}
+}

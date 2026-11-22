@@ -268,3 +268,22 @@ a handshake to the named service. It grants no direct application traffic,
 trust exception, location permission or access to additional endpoints.
 An unreachable or changed service leaves the client on its ordinary Wi-Fi
 policy. Previously enrolled clients retain their earlier configuration.
+
+## Replacing a subscription profile in use
+
+Open a source in the console to see all its profile IDs used by published routes, displayed in groups of 32. Use **Обновить зависимости** to refresh the list while editing. A pending historical check is shown separately from an empty result.
+
+When a feed drops a profile in a published configuration, the worker quarantines
+the candidate. Manual approval checks the same current references. Publish a
+replacement route for each affected recipient, then review the candidate again.
+The check includes static aliases and adaptive candidates from the effective
+configuration. A preview or an unsuccessful publication leaves the references
+on the current revision.
+
+After upgrading the catalog and configuration schemas, the configuration worker
+indexes one historical head on each idle iteration. It opens the stored proposal
+and verifies the original signed preview. While a head awaits recovery, removals
+from an active feed stay in quarantine. Additions can still be evaluated.
+A failed historical verification leaves the removal fence in place and delays
+that head's next attempt for 15 minutes. Reindexing preserves the device key,
+configuration revision, approval time and offline lease.

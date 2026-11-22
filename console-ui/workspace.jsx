@@ -269,6 +269,13 @@ function Sources() {
         Новый источник
       </Button>
       <p id="source-version">Источник не выбран</p>
+      <section id="source-dependencies" hidden aria-labelledby="source-dependencies-title">
+        <h3 id="source-dependencies-title">Профили в маршрутах</h3>
+        <p id="source-dependencies-summary" role="status"></p>
+        <ul id="source-dependencies-profiles" hidden></ul>
+        <Button id="source-dependencies-more" variant="link" hidden>Показать ещё профили</Button>
+        <Button id="source-dependencies-refresh" variant="link" isDisabled>Обновить зависимости</Button>
+      </section>
       <section id="source-review" hidden aria-labelledby="source-review-title">
         <h3 id="source-review-title">Обновление в карантине</h3>
         <Button id="source-review-load" variant="secondary" isDisabled>Сравнить версии</Button>
