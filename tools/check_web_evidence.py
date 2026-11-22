@@ -6,6 +6,7 @@ root = ET.parse(Path(__file__).resolve().parent.parent / 'web-tests/results.xml'
 cases = list(root.iter('testcase'))
 expected = {
     'retiring a subscription clears abandoned secrets and sends only the removal',
+    'dependency preview keeps a source draft and distinguishes unknown from unused profiles',
     'look up an exact incident without opening or acknowledging a thread on standalone',
     'look up an exact incident without opening or acknowledging a thread on console',
     'late incident lookup cannot disclose the previous query on the phone',

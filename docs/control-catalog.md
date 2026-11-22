@@ -271,6 +271,8 @@ policy. Previously enrolled clients retain their earlier configuration.
 
 ## Replacing a subscription profile in use
 
+Open a source in the console to see up to 32 of its profile IDs used by published routes. Use **Обновить зависимости** to refresh the list while editing. A pending historical check is shown separately from an empty result.
+
 When a feed drops a profile in a published configuration, the worker quarantines
 the candidate. Manual approval checks the same current references. Publish a
 replacement route for each affected recipient, then review the candidate again.

@@ -326,3 +326,36 @@ func TestSQLAdminHTTPCatalogActionsAndManualWorker(t *testing.T) {
 		t.Fatal("idle worker", e)
 	}
 }
+
+func TestSQLSourceReadBoundsDependencyPreviewToAuthorizedSource(t *testing.T) {
+	f := adminHTTPFixture(t)
+	source := sourceExample(f.Now)
+	other := source
+	other.ID = "foreign-feed"
+	other.Owner = "other-owner"
+	for _, item := range []Source{source, other} {
+		f.call(t, "source.put", map[string]any{"source": item, "secret": SecretPatch{Operation: "keep"}}, 200)
+	}
+	if _, err := fixtureOwner.Exec(`INSERT INTO catalog_dependencies(owner,layer_id,layer_revision,source_id,profile_id)
+		SELECT $1,'route-'||g,1,$2,'profile-'||lpad(g::text,2,'0') FROM generate_series(1,33)g`, source.Owner, source.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixtureOwner.Exec(`INSERT INTO catalog_dependencies VALUES($1,'secret-route',1,$2,'foreign-profile')`, other.Owner, other.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixtureOwner.Exec(`DELETE FROM catalog_acl`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixtureOwner.Exec(`INSERT INTO catalog_acl(actor,action,target_kind,target_id,expires) VALUES($1,'sources.read','user',$2,$3)`, f.Actor.ID, source.Owner, f.Now.Unix()+300); err != nil {
+		t.Fatal(err)
+	}
+	data := f.call(t, "source.get", map[string]string{"id": source.ID}, 200)
+	var detail SourceDetail
+	if json.Unmarshal(data, &detail) != nil || detail.ID != source.ID || detail.RouteDependencies.Incomplete || !detail.RouteDependencies.More || len(detail.RouteDependencies.ProfileIDs) != 32 {
+		t.Fatal("source preview metadata")
+	}
+	if detail.RouteDependencies.ProfileIDs[0] != "profile-01" || detail.RouteDependencies.ProfileIDs[31] != "profile-32" || bytes.Contains(data, []byte("foreign-profile")) || bytes.Contains(data, []byte("route-")) {
+		t.Fatal("out-of-scope reference metadata")
+	}
+	f.call(t, "source.get", map[string]string{"id": other.ID}, 403)
+}

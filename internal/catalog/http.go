@@ -365,7 +365,7 @@ func (a *API) dispatch(ctx context.Context, actor Actor, action Action, now time
 			return nil, ErrInvalid
 		}
 		if action.Action == "source.get" {
-			return a.Store.GetSource(ctx, actor, r.ID, now)
+			return a.Store.sourceDetail(ctx, actor, r.ID, now)
 		}
 		return a.Store.GetShares(ctx, actor, r.ID, now)
 	case "source.put":
