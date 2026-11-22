@@ -798,6 +798,11 @@ function Drafts() {
           <TextInput id="explain-domain" maxLength={254} spellCheck={false} autoCapitalize="none" autoComplete="off" />
           <label htmlFor="explain-address">IP-адрес назначения</label>
           <TextInput id="explain-address" maxLength={45} spellCheck={false} autoCapitalize="none" autoComplete="off" />
+          <label htmlFor="explain-address-context">Что известно об адресе</label>
+          <Select id="explain-address-context" disabled>
+            <option value="">Обращение по IP или домен указан выше</option>
+            <option value="unknown">Известен только IP, доменное имя недоступно</option>
+          </Select>
           <label htmlFor="explain-application">Пакет приложения</label>
           <TextInput id="explain-application" maxLength={255} spellCheck={false} autoCapitalize="none" autoComplete="off" />
           <label htmlFor="explain-network">Транспорт</label>

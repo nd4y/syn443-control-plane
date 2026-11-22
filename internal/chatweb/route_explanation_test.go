@@ -25,7 +25,13 @@ func TestManualRouteExplanationDoesNotForwardOrRetainTheDestination(t *testing.T
 	if response.Code != 200 || !strings.Contains(response.Body.String(), `"rule":"deny"`) || strings.Contains(response.Body.String(), "manual.example.invalid") || !strings.Contains(response.Header().Get("Cache-Control"), "no-store") {
 		t.Fatal("expected a noncacheable, destination-free result")
 	}
-	for _, bad := range []string{strings.Replace(raw, "manual.example.invalid", "bad/host", 1), strings.Replace(raw, `"query":`, `"providerToken":"unused","query":`, 1)} {
+	hiddenDomain := strings.Replace(raw, `"domain":"manual.example.invalid"`, `"address":"2001:db8::a","domainUnavailable":true`, 1)
+	observed := webCall(s, path, hiddenDomain, cookie)
+	if observed.Code != 200 || !strings.Contains(observed.Body.String(), `"status":"incomplete","rule":"deny"`) ||
+		strings.Contains(observed.Body.String(), "2001:db8") || strings.Contains(observed.Body.String(), "manual.example.invalid") {
+		t.Fatal("unavailable hostname was disclosed or treated as a literal")
+	}
+	for _, bad := range []string{strings.Replace(raw, `"domain":"manual.example.invalid"`, `"domain":"manual.example.invalid","domainUnavailable":true`, 1), strings.Replace(raw, "manual.example.invalid", "bad/host", 1), strings.Replace(raw, `"query":`, `"providerToken":"unused","query":`, 1)} {
 		if w := webCall(s, path, bad, cookie); w.Code != 400 {
 			t.Fatal("invalid shape accepted")
 		}

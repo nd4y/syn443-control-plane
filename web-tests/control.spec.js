@@ -205,6 +205,27 @@ test('manual route preview sends only on request and shows DNS and proxy dial or
  await page.locator('#target-id').fill('other-device');
  await expect(result).toBeEmpty();await expect(page.locator('#explain-domain')).toHaveValue('');await expect(run).toBeDisabled();
 });
+test('phone route preview distinguishes an unavailable hostname on a shared IP from an IP literal',async({page,request})=>{
+ await page.setViewportSize({width:393,height:852});await reset(request);await page.goto(origin+'/#draft-title');
+ await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
+ await page.getByText('Как сработают правила черновика',{exact:true}).click();
+ const context=page.getByLabel('Что известно об адресе'),address=page.getByLabel('IP-адрес назначения');
+ const run=page.locator('#explain-run'),out=page.locator('#explain-result'),queries=[];
+ await page.route('**/control/route-explanation',async route=>{
+  const q=route.request().postDataJSON().query;queries.push(q);
+  await route.fulfill({json:q.domainUnavailable?{route:{status:'incomplete',rule:'named'},dns:{status:'incomplete'}}:
+      {route:{status:'default',target:'direct'},dns:{status:'not_applicable'}}});
+ });
+ await expect(context).toBeDisabled();await address.fill('2001:db8::10');await expect(context).toBeEnabled();
+ await context.selectOption('unknown');await run.click();await expect(out).toContainText('Недостаточно данных для правила named.');
+ expect(queries[0]).toEqual({address:'2001:db8::10',domainUnavailable:true});
+ await context.selectOption('');await expect(out).toBeEmpty();await run.click();await expect(out).toContainText('Прямое соединение');
+ expect(queries[1]).toEqual({address:'2001:db8::10'});
+ await context.selectOption('unknown');await page.locator('#explain-domain').fill('known.example.invalid');
+ await expect(context).toBeDisabled();await expect(context).toHaveValue('');await expect(out).toBeEmpty();
+ await run.click();await expect(out).toContainText('Прямое соединение');
+ expect(queries[2]).toEqual({domain:'known.example.invalid',address:'2001:db8::10'});
+});
 test('manual route preview discards late results and distinguishes missing facts from default',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#draft-title');await expect(page.locator('#save-draft')).toBeEnabled();await draft(page);
  await page.getByText('Как сработают правила черновика',{exact:true}).click();

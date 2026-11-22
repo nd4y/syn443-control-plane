@@ -2026,8 +2026,13 @@
     {
       "id": "OWN-04",
       "text": "Traffic classification детерминирована: порядок app/domain/CIDR/ruleset и conflict resolution зафиксирован policy, UNKNOWN имеет явное безопасное действие. IP literal, отсутствие доменного контекста, encrypted DNS приложения, CDN/shared IP и IPv6 не превращаются автоматически в RU/direct. Знание одного домена не переносится на всех пользователей общего CDN-IP; route explain воспроизводится без хранения истории сайтов.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md#explain-a-connection-with-an-unavailable-hostname",
+        "internal/configuration/route_explanation_test.go",
+        "internal/chatweb/route_explanation_test.go",
+        "web-tests/control.spec.js"
+      ]
     },
     {
       "id": "OWN-05",

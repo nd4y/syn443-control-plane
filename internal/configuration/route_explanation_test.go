@@ -85,3 +85,38 @@ func TestManualTrafficExplanationValidatesAllRulesAndKeepsTargetsPrivate(t *test
 		t.Fatal("bad DNS tail ignored for a literal address")
 	}
 }
+
+func TestUnavailableDomainOnSharedIPPreservesOrderedUncertainty(t *testing.T) {
+	plan := NetworkSettings{SchemaVersion: 1, DNSFinal: "system", Rules: []RouteRule{
+		{ID: "named", Action: "route", Outbound: "private", HostMatch: HostMatch{Domains: []string{"only.example.invalid"}},
+			IPPrefixes: []string{"192.0.2.0/24", "2001:db8:1::/48"}, Networks: []string{"tcp"}},
+		{ID: "other", Action: "route", Outbound: "direct", MatchAll: true},
+	}}
+	for _, address := range []string{"198.51.100.10", "2001:db8:2::1"} {
+		q := TrafficQuery{Address: address, Network: "tcp", DomainUnavailable: true}
+		check := func(route, dns RuleDecision) {
+			t.Helper()
+			got, err := ExplainTraffic(plan, "direct", q)
+			if err != nil || got.Route != route || got.DNS != dns {
+				t.Fatal(got, err)
+			}
+		}
+		check(RuleDecision{Status: "incomplete", Rule: "named"}, RuleDecision{Status: "incomplete"})
+		q.Network = "udp"
+		check(RuleDecision{Status: "matched", Rule: "other", Target: "direct"}, RuleDecision{Status: "incomplete"})
+		q.DomainUnavailable = false
+		q.Network = "tcp"
+		check(RuleDecision{Status: "matched", Rule: "other", Target: "direct"}, RuleDecision{Status: "not_applicable"})
+	}
+	for _, address := range []string{"192.0.2.5", "2001:db8:1::4"} {
+		got, err := ExplainTraffic(plan, "direct", TrafficQuery{Address: address, Network: "tcp", DomainUnavailable: true})
+		if err != nil || got.Route != (RuleDecision{Status: "matched", Rule: "named", Target: "private"}) || got.DNS.Status != "incomplete" {
+			t.Fatal(got, err)
+		}
+	}
+	for _, q := range []TrafficQuery{{Application: "org.example.app", DomainUnavailable: true}, {Domain: "known.example.invalid", Address: "192.0.2.1", DomainUnavailable: true}} {
+		if _, err := ExplainTraffic(plan, "direct", q); err == nil {
+			t.Fatal("inconsistent domain context accepted")
+		}
+	}
+}

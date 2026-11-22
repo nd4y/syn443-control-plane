@@ -273,6 +273,9 @@ function drawRouteChecks(){
  showModeSelection(state,changed);
  if(!state){selectProbeEntry(null,'',null);return;}
  $('route-explanation').hidden=false;
+ const addressContext=$('explain-address-context');
+ addressContext.disabled=!$('explain-address').value.trim()||!!$('explain-domain').value.trim();
+ if(addressContext.disabled)addressContext.value='';
  $('explain-run').disabled=busy||!!pending||!['domain','address','application'].some(key=>$('explain-'+key).value.trim());
  if(state.value.adaptive){$('route-bounds').hidden=false;$('route-bounds-preview').disabled=busy||!!pending;}
  for(const tag of [...state.tags].sort()){const option=document.createElement('option');option.value=tag;option.textContent=tag;select.append(option);}
@@ -1611,6 +1614,7 @@ $('route-explanation-form').onsubmit=event=>{
    const text=$('explain-'+field).value.trim();
    if(text)query[field]=field==='port'?Number(text):text;
   }
+  if($('explain-address-context').value==='unknown'&&query.address&&!query.domain)query.domainUnavailable=true;
   const result=await request('/control/route-explanation',{
    query,routeFinal:value.graph.final,dnsFinal:network.dnsFinal,rules:network.rules||[],dnsRules:network.dnsRules||[]
   });
