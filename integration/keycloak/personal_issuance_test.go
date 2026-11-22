@@ -203,7 +203,14 @@ func TestTwoOwnersReceiveOnlyTheirAssignedDevicePolicies(t *testing.T) {
 		ids[d.session.DeviceID], thumbs[d.thumb] = true, true
 	}
 	publisher := enrollment.Publisher{Store: publisherStore, Verifier: provider, Grants: grants, KeyID: keyID, Key: signingKey, Origin: origin}
-	if err := publisher.RunOnce(t.Context(), time.Now()); err != nil {
+	// Use the same effective time as the running enrollment worker and API.
+	// Signing against the raw fractional second can put notBefore ahead of
+	// the durable identity clock on the first policy GET.
+	publishedAt, err := publisherStore.Now(t.Context(), time.Now())
+	if err != nil {
+		t.Fatal("publisher clock", err)
+	}
+	if err := publisher.RunOnce(t.Context(), publishedAt); err != nil {
 		t.Fatal(err)
 	}
 	t.Run("key_bound_publications", func(t *testing.T) {
@@ -211,7 +218,7 @@ func TestTwoOwnersReceiveOnlyTheirAssignedDevicePolicies(t *testing.T) {
 			res := d.request(t, server, http.MethodGet, path, d.session.AccessToken, d.session.Nonce, nil)
 			requireStatus(t, res, http.StatusOK)
 			payload, err := policy.VerifyBound(string(res.body), roots, d.session.DeviceID, d.thumb, time.Now())
-			if err != nil || payload.EngineConfigB64 != d.content || payload.Revision != 1 {
+			if err != nil || payload.EngineConfigB64 != d.content || payload.Revision != 1 || payload.NotBeforeMs != publishedAt.UnixMilli() {
 				t.Fatal("incorrect personal policy")
 			}
 			for _, other := range devices {
