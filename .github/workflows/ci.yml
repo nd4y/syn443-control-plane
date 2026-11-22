@@ -815,6 +815,7 @@ jobs:
         run: |
           set -euo pipefail
           GOFLAGS=-json bash tools/test_enrollment.sh | tee session-boundary-postgres-tests.jsonl
+          jq -es '[.[] | select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestTelemetryLateBatchesPreserveFirstReceiptAndObservation" and .Action != "output") | .Action] == ["run","pass"]' session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestActualManagedAPIPublisherAndProviderWorkerProcesses/readiness_preserves_pending_provider_work/container_role_checks" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           python3 tools/check_session_boundary_evidence.py session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestHistoricalSQLUpgradePreservesDeviceConversationAndRollback" and .Action == "pass")' session-boundary-postgres-tests.jsonl

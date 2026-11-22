@@ -300,3 +300,67 @@ func TestDeviceTelemetryIsBoundedDeduplicatedAndScopedToItsSession(t *testing.T)
 		t.Fatal("recent event was not retained", err)
 	}
 }
+
+func TestTelemetryLateBatchesPreserveFirstReceiptAndObservation(t *testing.T) {
+	f := newFixture(t, 1)
+	// Advance the signed requests and server admission on the same fixture clock.
+	f.api.Clock = func() time.Time { return f.now }
+	f.enableTelemetry(t)
+	k := key(t)
+	session, _, _ := f.register(t, k)
+	origin := f.now.UTC().Truncate(time.Second)
+	event := func(age time.Duration, monotonic, epoch int64) telemetry.Event {
+		return telemetry.Event{ID: random(), AtMS: origin.Add(-age).UnixMilli(),
+			ElapsedMS: monotonic, NetworkEpoch: epoch, Kind: "vpn", Code: "online", Mode: "wifi"}
+	}
+	older := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 52, PolicyRevision: 3, AlgorithmRevision: 1,
+		Events: []telemetry.Event{event(10*time.Minute, 2000, 2), event(11*time.Minute, 1000, 1)}}
+	newer := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 53, PolicyRevision: 4, AlgorithmRevision: 2,
+		Events: []telemetry.Event{event(time.Second, 8000, 4)}}
+
+	send := func(at time.Duration, batch telemetry.Batch) {
+		t.Helper()
+		f.now = origin.Add(at)
+		body, err := json.Marshal(batch)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response := f.call(t, k, http.MethodPost, telemetryPath, session.AccessToken, session.Nonce, body)
+		expect(t, response, http.StatusOK)
+		var receipt telemetry.Receipt
+		if err := json.Unmarshal(response.Body.Bytes(), &receipt); err != nil || receipt.SchemaVersion != 1 || len(receipt.EventIDs) != len(batch.Events) {
+			t.Fatal("missing committed acknowledgement", err)
+		}
+		for i, e := range batch.Events {
+			if receipt.EventIDs[i] != e.ID {
+				t.Fatal("receipt lost the submitted order")
+			}
+		}
+	}
+	send(0, newer)
+	send(2*time.Second, older)
+	send(4*time.Second, older)
+	send(6*time.Second, newer)
+
+	var total int
+	if err := fixtureOwner.QueryRowContext(t.Context(), `SELECT count(*) FROM identity_telemetry_events WHERE device=$1`, session.DeviceID).Scan(&total); err != nil || total != 3 {
+		t.Fatal("late delivery or replay changed the event count", total, err)
+	}
+	for _, delivery := range []struct {
+		batch telemetry.Batch
+		at    time.Time
+	}{{newer, origin}, {older, origin.Add(2 * time.Second)}} {
+		b := delivery.batch
+		for _, e := range b.Events {
+			var match bool
+			err := fixtureOwner.QueryRowContext(t.Context(), `SELECT session_id=$3 AND build=$4 AND policy_revision=$5
+ AND algorithm_revision=$6 AND received_at_ms=$7 AND observed_at_ms=$8 AND elapsed_ms=$9 AND network_epoch=$10
+ FROM identity_telemetry_events WHERE device=$1 AND event_id=$2`,
+				session.DeviceID, e.ID, b.Session, b.Build, b.PolicyRevision, b.AlgorithmRevision,
+				delivery.at.UnixMilli(), e.AtMS, e.ElapsedMS, e.NetworkEpoch).Scan(&match)
+			if err != nil || !match {
+				t.Fatal("stored event lost its original observation or first receipt", err)
+			}
+		}
+	}
+}
