@@ -28,6 +28,7 @@ type PreparedConfiguration struct {
 	EngineConfig         json.RawMessage
 	Activation           policy.Gate
 	RequiredCapabilities []string
+	DecisionProgram      *policy.FailoverProgram
 	AlgorithmRevision    string
 	UntilMs              int64
 	Fence                ApprovalFence

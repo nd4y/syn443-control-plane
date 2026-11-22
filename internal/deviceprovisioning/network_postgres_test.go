@@ -314,6 +314,32 @@ func TestSQLInternalFailoverCannotUseProfilesApprovedForAnotherMode(t *testing.T
 		t.Fatal("supported device did not receive the algorithm with the original graph", err)
 	}
 	explicitDecision := bytes.Clone(changes[2].Value)
+	t.Run("program_requires_negotiated_capability_and_rollout", func(t *testing.T) {
+		defer func() { changes[2].Value = explicitDecision }()
+		const decision = `"decisionRevision":"m4-confirmed-v1"`
+		const program = decision + `,"decisionProgram":{"revision":7,"confirmations":4,"minSwitchIntervalMs":120000}`
+		changes[2].Value = bytes.Replace(explicitDecision, []byte(decision), []byte(program), 1)
+		if _, err := n.authority.Prepare(ctx, target, n.f.now); !errors.Is(err, enrollment.ErrDenied) {
+			t.Fatal("explicit assignment requires compatible evaluator", err)
+		}
+		compatible := target
+		compatible.Capabilities = append(slices.Clone(target.Capabilities), policy.DecisionBundleCapability)
+		for _, points := range []string{"0", "10000"} {
+			changes[2].Value = bytes.Replace(explicitDecision, []byte(decision), []byte(program+`,"decisionRollout":{"id":"fixture-program","basisPoints":`+points+`}`), 1)
+			for _, device := range []enrollment.ConfigurationTarget{target, compatible} {
+				result, err := n.authority.Prepare(ctx, device, n.f.now)
+				wanted := points == "10000" && slices.Contains(device.Capabilities, policy.DecisionBundleCapability)
+				if err != nil || result == nil || (result.DecisionProgram != nil) != wanted ||
+					(result.AlgorithmRevision == policy.ConfirmedFailoverAlgorithm) != wanted ||
+					!bytes.Equal(result.EngineConfig, prepared.EngineConfig) {
+					t.Fatal("decision program crossed device capability or cohort", err)
+				}
+				if wanted && *result.DecisionProgram != (policy.FailoverProgram{Revision: 7, Confirmations: 4, MinSwitchIntervalMs: 120000}) {
+					t.Fatal("approved program changed")
+				}
+			}
+		}
+	})
 	for _, point := range []string{"0", "10000"} {
 		changes[2].Value = bytes.Replace(explicitDecision, []byte(`"decisionRevision":"m4-confirmed-v1"`),
 			[]byte(`"decisionRevision":"m4-confirmed-v1","decisionRollout":{"id":"synthetic-algorithm","basisPoints":`+point+`}`), 1)

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.syn443.invalid/v1/decision-program.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "algorithmId",
+    "evaluatorMin",
+    "evaluatorMax",
+    "requiredCapabilities",
+    "targetDevice",
+    "keyThumbprint",
+    "configHash",
+    "notBeforeMs",
+    "expiresMs",
+    "policyHash",
+    "program"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "algorithmId": {
+      "const": "m4-confirmed-v1"
+    },
+    "evaluatorMin": {
+      "const": 1
+    },
+    "evaluatorMax": {
+      "const": 1
+    },
+    "requiredCapabilities": {
+      "const": [
+        "decision.bundle.v1",
+        "route.decision.v1"
+      ]
+    },
+    "targetDevice": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{8,64}$"
+    },
+    "keyThumbprint": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "configHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "notBeforeMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "expiresMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "policyHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "program": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "confirmations",
+        "minSwitchIntervalMs"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "confirmations": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 6
+        },
+        "minSwitchIntervalMs": {
+          "type": "integer",
+          "minimum": 60000,
+          "maximum": 300000
+        }
+      }
+    }
+  }
+}

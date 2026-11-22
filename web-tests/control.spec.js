@@ -612,15 +612,22 @@ test('conservative failover and its cohort stay in the editable draft',async({pa
  await input.fill(JSON.stringify(fixture));await expect(selection).toBeEnabled();
  await selection.selectOption('m4-confirmed-v1');
  const id=page.locator('#route-decision-id'),share=page.locator('#route-decision-share');
+ const revision=page.locator('#program-revision'),count=page.locator('#program-confirmations'),interval=page.locator('#program-interval');
+ await revision.fill('7');await count.fill('2');await interval.fill('87001');await page.locator('#program-save').click();
+ expect(JSON.parse(await input.inputValue()).network.routeFailover.decisionProgram).toBeUndefined();
+ await revision.fill('7');await count.fill('4');await interval.fill('87001');await page.locator('#program-save').click();
+ await expect.poll(async()=>JSON.parse(await input.inputValue()).network.routeFailover.decisionProgram)
+  .toEqual({revision:7,confirmations:4,minSwitchIntervalMs:87001});
  await id.fill('synthetic-algorithm');await share.fill('25.05');await page.locator('#route-decision-control').fill('8.75');await page.locator('#route-decision-save').click();
  await page.locator('#save-draft').click();await expect(page.locator('#draft-version')).toContainText('Версия черновика: 1');
  await input.fill('{}');await page.locator('#open-draft').click();await expect(selection).toHaveValue('m4-confirmed-v1');
+ await expect(revision).toHaveValue('7');await expect(count).toHaveValue('4');await expect(interval).toHaveValue('87001');
  await expect(id).toHaveValue('synthetic-algorithm');await expect(share).toHaveValue('25.05');
  await expect(page.locator('#route-decision-control')).toHaveValue('8.75');
  expect(JSON.parse(await input.inputValue()).network.routeFailover.decisionRollout).toEqual({id:'synthetic-algorithm',basisPoints:2505,controlBasisPoints:875});
  await selection.selectOption('');
  const saved=JSON.parse(await input.inputValue()).network.routeFailover;
- expect(saved.decisionRevision).toBeUndefined();expect(saved.decisionRollout).toBeUndefined();
+ expect(saved.decisionRevision).toBeUndefined();expect(saved.decisionRollout).toBeUndefined();expect(saved.decisionProgram).toBeUndefined();
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(1);expect(state.calls).not.toContain('configuration.publish');
 });
