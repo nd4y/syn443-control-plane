@@ -3,7 +3,6 @@ package deviceprovisioning
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"slices"
 	"sort"
 	"time"
@@ -151,12 +150,7 @@ func (a *NetworkAuthority) Prepare(ctx context.Context, target enrollment.Config
 	if approved == nil || approved.Fence == nil || !sameNetworkTarget(target, approved.Target) || approved.UntilMs <= now.UnixMilli() || approved.UntilMs > now.Add(7*24*time.Hour).UnixMilli() || !networkMode(approved.Mode) {
 		return nil, enrollment.ErrDenied
 	}
-	var plan configuration.NetworkPlan
-	_, e = configuration.Merge(ctx, approved.Layers, func(raw json.RawMessage) error {
-		var err error
-		plan, err = configuration.DecodeNetworkPlan(raw)
-		return err
-	})
+	_, plan, e := configuration.MergeNetworkPlan(ctx, approved.Layers)
 	if e != nil {
 		return nil, e
 	}

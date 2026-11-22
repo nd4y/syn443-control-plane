@@ -126,12 +126,11 @@ func TestNetworkPlanClosedShapeAndLayerMergeDoNotGrantPublicationAuthority(t *te
 		base.Changes = append(base.Changes, Change{Path: "/" + name, Operation: "set", Value: fields[name]})
 	}
 	device := Layer{ID: "device-a", Kind: "device", Revision: 3, Changes: []Change{{Path: "/network/dnsStrategy", Operation: "set", Value: json.RawMessage(`"ipv4_only"`)}}}
-	effective, e := Merge(context.Background(), []Layer{device, base}, func(raw json.RawMessage) error { _, e := DecodeNetworkPlan(raw); return e })
+	effective, merged, e := MergeNetworkPlan(context.Background(), []Layer{device, base})
 	if e != nil {
 		t.Fatal("portable layer merge", e)
 	}
-	merged, e := DecodeNetworkPlan(effective.Document)
-	if e != nil || merged.Network.DNSStrategy != "ipv4_only" || effective.Fields["/network/dnsStrategy"].LayerID != device.ID {
+	if merged.Network.DNSStrategy != "ipv4_only" || effective.Fields["/network/dnsStrategy"].LayerID != device.ID {
 		t.Fatal("effective plan/provenance mismatch", e)
 	}
 	if _, e = CompileNetworkPlan(context.Background(), merged, defaultGraphResolver()); e != nil {

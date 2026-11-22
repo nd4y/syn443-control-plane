@@ -64,10 +64,7 @@ func effectiveProposalHash(ctx context.Context, proposal LayerProposal) (string,
 			return "", enrollment.ErrDenied
 		}
 		seen[bundle.Device] = true
-		effective, e := configuration.Merge(ctx, bundle.Layers, func(raw json.RawMessage) error {
-			_, e := configuration.DecodeNetworkPlan(raw)
-			return e
-		})
+		effective, _, e := configuration.MergeNetworkPlan(ctx, bundle.Layers)
 		if e != nil {
 			return "", e
 		}
