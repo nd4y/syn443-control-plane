@@ -26,6 +26,14 @@ const restoreDatabase = "syn443_ci_restore"
 // The dump never leaves that container or becomes a CI artifact.
 func restoreFixture(t *testing.T) *sql.DB {
 	t.Helper()
+	return restoreFixtureFrom(t, "postgres")
+}
+
+func restoreFixtureFrom(t *testing.T, source string) *sql.DB {
+	t.Helper()
+	if source != "postgres" && source != "syn443_ci_upgrade_source" {
+		t.Fatal("unexpected restore fixture database")
+	}
 	container := os.Getenv("SYN443_RESTORE_FIXTURE_CONTAINER")
 	if container == "" && os.Getenv("GITHUB_ACTIONS") != "true" {
 		t.Skip("container-local pg_dump and pg_restore are required for this drill")
@@ -34,6 +42,11 @@ func restoreFixture(t *testing.T) *sql.DB {
 		t.Fatal("restore drill requires the test PostgreSQL container")
 	}
 	t.Cleanup(func() {
+		if source == "syn443_ci_upgrade_source" {
+			if _, err := fixtureOwner.Exec(`DROP DATABASE IF EXISTS syn443_ci_upgrade_rollback WITH (FORCE)`); err != nil {
+				t.Error("temporary rollback database cleanup failed")
+			}
+		}
 		if _, err := fixtureOwner.Exec(`DROP DATABASE IF EXISTS syn443_ci_restore WITH (FORCE)`); err != nil {
 			t.Error("temporary restored database cleanup failed")
 		}
@@ -42,19 +55,28 @@ func restoreFixture(t *testing.T) *sql.DB {
 umask 077
 scratch=$(mktemp -d)
 trap 'rm -f "$scratch/snapshot.dump"; rmdir "$scratch"' EXIT
-pg_dump --username=postgres --format=custom --file="$scratch/snapshot.dump" --dbname=postgres
+pg_dump --username=postgres --format=custom --file="$scratch/snapshot.dump" --dbname="$1"
 createdb --username=postgres --template=template0 syn443_ci_restore
 pg_restore --username=postgres --single-transaction --exit-on-error --dbname=syn443_ci_restore "$scratch/snapshot.dump"
+if [ "$1" = syn443_ci_upgrade_source ]; then
+    createdb --username=postgres --template=template0 syn443_ci_upgrade_rollback
+    pg_restore --username=postgres --single-transaction --exit-on-error --dbname=syn443_ci_upgrade_rollback "$scratch/snapshot.dump"
+fi
 `
-	cmd := exec.CommandContext(t.Context(), "docker", "exec", "--user", "postgres", container, "sh", "-ec", drill)
+	cmd := exec.CommandContext(t.Context(), "docker", "exec", "--user", "postgres", container, "sh", "-ec", drill, "syn443-restore", source)
 	if err := cmd.Run(); err != nil {
 		t.Fatal("temporary PostgreSQL dump or transactional restore failed", err)
 	}
-	dsn, err := url.Parse(fixtureAPIDSN)
+	return openRestoreDatabase(t, fixtureAPIDSN, restoreDatabase)
+}
+
+func openRestoreDatabase(t *testing.T, uri, name string) *sql.DB {
+	t.Helper()
+	dsn, err := url.Parse(uri)
 	if err != nil {
 		t.Fatal("fixture API address is invalid")
 	}
-	dsn.Path = "/" + restoreDatabase
+	dsn.Path = "/" + name
 	restored, err := sql.Open("pgx", dsn.String())
 	if err != nil {
 		t.Fatal("fixture API connection setup failed")

@@ -13,7 +13,7 @@ tls_dir=$(mktemp -d)
 cleanup() {
   if [ -n "$container_id" ]; then docker rm -f -v "$container_id" >/dev/null; fi
   rm -f -- "$tls_dir"/{ca.key,ca.crt,server.key,server.csr,server.crt,extensions}
-  rm -f -- "$tls_dir/capacity-engine.json"
+  rm -f -- "$tls_dir/capacity-engine.json" "$tls_dir/previous-schema.sql"
   rmdir -- "$tls_dir"
   unset POSTGRES_PASSWORD PGPASSWORD SYN443_TEST_DATABASE
 }
@@ -59,11 +59,20 @@ if [[ "${1:-}" == capacity ]]; then
   go test -count=1 -timeout=7m -tags 'postgres capacity' -run '^(TestCapacityKeepsEveryScheduledOutcomeInEachPercentile|TestSmallServiceCapacityWithIssuedPoliciesAndDurableTelemetry)$' -v ./internal/enrollment
   exit 0
 fi
+# Exercise actual prior published SQL, including previous defaults and indexes.
+baseline=136537e496fe119c9da7c1c976d271ab0c65a390
+export SYN443_TEST_PREVIOUS_SCHEMA="$tls_dir/previous-schema.sql"
+for schema in internal/enrollment/schema.sql internal/supportchat/schema.sql; do
+  git show "$baseline:$schema" >> "$SYN443_TEST_PREVIOUS_SCHEMA"
+done
+
 if [ -n "${SYN443_GO_IMAGE:-}" ]; then
   # Optional bounded builder for the shared build host; CI uses its pinned Go installation.
   mkdir -p "$PWD/.fixture-cache/mod" "$PWD/.fixture-cache/build"
   docker run --rm --network host --cpus=1 --memory=768m -e GOMAXPROCS=2 -e SYN443_TEST_DATABASE -e PGPASSWORD \
     -e SYN443_TEST_DATABASE_CA=/tmp/syn443-fixture-ca.crt \
+    -e SYN443_TEST_PREVIOUS_SCHEMA=/tmp/syn443-previous-schema.sql \
+    -v "$tls_dir/previous-schema.sql:/tmp/syn443-previous-schema.sql:ro" \
     -v "$tls_dir/ca.crt:/tmp/syn443-fixture-ca.crt:ro" \
     -v "$PWD:/src" -v "$PWD/.fixture-cache/mod:/go/pkg/mod" \
     -v "$PWD/.fixture-cache/build:/root/.cache/go-build" -w /src "$SYN443_GO_IMAGE" \
