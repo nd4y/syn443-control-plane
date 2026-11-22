@@ -215,6 +215,29 @@ function updateHomeProof(remove) {
 }
 $('home-apply').onclick=()=>updateHomeProof(false);
 $('home-remove').onclick=()=>updateHomeProof(true);
+// Unsubmitted parameters belong to one route in the current private draft.
+const probeEntryDefaults={
+ 'route-check-method':'tcp','route-check-target':'','route-check-ip':'',
+ 'route-check-verb':'HEAD','route-check-status':'200','route-check-country-class':'',
+};
+const probeEntries=new Map();
+let probeEntrySubject=null,probeEntryPath='';
+function selectProbeEntry(subject,path,tags){
+ const newSubject=path?subject:null;
+ if(newSubject===probeEntrySubject&&path===probeEntryPath)return;
+ if(newSubject!==probeEntrySubject){
+  probeEntries.clear();
+ }else if(probeEntryPath&&tags.has(probeEntryPath)){
+  const entry={required:$('route-check-required').checked};
+  for(const id of Object.keys(probeEntryDefaults))entry[id]=$(id).value;
+  probeEntries.set(probeEntryPath,entry);
+ }
+ for(const tag of probeEntries.keys())if(!tags?.has(tag))probeEntries.delete(tag);
+ probeEntrySubject=newSubject;probeEntryPath=path;
+ const entry=probeEntries.get(path);
+ for(const [id,initial] of Object.entries(probeEntryDefaults))$(id).value=entry?.[id]??initial;
+ $('route-check-required').checked=entry?.required===true;
+}
 function drawRouteChecks(){
  const draft=authenticated?$('plan').value:null;
  const subject=profileSubject(), changed=homeDocument!==draft||homeSubject!==subject;
@@ -229,9 +252,6 @@ function drawRouteChecks(){
  $('route-profile-open').disabled=true;
  $('route-bounds').hidden=true;$('route-bounds-preview').disabled=true;
  const editor=$('route-check-editor'),select=$('route-check-path'),list=$('route-check-list');
- $('route-check-exit').hidden=$('route-check-method').value!=='https_exit_ip';
- $('route-check-http').hidden=$('route-check-method').value!=='https_status';
- $('route-check-country').hidden=$('route-check-method').value!=='https_exit_country';
  $('route-profile-note').hidden=true;
  $('route-check-add').disabled=true;
  const cooldown=$('route-reserve-cooldown');cooldown.checked=false;cooldown.disabled=true;
@@ -245,7 +265,7 @@ function drawRouteChecks(){
  if(authenticated){try{state=routeDraft();}catch{ /* An incomplete raw draft has no editable fields. */ }}
  showHomeProof(state,changed);
  showModeSelection(state,changed);
- if(!state)return;
+ if(!state){selectProbeEntry(null,'',null);return;}
  $('route-explanation').hidden=false;
  $('explain-run').disabled=busy||!!pending||!['domain','address','application'].some(key=>$('explain-'+key).value.trim());
  if(state.value.adaptive){$('route-bounds').hidden=false;$('route-bounds-preview').disabled=busy||!!pending;}
@@ -253,9 +273,13 @@ function drawRouteChecks(){
  if(state.tags.has(prior))select.value=prior;
  else if(state.tags.has(state.value.graph.final))select.value=state.value.graph.final;
  const selected=state.checks.find(row=>row.outbound===select.value);
+ selectProbeEntry(JSON.stringify([subject,revision]),select.value,state.tags);
+ $('route-check-exit').hidden=$('route-check-method').value!=='https_exit_ip';
+ $('route-check-http').hidden=$('route-check-method').value!=='https_status';
+ $('route-check-country').hidden=$('route-check-method').value!=='https_exit_country';
  if(routeProfileEdit&&routeProfileEdit.path!==select.value)closeRouteProfile();
  $('route-profile-open').disabled=busy||!!pending||!(selected?.profile||selected?.checks?.length);
- $('route-check-required').checked=selected?.required===true;
+ if(selected)$('route-check-required').checked=selected.required===true;
  $('route-profile-note').hidden=!selected?.profile;
  for(const id of ['route-check-method','route-check-target','route-check-ip','route-check-verb','route-check-status','route-check-country-class','route-check-add']){
   $(id).disabled=!!selected?.profile;
@@ -1075,6 +1099,7 @@ function openLinkedDevice(){
 function showDraft(draft){
  if(!Number.isSafeInteger(draft.revision)||draft.revision<1)throw Error('invalid');
  opened={id:draft.id,kind:draft.targetKind,target:draft.targetId};revision=draft.revision;
+ selectProbeEntry(null,'',null);
  $('draft-id').value=draft.id;$('target-kind').value=draft.targetKind;$('target-id').value=draft.targetId;
  $('base-revision').value=String(draft.baseRevision);$('base-hash').value=draft.baseHash;$('plan').value=JSON.stringify(draft.plan,null,2);$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';
  $('draft-version').textContent=`Версия черновика: ${draft.revision}`;
@@ -1501,7 +1526,7 @@ addEventListener('hashchange',()=>{
 });$('open-draft').onclick=()=>work(openDraft);
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
-$('plan').oninput=drawRouteChecks;
+$('plan').oninput=()=>{selectProbeEntry(null,'',null);drawRouteChecks();};
 for(const id of ['draft-id','target-id','target-kind'])$(id).addEventListener('input',drawRouteChecks);
 const connectionFields=['domain','address','application','network','port','dnsType'];
 function resetExplanation(clearInputs){
