@@ -4,7 +4,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Requirements | 292 | 115 | 41 | 65 | 71 |
+| Requirements | 292 | 119 | 45 | 61 | 67 |
 | Acceptance scenarios | 98 | 19 | 2 | 4 | 73 |
 
 ## Requirement families
@@ -22,8 +22,8 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | PROTO | 4 | 0 | 1 | 2 | 1 |
 | NB | 7 | 5 | 0 | 2 | 0 |
 | OVL | 7 | 2 | 0 | 3 | 2 |
-| MODE | 5 | 0 | 3 | 2 | 0 |
-| AUTO | 10 | 0 | 3 | 0 | 7 |
+| MODE | 5 | 2 | 3 | 0 | 0 |
+| AUTO | 10 | 0 | 6 | 0 | 4 |
 | REC | 6 | 6 | 0 | 0 | 0 |
 | ALG | 24 | 0 | 13 | 0 | 11 |
 | BAD | 10 | 0 | 8 | 0 | 2 |
@@ -35,7 +35,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | LOG | 7 | 6 | 0 | 0 | 1 |
 | UI | 1 | 1 | 0 | 0 | 0 |
 | EDIT | 12 | 5 | 1 | 0 | 6 |
-| OWN | 6 | 0 | 1 | 1 | 4 |
+| OWN | 6 | 1 | 1 | 0 | 4 |
 | MOB | 8 | 4 | 1 | 2 | 1 |
 | CHAT | 15 | 15 | 0 | 0 | 0 |
 | SRV | 4 | 0 | 0 | 2 | 2 |
@@ -43,15 +43,15 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | ADB | 4 | 4 | 0 | 0 | 0 |
 | BOOT | 15 | 2 | 2 | 6 | 5 |
 | NFR | 8 | 1 | 0 | 2 | 5 |
-| SEC | 12 | 3 | 2 | 2 | 5 |
-| ENG | 8 | 5 | 0 | 1 | 2 |
+| SEC | 12 | 4 | 2 | 1 | 5 |
+| ENG | 8 | 5 | 1 | 1 | 1 |
 
 ## Trace an item
 
 Download `product-requirements` from the CI run for this Control Plane revision. The CSV lists every requirement and acceptance scenario with both original status values. Look up the item ID in its component register for evidence and remaining scope.
 
 - [Control Plane register](requirements-register.json)
-- [Android register at 41082b171220](https://github.com/nd4y/syn443-android/blob/41082b1712201e7a4861ed26ee0b61193469459c/docs/requirements-register.json)
+- [Android register at 15360a94c4fe](https://github.com/nd4y/syn443-android/blob/15360a94c4fea54d7db9176967c80874305f9955/docs/requirements-register.json)
 - [Technical specification](spec/TECHNICAL_SPEC_RU.md)
 - [Live and release acceptance records](implementation-status.md)
 
