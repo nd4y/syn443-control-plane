@@ -26,6 +26,8 @@ export function Invitations() {
       <p id="invite-qr-notice" hidden>Ссылка слишком длинная для одного QR. Передайте её получателю целиком.</p>
       <label htmlFor="invite-link">Одноразовая ссылка</label>
       <textarea id="invite-link" rows={3} readOnly autoComplete="off" spellCheck={false} />
+      <Button id="invite-copy" type="button" variant="secondary">Скопировать ссылку</Button>
+      <p id="invite-copy-status" role="status" aria-live="polite" />
       <Button id="invite-conceal" type="button" variant="link">Скрыть ссылку и QR</Button>
     </div>
     <form id="invite-read-form" autoComplete="off">
@@ -94,10 +96,10 @@ export function connectInvitations(send) {
   const section=$('status').closest('.workspace-page'),workspace=document.getElementById('workspace');
   const visible=()=>!document.hidden&&!section.hidden&&!workspace.hidden;
   const now=()=>Math.floor(Date.now()/1000);
-  let epoch=0,active=null,pending=null,confirm=null,view=null,expiry=null,wasVisible=visible();
+  let epoch=0,active=null,pending=null,confirm=null,view=null,expiry=null,delivery=null,wasVisible=visible();
   function message(text){$('status').textContent=text;}
   function conceal(){
-    clearTimeout(expiry);expiry=null;$('link').value='';$('expiry').textContent='';
+    clearTimeout(expiry);expiry=null;delivery=null;$('copy-status').textContent='';$('link').value='';$('expiry').textContent='';
     $('qr').width=$('qr').height=0;$('delivery').hidden=true;
   }
   function controls(){
@@ -131,10 +133,13 @@ export function connectInvitations(send) {
       !Number.isSafeInteger(result.expires)||!Object.hasOwn(states,result.state))throw Error('invalid_reply');
     const canPair=result.state==='pending_approval'&&result.expires>now();
     if(canPair&&(!opaque.test(result.thumbprint)||!/^\d{6}$/.test(result.pairCode)))throw Error('invalid_reply');
+    const completed=result.state==='completed';
+    if(completed&&(typeof result.device!=='string'||!opaque.test(result.device)))throw Error('invalid_reply');
     view={id,version:result.version,state:result.state,expires:result.expires,owner:result.owner,
       thumbprint:canPair?result.thumbprint:'',pairCode:canPair?result.pairCode:''};
     $('view').hidden=false;$('pair').hidden=!canPair;$('pair-code').value='';
-    $('detail').textContent=states[result.state]+' · Получатель '+result.owner+(canPair?' · Отпечаток устройства '+result.thumbprint:'');
+    $('detail').textContent=states[result.state]+' · Получатель '+result.owner+(canPair?' · Отпечаток устройства '+result.thumbprint:'')+
+      (completed?' · ID устройства '+result.device:'');
     $('revoke').hidden=!['issued','pending_approval','provisioning','ready'].includes(result.state)||result.expires<=now();
     if(result.state!=='issued')conceal();
   }
@@ -143,6 +148,7 @@ export function connectInvitations(send) {
     if(!opaque.test(result?.id)||result.version!==1||result.expires!==input.expires||result.expires<=now()||
       !validLink(result.link,input.serviceId))throw Error('invalid_reply');
     clearView();conceal();$('id').value=result.id;
+    delivery={link:result.link,expires:result.expires};
     $('link').value=result.link;$('qr').hidden=!drawQR($('qr'),result.link);$('qr-notice').hidden=!$('qr').hidden;
     $('expiry').textContent='Одно устройство. Ссылка действует до '+new Date(result.expires*1000).toLocaleTimeString('ru-RU')+'.';
     $('delivery').hidden=false;expiry=setTimeout(conceal,Math.max(0,result.expires*1000-Date.now()));
@@ -205,5 +211,18 @@ export function connectInvitations(send) {
   $('confirm-yes').onclick=()=>{if(confirm)void perform(confirm);};
   $('confirm-no').onclick=()=>{confirm=null;$('confirm-text').textContent='';controls();};
   $('retry').onclick=()=>{if(pending)void perform(pending);};
+  $('copy').onclick=async()=>{
+    const current=delivery;
+    if(!current||!visible()||$('delivery').hidden)return;
+    if(current.expires<=now()){conceal();return;}
+    try{
+      await navigator.clipboard.writeText(current.link);
+      if(current===delivery&&visible()&&current.expires>now())$('copy-status').textContent='Ссылка скопирована.';
+    }catch{
+      if(current!==delivery||!visible()||current.expires<=now())return;
+      $('link').focus();$('link').select();
+      $('copy-status').textContent='Ссылка выделена. Выберите «Копировать» в меню устройства.';
+    }
+  };
   $('conceal').onclick=conceal;controls();
 }

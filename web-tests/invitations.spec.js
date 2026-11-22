@@ -95,3 +95,53 @@ test('revocation requires explicit confirmation and leaving invitations discards
  await expect(page.locator('#invite-link')).toHaveValue('');await expect(page.locator('#invite-delivery')).toBeHidden();
  expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
 });
+
+test('an issued link copies only on request and an expired delivery cannot reach the clipboard',async({page,request})=>{
+ await open(page,request);await page.clock.install();
+ await page.evaluate(()=>{
+  window.invitationCopies=[];
+  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
+   writeText(value){window.invitationCopies.push(value);return Promise.resolve();}
+  }});
+ });
+ let expires;
+ await page.route('**/control/action',async route=>{
+  const operation=route.request().postDataJSON();if(operation.action!=='invite.issue')return route.fallback();
+  expires=operation.payload.expires;await route.fulfill({json:{id,version:1,expires,link}});
+ });
+ await propose(page);await page.getByRole('button',{name:'Подтвердить действие'}).click();
+ const copy=page.getByRole('button',{name:'Скопировать ссылку'});await expect(copy).toBeVisible();
+ expect(await page.evaluate(()=>window.invitationCopies)).toEqual([]);
+ await copy.click();await expect(page.locator('#invite-copy-status')).toHaveText('Ссылка скопирована.');
+ expect(await page.evaluate(()=>window.invitationCopies)).toEqual([link]);
+ await page.clock.setSystemTime(new Date((expires+1)*1000));
+ await page.locator('#invite-copy').evaluate(button=>button.click());
+ await expect(page.locator('#invite-delivery')).toBeHidden();
+ expect(await page.evaluate(()=>window.invitationCopies)).toEqual([link]);
+});
+
+test('clipboard refusal offers manual copy and a completed invitation identifies only its registered device',async({page,request})=>{
+ await open(page,request);
+ await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
+  writeText:()=>Promise.reject(new DOMException('Denied','NotAllowedError'))
+ }}));
+ const enrolled=opaque(9);let resultState='completed',resultDevice=enrolled;
+ await page.route('**/control/action',async route=>{
+  const operation=route.request().postDataJSON();if(!operation.action.startsWith('invite.'))return route.fallback();
+  if(operation.action==='invite.issue')return route.fulfill({json:{id,version:1,expires:operation.payload.expires,link}});
+  await route.fulfill({json:{id,owner,version:4,expires:Math.floor(Date.now()/1000)+300,
+   state:resultState,device:resultDevice,thumbprint:'',pairCode:''}});
+ });
+ await propose(page);await page.getByRole('button',{name:'Подтвердить действие'}).click();
+ await page.getByRole('button',{name:'Скопировать ссылку'}).click();
+ await expect(page.getByLabel('Одноразовая ссылка')).toBeFocused();
+ expect(await page.locator('#invite-link').evaluate(field=>field.value.slice(field.selectionStart,field.selectionEnd))).toBe(link);
+ await expect(page.locator('#invite-copy-status')).toContainText('Ссылка выделена');
+ const inspect=page.getByRole('button',{name:'Проверить состояние'});
+ await inspect.click();await expect(page.locator('#invite-detail')).toContainText('ID устройства '+enrolled);
+ await expect(page.locator('#invite-delivery')).toBeHidden();
+ resultState='provisioning';await inspect.click();await expect(page.locator('#invite-detail')).toContainText('Конфигурация готовится');
+ await expect(page.locator('#invite-detail')).not.toContainText(enrolled);
+ resultState='completed';resultDevice='invalid';await inspect.click();await expect(page.locator('#invite-status')).toContainText('Операция не подтверждена');
+ await expect(page.locator('#invite-view')).toBeHidden();
+});
