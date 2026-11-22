@@ -33,6 +33,7 @@ type hourRow struct {
 	Events                   int64  `json:"events"`
 	Timed                    int64  `json:"timed"`
 	Duration                 int64  `json:"duration"`
+	DurationP95MS            *int64 `json:"durationP95Ms,omitempty"`
 	BaselineReselections     int64  `json:"baselineReselections,omitempty"`
 	ConservativeReselections int64  `json:"conservativeReselections,omitempty"`
 	AdaptiveReselections     int64  `json:"adaptiveReselections,omitempty"`
@@ -197,6 +198,7 @@ func aggregateHour(ctx context.Context, tx *sql.Tx, hour time.Time) (Hourly, err
  SELECT kind,code,mode,duration_ms,decision_variant FROM public.identity_telemetry_analysis_events
  WHERE received_at_ms >= $1 AND received_at_ms < $2 LIMIT $3)
  SELECT kind,code,mode,count(*),count(duration_ms),coalesce(sum(duration_ms),0),
+  percentile_disc(0.95) WITHIN GROUP (ORDER BY duration_ms),
   count(*) FILTER (WHERE decision_variant=1),count(*) FILTER (WHERE decision_variant=2),count(*) FILTER (WHERE decision_variant=3)
  FROM evidence GROUP BY kind,code,mode ORDER BY kind,code,mode LIMIT 257`,
 		hour.UnixMilli(), hour.Add(time.Hour).UnixMilli(), MaxHourlyEvents+1)
@@ -207,7 +209,7 @@ func aggregateHour(ctx context.Context, tx *sql.Tx, hour time.Time) (Hourly, err
 	grouped := make([]hourRow, 0, 32)
 	for rows.Next() {
 		var row hourRow
-		if err = rows.Scan(&row.Kind, &row.Code, &row.Mode, &row.Events, &row.Timed, &row.Duration,
+		if err = rows.Scan(&row.Kind, &row.Code, &row.Mode, &row.Events, &row.Timed, &row.Duration, &row.DurationP95MS,
 			&row.BaselineReselections, &row.ConservativeReselections, &row.AdaptiveReselections); err != nil {
 			rows.Close()
 			return Hourly{}, ErrUnavailable
@@ -231,10 +233,10 @@ func aggregateHour(ctx context.Context, tx *sql.Tx, hour time.Time) (Hourly, err
 	if err != nil {
 		return Hourly{}, ErrUnavailable
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO public.identity_telemetry_hourly(hour_start_ms,kind,code,mode,events,timed,duration_total_ms,baseline_reselections,conservative_reselections,adaptive_reselections)
- SELECT $1,kind,code,mode,events,timed,duration,coalesce("baselineReselections",0),coalesce("conservativeReselections",0),coalesce("adaptiveReselections",0)
+	if _, err = tx.ExecContext(ctx, `INSERT INTO public.identity_telemetry_hourly(hour_start_ms,kind,code,mode,events,timed,duration_total_ms,duration_p95_ms,baseline_reselections,conservative_reselections,adaptive_reselections)
+ SELECT $1,kind,code,mode,events,timed,duration,"durationP95Ms",coalesce("baselineReselections",0),coalesce("conservativeReselections",0),coalesce("adaptiveReselections",0)
  FROM jsonb_to_recordset($2::jsonb)
- AS e(kind text,code text,mode text,events bigint,timed bigint,duration bigint,
+ AS e(kind text,code text,mode text,events bigint,timed bigint,duration bigint,"durationP95Ms" bigint,
   "baselineReselections" bigint,"conservativeReselections" bigint,"adaptiveReselections" bigint)`, hour.UnixMilli(), string(encoded)); err != nil {
 		return Hourly{}, ErrUnavailable
 	}

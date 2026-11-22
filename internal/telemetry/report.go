@@ -60,7 +60,7 @@ func ReportHour(ctx context.Context, db *sql.DB, hour, now time.Time) (HourRepor
 		return HourReport{}, ErrInvalid
 	}
 	out := HourReport{SchemaVersion: 1, HourStartMS: hour.UnixMilli(), Rows: []hourRow{}}
-	rows, err := db.QueryContext(ctx, `SELECT kind,code,mode,events,timed,duration_total_ms,baseline_reselections,conservative_reselections,adaptive_reselections
+	rows, err := db.QueryContext(ctx, `SELECT kind,code,mode,events,timed,duration_total_ms,duration_p95_ms,baseline_reselections,conservative_reselections,adaptive_reselections
  FROM public.identity_telemetry_hourly WHERE hour_start_ms=$1 ORDER BY kind,code,mode LIMIT 257`, out.HourStartMS)
 	if err != nil {
 		return HourReport{}, ErrUnavailable
@@ -69,7 +69,7 @@ func ReportHour(ctx context.Context, db *sql.DB, hour, now time.Time) (HourRepor
 	var total int64
 	for rows.Next() {
 		var row hourRow
-		if err = rows.Scan(&row.Kind, &row.Code, &row.Mode, &row.Events, &row.Timed, &row.Duration,
+		if err = rows.Scan(&row.Kind, &row.Code, &row.Mode, &row.Events, &row.Timed, &row.Duration, &row.DurationP95MS,
 			&row.BaselineReselections, &row.ConservativeReselections, &row.AdaptiveReselections); err != nil {
 			return HourReport{}, ErrUnavailable
 		}
@@ -80,6 +80,9 @@ func ReportHour(ctx context.Context, db *sql.DB, hour, now time.Time) (HourRepor
 			row.ConservativeReselections < 0 || row.ConservativeReselections > row.Events-row.BaselineReselections ||
 			row.AdaptiveReselections < 0 || row.AdaptiveReselections > row.Events-row.BaselineReselections-row.ConservativeReselections ||
 			(row.BaselineReselections > 0 || row.ConservativeReselections > 0 || row.AdaptiveReselections > 0) && (row.Kind != "route" || row.Code != "reselected") {
+			return HourReport{}, ErrUnavailable
+		}
+		if p95 := row.DurationP95MS; p95 != nil && (row.Timed == 0 || *p95 < 0 || *p95 > min(int64(600000), row.Duration) || row.Timed == 1 && *p95 != row.Duration) {
 			return HourReport{}, ErrUnavailable
 		}
 		out.Rows = append(out.Rows, row)

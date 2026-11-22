@@ -46,7 +46,7 @@ test('hourly telemetry distinguishes data empty and mismatched reports and clear
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
  await expect(status).toHaveText('Сводка за 2026-01-02T01:00Z');
- await expect(rows.locator('td')).toHaveText(['probe','ok','wifi','3','2','26 мс','—']);
+ await expect(rows.locator('td')).toHaveText(['probe','ok','wifi','3','2','26 мс','—','—']);
  await hour.fill('2026-01-02T02:00');await button.click();
  await expect(status).toContainText('нет готовой сводки');await expect(rows).toHaveText('');
  await hour.fill('2026-01-02T03:00');await button.click();
@@ -76,8 +76,34 @@ test('mobile telemetry discards delayed data and errors after selecting an hour 
   await expect(load).toBeEnabled();await expect(status).toBeEmpty();await expect(rows).toBeEmpty();
   await page.unroute('**/control/action',handler);
  }
- await load.click();await expect(rows.locator('td')).toHaveText(['probe','ok','wifi','3','2','26 мс','—']);
+ await load.click();await expect(rows.locator('td')).toHaveText(['probe','ok','wifi','3','2','26 мс','—','—']);
 });
+test('hourly telemetry displays measured p95 and keeps omitted distinct from zero',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#telemetry-title');
+ const load=page.locator('#load-telemetry'),rows=page.locator('#telemetry-rows');
+ await expect(load).toBeEnabled();await page.locator('#telemetry-hour').fill('2026-01-02T01:00');
+ let evidence;
+ await page.route('**/control/action',async route=>{
+  if(route.request().postDataJSON().action!=='telemetry.summary.get')return route.fallback();
+  await route.fulfill({json:{schemaVersion:1,hourStartMs:Date.parse('2026-01-02T01:00Z'),available:true,rows:evidence}});
+ });
+ const measured={kind:'probe',code:'ok',mode:'wifi',events:3,timed:2,duration:51,durationP95Ms:48};
+ const zero={kind:'probe',code:'dns_timeout',mode:'wifi',events:1,timed:1,duration:0,durationP95Ms:0};
+ const legacy={kind:'vpn',code:'online',mode:'wifi',events:3,timed:2,duration:51};
+ evidence=[measured,zero,legacy];
+ await load.click();
+ await expect(page.getByRole('columnheader',{name:'95-й процентиль'})).toBeVisible();
+ await expect(rows.locator('tr').nth(0).locator('td').nth(6)).toHaveText('48 мс');
+ await expect(rows.locator('tr').nth(1).locator('td').nth(6)).toHaveText('0 мс');
+ await expect(rows.locator('tr').nth(2).locator('td').nth(6)).toHaveText('—');
+ for(const invalid of [{durationP95Ms:null},{durationP95Ms:'48'},{durationP95Ms:-1},{durationP95Ms:52},
+                       {timed:0,duration:0,durationP95Ms:0},{timed:1,duration:51,durationP95Ms:48}]){
+  evidence=[zero,{...measured,...invalid}];await load.click();
+  await expect(page.locator('#telemetry-status')).toContainText('Не удалось загрузить');
+  await expect(rows).toBeEmpty();
+ }
+});
+
 test('hourly telemetry rejects duplicate buckets and totals above the server limit as a whole',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#telemetry-title');
  const hour=page.locator('#telemetry-hour'),load=page.locator('#load-telemetry'),status=page.locator('#telemetry-status'),rows=page.locator('#telemetry-rows');
@@ -98,7 +124,7 @@ test('hourly route summary shows only valid counts for the two decision algorith
  const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows');
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
- await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','0','—','Базовый: 1, консервативный: 2']);
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','0','—','—','Базовый: 1, консервативный: 2']);
  await hour.fill('2026-01-02T04:00');await button.click();
  await expect(page.locator('#telemetry-status')).toContainText('Не удалось загрузить');
  await expect(rows).toHaveText('');
@@ -110,7 +136,7 @@ test('hourly route summary preserves legacy counts when the adaptive count is ab
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
  await expect(page.locator('#telemetry-status')).toHaveText('Сводка за 2026-01-02T01:00Z');
- await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','0','—','Базовый: 1, консервативный: 2']);
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','0','—','—','Базовый: 1, консервативный: 2']);
 });
 
 test('hourly route summary adds a positive adaptive count to the existing counts',async({page,request})=>{
@@ -118,11 +144,11 @@ test('hourly route summary adds a positive adaptive count to the existing counts
  const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows');
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
- await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','0','—','Базовый: 1, консервативный: 1, адаптивный: 2']);
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','0','—','—','Базовый: 1, консервативный: 1, адаптивный: 2']);
  await reset(request,{adaptiveTelemetry:'only'});await page.reload();
  await expect(button).toBeEnabled();
  await hour.fill('2026-01-02T01:00');await button.click();
- await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','3','0','—','адаптивный: 2']);
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','3','0','—','—','адаптивный: 2']);
 });
 
 test('hourly route summary rejects invalid adaptive aggregates without partial stats',async({page,request})=>{

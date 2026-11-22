@@ -1679,7 +1679,11 @@
         "internal/enrollment/runtime_observation_test.go",
         "internal/enrollment/runtime_observation_postgres_test.go",
         "internal/deviceprovisioning/runtime_observation_postgres_test.go",
-        "web-tests/control-runtime.spec.js"
+        "web-tests/control-runtime.spec.js",
+        "docs/telemetry-ingest.md#hourly-duration-percentiles",
+        "internal/enrollment/telemetry_postgres_test.go",
+        "internal/telemetry/report.go",
+        "web-tests/control.spec.js"
       ],
       "implementationScope": "Closed envelope, authenticated device scope and receipt timestamp. Bounded current-key runtime observation ingestion and scoped audited web readback with explicit sample/receipt age and no inferred online attestation. New64-browser/SQL/fuzz Actions evidence pending.",
       "remainingScope": "Full build/core/algorithm/policy/cohort/decision metadata and clock-skew analysis. Android durable sender, actual phone/server runtime readback and full normative telemetry/native administration remain open."

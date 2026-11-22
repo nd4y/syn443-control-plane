@@ -204,6 +204,12 @@ CREATE TABLE IF NOT EXISTS identity_telemetry_hourly (
  PRIMARY KEY(hour_start_ms,kind,code,mode)
 );
 REVOKE ALL ON identity_telemetry_hourly FROM PUBLIC;
+-- Older settled summaries have no percentile until an hour is recomputed.
+ALTER TABLE identity_telemetry_hourly
+ ADD COLUMN IF NOT EXISTS duration_p95_ms bigint
+ CHECK(duration_p95_ms IS NULL OR
+  (timed > 0 AND duration_p95_ms BETWEEN 0 AND least(600000, duration_total_ms)
+   AND (timed <> 1 OR duration_p95_ms=duration_total_ms)));
 ALTER TABLE identity_telemetry_hourly
  ADD COLUMN IF NOT EXISTS baseline_reselections bigint NOT NULL DEFAULT 0
  CHECK(baseline_reselections BETWEEN 0 AND events AND

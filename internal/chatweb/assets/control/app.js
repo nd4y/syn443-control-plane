@@ -622,6 +622,8 @@ $('telemetry-form').onsubmit=event=>{
    let total=0;
    for(const row of report.rows){
     if(!row||![row.kind,row.code,row.mode].every(s=>typeof s==='string'&&/^[a-z0-9_]{1,48}$/.test(s))||![row.events,row.timed,row.duration].every(Number.isSafeInteger)||row.events<=0||row.timed<0||row.timed>row.events||row.duration<0||row.duration>row.timed*600000)throw Error('network');
+    const p95=row.durationP95Ms;
+    if(p95!==undefined&&(!Number.isSafeInteger(p95)||!row.timed||p95<0||p95>Math.min(600000,row.duration)||(row.timed===1&&p95!==row.duration)))throw Error('network');
     const bucket=[row.kind,row.code,row.mode].join('/');
     if(buckets.has(bucket)||row.events>100000-total)throw Error('network');
     buckets.add(bucket);total+=row.events;
@@ -633,7 +635,7 @@ $('telemetry-form').onsubmit=event=>{
     const counts=adaptive?(baseline||conservative?`${legacyCounts}, адаптивный: ${adaptive}`:`адаптивный: ${adaptive}`):
       (baseline||conservative?legacyCounts:'—');
     const tr=document.createElement('tr');
-    for(const value of [row.kind,row.code,row.mode,row.events,row.timed,row.timed?`${Math.round(row.duration/row.timed)} мс`:'—',counts]){
+    for(const value of [row.kind,row.code,row.mode,row.events,row.timed,row.timed?`${Math.round(row.duration/row.timed)} мс`:'—',p95===undefined?'—':p95+' мс',counts]){
      const cell=document.createElement('td');cell.textContent=value;tr.append(cell);
     }
     rows.append(tr);

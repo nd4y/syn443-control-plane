@@ -990,6 +990,7 @@ function Telemetry() {
                 <th scope="col">Число событий</th>
                 <th scope="col">События с замером</th>
                 <th scope="col">Среднее время</th>
+                <th scope="col">95-й процентиль</th>
                 <th scope="col">Переключения по алгоритмам</th>
               </tr>
             </thead>
