@@ -121,3 +121,93 @@ func TestSQLDeviceFetchLeaseUploadAndSelectionStayBoundToOneDevice(t *testing.T)
 		t.Fatal("other device of the same owner consumed a personal source", e)
 	}
 }
+
+func TestSQLDeviceSourceHistoryTracksDownloadAndParserBudgets(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		lifetime time.Duration
+		claims   int
+	}{
+		{"download_budget", time.Hour, 8},
+		{"source_expires_with_lease", 30 * time.Second, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			api, worker, actor, start := databaseFixture(t)
+			api.DeviceFetchEnabled = true
+			ctx := t.Context()
+			source := sourceExample(start)
+			source.Mode, source.FetchDeviceID = "device", "bound-device"
+			source.ValidUntil = start.Add(tc.lifetime).Unix()
+			credential := SecretPatch{Operation: "replace", Value: []byte(`{"url":"https://subscription.example.invalid"}`)}
+			source, err := api.PutSource(ctx, actor, source, credential, "history-device-source", start)
+			if err != nil {
+				t.Fatal(err)
+			}
+			job, err := api.Queue(ctx, actor, source.ID, source.Revision, "history-device-job", nil, start)
+			if err != nil {
+				t.Fatal(err)
+			}
+			at := start
+			history := func(waiting bool, downloads, parses int, next int64) {
+				t.Helper()
+				page, e := api.ListJobs(ctx, actor, source.ID, "", at)
+				if e != nil || len(page.Jobs) != 1 {
+					t.Fatal("missing device history", e)
+				}
+				view := page.Jobs[0]
+				if view.Job.ID != job.ID || view.DeviceAttempts == nil || *view.DeviceAttempts != downloads ||
+					view.Job.Attempts != parses || view.WaitingForDevice != waiting || view.NextAttemptAt != next {
+					t.Fatalf("incorrect history for download %d and parser %d: waiting=%v next=%d", downloads, parses, view.WaitingForDevice, view.NextAttemptAt)
+				}
+			}
+			history(true, 0, 0, start.Unix())
+			scope := DeviceFetchScope{source.Owner, source.FetchDeviceID}
+			var lease DeviceFetchLease
+			for attempt := 1; attempt <= tc.claims; attempt++ {
+				tx, e := fixtureWorker.BeginTx(ctx, nil)
+				if e != nil {
+					t.Fatal(e)
+				}
+				lease, e = worker.ClaimDeviceFetch(ctx, tx, scope, at)
+				if e != nil || lease.JobID != job.ID {
+					tx.Rollback()
+					t.Fatal("expected device lease", e)
+				}
+				if e = tx.Commit(); e != nil {
+					t.Fatal(e)
+				}
+				next := lease.Until
+				if attempt == tc.claims {
+					next = 0
+				}
+				history(true, attempt, 0, next)
+				if attempt < tc.claims {
+					at = time.Unix(lease.Until, 0)
+				}
+			}
+			if tc.name == "source_expires_with_lease" {
+				at = time.Unix(source.ValidUntil, 0)
+				history(true, tc.claims, 0, 0)
+				return
+			}
+			tx, err := fixtureWorker.BeginTx(ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer tx.Rollback()
+			raw := []byte("http://node.example.invalid:443")
+			if err = worker.AcceptDeviceFetch(ctx, tx, scope, job.ID, lease.Lease, raw, at); err != nil {
+				t.Fatal(err)
+			}
+			if err = tx.Commit(); err != nil {
+				t.Fatal(err)
+			}
+			history(false, tc.claims, 0, start.Unix())
+			result, err := (&Worker{Store: worker, Clock: func() time.Time { return at }}).ProcessOne(ctx)
+			if err != nil || result.Phase != "succeeded" {
+				t.Fatal("server parser", err)
+			}
+			history(false, tc.claims, 1, 0)
+		})
+	}
+}

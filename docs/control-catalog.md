@@ -287,3 +287,12 @@ from an active feed stay in quarantine. Additions can still be evaluated.
 A failed historical verification leaves the removal fence in place and delays
 that head's next attempt for 15 minutes. Reindexing preserves the device key,
 configuration revision, approval time and offline lease.
+
+## Device subscription retry history
+
+Open the subscription source and select its job history. A device job reports
+download attempts on the phone and parsing attempts on the server separately.
+A phone can resume its current lease. The next time shown for a *new* download
+respects that lease, the eight-attempt limit, the job deadline and source expiry.
+Once the phone uploads the response, the history shows the server processing
+stage and its own retry budget.

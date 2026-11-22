@@ -109,10 +109,12 @@ type JobView struct {
 }
 
 type JobHistoryItem struct {
-	Job           Job   `json:"job"`
-	CreatedAt     int64 `json:"createdAt"`
-	UpdatedAt     int64 `json:"updatedAt"`
-	NextAttemptAt int64 `json:"nextAttemptAt"`
+	Job              Job   `json:"job"`
+	CreatedAt        int64 `json:"createdAt"`
+	UpdatedAt        int64 `json:"updatedAt"`
+	NextAttemptAt    int64 `json:"nextAttemptAt"`
+	DeviceAttempts   *int  `json:"deviceAttempts,omitempty"`
+	WaitingForDevice bool  `json:"waitingForDevice,omitempty"`
 }
 
 type JobHistoryPage struct {
@@ -133,7 +135,8 @@ func (s *Store) ListJobs(ctx context.Context, actor Actor, sourceID, after strin
 	}
 	defer tx.Rollback()
 	var owner string
-	e = tx.QueryRowContext(ctx, `SELECT owner FROM catalog_sources WHERE id=$1 FOR SHARE`, sourceID).Scan(&owner)
+	var validUntil int64
+	e = tx.QueryRowContext(ctx, `SELECT owner,valid_until FROM catalog_sources WHERE id=$1 FOR SHARE`, sourceID).Scan(&owner, &validUntil)
 	if e == sql.ErrNoRows {
 		return result, ErrDenied
 	}
@@ -154,9 +157,10 @@ func (s *Store) ListJobs(ctx context.Context, actor Actor, sourceID, after strin
 		}
 	}
 	rows, e := tx.QueryContext(ctx, `SELECT id,source_revision,kind,phase,attempts,deadline,reason,created_at,updated_at,
-	  CASE WHEN phase='queued' AND attempts<8 AND deadline>$4 AND not_before<deadline THEN not_before ELSE 0 END
+	  not_before,lease_until,CASE WHEN kind='device' THEN device_attempts END,
+	  kind='device' AND phase='queued' AND payload IS NULL
 	  FROM catalog_jobs WHERE source_id=$1 AND ($2::text='' OR (created_at,id COLLATE "C")<($3::bigint,$2::text COLLATE "C"))
-	  ORDER BY created_at DESC,id COLLATE "C" DESC LIMIT 21`, sourceID, after, before, now.Unix())
+	  ORDER BY created_at DESC,id COLLATE "C" DESC LIMIT 21`, sourceID, after, before)
 	if e != nil {
 		return result, ErrUnavailable
 	}
@@ -164,9 +168,22 @@ func (s *Store) ListJobs(ctx context.Context, actor Actor, sourceID, after strin
 	for rows.Next() {
 		item := JobHistoryItem{Job: Job{SourceID: sourceID}}
 		j := &item.Job
+		var notBefore, leaseUntil int64
 		if e = rows.Scan(&j.ID, &j.SourceRevision, &j.Kind, &j.Phase, &j.Attempts, &j.Deadline, &j.Reason,
-			&item.CreatedAt, &item.UpdatedAt, &item.NextAttemptAt); e != nil {
+			&item.CreatedAt, &item.UpdatedAt, &notBefore, &leaseUntil, &item.DeviceAttempts, &item.WaitingForDevice); e != nil {
 			return result, ErrUnavailable
+		}
+		// A reconnect can resume the same phone lease. A new download attempt
+		// must wait for that lease to expire and has a separate retry budget.
+		deadline := j.Deadline
+		attempts := j.Attempts
+		if item.WaitingForDevice {
+			deadline = min(deadline, validUntil)
+			notBefore = max(notBefore, leaseUntil)
+			attempts = *item.DeviceAttempts
+		}
+		if j.Phase == "queued" && attempts < 8 && result.ObservedAt < deadline && notBefore < deadline {
+			item.NextAttemptAt = notBefore
 		}
 		result.Jobs = append(result.Jobs, item)
 	}

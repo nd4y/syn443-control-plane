@@ -55,6 +55,7 @@ expected.update({
     'private layer discard lost acknowledgment retains exact operation until verified receipt',
     'private layer discard conflicts and substituted receipts never clear the current editor',
     'source job history shows bounded retries and clears scoped results on logout',
+    'mobile device source history separates handset and server attempts',
     'manual subscription file retries exactly once without exposing or storing its contents',
     'source recipient edits require confirmation and retry the same scoped mutation',
     'hourly telemetry distinguishes data empty and mismatched reports and clears on expiry',
