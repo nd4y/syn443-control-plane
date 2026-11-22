@@ -41,8 +41,11 @@ func Verify(envelope string, keys map[string]*ecdsa.PublicKey, device string, no
 
 func verifiedDocument(envelope string, keys map[string]*ecdsa.PublicKey, kind string, limit int) ([]byte, error) {
 	bad := errors.New("untrusted signed document")
-	parts := strings.Split(envelope, ".")
-	if len(envelope) > limit || len(parts) != 3 || len(parts[0]) > 1024 {
+	if len(envelope) == 0 || len(envelope) > limit {
+		return nil, bad
+	}
+	parts := strings.SplitN(envelope, ".", 4)
+	if len(parts) != 3 || len(parts[0]) > 1024 || len(parts[2]) != base64.RawURLEncoding.EncodedLen(64) {
 		return nil, bad
 	}
 	decode := func(s string) ([]byte, error) {
@@ -60,17 +63,11 @@ func verifiedDocument(envelope string, keys map[string]*ecdsa.PublicKey, kind st
 	if e != nil || !bytes.Equal(canonical, header) {
 		return nil, bad
 	}
-	var h struct {
-		Alg  string `json:"alg"`
-		Kid  string `json:"kid"`
-		Type string `json:"typ"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(header))
-	decoder.DisallowUnknownFields()
-	if decoder.Decode(&h) != nil || h.Alg != "ES256" || h.Type != kind || !identifier.MatchString(h.Kid) {
+	var h map[string]string
+	if json.Unmarshal(header, &h) != nil || len(h) != 3 || h["alg"] != "ES256" || h["typ"] != kind || !identifier.MatchString(h["kid"]) {
 		return nil, bad
 	}
-	key := keys[h.Kid]
+	key := keys[h["kid"]]
 	if key == nil || key.Curve != elliptic.P256() {
 		return nil, bad
 	}
