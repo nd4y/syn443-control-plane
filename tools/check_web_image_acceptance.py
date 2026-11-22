@@ -9,6 +9,9 @@ ROOTS = (
     "TestControlWebReauthenticationWithActualKeycloakOTPAndAssuranceClaims",
 )
 REQUIRED = [name for root in ROOTS for name in (root, root + "/packaged_web_readiness_and_embedded_assets")]
+REQUIRED += ["TestTwoOwnersReceiveOnlyTheirAssignedDevicePolicies",
+             "TestTwoOwnersReceiveOnlyTheirAssignedDevicePolicies/key_bound_publications",
+             "TestTwoOwnersReceiveOnlyTheirAssignedDevicePolicies/other_device_keys_denied"]
 
 
 def report(lines):
@@ -37,4 +40,4 @@ if __name__ == "__main__":
     result = report(sys.stdin)
     with Path(sys.argv[1]).open("x", encoding="utf-8") as output:
         json.dump(result, output, indent=2)
-    print("Verified both packaged web surfaces and both real Keycloak flows")
+    print("Verified packaged web, real Keycloak flows and personal policy issuance")
