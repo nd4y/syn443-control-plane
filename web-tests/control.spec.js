@@ -627,6 +627,24 @@ test('source editor saves metadata without exposing prior secrets and tracks syn
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();expect(state.sources.find(s=>s.id===id).name).toBe('Provider subscription');expect(state.operations).toBe(2);expect(state.calls).not.toContain('configuration.publish');
  await page.locator('#load-sources').click();await page.locator('#sources li').filter({hasText:'Provider subscription'}).getByRole('button',{name:'Настроить источник'}).click();await expect(page.locator('#source-secret')).toHaveValue('');await expect(page.locator('#source-id')).toBeDisabled();
 });
+test('retiring a subscription clears abandoned secrets and sends only the removal',async({page,request})=>{
+ await reset(request);await page.setViewportSize({width:390,height:820});await page.goto(origin+'/#sources-title');
+ await expect(page.locator('#new-source')).toBeEnabled();await newSource(page);
+ await page.locator('#save-source').click();await expect(page.locator('#source-version')).toContainText('Версия источника: 1');
+ const operation=page.locator('#source-secret-operation'), input=page.locator('#source-secret');
+ await operation.selectOption('replace');await input.fill(JSON.stringify({url:'https://abandoned.example.invalid/'}));
+ await operation.selectOption('keep');await expect(input).toHaveValue('');
+ await operation.selectOption('replace');await expect(input).toHaveValue('');await input.fill('abandoned replacement');
+ await operation.selectOption('delete');await expect(input).toHaveValue('');await expect(input).toBeDisabled();
+ await expect(page.locator('#source-withdraw-hint')).toBeVisible();await expect(page.locator('#save-source')).toBeDisabled();
+ await page.locator('#source-enabled').uncheck();await expect(page.locator('#save-source')).toBeEnabled();
+ const outgoing=page.waitForRequest(r=>r.url().endsWith('/control/action')&&r.method()==='POST'&&r.postDataJSON()?.action==='source.put');
+ await page.locator('#save-source').click();
+ const sent=(await outgoing).postDataJSON();expect(sent.payload.secret).toEqual({operation:'delete'});expect(sent.payload.source.enabled).toBe(false);
+ await expect(page.locator('#source-version')).toContainText('Версия источника: 2 · Источник отключён');
+ await expect(page.locator('#source-secret-operation')).toHaveValue('keep');await expect(input).toHaveValue('');
+ expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
+});
 test('device subscription saves an immutable Wi-Fi binding without retaining the credential',async({page,request})=>{
  await reset(request);await page.goto(origin+'/#sources-title');await expect(page.locator('#new-source')).toBeEnabled();
  await newSource(page);const id=await page.locator('#source-id').inputValue(),binding=page.locator('#source-device');
