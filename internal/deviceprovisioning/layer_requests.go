@@ -200,12 +200,17 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 	}
 	if envelope.Action == "configuration.devices.list" {
 		var input struct {
-			After string `json:"after"`
+			After  string          `json:"after"`
+			Prefix json.RawMessage `json:"prefix"`
 		}
 		if identity.DecodeConfiguration(envelope.Payload, &input) != nil {
 			return nil, enrollment.ErrDenied
 		}
-		return c.deviceInventory(ctx, actor, input.After, envelope.RequestID, authorityUntil, now)
+		var prefix string
+		if input.Prefix != nil && (json.Unmarshal(input.Prefix, &prefix) != nil || !configurationObjectID.MatchString(prefix)) {
+			return nil, enrollment.ErrDenied
+		}
+		return c.deviceInventory(ctx, actor, input.After, prefix, envelope.RequestID, authorityUntil, now)
 	}
 	if envelope.Action == "configuration.history.get" {
 		var input struct {

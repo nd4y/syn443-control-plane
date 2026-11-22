@@ -99,6 +99,7 @@ END;
 $$;
 DROP TRIGGER IF EXISTS identity_device_guard ON identity_devices;
 CREATE TRIGGER identity_device_guard BEFORE UPDATE ON identity_devices FOR EACH ROW EXECUTE FUNCTION identity_device_invariants();
+CREATE INDEX IF NOT EXISTS identity_device_search_prefix ON identity_devices (lower(id COLLATE "C"));
 CREATE INDEX IF NOT EXISTS identity_device_work ON identity_devices(active,retry_after,refresh_after);
 CREATE INDEX IF NOT EXISTS identity_replay_expiry ON identity_replays(expires);
 CREATE INDEX IF NOT EXISTS identity_session_device ON identity_sessions(device);

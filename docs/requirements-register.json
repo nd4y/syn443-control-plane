@@ -2039,8 +2039,8 @@
         "web-tests/control-devices.spec.js",
         "internal/deviceprovisioning/device_inventory_postgres_test.go"
       ],
-      "implementationScope": "The PatternFly console searches loaded, authorized device IDs, filters current degraded and rolled-back activation reports, and keeps explicit favorites in memory in the current tab. Pagination and card selection work with the keyboard on a narrow display.",
-      "remainingScope": "Cross-session favorites, server-side fleet-wide search, direct maintenance actions and physical mobile UX acceptance."
+      "implementationScope": "The PatternFly console searches loaded, authorized device IDs, filters current degraded and rolled-back activation reports, and keeps explicit favorites in memory in the current tab. Pagination and card selection work with the keyboard on a narrow display. An explicit case-insensitive ID prefix search runs on the server across all permitted devices before pagination. Every returned row retains the card ACL and account and device validity checks.",
+      "remainingScope": "Cross-session favorites, direct maintenance actions and physical mobile UX acceptance."
     },
     {
       "id": "MOB-07",

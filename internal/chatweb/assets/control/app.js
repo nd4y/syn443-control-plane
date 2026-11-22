@@ -15,7 +15,7 @@ let inventoryEpoch=0;
 let sourceShares=null;
 let providerContext=null,providerEpoch=0;
 let providerEdit=null;
-let devicesNext='',deviceIds=new Set(),devicesEpoch=0;
+let devicesNext='',devicePrefix='',deviceIds=new Set(),devicesEpoch=0;
 const deviceFavorites=new Set();
 let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticationIssuer='',reauthenticationFocus=false;
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
@@ -453,6 +453,7 @@ function controls(){
  $('invite-reauth').hidden=!authenticated||!reauthenticationAvailable;
  $('invite-reauth').disabled=busy;
  $('reauthentication-check').disabled=busy||!authenticated;
+ deviceSearchControls();
  for(const id of ['refresh-devices','more-devices'])$(id).disabled=busy||!authenticated||!!pending||(id==='more-devices'&&!devicesNext);
  for(const button of $('device-rows').querySelectorAll('button'))button.disabled=busy||!authenticated||!!pending;
  $('login').disabled=busy||authenticated;$('logout').disabled=busy||!authenticated;
@@ -840,12 +841,20 @@ function showInventory(view){
 function clearDevices(dropPreferences=false){
  devicesEpoch++;
  devicesNext='';deviceIds=new Set();$('device-rows').replaceChildren();$('devices-status').textContent='';$('devices-region').hidden=true;$('more-devices').hidden=true;
- $('device-filters').hidden=true;
  if(dropPreferences){
+  devicePrefix='';
+  $('device-filters').hidden=true;
+  $('clear-device-prefix').hidden=true;
   deviceFavorites.clear();
   $('device-search').value='';
   $('device-filter').value='all';
  }
+}
+function deviceSearchControls(){
+ const query=$('device-search').value.trim(),blocked=busy||!authenticated||!!pending;
+ $('search-all-devices').disabled=blocked||!deviceID.test(query)||query.toLowerCase()===devicePrefix.toLowerCase();
+ $('clear-device-prefix').hidden=!devicePrefix;
+ $('clear-device-prefix').disabled=blocked;
 }
 function filterDevices(){
  const query=$('device-search').value.trim().toLowerCase(),mode=$('device-filter').value;
@@ -857,14 +866,18 @@ function filterDevices(){
   if(!row.hidden)visible++;
  }
  $('devices-region').hidden=visible===0;
- $('device-filters').hidden=!deviceIds.size;
- if(!deviceIds.size){
+ $('device-filters').hidden=!deviceIds.size&&!devicePrefix;
+ deviceSearchControls();
+ if(!deviceIds.size&&devicePrefix){
+  $('devices-status').textContent=`Доступных устройств с началом ID «${devicePrefix}» нет.`;
+ }else if(!deviceIds.size){
   $('devices-status').textContent='Доступных устройств нет. Проверьте назначение и срок доступа.';
  }else if(!query&&mode==='all'){
   $('devices-status').textContent=`Загружено устройств: ${deviceIds.size}.`;
  }else{
   $('devices-status').textContent=`Найдено среди загруженных: ${visible} из ${deviceIds.size}.`+(devicesNext?' Можно загрузить ещё.':'');
  }
+ if(devicePrefix&&deviceIds.size)$('devices-status').textContent+=` В базе выбран префикс «${devicePrefix}».`;
 }
 function favoriteButton(id){
  const button=actionButton();
@@ -888,15 +901,16 @@ const deviceReportStates={not_issued:'Политика не выдана',awaiti
 const deviceOutcomes={committed:'Применена',degraded:'Применена частично',rolled_back:'Откат'};
 const closedObject=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
 const safeRevision=v=>Number.isSafeInteger(v)&&v>=0;
-async function loadDevices(more=false){
+async function loadDevices(more=false,prefix=devicePrefix){
+ if(prefix&&!deviceID.test(prefix))throw Error('invalid');
  const after=more?devicesNext:'';
  if(more&&!after)throw Error('invalid');
- if(!more)clearDevices();
+ if(!more){clearDevices();devicePrefix=prefix;}
  const epoch=devicesEpoch;
  $('devices-disclosure').open=true;
  $('devices-status').textContent='Загружаем устройства…';
  try{
-  const page=await action('configuration.devices.list',{after});
+  const page=await action('configuration.devices.list',prefix?{after,prefix}:{after});
   if(epoch!==devicesEpoch||!authenticated)return;
   if(!closedObject(page,['devices','next','observedAtMs'])||!Array.isArray(page.devices)||page.devices.length>32||typeof page.next!=='string'||page.next&&!deviceID.test(page.next)||!Number.isSafeInteger(page.observedAtMs)||page.observedAtMs<1)throw Error('invalid');
   const seen=more?new Set(deviceIds):new Set();let previous=after;
@@ -907,6 +921,7 @@ async function loadDevices(more=false){
    if(['historical','reported'].includes(report.state)){
     if(!Object.hasOwn(deviceOutcomes,report.outcome)||!report.policyRevision||!report.receivedAtMs||report.state==='reported'&&report.policyRevision!==row.policyRevision)throw Error('invalid');
    }else if(report.policyRevision||report.outcome||report.receivedAtMs||report.activePolicyRevision||report.state==='not_issued'&&row.policyRevision!==0||report.state==='awaiting_report'&&row.policyRevision===0)throw Error('invalid');
+   if(prefix&&!row.device.toLowerCase().startsWith(prefix.toLowerCase()))throw Error('invalid');
    previous=row.device;seen.add(row.device);
   }
   if(page.next&&(page.devices.length!==32||page.next!==previous))throw Error('invalid');
@@ -1380,6 +1395,13 @@ async function saveSource(){
 $('login').onclick=()=>work(async()=>{const device=linkedDevice();const result=await request('/login',device?{device}:{});const target=new URL(result.url);if(target.protocol!=='https:'&&!(location.hostname==='127.0.0.1'&&target.protocol==='http:'&&target.hostname==='127.0.0.1'))throw Error('invalid');location.assign(target.href);});
 $('logout').onclick=()=>work(async()=>{try{await request('/logout',{});}finally{authenticated=false;erase();if(linkedDevice())history.replaceState(null,'','/#inventory-title');}status('Вы вышли. Локальная копия черновика очищена.');});
 $('device-search').oninput=filterDevices;
+$('search-all-devices').onclick=()=>work(()=>loadDevices(false,$('device-search').value.trim()));
+$('device-search').onkeydown=event=>{
+ if(event.key==='Enter'&&!$('search-all-devices').disabled){event.preventDefault();$('search-all-devices').click();}
+};
+$('clear-device-prefix').onclick=()=>work(async()=>{
+ $('device-search').value='';await loadDevices(false,'');if(authenticated)$('device-search').focus();
+});
 $('device-filter').onchange=filterDevices;
 $('refresh-devices').onclick=()=>work(()=>loadDevices());
 $('invite-reauth').onclick=()=>{

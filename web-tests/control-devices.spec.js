@@ -154,3 +154,27 @@ test('late authorized inventory response stays cleared after a concurrent sessio
   await expect(page.locator('#devices-status')).toHaveText('');
  }finally{releaseRuntime();releaseList();}
 });
+
+test('full inventory prefix search finds a later authorized device without walking the first pages',async({page,request})=>{
+ await reset(request,{devicePages:true});await page.setViewportSize({width:360,height:800});
+ const lists=[];page.on('request',r=>{if(r.url().endsWith('/control/action')){const op=r.postDataJSON();if(op.action==='configuration.devices.list')lists.push(op.payload);}});
+ await page.goto(origin);await expect(page.locator('#device-rows tr')).toHaveCount(32);
+ const search=page.locator('#device-search');await search.fill('DEVICE-A');await search.press('Enter');
+ await expect(page.locator('#device-rows tr')).toHaveCount(1);await expect(page.locator('#devices-status')).toContainText('В базе выбран префикс «DEVICE-A»');
+ expect(lists).toEqual([{after:''},{after:'',prefix:'DEVICE-A'}]);await expect(page.locator('#more-devices')).toBeHidden();
+ await search.fill('absent');await page.locator('#search-all-devices').click();
+ await expect(page.locator('#devices-status')).toContainText('Доступных устройств с началом ID «absent» нет');
+ await expect(search).toBeVisible();await page.locator('#clear-device-prefix').click();await expect(page.locator('#device-rows tr')).toHaveCount(32);
+ await expect(search).toBeFocused();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('remote device search rejects an answer belonging to a different prefix',async({page,request})=>{
+ await reset(request);await page.goto(origin);await expect(page.locator('#device-rows tr')).toHaveCount(1);
+ await page.route('**/control/action',async route=>{
+  const op=route.request().postDataJSON();if(op.action!=='configuration.devices.list')return route.continue();
+  const response=await route.fetch({postData:{...op,payload:{after:''}}});return route.fulfill({response});
+ });
+ await page.locator('#device-search').fill('other');await page.locator('#search-all-devices').click();
+ await expect(page.locator('#devices-status')).toContainText('Сервер вернул некорректный список');
+ await expect(page.locator('#device-rows')).toBeEmpty();await expect(page.locator('#inventory-view')).toBeHidden();
+});

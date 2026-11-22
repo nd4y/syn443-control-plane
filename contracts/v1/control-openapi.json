@@ -1939,6 +1939,13 @@
                     "type": "string",
                     "maxLength": 64,
                     "pattern": "^[A-Za-z0-9_-]{0,64}$"
+                  },
+                  "prefix": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                    "description": "Case-insensitive literal prefix of an authorized device ID, applied before cursor pagination."
                   }
                 }
               }

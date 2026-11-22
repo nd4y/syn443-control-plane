@@ -3,6 +3,7 @@ package deviceprovisioning
 import (
 	"context"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
@@ -29,12 +30,12 @@ func (DeviceInventory) GoString() string { return "DeviceInventory([redacted])" 
 // Discovery uses precisely the authority required to open an individual card.
 // It exposes no account identifiers, configuration bodies or key material, and
 // does not infer current connectivity from a historical activation receipt.
-func (c *ConfigurationControl) deviceInventory(ctx context.Context, actor, after, request string, until int64, now time.Time) (DeviceInventory, error) {
+func (c *ConfigurationControl) deviceInventory(ctx context.Context, actor, after, prefix, request string, until int64, now time.Time) (DeviceInventory, error) {
 	result := DeviceInventory{Devices: []DeviceSummary{}, ObservedAtMs: now.UnixMilli()}
 	if ctx == nil || c == nil || c.Store == nil || c.Store.DB == nil {
 		return result, enrollment.ErrUnavailable
 	}
-	if !configurationObjectID.MatchString(actor) || after != "" && !configurationObjectID.MatchString(after) || !configurationRequestID.MatchString(request) || now.Unix() >= until {
+	if !configurationObjectID.MatchString(actor) || after != "" && !configurationObjectID.MatchString(after) || prefix != "" && !configurationObjectID.MatchString(prefix) || !configurationRequestID.MatchString(request) || now.Unix() >= until {
 		return result, enrollment.ErrDenied
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -48,6 +49,15 @@ func (c *ConfigurationControl) deviceInventory(ctx context.Context, actor, after
 	defer tx.Rollback()
 	// Lock the selected live grant, device and account until response commit.
 	// A revoked/expired ACL cannot reveal even the existence of another device.
+	args := []any{actor, after, current().Unix()}
+	var prefixClause string
+	if prefix != "" {
+		// Device IDs use a bounded ASCII alphabet. Its DEL upper bound includes
+		// exact matches and treats hyphens and underscores as literal bytes.
+		folded := strings.ToLower(prefix)
+		prefixClause = ` AND lower(d.id COLLATE "C") >= $4 AND lower(d.id COLLATE "C") < $5`
+		args = append(args, folded, folded+"\x7f")
+	}
 	rows, e := tx.QueryContext(ctx, `SELECT d.id,d.revision,COALESCE(h.revision,0),
 	  COALESCE(p.policy_revision,0),COALESCE(p.outcome,''),COALESCE(p.active_policy_revision,0),COALESCE(p.received_at_ms,0),
 	  d.offline_until,d.publication_grant_hash=a.grant_hash,a.valid_until,g.expires
@@ -58,8 +68,8 @@ func (c *ConfigurationControl) deviceInventory(ctx context.Context, actor, after
 	  LEFT JOIN managed_configuration_heads h ON h.device=d.id
 	  LEFT JOIN identity_policy_activation p ON p.device=d.id
 	  WHERE d.active AND d.approved AND a.enabled AND a.valid_until>$3
-	    AND d.id COLLATE "C">$2 COLLATE "C"
-	  ORDER BY d.id COLLATE "C" LIMIT 33 FOR SHARE OF d,a`, actor, after, current().Unix())
+	    AND d.id COLLATE "C">$2 COLLATE "C"`+prefixClause+`
+	  ORDER BY d.id COLLATE "C" LIMIT 33 FOR SHARE OF d,a`, args...)
 	if e != nil {
 		return result, enrollment.ErrUnavailable
 	}
