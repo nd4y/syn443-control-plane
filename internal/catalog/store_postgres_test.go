@@ -318,6 +318,79 @@ func TestSQLLeaseReclaimAndLostQueueResponse(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+func TestSQLWithdrawFetchCredentialWithoutRenewingSource(t *testing.T) {
+	for _, mode := range []string{"server", "device"} {
+		t.Run(mode, func(t *testing.T) {
+			api, worker, actor, now := databaseFixture(t)
+			ctx := context.Background()
+			form := sourceExample(now)
+			form.Mode = mode
+			if mode == "device" {
+				form.FetchDeviceID = "synthetic-device"
+				form.ValidUntil = now.Add(time.Second).Unix()
+			}
+			replace := SecretPatch{Operation: "replace", Value: []byte(`{"url":"https://provider.example.invalid/subscription"}`)}
+			remove := SecretPatch{Operation: "delete"}
+			created, err := api.PutSource(ctx, actor, form, replace, "create", now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			form.Revision = created.Revision
+			if _, err = api.PutSource(ctx, actor, form, remove, "remove-enabled", now); !errors.Is(err, ErrInvalid) {
+				t.Fatal("enabled source accepted missing credentials")
+			}
+			var claimed Job
+			if mode == "server" {
+				queued, err := api.Queue(ctx, actor, form.ID, form.Revision, "schedule", nil, now)
+				if err != nil {
+					t.Fatal(err)
+				}
+				claimed, err = worker.Claim(ctx, now)
+				if err != nil || claimed.ID != queued.ID {
+					t.Fatal("missing claimed job")
+				}
+				if _, _, credential, _, err := worker.JobInput(ctx, claimed, now); err != nil || len(credential) == 0 {
+					t.Fatal("active worker did not receive its original credential")
+				}
+			}
+
+			at := now.Add(time.Second)
+			form.Enabled = false
+			withoutMFA := actor
+			withoutMFA.MFAUntil = at.Unix()
+			if _, err = api.PutSource(ctx, withoutMFA, form, remove, "denied", at); !errors.Is(err, ErrReauthentication) {
+				t.Fatal("withdrawal did not require current MFA")
+			}
+			disabled, err := api.PutSource(ctx, actor, form, remove, "withdraw", at)
+			if err != nil || disabled.Enabled || disabled.State != "disabled" || disabled.ValidUntil != form.ValidUntil ||
+				disabled.Revision != created.Revision+1 {
+				t.Fatal("withdrawal changed lease or failed", err)
+			}
+			retry, err := api.PutSource(ctx, actor, form, remove, "withdraw", at)
+			if err != nil || retry.Revision != disabled.Revision {
+				t.Fatal("withdrawal replay changed revision", err)
+			}
+			var removed bool
+			if err = fixtureOwner.QueryRow(`SELECT secrets IS NULL FROM catalog_sources WHERE id=$1`, form.ID).Scan(&removed); err != nil || !removed {
+				t.Fatal("credential remained in the current stored source")
+			}
+			if mode == "server" {
+				if _, _, _, _, err := worker.JobInput(ctx, claimed, at); !errors.Is(err, ErrStale) {
+					t.Fatal("withdrawn source supplied another credential")
+				}
+			}
+			form.Enabled, form.Revision, form.ValidUntil = true, disabled.Revision, at.Add(time.Hour).Unix()
+			if _, err = api.PutSource(ctx, actor, form, SecretPatch{Operation: "keep"}, "resume-missing", at); !errors.Is(err, ErrInvalid) {
+				t.Fatal("previous credential was resurrected")
+			}
+			restored, err := api.PutSource(ctx, actor, form, replace, "resume-new", at)
+			if err != nil || !restored.Enabled || restored.Revision != disabled.Revision+1 {
+				t.Fatal("explicit replacement failed", err)
+			}
+		})
+	}
+}
+
 func TestSQLConcurrentScheduleAndClaimsDoNotDuplicate(t *testing.T) {
 	api, worker, actor, now := databaseFixture(t)
 	ctx := context.Background()

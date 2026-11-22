@@ -385,6 +385,10 @@ function Sources() {
           <option value="replace">{'Заменить'}</option>
           <option value="delete">{'Удалить'}</option>
         </Select>
+        <p id="source-withdraw-hint" hidden role="status">
+          Для удаления учётных данных отключите источник. Чтобы снова включить загрузку,
+          выберите «Заменить» и укажите действующие данные.
+        </p>
         <label htmlFor="source-secret">Новые параметры HTTPS, JSON</label>
         <TextArea
           resizeOrientation="vertical"

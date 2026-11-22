@@ -52,7 +52,9 @@ type Source struct {
 func (Source) String() string   { return "CatalogSource([redacted])" }
 func (Source) GoString() string { return "CatalogSource([redacted])" }
 func (s Source) Validate(now time.Time) error {
-	if !sourceIdentifier.MatchString(s.ID) || !identifier.MatchString(s.Owner) || len(s.Name) < 1 || len(s.Name) > 256 || s.Revision < 0 || s.Revision > 9007199254740991 || s.ValidUntil <= now.Unix() || s.ValidUntil > now.Add(366*24*time.Hour).Unix() || s.RefreshSeconds < 60 || s.RefreshSeconds > 86400 || s.MaxStaleSeconds < 300 || s.MaxStaleSeconds > 604800 || len(s.NetworkModes) < 1 || len(s.NetworkModes) > 4 {
+	// An existing source can be retired after expiry without extending its lease.
+	expired := s.ValidUntil <= now.Unix() && (s.Enabled || s.Revision == 0)
+	if !sourceIdentifier.MatchString(s.ID) || !identifier.MatchString(s.Owner) || len(s.Name) < 1 || len(s.Name) > 256 || s.Revision < 0 || s.Revision > 9007199254740991 || s.ValidUntil <= 0 || expired || s.ValidUntil > now.Add(366*24*time.Hour).Unix() || s.RefreshSeconds < 60 || s.RefreshSeconds > 86400 || s.MaxStaleSeconds < 300 || s.MaxStaleSeconds > 604800 || len(s.NetworkModes) < 1 || len(s.NetworkModes) > 4 {
 		return ErrInvalid
 	}
 	if s.Mode != "server" && s.Mode != "device" && s.Mode != "manual" && s.Mode != "resource" {

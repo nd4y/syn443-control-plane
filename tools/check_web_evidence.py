@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 root = ET.parse(Path(__file__).resolve().parent.parent / 'web-tests/results.xml').getroot()
 cases = list(root.iter('testcase'))
 expected = {
+    'retiring a subscription clears abandoned secrets and sends only the removal',
     'look up an exact incident without opening or acknowledging a thread on standalone',
     'look up an exact incident without opening or acknowledging a thread on console',
     'late incident lookup cannot disclose the previous query on the phone',

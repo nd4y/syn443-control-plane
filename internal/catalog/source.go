@@ -195,19 +195,15 @@ func (s *Store) PutSource(ctx context.Context, actor Actor, source Source, secre
 	if e != nil {
 		return Source{}, e
 	}
-	if source.Mode == "server" || source.Mode == "device" {
-		if len(nextSecret) == 0 {
+	fetches := source.Mode == "server" || source.Mode == "device"
+	if len(nextSecret) == 0 {
+		if fetches && source.Enabled {
 			return Source{}, ErrInvalid
 		}
-	}
-	if source.Mode == "manual" || source.Mode == "resource" {
-		if len(nextSecret) > 0 {
-			return Source{}, ErrInvalid
-		}
-	} else {
-		if _, e = ReadFetchCredential(nextSecret); e != nil {
-			return Source{}, e
-		}
+	} else if !fetches {
+		return Source{}, ErrInvalid
+	} else if _, e = ReadFetchCredential(nextSecret); e != nil {
+		return Source{}, e
 	}
 	source.Revision++
 	source.State = "pending"

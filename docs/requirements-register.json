@@ -421,8 +421,16 @@
     {
       "id": "SUB-12",
       "text": "При выводе источника из эксплуатации панель показывает зависимости и предлагает замену или отключение. Публикация с висячими ссылками запрещена. Пользователь получает понятное состояние «подписка истекла», а не только сетевой timeout.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/catalog/source.go",
+        "internal/catalog/model.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/chatweb/assets/control/app.js",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "The source editor can disable an existing server or device source after expiry without renewing it and discard the current fetch credential. The job reader fences previous revisions. The console labels expired, revoked, quota-exhausted and disabled sources.",
+      "remainingScope": "Dependency replacement or cascade previews across recipients and Android end-user expiration display remain separate."
     },
     {
       "id": "EXT-01",
@@ -1875,8 +1883,16 @@
     {
       "id": "EDIT-07",
       "text": "Секретные поля с маской различают «оставить без изменений», «заменить» и «удалить». Маска не загружается как настоящий пароль. Новые значения проходят защищённый канал; при переносе профиля другому пользователю сервер проверяет права на исходный источник и создаёт подходящие ссылки на секреты.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/catalog/source.go",
+        "internal/catalog/model.go",
+        "internal/catalog/store_postgres_test.go",
+        "internal/chatweb/assets/control/app.js",
+        "web-tests/control.spec.js"
+      ],
+      "implementationScope": "The source editor and authenticated API distinguish keep, replace and delete. Changing away from replacement clears unsent input. Deleting a disabled source credential requires current MFA. Re-enabling requires valid replacement material.",
+      "remainingScope": "End-to-end mobile editing, authorized transfer between user scopes and handling of previously issued offline credentials remain separate."
     },
     {
       "id": "EDIT-08",

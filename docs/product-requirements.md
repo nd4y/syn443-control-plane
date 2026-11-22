@@ -4,7 +4,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Requirements | 292 | 119 | 45 | 61 | 67 |
+| Requirements | 292 | 119 | 45 | 63 | 65 |
 | Acceptance scenarios | 98 | 19 | 2 | 4 | 73 |
 
 ## Requirement families
@@ -15,7 +15,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | MOD | 10 | 10 | 0 | 0 | 0 |
 | AUTH | 5 | 4 | 0 | 1 | 0 |
 | ONB | 4 | 3 | 0 | 1 | 0 |
-| SUB | 12 | 1 | 0 | 10 | 1 |
+| SUB | 12 | 1 | 0 | 11 | 0 |
 | EXT | 10 | 0 | 0 | 10 | 0 |
 | CFG | 6 | 2 | 0 | 3 | 1 |
 | PROV | 8 | 6 | 0 | 1 | 1 |
@@ -34,7 +34,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | TEL | 12 | 7 | 1 | 2 | 2 |
 | LOG | 7 | 6 | 0 | 0 | 1 |
 | UI | 1 | 1 | 0 | 0 | 0 |
-| EDIT | 12 | 5 | 1 | 0 | 6 |
+| EDIT | 12 | 5 | 1 | 1 | 5 |
 | OWN | 6 | 1 | 1 | 0 | 4 |
 | MOB | 8 | 4 | 1 | 2 | 1 |
 | CHAT | 15 | 15 | 0 | 0 | 0 |
