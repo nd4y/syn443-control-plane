@@ -273,6 +273,7 @@ function Sources() {
         <h3 id="source-dependencies-title">Профили в маршрутах</h3>
         <p id="source-dependencies-summary" role="status"></p>
         <ul id="source-dependencies-profiles" hidden></ul>
+        <Button id="source-dependencies-more" variant="link" hidden>Показать ещё профили</Button>
         <Button id="source-dependencies-refresh" variant="link" isDisabled>Обновить зависимости</Button>
       </section>
       <section id="source-review" hidden aria-labelledby="source-review-title">

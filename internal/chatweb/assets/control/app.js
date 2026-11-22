@@ -1217,19 +1217,25 @@ async function retry(){
  }
  pending=null;
 }
+let sourceDependencyProfiles=[];
+function appendSourceDependencies(){
+ const list=$('source-dependencies-profiles'),start=list.childElementCount;
+ for(const id of sourceDependencyProfiles.slice(start,start+32))textItem(list,id);
+ $('source-dependencies-more').hidden=list.childElementCount>=sourceDependencyProfiles.length;
+}
 function showSourceDependencies(value,selected){
  const box=$('source-dependencies'),summary=$('source-dependencies-summary'),list=$('source-dependencies-profiles');
- list.replaceChildren();list.hidden=true;box.hidden=!selected;summary.textContent='';
+ sourceDependencyProfiles=[];list.replaceChildren();list.hidden=true;box.hidden=!selected;summary.textContent='';
+ $('source-dependencies-more').hidden=true;
  if(!selected)return;
- if(!value||!Array.isArray(value.profileIds)||value.profileIds.length>32||
-    typeof value.more!=='boolean'||typeof value.incomplete!=='boolean'||
-    value.more&&value.profileIds.length!==32||new Set(value.profileIds).size!==value.profileIds.length||
+ if(!value||!Array.isArray(value.profileIds)||value.profileIds.length>5000||
+    typeof value.incomplete!=='boolean'||new Set(value.profileIds).size!==value.profileIds.length||
     value.profileIds.some(id=>typeof id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(id))){
   summary.textContent='Зависимости пока неизвестны. Обновите сведения перед отключением источника.';return;
  }
- for(const id of value.profileIds)textItem(list,id);
+ sourceDependencyProfiles=value.profileIds;appendSourceDependencies();
  list.hidden=!value.profileIds.length;
- const detail=value.profileIds.length?(value.more?'Показаны первые 32 профиля. ':'')+'Перед отключением замените эти профили в маршрутах или отключите соответствующие маршруты.':
+ const detail=value.profileIds.length?('Используемых профилей: '+value.profileIds.length+'. Перед отключением замените эти профили в маршрутах или отключите соответствующие маршруты.'):
   value.incomplete?'':'В опубликованных маршрутах профили этого источника не используются.';
  summary.textContent=[detail,value.incomplete?'Часть конфигураций ещё проверяется. Список зависимостей может измениться.':''].filter(Boolean).join(' ');
 }
@@ -1729,6 +1735,7 @@ $('route-check-add').onclick=()=>{
  });
 };
 $('discard-save').onclick=()=>work(async()=>{const kind=pendingKind,expected=kind==='source'?JSON.parse(pending).payload.source:sourceIdentity;pending=null;if(kind==='resource')await inspectProvider();else if(kind.startsWith('layer-')){layerPreview=null;layerJob=null;await loadLayerDraft();}else if(kind==='draft')await openDraft();else if(expected)showSource(await action('source.get',{id:expected.id}),expected);});
+$('source-dependencies-more').onclick=appendSourceDependencies;
 $('source-dependencies-refresh').onclick=()=>work(refreshSourceDependencies);
 $('new-source').onclick=()=>work(async()=>{const owner=$('owner').value.trim();clearSource();$('source-id').value=crypto.randomUUID();$('source-owner').value=owner;$('source-until').value=localDate(Math.floor(Date.now()/1000)+30*86400);$('source-version').textContent='Новый источник';status('Заполните параметры. Для нового HTTPS источника укажите новые учётные данные.');});
 $('source-form').onsubmit=event=>{event.preventDefault();work(saveSource);};

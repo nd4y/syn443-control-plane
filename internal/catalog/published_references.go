@@ -3,6 +3,8 @@ package catalog
 import (
 	"context"
 	"database/sql"
+
+	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
 )
 
 // A NULL profile means an earlier configuration has not yet been indexed.
@@ -38,7 +40,6 @@ func publishedReferences(ctx context.Context, tx *sql.Tx, source string) (map[st
 // names, unrelated sources, or mutable configuration bodies.
 type SourceReferencePreview struct {
 	ProfileIDs []string `json:"profileIds"`
-	More       bool     `json:"more"`
 	Incomplete bool     `json:"incomplete"`
 }
 
@@ -48,7 +49,7 @@ func sourceReferencePreview(ctx context.Context, tx *sql.Tx, source string) (Sou
 		return result, ErrUnavailable
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT profile_id FROM catalog_dependencies WHERE source_id=$1
-		UNION SELECT profile_id FROM catalog_published_references WHERE source_id=$1 ORDER BY profile_id LIMIT 33`, source)
+		UNION SELECT profile_id FROM catalog_published_references WHERE source_id=$1 ORDER BY profile_id LIMIT $2`, source, subscriptions.MaxProfiles+1)
 	if err != nil {
 		return result, ErrUnavailable
 	}
@@ -58,9 +59,8 @@ func sourceReferencePreview(ctx context.Context, tx *sql.Tx, source string) (Sou
 		if rows.Scan(&id) != nil || !identifier.MatchString(id) {
 			return SourceReferencePreview{}, ErrUnavailable
 		}
-		if len(result.ProfileIDs) == 32 {
-			result.More = true
-			break
+		if len(result.ProfileIDs) == subscriptions.MaxProfiles {
+			return SourceReferencePreview{}, ErrUnavailable
 		}
 		result.ProfileIDs = append(result.ProfileIDs, id)
 	}

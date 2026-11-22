@@ -394,6 +394,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		uri = s.config.APIOrigin + "/v1/control/action"
 		nonce = &v.nonce
 	}
+	responseLimit := int64(524288)
+	if control && r.URL.Path == "/control/action" {
+		var kind struct {
+			Action string `json:"action"`
+		}
+		if json.Unmarshal(raw, &kind) == nil && kind.Action == "source.get" {
+			// Up to 5,000 bounded profile IDs plus the existing source metadata.
+			responseLimit = 704 * 1024
+		}
+	}
 	for attempt := 0; attempt < 2; attempt++ {
 		proof, e := sign(v.key, "POST", uri, v.access, *nonce, raw, s.clock())
 		if e != nil {
@@ -413,9 +423,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fail(w, 503)
 			return
 		}
-		data, e := io.ReadAll(io.LimitReader(res.Body, 524289))
+		data, e := io.ReadAll(io.LimitReader(res.Body, responseLimit+1))
 		res.Body.Close()
-		if e != nil || len(data) > 524288 {
+		if e != nil || int64(len(data)) > responseLimit {
 			fail(w, 502)
 			return
 		}
