@@ -281,6 +281,36 @@ func TestConsoleUsesSeparateCookieAudienceAndOnlyClosedControlActions(t *testing
 	}
 }
 
+// Reserved providers and administrative writes outside the adapter contract
+// must stop at the console even when the browser has a valid control session.
+func TestConsoleProviderMutationsStopBeforeAnyUpstreamRequest(t *testing.T) {
+	s, _, principal := webFixture(t)
+	s.config.ControlConsole = true
+	principal.Scope = "syn443.control"
+	cookie := loginWeb(t, s)
+
+	transport := s.client.Transport
+	calls := 0
+	s.client.Transport = consoleTransportFunc(func(r *http.Request) (*http.Response, error) {
+		calls++
+		return transport.RoundTrip(r)
+	})
+
+	for _, action := range []string{
+		"remnawave.user.put", "remnawave.quota.put", "remnawave.squad.put",
+		"netbird.group.delete", "x-ui.user.put", "3x-ui.user.put",
+		"tailscale.peer.delete", "zerotier.network.put",
+	} {
+		t.Run(action, func(t *testing.T) {
+			body := `{"version":1,"action":"` + action + `","requestId":"synthetic-provider-request","payload":{}}`
+			response := webCall(s, "/control/action", body, cookie)
+			if response.Code != http.StatusBadRequest || calls != 0 {
+				t.Fatalf("unexpected provider admission: HTTP %d, %d outbound requests", response.Code, calls)
+			}
+		})
+	}
+}
+
 func TestConsoleMissingScopeCannotCreateSessionAndSupportCannotProxyControl(t *testing.T) {
 	s, _, _ := webFixture(t)
 	s.config.ControlConsole = true
