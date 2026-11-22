@@ -225,3 +225,13 @@ rows. Earlier builds and unknown assignments still contribute to total events.
 Existing hourly rows default to zero for the new counter. These counts describe
 reported decisions. Rollout eligibility and success rates require additional
 measurements.
+
+### Hourly duration percentiles
+
+For each event kind, result code and network mode, the console shows the
+number of measured events, their mean and their 95th percentile in milliseconds.
+PostgreSQL orders the measured durations and selects rank ceil(0.95 times n).
+An explicit zero is a measurement. Events without a duration stay in the total
+event count. An older summary without a stored percentile displays a dash.
+The report describes observations received during that hour. Measuring a VPN
+recovery objective also requires a declared scenario and all failed attempts.

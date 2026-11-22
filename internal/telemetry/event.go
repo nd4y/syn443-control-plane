@@ -41,7 +41,7 @@ type Event struct {
 	Code         string `json:"code"`
 	Mode         string `json:"mode"`
 	Path         string `json:"path,omitempty"`
-	DurationMS   int    `json:"durationMs,omitempty"`
+	DurationMS   *int   `json:"durationMs,omitempty"`
 }
 
 func (Batch) String() string   { return "TelemetryBatch([redacted])" }
@@ -133,7 +133,7 @@ func (b Batch) Validate(now time.Time) error {
 	for _, event := range b.Events {
 		if !opaque.MatchString(event.ID) || seen[event.ID] || event.AtMS <= 0 || event.AtMS < oldest || event.AtMS > latest ||
 			event.ElapsedMS < 0 || event.ElapsedMS > maxExactInteger || event.NetworkEpoch < 0 || event.NetworkEpoch > maxExactInteger ||
-			!modes[event.Mode] || !codes[event.Kind][event.Code] || event.DurationMS < 0 || event.DurationMS > 600000 ||
+			!modes[event.Mode] || !codes[event.Kind][event.Code] || (event.DurationMS != nil && (*event.DurationMS < 0 || *event.DurationMS > 600000)) ||
 			(event.Path != "" && !opaque.MatchString(event.Path)) {
 			return ErrInvalid
 		}

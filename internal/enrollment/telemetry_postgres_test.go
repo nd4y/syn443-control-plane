@@ -145,7 +145,7 @@ func TestTelemetrySummaryUsesScopedRolesAndKeepsLastCompleteHour(t *testing.T) {
 	duration := 93
 	batch := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 52, AlgorithmRevision: 1,
 		Events: []telemetry.Event{
-			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "probe", Code: "ok", Mode: "wifi", DurationMS: duration},
+			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "probe", Code: "ok", Mode: "wifi", DurationMS: &duration},
 			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "probe", Code: "ok", Mode: "wifi"},
 			{ID: random(), AtMS: f.now.UnixMilli(), Kind: "vpn", Code: "online", Mode: "wifi"},
 		}}
@@ -400,6 +400,74 @@ func TestTelemetryLateBatchesPreserveFirstReceiptAndObservation(t *testing.T) {
 			if err != nil || !match {
 				t.Fatal("stored event lost its original observation or first receipt", err)
 			}
+		}
+	}
+}
+
+func TestHourlyDurationP95UsesMeasuredNearestRankAndPreservesLegacyRows(t *testing.T) {
+	f := newFixture(t, 1)
+	f.enableTelemetry(t)
+	k := key(t)
+	session, _, _ := f.register(t, k)
+	ctx := t.Context()
+	period := f.now.UTC().Truncate(time.Hour)
+	now := period.Add(3 * time.Hour)
+	batch := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 52, AlgorithmRevision: 1}
+	add := func(kind, code string, duration *int) {
+		batch.Events = append(batch.Events, telemetry.Event{ID: random(), AtMS: f.now.UnixMilli(),
+			Kind: kind, Code: code, Mode: "wifi", DurationMS: duration})
+	}
+	for value := range 19 {
+		add("probe", "ok", &value)
+	}
+	tail, zero := 600000, 0
+	add("probe", "ok", &tail)
+	add("probe", "ok", nil)
+	add("probe", "dns_timeout", &zero)
+	add("vpn", "online", nil)
+	body, err := json.Marshal(batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect(t, f.call(t, k, http.MethodPost, telemetryPath, session.AccessToken, session.Nonce, body), http.StatusOK)
+	for range 2 {
+		totals, err := telemetry.AggregateHour(ctx, fixtureAnalysis, period, now)
+		if err != nil || totals.Events != 23 || totals.Groups != 3 {
+			t.Fatal("wrong sample or bucket count", totals, err)
+		}
+		report, err := telemetry.ReportHour(ctx, fixtureTelemetryReader, period, now)
+		if err != nil || !report.Available || len(report.Rows) != 3 {
+			t.Fatal("missing hourly rows", err)
+		}
+		for _, row := range report.Rows {
+			switch row.Code {
+			case "ok":
+				if row.Timed != 20 || row.Events != 21 || row.DurationP95MS == nil || *row.DurationP95MS != 18 {
+					t.Fatal("p95 must be sample 19 of 20 measured observations")
+				}
+			case "dns_timeout":
+				if row.Timed != 1 || row.DurationP95MS == nil || *row.DurationP95MS != 0 {
+					t.Fatal("zero measurement was lost")
+				}
+			case "online":
+				if row.Timed != 0 || row.DurationP95MS != nil {
+					t.Fatal("missing observation acquired a duration")
+				}
+			default:
+				t.Fatal("unexpected bucket")
+			}
+		}
+	}
+	if _, err := fixtureOwner.ExecContext(ctx, `UPDATE identity_telemetry_hourly SET duration_p95_ms=NULL WHERE hour_start_ms=$1 AND code='ok'`, period.UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	report, err := telemetry.ReportHour(ctx, fixtureTelemetryReader, period, now)
+	if err != nil || len(report.Rows) != 3 {
+		t.Fatal("legacy summary unavailable", err)
+	}
+	for _, row := range report.Rows {
+		if row.Code == "ok" && (row.DurationP95MS != nil || row.Timed != 20) {
+			t.Fatal("legacy hour invented a percentile")
 		}
 	}
 }
