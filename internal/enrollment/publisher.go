@@ -399,7 +399,13 @@ func (p *Publisher) publish(ctx context.Context, id string, now time.Time) error
 		}
 	}
 	encrypted := p.Store.Seal([]byte(bundle), "publication/v1/"+id+"/"+formatInt(payload.Revision))
-	view, e := json.Marshal(payload.ConsoleSettings())
+	settings := payload.ConsoleSettings()
+	if settings != nil && decisionProgram != nil {
+		// This copy was the input to the signed decision envelope above. The
+		// existing publication transaction binds the view to that same envelope.
+		settings.DecisionProgramRevision = decisionProgram.Revision
+	}
+	view, e := json.Marshal(settings)
 	if e != nil {
 		return e
 	}

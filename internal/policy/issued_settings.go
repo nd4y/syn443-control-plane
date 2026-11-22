@@ -9,15 +9,16 @@ import (
 // Fields are projected explicitly; arbitrary engine JSON, endpoints and check
 // targets must never enter the administrative inventory response.
 type IssuedSettings struct {
-	Revision          int64            `json:"revision"`
-	AlgorithmRevision string           `json:"algorithmRevision"`
-	OfflineUntilMs    int64            `json:"offlineUntilMs"`
-	Outbounds         []IssuedOutbound `json:"outbounds"`
-	NetBird           *IssuedOverlay   `json:"netbird,omitempty"`
-	RouteFinal        string           `json:"routeFinal,omitempty"`
-	RouteRuleCount    int              `json:"routeRuleCount"`
-	DNSFinal          string           `json:"dnsFinal,omitempty"`
-	Activation        IssuedActivation `json:"activation"`
+	Revision                int64            `json:"revision"`
+	AlgorithmRevision       string           `json:"algorithmRevision"`
+	DecisionProgramRevision int64            `json:"decisionProgramRevision,omitempty"`
+	OfflineUntilMs          int64            `json:"offlineUntilMs"`
+	Outbounds               []IssuedOutbound `json:"outbounds"`
+	NetBird                 *IssuedOverlay   `json:"netbird,omitempty"`
+	RouteFinal              string           `json:"routeFinal,omitempty"`
+	RouteRuleCount          int              `json:"routeRuleCount"`
+	DNSFinal                string           `json:"dnsFinal,omitempty"`
+	Activation              IssuedActivation `json:"activation"`
 }
 
 // IssuedOverlay describes only the transport and namespace in a signed policy.

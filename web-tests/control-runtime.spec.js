@@ -40,6 +40,41 @@ test('adaptive algorithm follows the current issued policy and ages with the act
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
+test('issued program revision follows only a matching fresh online tunnel on a phone',async({page,request})=>{
+ await page.setViewportSize({width:360,height:800});
+ const issued=page.locator('#inventory-issued-algorithm'),runtime=page.locator('#inventory-runtime-detail');
+ let revision=7, matching=true;
+ await page.route('**/control/action',async route=>{
+  const action=route.request().postDataJSON().action;
+  if(!['configuration.inventory.get','configuration.runtime.get'].includes(action))return route.fallback();
+  const response=await route.fetch(),view=await response.json();
+  if(action==='configuration.inventory.get'&&view.issuedSettings){
+   view.issuedSettings.algorithmRevision='m4-confirmed-v1';
+   if(revision!==null)view.issuedSettings.decisionProgramRevision=revision;
+  }else if(view.report&&!matching)view.report.policyRevision--;
+  return route.fulfill({response,json:view});
+ });
+ await open(page,request,{runtime:'recent'});
+ await expect(issued).toHaveText('Алгоритм m4-confirmed-v1 · программа №7');
+ await expect(runtime).toContainText('программа №7');
+ for(const scenario of [{runtime:'stale'},{runtime:'recent',runtimeEngine:'starting_stopped'},{runtime:'recent',runtimeEngine:'recovering_active'}]){
+  await open(page,request,scenario);
+  await expect(issued).toContainText('программа №7');
+  await expect(runtime).not.toContainText('программа №');
+ }
+ matching=false;
+ await open(page,request,{runtime:'recent'});
+ await expect(issued).toContainText('программа №7');await expect(runtime).not.toContainText('программа №');
+ matching=true;
+ for(revision of [null,0,'7',7.5]){
+  await open(page,request,{runtime:'recent'});
+  await expect(issued).toHaveText('Алгоритм m4-confirmed-v1');
+  await expect(runtime).not.toContainText('программа №');
+ }
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ expect((await state(request)).operations).toBe(0);
+});
+
 test('issued algorithm is never attributed to a stopped engine or a different observed revision',async({page,request})=>{
  const detail=page.locator('#inventory-runtime-detail');
  await open(page,request,{runtime:'recent',runtimeEngine:'starting_stopped'});

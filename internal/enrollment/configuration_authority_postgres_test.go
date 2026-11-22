@@ -60,6 +60,11 @@ func TestSQLPublisherUsesActualTargetCompiledDocumentAndFinalConfigurationFences
 	if err != nil || payload.ContentHash != fmt.Sprintf("%x", digest) || payload.OfflineUntilMs != prepared.UntilMs {
 		t.Fatal("actual compiled publication not signed/bounded", err)
 	}
+	var baseline bool
+	if err := fixtureOwner.QueryRow(`SELECT publication_view->'settings' IS NOT NULL AND
+		NOT (publication_view->'settings' ? 'decisionProgramRevision') FROM identity_devices WHERE id=$1`, session.DeviceID).Scan(&baseline); err != nil || !baseline {
+		t.Fatal("baseline publication must omit the optional signed-program version", err)
+	}
 	// A source/config authority outage cannot silently publish the account's
 	// static template or replace the existing encrypted last-known-good policy.
 	publisher.Configurations = fixtureConfigurationAuthority(func(context.Context, ConfigurationTarget, time.Time) (*PreparedConfiguration, error) {
@@ -123,6 +128,13 @@ func TestSQLPublisherSignsApprovedFailoverProgramForActualEnrolledKey(t *testing
 	payload, err := policy.VerifyBound(bundle, f.api.Roots, session.DeviceID, thumb, f.now)
 	if err != nil || revision != 1 || fence.calls != 2 || payload.DecisionBundle == "" || !slices.Contains(payload.RequiredCapabilities, policy.DecisionBundleCapability) {
 		t.Fatal("bound publication or transactional fence missing", err)
+	}
+	var stored bool
+	if err := fixtureOwner.QueryRow(`SELECT publication_view->>'envelopeHash'=encode(sha256(publication),'hex')
+		AND publication_view->'settings'->'decisionProgramRevision'=to_jsonb($2::bigint)
+		AND NOT (publication_view->'settings' ? 'decisionBundle')
+		FROM identity_devices WHERE id=$1`, session.DeviceID, program.Revision).Scan(&stored); err != nil || !stored {
+		t.Fatal("sealed projection must contain only the issued program version", err)
 	}
 }
 

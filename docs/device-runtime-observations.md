@@ -59,3 +59,10 @@ their exact suites and private end-to-end Xperia USB/Wi-Fi checks; see the
 console refresh has separate artifact and live rollout gates.
 Rollback restores prior executables; the additional bounded table can remain
 unused. The migration must not rewrite policy, account, session or activation data.
+
+
+For a policy with separately signed failover thresholds, the issued-settings
+section shows the numeric program revision. The runtime line can associate it
+with a tunnel only while the client reports an online, active engine with that
+same policy revision. As the observation expires, the program number stays in
+issued settings. Older publications have no program number.

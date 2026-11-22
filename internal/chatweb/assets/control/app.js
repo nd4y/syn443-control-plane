@@ -75,6 +75,11 @@ function linkedDevice(){
  return deviceID.test(id)?id:'';
 }
 const confirmedDecision='m4-confirmed-v1';
+function issuedProgramSuffix(issued){
+ const revision=issued.decisionProgramRevision;
+ if(issued.algorithmRevision===confirmedDecision&&Number.isSafeInteger(revision)&&revision>0)return ' · программа №'+revision;
+ return '';
+}
 const supportedPolicyAlgorithms=new Set(['m1-local-v1',confirmedDecision,'m4-graph-tcp-v1']);
 const routeCheckMethods={tcp:'TCP',tls:'TLS',https_204:'HTTPS 204',https_status:'Код ответа HTTPS',ssh_banner:'SSH banner',https_exit_ip:'IP выхода по HTTPS',https_exit_country:'Страна выхода по HTTPS'};
 const exitCountryLabels={RU:'Россия',NON_RU:'За пределами России'};
@@ -837,7 +842,7 @@ function showInventory(view){
   if(typeof issued!=='object'||Array.isArray(issued)||issued.revision!==policyRevision||!Array.isArray(issued.outbounds)||!issued.outbounds.length)throw Error('invalid');
   if(supportedPolicyAlgorithms.has(issued.algorithmRevision)){
    const algorithm=$('inventory-issued-algorithm');
-   algorithm.textContent='Алгоритм '+issued.algorithmRevision;
+   algorithm.textContent='Алгоритм '+issued.algorithmRevision+issuedProgramSuffix(issued);
    algorithm.hidden=false;
   }
   $('inventory-issued-config').textContent=JSON.stringify(issued,null,2);
@@ -1045,7 +1050,8 @@ function renderRuntime(){
  $('inventory-runtime-detail').textContent=`${recent?'По данным клиента':'Последнее сообщение: '+phase} · ${ {none:'Без сети',wifi:'Wi-Fi',cellular:'Мобильная сеть',unknown:'Сеть неизвестна'}[r.network]} · сборка ${r.build} · политика ${r.policyRevision} · ${engine}`;
  const issued=layerInventory?.issuedSettings;
  if(recent&&r.engineKnown&&r.engineActive&&issued?.revision===r.policyRevision&&supportedPolicyAlgorithms.has(issued.algorithmRevision)){
-  $('inventory-runtime-detail').append(' · алгоритм политики '+issued.algorithmRevision);
+  const program=r.phase==='online'?issuedProgramSuffix(issued):'';
+  $('inventory-runtime-detail').append(' · алгоритм политики '+issued.algorithmRevision+program);
  }
  const time=$('inventory-runtime-time');time.dateTime=inventoryDate(r.receivedAtMs);time.textContent='Получен сервером: '+new Date(r.receivedAtMs).toLocaleString('ru-RU');time.hidden=false;
  if(recent&&!document.hidden&&$('inventory-view').getClientRects().length)runtimeTimer=setTimeout(renderRuntime,Math.max(1,runtimeDeadline-performance.now()));
