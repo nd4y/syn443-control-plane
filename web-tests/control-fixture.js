@@ -109,16 +109,27 @@ const server=http.createServer(async(req,res)=>{
   if(options.invalidDeviceList==='order')devices=[row('device-b'),row('device-a')];
   send(200,{devices,next,observedAtMs:1800000000000});break;
  }
- case 'telemetry.summary.get':{
-  if(Object.keys(p).length!==1||!/^\d{4}-\d{2}-\d{2}T\d{2}:00Z$/.test(p.hour)){send(400,{});break;}
-  if(options.telemetryDenied){send(404,{});break;}
-  const empty=p.hour.endsWith('T02:00Z');
-  const row=options.decisionTelemetry?{kind:'route',code:'reselected',mode:'wifi',events:4,timed:0,duration:0,
-   baselineReselections:1,conservativeReselections:p.hour.endsWith('T04:00Z')?4:2}:
-   {kind:'probe',code:'ok',mode:'wifi',events:3,timed:2,duration:51,ignored:'synthetic-untrusted-data'};
-  send(200,{schemaVersion:1,hourStartMs:Date.parse(p.hour)+(p.hour.endsWith('T03:00Z')?3600000:0),available:!empty,
-   rows:empty?[]:[row]});break;
- }
+  case 'telemetry.summary.get':{
+   if(Object.keys(p).length!==1||!/^\d{4}-\d{2}-\d{2}T\d{2}:00Z$/.test(p.hour)){send(400,{});break;}
+   if(options.telemetryDenied){send(404,{});break;}
+   const empty=p.hour.endsWith('T02:00Z'),adaptive=options.adaptiveTelemetry;
+   let row;
+   if(options.decisionTelemetry)row={kind:'route',code:'reselected',mode:'wifi',events:4,timed:0,duration:0,
+    baselineReselections:1,conservativeReselections:p.hour.endsWith('T04:00Z')?4:2};
+   else if(adaptive==='only')row={kind:'route',code:'reselected',mode:'wifi',events:3,timed:0,duration:0,adaptiveReselections:2};
+   else if(adaptive==='absent')row={kind:'route',code:'reselected',mode:'wifi',events:4,timed:0,duration:0,
+    baselineReselections:1,conservativeReselections:2};
+   else if(adaptive)row={kind:adaptive==='non-route'?'probe':'route',code:adaptive==='non-route'?'ok':'reselected',
+    mode:'wifi',events:4,timed:0,duration:0,baselineReselections:adaptive==='non-route'?0:1,
+    conservativeReselections:adaptive==='non-route'?0:1,
+    adaptiveReselections:adaptive==='null'?null:adaptive==='invalid'?'2':adaptive==='negative'?-1:adaptive==='total'?3:2};
+   else row={kind:'probe',code:'ok',mode:'wifi',events:3,timed:2,duration:51,ignored:'synthetic-untrusted-data'};
+   const rows=adaptive==='partial'?[
+    {kind:'probe',code:'ok',mode:'wifi',events:3,timed:2,duration:51},
+    {kind:'route',code:'reselected',mode:'wifi',events:4,timed:0,duration:0,adaptiveReselections:-1}]:[row];
+   send(200,{schemaVersion:1,hourStartMs:Date.parse(p.hour)+(p.hour.endsWith('T03:00Z')?3600000:0),available:!empty,
+    rows:empty?[]:rows});break;
+  }
  case 'configuration.history.get':{
   if(p.id!=='device-a'||p.revision!==7||p.hash!=='a'.repeat(64)){send(403,{});break;}
   send(200,{device:p.id,owner:'synthetic-user',state:'assigned',revision:7,hash:'a'.repeat(64),currentRevision:options.remoteChanged?8:7,historical:true,mode:'wifi',approvalUntilMs:1800003600000,layers:[{id:'template-a',kind:'template',priority:0,revision:2,changes:[],permissions:null}]});break;

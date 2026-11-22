@@ -219,8 +219,9 @@ func TestTelemetryReportCountsOnlyKnownDecisionsWithoutRawRevisionAccess(t *test
 	for _, stamp := range []struct {
 		policy    int64
 		algorithm int
-	}{{41, 1}, {42, 2}, {0, 1}, {43, 99}} {
-		batch := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 60,
+		build     int
+	}{{41, 1, 60}, {42, 2, 60}, {0, 1, 60}, {43, 99, 128}, {44, 3, 127}, {0, 3, 128}, {45, 3, 128}} {
+		batch := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: stamp.build,
 			PolicyRevision: stamp.policy, AlgorithmRevision: stamp.algorithm,
 			Events: []telemetry.Event{{ID: random(), AtMS: f.now.UnixMilli(), Kind: "route", Code: "reselected", Mode: "wifi"}}}
 		body, _ := json.Marshal(batch)
@@ -236,7 +237,7 @@ func TestTelemetryReportCountsOnlyKnownDecisionsWithoutRawRevisionAccess(t *test
 		t.Fatal("could not read the decision aggregate", err)
 	}
 	row := report.Rows[0]
-	if row.Events != 4 || row.BaselineReselections != 1 || row.ConservativeReselections != 1 {
+	if row.Events != 7 || row.BaselineReselections != 1 || row.ConservativeReselections != 1 || row.AdaptiveReselections != 1 {
 		t.Fatal("unknown or missing decision stamps entered an algorithm count")
 	}
 }

@@ -212,11 +212,17 @@ ALTER TABLE identity_telemetry_hourly
  CHECK(conservative_reselections BETWEEN 0 AND events-baseline_reselections AND
   (conservative_reselections=0 OR (kind='route' AND code='reselected')));
 
--- The analysis worker can see the two known decision variants, without access
+ALTER TABLE identity_telemetry_hourly
+ ADD COLUMN IF NOT EXISTS adaptive_reselections bigint NOT NULL DEFAULT 0
+ CHECK(adaptive_reselections BETWEEN 0 AND events-baseline_reselections-conservative_reselections AND
+  (adaptive_reselections=0 OR (kind='route' AND code='reselected')));
+
+-- The analysis worker can see the known decision variants, without access
 -- to the raw algorithm revision, policy revision, device or event identifiers.
 CREATE OR REPLACE VIEW identity_telemetry_analysis_events WITH (security_barrier=true) AS
  SELECT received_at_ms,kind,code,mode,duration_ms,
- CASE WHEN kind='route' AND code='reselected' AND policy_revision>0 AND algorithm_revision IN (1,2)
+ CASE WHEN kind='route' AND code='reselected' AND policy_revision>0 AND
+  (algorithm_revision IN (1,2) OR (algorithm_revision=3 AND build>=128))
   THEN algorithm_revision ELSE 0 END AS decision_variant
  FROM identity_telemetry_events;
 REVOKE ALL ON identity_telemetry_analysis_events FROM PUBLIC;

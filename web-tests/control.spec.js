@@ -69,6 +69,39 @@ test('hourly route summary shows only valid counts for the two decision algorith
  await expect(rows).toHaveText('');
 });
 
+test('hourly route summary preserves legacy counts when the adaptive count is absent',async({page,request})=>{
+ await reset(request,{adaptiveTelemetry:'absent'});await page.goto(origin+'/#telemetry-title');
+ const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows');
+ await expect(button).toBeEnabled();
+ await hour.fill('2026-01-02T01:00');await button.click();
+ await expect(page.locator('#telemetry-status')).toHaveText('Сводка за 2026-01-02T01:00Z');
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','—','Базовый: 1, консервативный: 2']);
+});
+
+test('hourly route summary adds a positive adaptive count to the existing counts',async({page,request})=>{
+ await reset(request,{adaptiveTelemetry:'positive'});await page.goto(origin+'/#telemetry-title');
+ const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows');
+ await expect(button).toBeEnabled();
+ await hour.fill('2026-01-02T01:00');await button.click();
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','4','—','Базовый: 1, консервативный: 1, адаптивный: 2']);
+ await reset(request,{adaptiveTelemetry:'only'});await page.reload();
+ await expect(button).toBeEnabled();
+ await hour.fill('2026-01-02T01:00');await button.click();
+ await expect(rows.locator('td')).toHaveText(['route','reselected','wifi','3','—','адаптивный: 2']);
+});
+
+test('hourly route summary rejects invalid adaptive aggregates without partial stats',async({page,request})=>{
+ await reset(request);await page.goto(origin+'/#telemetry-title');
+ const button=page.locator('#load-telemetry'),hour=page.locator('#telemetry-hour'),rows=page.locator('#telemetry-rows');
+ for(const adaptiveTelemetry of ['invalid','null','negative','total','non-route','partial']){
+  await reset(request,{adaptiveTelemetry});await page.reload();
+  await expect(button).toBeEnabled();
+  await hour.fill('2026-01-02T01:00');await button.click();
+  await expect(page.locator('#telemetry-status')).toContainText('Не удалось загрузить');
+  await expect(rows).toHaveText('');
+ }
+});
+
 test('scoped telemetry denial preserves an unrelated unsaved draft',async({page,request})=>{
  await reset(request,{telemetryDenied:true});await page.goto(origin+'/#draft-title');
  await draft(page);

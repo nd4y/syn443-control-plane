@@ -200,11 +200,12 @@ End-to-end delivery, live scheduling, cohort comparisons, incident analysis,
 device erasure and retention for backups and other categories require their
 own acceptance.
 
-The hourly summary counts confirmed route reselections by the baseline and
-conservative algorithms when Android includes a verified policy revision.
-The analysis view exposes a bounded variant label to the worker. It does
-not grant access to raw policy revisions, raw algorithm revisions, devices
-or sessions. The report role still reads only hourly rows. Unknown revisions
-and older clients contribute to the total reselection count with no variant
-attribution. These are event counts and cannot measure rollout eligibility
-or success rates. Older stored hourly rows have zero attributed events.
+The hourly summary counts reselections attributed by enrolled clients to the
+baseline, conservative and adaptive algorithms. Adaptive attribution starts
+with Android build 128 and requires a positive policy revision and algorithm
+ID 3 on a route reselection. The analysis view exposes the variant label while
+keeping device, session and raw revisions private. The report role reads hourly
+rows. Earlier builds and unknown assignments still contribute to total events.
+Existing hourly rows default to zero for the new counter. These counts describe
+reported decisions. Rollout eligibility and success rates require additional
+measurements.
