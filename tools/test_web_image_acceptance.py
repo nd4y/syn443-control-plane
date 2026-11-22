@@ -23,3 +23,13 @@ class WebImageAcceptanceTest(unittest.TestCase):
                        lambda lines: lines + [event("skip", REQUIRED[1])]):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 report(change(self.lines))
+
+
+    def test_failure_reports_a_public_source_location_without_fixture_values(self):
+        name = REQUIRED[-1]
+        failure = json.dumps({"Package": PACKAGE, "Test": name, "Action": "output",
+                              "Output": "    personal_issuance_test.go:34: HTTP status 403, expected 200 (synthetic-private-body)"})
+        with self.assertRaises(ValueError) as caught:
+            report([event("start"), event("run", name), failure, event("fail", name)])
+        self.assertIn("personal_issuance_test.go:34 (HTTP 403, expected 200)", str(caught.exception))
+        self.assertNotIn("synthetic-private-body", str(caught.exception))
