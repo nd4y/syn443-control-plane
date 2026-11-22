@@ -193,3 +193,38 @@ test('mobile quarantine distinguishes an unreadable refresh from a reviewable so
  expect(actions).not.toContain('source.review');
  expect(actions).not.toContain('source.snapshot');
 });
+
+test('mobile device source history separates handset and server attempts',async({page,request})=>{
+ await request.post(origin+'/fixture/reset',{data:{}});
+ await page.setViewportSize({width:393,height:852});
+ const rows=[
+  {deviceAttempts:1,waitingForDevice:true,nextAttemptAt:1800000070},
+  {deviceAttempts:8,waitingForDevice:true,nextAttemptAt:0},
+  {deviceAttempts:8,nextAttemptAt:1800000000},
+  {nextAttemptAt:0},
+ ];
+ await page.route('**/control/action',async route=>{
+  const {action,payload}=route.request().postDataJSON();
+  if(action!=='job.list')return route.continue();
+  const jobs=rows.map((fields,i)=>({...fields,updatedAt:1800000020,job:{
+   id:'device-job-'+i,sourceId:payload.sourceId,sourceRevision:2,kind:'device',
+   phase:'queued',attempts:i===2?1:0,reason:'',
+  }}));
+  return route.fulfill({json:{sourceId:payload.sourceId,jobs,next:'',observedAt:1800000020}});
+ });
+ await page.goto(origin+'/#sources-title');
+ await page.locator('#owner').fill('synthetic-user');await page.locator('#load-sources').click();
+ await page.getByRole('button',{name:'Настроить источник'}).first().click();
+ await page.locator('#source-history').click();
+ const items=page.locator('#source-history-list li');
+ await expect(items).toHaveCount(4);
+ await expect(items.nth(0)).toContainText('Ожидает загрузки с устройства');
+ await expect(items.nth(0)).toContainText('попыток на устройстве 1/8');
+ await expect(items.nth(0)).toContainText('не ранее');
+ await expect(items.nth(1)).toContainText('попыток на устройстве 8/8');
+ await expect(items.nth(1)).not.toContainText('не ранее');
+ await expect(items.nth(2)).toContainText('Обработка на сервере');
+ await expect(items.nth(2)).toContainText('на сервере 1/8');
+ await expect(items.nth(3)).toContainText('попыток 0');
+ await expect(items.nth(3)).not.toContainText('на устройстве');
+});

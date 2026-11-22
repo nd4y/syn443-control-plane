@@ -1433,9 +1433,17 @@ async function sourceHistory(more=false){
       ||!Number.isSafeInteger(job.sourceRevision)||job.sourceRevision<1||!Number.isInteger(job.attempts)||job.attempts<0||job.attempts>8
       ||typeof job.reason!=='string'||!/^[a-z_]{0,64}$/.test(job.reason)||!Number.isSafeInteger(updatedAt)||updatedAt<1
       ||!Number.isSafeInteger(nextAttemptAt)||nextAttemptAt<0)throw Error('invalid');
+  let progress=`${job.kind} · v${job.sourceRevision} · попыток ${job.attempts}`;
+  if(item.deviceAttempts!==undefined){
+   if(job.kind!=='device'||!Number.isInteger(item.deviceAttempts)||item.deviceAttempts<0||item.deviceAttempts>8)throw Error('invalid');
+   if(item.waitingForDevice!==undefined&&(item.waitingForDevice!==true||job.phase!=='queued'))throw Error('invalid');
+   const stage=item.waitingForDevice?'Ожидает загрузки с устройства':
+    ['queued','running'].includes(job.phase)?'Обработка на сервере':'Загрузка с устройства';
+   progress=`${stage} · v${job.sourceRevision} · попыток на устройстве ${item.deviceAttempts}/8 · на сервере ${job.attempts}/8`;
+  }
   const retry=nextAttemptAt? ` · не ранее ${inventoryDate(nextAttemptAt*1000)}`:'';
   const reason=job.reason? ` · ${job.reason}`:'';
-  return `${jobStates[job.phase]} · ${job.kind} · v${job.sourceRevision} · попыток ${job.attempts} · ${inventoryDate(updatedAt*1000)}${retry}${reason}`;
+  return `${jobStates[job.phase]} · ${progress} · ${inventoryDate(updatedAt*1000)}${retry}${reason}`;
  });
  if(!more)clearSourceHistory();
  sourceHistoryNext=page.next;
