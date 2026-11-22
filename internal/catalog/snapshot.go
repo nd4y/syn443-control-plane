@@ -174,23 +174,14 @@ func (s *Store) Complete(ctx context.Context, job Job, profiles []subscriptions.
 	if result.ValidUntil <= now.Unix() {
 		return Snapshot{}, subscriptions.ErrExpired
 	}
-	refs := map[string]bool{}
-	rows, e := tx.QueryContext(ctx, `SELECT DISTINCT profile_id FROM catalog_dependencies WHERE source_id=$1`, source.ID)
+	refs, pending, e := publishedReferences(ctx, tx, source.ID)
 	if e != nil {
-		return Snapshot{}, ErrUnavailable
+		return Snapshot{}, e
 	}
-	for rows.Next() {
-		var ref string
-		if rows.Scan(&ref) != nil {
-			rows.Close()
-			return Snapshot{}, ErrUnavailable
+	if pending {
+		for _, active := range previous {
+			refs[active.ID] = true
 		}
-		refs[ref] = true
-	}
-	e = rows.Err()
-	rows.Close()
-	if e != nil {
-		return Snapshot{}, ErrUnavailable
 	}
 	promotion, e := subscriptions.Assess(previous, profiles, refs)
 	if e != nil {

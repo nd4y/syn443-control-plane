@@ -418,7 +418,7 @@ func TestConfigurationPublisherRollsBackEveryRecipientOnLateSQLFailure(t *testin
 	if e := publisher.RunOnce(context.Background(), n.f.now.Add(time.Second)); !errors.Is(e, enrollment.ErrUnavailable) {
 		t.Fatal("expected late SQL failure", e)
 	}
-	for _, table := range []string{"managed_configuration_versions", "managed_configuration_heads", "managed_configuration_layer_versions", "managed_configuration_layer_heads", "managed_configuration_assignments"} {
+	for _, table := range []string{"managed_configuration_versions", "managed_configuration_heads", "managed_configuration_layer_versions", "managed_configuration_layer_heads", "managed_configuration_assignments", "managed_configuration_profile_refs"} {
 		var count int
 		if e := fixtureOwner.QueryRow(`SELECT count(*) FROM ` + table).Scan(&count); e != nil || count != 0 {
 			t.Fatal("partial multi-recipient effect", table, e)
@@ -443,7 +443,7 @@ func TestConfigurationPublisherRollsBackEveryRecipientOnLateSQLFailure(t *testin
 }
 
 func TestConfigurationPublisherRollsBackFailureAtEveryPersistentBoundary(t *testing.T) {
-	for _, table := range []string{"managed_configuration_layer_versions", "managed_configuration_layer_heads", "managed_configuration_versions", "managed_configuration_heads", "managed_configuration_assignments"} {
+	for _, table := range []string{"managed_configuration_layer_versions", "managed_configuration_layer_heads", "managed_configuration_versions", "managed_configuration_heads", "managed_configuration_assignments", "managed_configuration_profile_refs"} {
 		t.Run(table, func(t *testing.T) {
 			n, c, p, publisher := layerPublisherFixture(t)
 			r := prepareLayerPreview(t, n, c, p, publisher, "preview persistent boundary")
@@ -459,7 +459,7 @@ func TestConfigurationPublisherRollsBackFailureAtEveryPersistentBoundary(t *test
 			if e := publisher.RunOnce(context.Background(), n.f.now.Add(time.Second)); !errors.Is(e, enrollment.ErrUnavailable) {
 				t.Fatal("persistent boundary unexpectedly committed", e)
 			}
-			for _, name := range []string{"managed_configuration_versions", "managed_configuration_heads", "managed_configuration_layer_versions", "managed_configuration_layer_heads", "managed_configuration_assignments"} {
+			for _, name := range []string{"managed_configuration_versions", "managed_configuration_heads", "managed_configuration_layer_versions", "managed_configuration_layer_heads", "managed_configuration_assignments", "managed_configuration_profile_refs"} {
 				var count int
 				if e := fixtureOwner.QueryRow(`SELECT count(*) FROM ` + name).Scan(&count); e != nil || count != 0 {
 					t.Fatal("partial persistent boundary", name, e)

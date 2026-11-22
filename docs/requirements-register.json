@@ -427,9 +427,12 @@
         "internal/catalog/model.go",
         "internal/catalog/store_postgres_test.go",
         "internal/chatweb/assets/control/app.js",
-        "web-tests/control.spec.js"
+        "web-tests/control.spec.js",
+        "internal/catalog/published_references.go",
+        "internal/deviceprovisioning/profile_dependencies.go",
+        "internal/deviceprovisioning/profile_dependencies_postgres_test.go"
       ],
-      "implementationScope": "The source editor can disable an existing server or device source after expiry without renewing it and discard the current fetch credential. The job reader fences previous revisions. The console labels expired, revoked, quota-exhausted and disabled sources.",
+      "implementationScope": "The source editor can disable an existing server or device source after expiry without renewing it and discard the current fetch credential. The job reader fences previous revisions. The console labels expired, revoked, quota-exhausted and disabled sources. Committed effective static and adaptive profile references block automatic promotion and administrative approval of a subscription that removes a current dependency. A replacement removes obsolete references transactionally. An idle publisher recovers earlier heads from the original signed approval.",
       "remainingScope": "Dependency replacement or cascade previews across recipients and Android end-user expiration display remain separate."
     },
     {

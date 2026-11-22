@@ -55,3 +55,5 @@ END$$;
 -- signer receive no draft-body access or authority to treat them as active.
 GRANT SELECT,INSERT,UPDATE ON catalog_network_drafts TO syn443_control_api;
 REVOKE ALL ON FUNCTION catalog_network_draft_guard() FROM PUBLIC;
+
+GRANT SELECT ON catalog_published_references TO syn443_control_api,syn443_source_worker;
