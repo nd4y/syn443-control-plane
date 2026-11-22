@@ -21,6 +21,11 @@ build and policy and algorithm revisions. A retry keeps the first server receipt
 time. AC18 exercises a newer batch arriving before two older observations, then
 replays both batches through the signed device endpoint. The PostgreSQL test
 checks the ordered event IDs in every acknowledgment and the three stored rows.
+A second acceptance case sends a signed batch over a socket whose client never
+reads the response. After PostgreSQL records both events, the client disconnects,
+the ingest process restarts against the same database, and a newer batch arrives.
+Replaying the older batch must return its original event order and keep its first
+receipt time. The binary and the release container exercise this path separately.
 [Enrollment database tests](../internal/enrollment/telemetry_postgres_test.go)
 
 ### Capacity during reconnects
