@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/resources"
 	"github.com/nd4y/syn443-control-plane/internal/subscriptions"
 )
 
@@ -113,6 +114,89 @@ func TestSQLResourceBindingBelongsToItsSourceOwner(t *testing.T) {
 	exact, err := api.GetSource(ctx, reader, first.ID, now)
 	if err != nil || exact.Revision != stored.Revision || exact.Owner != first.Owner || exact.ResourceID != first.ResourceID || exact.ExternalUserID != first.ExternalUserID {
 		t.Fatal("binding changed after rejected edits", err)
+	}
+}
+
+func TestSQLSameExternalIDKeepsResourceBindingsCredentialsAndStateSeparate(t *testing.T) {
+	api, worker, actor, now := databaseFixture(t)
+	ctx := t.Context()
+	first := resourceExample()
+	second := first
+	second.ID, second.Enabled = "panel-b", false
+	put := func(resource Resource, patch SecretPatch, impact, request string) Resource {
+		t.Helper()
+		stored, err := api.PutResource(ctx, actor, resourceDraft(resource), patch, impact, request, now)
+		if err != nil {
+			t.Fatal("store synthetic panel", err)
+		}
+		return stored
+	}
+	credential := func(id string) ResourceCredential {
+		return ResourceCredential{Endpoint: "https://" + id + ".example.invalid", Token: "synthetic-fixture-for-" + id}
+	}
+	register := func(resource Resource) Resource {
+		t.Helper()
+		raw, err := json.Marshal(credential(resource.ID))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return put(resource, SecretPatch{Operation: "replace", Value: raw}, "", "register-"+resource.ID)
+	}
+	first, second = register(first), register(second)
+	enableSecond := resourceDraft(second)
+	enableSecond.Enabled = true
+	if _, err := api.PutResource(ctx, actor, enableSecond, SecretPatch{Operation: "keep"}, "", "simultaneous", now); !errors.Is(err, ErrConflict) {
+		t.Fatal("the second panel must remain inactive")
+	}
+	bind := func(resource Resource) Source {
+		t.Helper()
+		source := sourceExample(now)
+		source.ID, source.Owner = "source-"+resource.ID, "owner-"+resource.ID
+		source.Mode, source.ResourceID, source.ExternalUserID = "resource", resource.ID, "42"
+		return mustSource(t, api, actor, source, "bind-"+resource.ID, now)
+	}
+	a := bind(first)
+	_, impact, err := api.GetResource(ctx, actor, first.ID, now)
+	if err != nil || impact.Sources != 1 {
+		t.Fatal("first resource impact", err)
+	}
+	other, empty, err := api.GetResource(ctx, actor, second.ID, now)
+	if err != nil || other != second || empty.Sources != 0 {
+		t.Fatal("second resource changed before activation", err)
+	}
+	first.Enabled = false
+	first = put(first, SecretPatch{Operation: "keep"}, impact.Hash, "disable-first")
+	second = put(enableSecond, SecretPatch{Operation: "keep"}, "", "enable-second")
+	b := bind(second)
+	namespaces := make(map[string]bool)
+	for _, bound := range []Source{a, b} {
+		got, err := api.GetSource(ctx, actor, bound.ID, now)
+		if err != nil || got.ExternalUserID != "42" || got.ResourceID != bound.ResourceID || got.Owner != bound.Owner {
+			t.Fatal("stored assignment crossed provider instances", err)
+		}
+		namespaces[(resources.ObjectRef{ResourceID: got.ResourceID, ExternalObjectID: got.ExternalUserID}).Namespace()] = true
+	}
+	if len(namespaces) != 2 {
+		t.Fatal("external IDs collided")
+	}
+	tx, err := worker.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	for _, resource := range []Resource{first, second} {
+		got, raw, err := worker.readResource(ctx, tx, resource.ID, false)
+		if err != nil || got != resource {
+			t.Fatal("independent worker state", err)
+		}
+		value, err := readResourceCredential(raw)
+		want := credential(resource.ID)
+		if err != nil || value.Endpoint != want.Endpoint || value.Token != want.Token {
+			t.Fatal("worker received credentials for a different instance")
+		}
+	}
+	if first.Enabled || first.State != "disabled" || !second.Enabled || second.State != "unknown" {
+		t.Fatal("instance activation or health leaked between panels")
 	}
 }
 
