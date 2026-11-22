@@ -3382,20 +3382,32 @@
     {
       "id": "AC63",
       "specRow": " Worker crash между внешним действием, outbox и job ack | Нет потерянного задания/неконтролируемого повторного write; идемпотентность либо reconciliation подтверждены |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/enrollment/broker_postgres_test.go",
+        "internal/catalog/store_postgres_test.go"
+      ]
     },
     {
       "id": "AC64",
       "specRow": " Несколько worker/scheduler replicas, зависший источник подписки | Нет лишних scheduler jobs и общей блокировки очередей; concurrency/rate limits/lease и cancel работают |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/catalog/jobs.go",
+        "internal/catalog/worker.go",
+        "internal/catalog/worker_shutdown_postgres_test.go",
+        "internal/catalog/store_postgres_test.go"
+      ]
     },
     {
       "id": "AC65",
       "specRow": " Telemetry backlog, повторы и rolling service schema upgrade | Durable ack/dedup и совместимость сохранены, аналитика не блокирует routing/config API |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/enrollment/telemetry_backlog_postgres_test.go",
+        "internal/enrollment/telemetry_postgres_test.go",
+        "internal/enrollment/historical_upgrade_postgres_test.go"
+      ]
     },
     {
       "id": "AC66",

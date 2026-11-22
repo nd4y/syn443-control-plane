@@ -38,6 +38,18 @@ func (w *Worker) ProcessOne(ctx context.Context) (Job, error) {
 	if e != nil || job.ID == "" {
 		return job, e
 	}
+	defer func() {
+		if ctx.Err() == nil {
+			return
+		}
+		// The caller has stopped. Return a still-owned claim without turning
+		// shutdown into a provider failure. A lost database uses lease expiry.
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+		defer cancel()
+		if at, err := w.clock(cleanup); err == nil {
+			_ = w.Store.releaseInterrupted(cleanup, job, at)
+		}
+	}()
 	work, stop := context.WithTimeout(ctx, 40*time.Second)
 	defer stop()
 	source, salt, secret, payload, e := w.Store.JobInput(work, job, now)
