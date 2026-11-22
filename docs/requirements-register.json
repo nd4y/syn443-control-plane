@@ -3088,12 +3088,15 @@
     {
       "id": "AC18",
       "specRow": " Telemetry batch повторён и доставлен не по порядку | Дедупликация, корректные версии/времена, подтверждение доставки |",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
         "docs/telemetry-ingest.md",
         "internal/enrollment/telemetry_postgres_test.go",
-        ".github/workflows/ci.yml"
-      ]
+        ".github/workflows/ci.yml",
+        "internal/enrollment/standalone_ingest_postgres_test.go",
+        "docs/implementation-status.md"
+      ],
+      "remainingScope": "Server acceptance covers out-of-order and replayed DPoP-bound batches in PostgreSQL, including an unread acknowledgement and process restart. Device delivery and operation of a deployed instance are tracked separately."
     },
     {
       "id": "AC19",
@@ -3240,8 +3243,14 @@
     {
       "id": "AC41",
       "specRow": " Контрактные фикстуры двух ресурсов с одинаковыми external IDs | IDs, credentials refs, назначения и состояния разделены; схема не требует глобального одиночного URL, реальных вторых коннекторов нет |",
-      "status": "planned",
-      "evidence": []
+      "status": "verified",
+      "evidence": [
+        "internal/catalog/resource_postgres_test.go",
+        "internal/resources/resource_test.go",
+        "docs/remnawave-resource.md",
+        "docs/implementation-status.md"
+      ],
+      "remainingScope": "The PostgreSQL contract fixture uses one active instance at a time and two stored resources with the same external object ID. Real simultaneous providers and future panel adapters are outside the version 1.0 scope."
     },
     {
       "id": "AC42",
