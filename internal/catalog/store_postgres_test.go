@@ -297,6 +297,9 @@ func TestSQLLeaseReclaimAndLostQueueResponse(t *testing.T) {
 	if e != nil || next.ID != old.ID || next.Lease == old.Lease || next.Attempts != 2 {
 		t.Fatal("crash lease not reclaimed")
 	}
+	if e = worker.releaseInterrupted(ctx, old, now.Add(62*time.Second)); e != nil {
+		t.Fatal(e)
+	}
 	if _, _, _, _, e = worker.JobInput(ctx, old, now.Add(62*time.Second)); !errors.Is(e, ErrStale) {
 		t.Fatal("retired lease resurrected")
 	}

@@ -171,6 +171,21 @@ func (s *Store) Schedule(ctx context.Context, now time.Time) (int, error) {
 	}
 	return len(ids), tx.Commit()
 }
+
+// An interrupted fetch preserves its attempt and the original absolute deadline.
+// A completed, expired, operator-cancelled or reclaimed job belongs to another state.
+func (s *Store) releaseInterrupted(ctx context.Context, job Job, now time.Time) error {
+	_, err := s.DB.ExecContext(ctx, `UPDATE catalog_jobs
+		SET phase='queued',reason='worker_stopped',lease='',lease_until=0,
+		    not_before=GREATEST(not_before,$3),updated_at=$3
+		WHERE id=$1 AND lease=$2 AND phase='running' AND lease_until>$3 AND deadline>$3`,
+		job.ID, job.Lease, now.Unix())
+	if err != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+
 func (s *Store) Claim(ctx context.Context, now time.Time) (Job, error) {
 	var job Job
 	lease, e := random()
