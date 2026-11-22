@@ -263,6 +263,11 @@ the evidence TTL from each frame. The trial changes only that TTL, in
 milliseconds. Both passes use the common route selection algorithm on exactly
 the same measurements. The report counts identical routes, changed routes,
 loss of a route, gain of a route, and frames with no route in either pass.
+Expand a traffic class to see its outcomes and why the trial rejected candidates.
+Outcomes count frames. Reasons count candidates, so one lost internal route
+can have several rejected alternatives. Neither route identifiers nor raw
+observations appear in the comparison. Requests from older clients keep the
+original six aggregate counts.
 A longer TTL can select older measurements; a gained route is a simulation
 outcome and does not establish current reachability.
 

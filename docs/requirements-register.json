@@ -1266,8 +1266,14 @@
     {
       "id": "ALG-24",
       "text": "Для каждого решения доступны compact evidence: policy/evaluator version, traffic class, кандидаты, причины допуска/отказа, состояние cache, порядок приоритетов, измерения и причина переключения/удержания. Последовательность можно воспроизвести на очищенном event trace с зафиксированным seed jitter и без настоящих секретов.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md#replay-the-freshness-of-route-evidence",
+        "internal/chatweb/route_replay_test.go",
+        "web-tests/route-replay.spec.js"
+      ],
+      "implementationScope": "The scoped console replays aggregate observation frames and reports route outcomes by requested traffic class and counts of rejected trial candidates by evaluator reason. The report contains no path identifiers.",
+      "remainingScope": "Device-side per-decision version, cooldown, switch rationale and reproducible jitter trace across the running evaluator."
     },
     {
       "id": "BAD-01",
@@ -1397,7 +1403,7 @@
       "evidence": [
         "docs/control-catalog.md#replay-the-freshness-of-route-evidence"
       ],
-      "implementationScope": "Authenticated operators can replay bounded aggregate evidence or the shared scenario corpus with a trial evidence TTL. Both passes use the reference route-ranking function, with no network probes or policy writes.",
+      "implementationScope": "Authenticated operators can replay bounded aggregate evidence or the shared scenario corpus with a trial evidence TTL. Both passes use the reference route-ranking function, with no network probes or policy writes. The optional detail shows all comparable outcomes by traffic class and counts of rejected trial candidates by reason.",
       "remainingScope": "Fleet analysis of on-device comparison results, additional decision policy variants and automated prepublication gates. The Android component now records local failover comparisons for matching probe plans."
     },
     {

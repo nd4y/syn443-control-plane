@@ -18,8 +18,10 @@ test('mobile replay compares both policies on reference and uploaded observation
  const initial=await plan.inputValue(),requests=[];
  await page.route('**/control/route-replay',async route=>{
   const body=route.request().postDataJSON();requests.push(body);
-  if(body.source==='reference')await route.fulfill({json:{frames:30,samePath:20,changedPath:0,lostPath:0,gainedPath:0,neither:10}});
-  else await route.fulfill({json:{frames:1,samePath:0,changedPath:0,lostPath:1,gainedPath:0,neither:0}});
+  const reference=body.source==='reference';
+  const totals=reference?{frames:30,samePath:20,changedPath:0,lostPath:0,gainedPath:0,neither:10}:
+   {frames:1,samePath:0,changedPath:0,lostPath:1,gainedPath:0,neither:0};
+  await route.fulfill({json:{...totals,byIntent:{NON_RU:{...totals,trialRejected:reference?{}:{stale_evidence:2}}}}});
  });
  await run.click();await expect(out).toContainText('Проверено кадров - 30');
  await page.locator('#route-replay-ttl').fill('1');
@@ -28,7 +30,10 @@ test('mobile replay compares both policies on reference and uploaded observation
  await run.click();
  await expect(out).toContainText('Проверено кадров - 1');
  await expect(out).toContainText('Потерян доступный маршрут - 1');
- expect(requests).toEqual([{source:'reference',trialTtlMs:60000},{source:'trace',trialTtlMs:1,frames:[sample]}]);
+ await out.getByText('Зарубежный интернет - кадров 1').click();
+ await expect(out.getByText('Измерение устарело - 2')).toBeVisible();
+ await expect(out).not.toContainText(sample.candidates[0].id);
+ expect(requests).toEqual([{source:'reference',trialTtlMs:60000,includeClasses:true},{source:'trace',trialTtlMs:1,includeClasses:true,frames:[sample]}]);
  expect(await plan.inputValue()).toBe(initial);
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(0);expect(state.calls).not.toContain('configuration.publish');
@@ -49,3 +54,15 @@ test('malformed traces and a late comparison cannot replace a changed replay',as
  release();await expect(run).toBeEnabled();await expect(result).toBeEmpty();
 });
 
+
+test('replay rejects unknown reasons and inconsistent per-class totals before displaying a report',async({page,request})=>{
+ await openReplay(page,request);
+ const totals={frames:1,samePath:1,changedPath:0,lostPath:0,gainedPath:0,neither:0};
+ for(const group of [{...totals,trialRejected:{private_endpoint:1}},{...totals,trialRejected:{stale_evidence:65}},{...totals,samePath:0,lostPath:1,trialRejected:{}}]){
+  await page.route('**/control/route-replay',route=>route.fulfill({json:{...totals,byIntent:{RU:group}}}));
+  await page.locator('#route-replay-run').click();
+  await expect(page.locator('#route-replay-run')).toBeEnabled();
+  await expect(page.locator('#route-replay-result')).toBeEmpty();
+  await page.unroute('**/control/route-replay');
+ }
+});

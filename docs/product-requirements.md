@@ -4,7 +4,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Requirements | 292 | 121 | 57 | 74 | 40 |
+| Requirements | 292 | 121 | 57 | 75 | 39 |
 | Acceptance scenarios | 98 | 20 | 4 | 16 | 58 |
 
 ## Component acceptance
@@ -14,7 +14,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 | Scope | Component | Planned | Partial | Implemented | Verified |
 | --- | --- | ---: | ---: | ---: | ---: |
 | Requirements | Android | 114 | 178 | 0 | 0 |
-| Requirements | Control Plane | 97 | 195 | 0 | 0 |
+| Requirements | Control Plane | 96 | 196 | 0 | 0 |
 | Acceptance scenarios | Android | 74 | 24 | 0 | 0 |
 | Acceptance scenarios | Control Plane | 62 | 31 | 0 | 5 |
 
@@ -36,7 +36,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 | MODE | 5 | 2 | 3 | 0 | 0 |
 | AUTO | 10 | 0 | 9 | 0 | 1 |
 | REC | 6 | 6 | 0 | 0 | 0 |
-| ALG | 24 | 0 | 17 | 0 | 7 |
+| ALG | 24 | 0 | 17 | 1 | 6 |
 | BAD | 10 | 0 | 8 | 0 | 2 |
 | RLP | 10 | 4 | 0 | 3 | 3 |
 | ROUTE | 6 | 1 | 2 | 1 | 2 |
@@ -62,7 +62,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 Download `product-requirements` from the CI run for this Control Plane revision. The CSV lists every requirement and acceptance scenario with both original status values. Look up the item ID in its component register for evidence and remaining scope.
 
 - [Control Plane register](requirements-register.json)
-- [Android register at e584dcbfd94c](https://github.com/nd4y/syn443-android/blob/e584dcbfd94ca7c43fa5f625e91b3d4db2e1a84c/docs/requirements-register.json)
+- [Android register at 9016b3950613](https://github.com/nd4y/syn443-android/blob/9016b39506137adfdafe6f350c20ab0635878076/docs/requirements-register.json)
 - [Technical specification](spec/TECHNICAL_SPEC_RU.md)
 - [Live and release acceptance records](implementation-status.md)
 
