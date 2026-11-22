@@ -79,6 +79,7 @@ expected.update({
 expected.update({
     'selected device moves keyboard focus out of the collapsed discovery list',
     'issued algorithm metadata has its own line and cannot keep stale device data',
+    'issued program revision follows only a matching fresh online tunnel on a phone',
 })
 expected.update({
     'control reauthentication preserves the exact pending draft and requires explicit retry',
