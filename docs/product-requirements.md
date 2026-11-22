@@ -4,8 +4,8 @@ Specification 0.9. Each item appears once. The columns show which component regi
 
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Requirements | 292 | 121 | 57 | 73 | 41 |
-| Acceptance scenarios | 98 | 20 | 4 | 15 | 59 |
+| Requirements | 292 | 121 | 57 | 74 | 40 |
+| Acceptance scenarios | 98 | 20 | 4 | 16 | 58 |
 
 ## Component acceptance
 
@@ -14,9 +14,9 @@ Each cell counts items at that exact status in the component register. Scenarios
 | Scope | Component | Planned | Partial | Implemented | Verified |
 | --- | --- | ---: | ---: | ---: | ---: |
 | Requirements | Android | 114 | 178 | 0 | 0 |
-| Requirements | Control Plane | 98 | 194 | 0 | 0 |
+| Requirements | Control Plane | 97 | 195 | 0 | 0 |
 | Acceptance scenarios | Android | 74 | 24 | 0 | 0 |
-| Acceptance scenarios | Control Plane | 63 | 30 | 0 | 5 |
+| Acceptance scenarios | Control Plane | 62 | 31 | 0 | 5 |
 
 ## Requirement families
 
@@ -30,7 +30,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 | EXT | 10 | 0 | 0 | 10 | 0 |
 | CFG | 6 | 2 | 0 | 4 | 0 |
 | PROV | 8 | 6 | 1 | 1 | 0 |
-| PROTO | 4 | 0 | 1 | 2 | 1 |
+| PROTO | 4 | 0 | 1 | 3 | 0 |
 | NB | 7 | 5 | 0 | 2 | 0 |
 | OVL | 7 | 2 | 0 | 4 | 1 |
 | MODE | 5 | 2 | 3 | 0 | 0 |

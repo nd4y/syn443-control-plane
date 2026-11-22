@@ -257,6 +257,85 @@ func TestNetworkCompilerChecksEveryDNSTransportAndProtocolCapability(t *testing.
 	}
 }
 
+func TestFinalTransportDropPreservesOrderedAlternatesAndFullRuleBudget(t *testing.T) {
+	for _, tc := range []struct{ name, final, required, blocked string }{
+		{"http", "entry", "tcp", "udp"},
+		{"udp-only-vless", "exit", "udp", "tcp"},
+		{"vless-through-http", "tunnel", "tcp", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			vless := graphNode("vless")
+			if tc.name == "udp-only-vless" {
+				vless["network"] = "udp"
+			}
+			graph, err := CompileGraph(graphBase(), graphResolver(map[string]map[string]any{
+				"http": graphNode("http"), "vless": vless, "socks": graphNode("socks"),
+			}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			graph.Final = tc.final
+			s := networkBase()
+			s.RequiredNetworks = []string{tc.required}
+			for i := 0; i < 128; i++ {
+				s.Rules = append(s.Rules, RouteRule{ID: fmt.Sprintf("rule-%d", i),
+					Ports: []PortRange{{4000 + i, 4000 + i}}, Networks: []string{"udp"}, Action: "route", Outbound: "socks"})
+			}
+			raw, err := CompileNetwork(graph, s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			route := networkValue(t, raw)["route"].(map[string]any)
+			rules := route["rules"].([]any)
+			size := 128
+			if tc.blocked != "" {
+				size++
+			}
+			if len(rules) != size || route["final"] != tc.final {
+				t.Fatal("changed final or ordered rule budget")
+			}
+			for i, v := range rules[:128] {
+				row := v.(map[string]any)
+				if row["action"] != "route" || row["outbound"] != "socks" || row["port"].([]any)[0] != float64(4000+i) {
+					t.Fatal("alternate route lost precedence", i)
+				}
+			}
+			issued := func() error {
+				encoded, e := json.Marshal(route)
+				if e != nil {
+					t.Fatal(e)
+				}
+				return adaptiveIssuedRoute(encoded, graph)
+			}
+			if err := issued(); err != nil {
+				t.Fatal("compiler output rejected on readback", err)
+			}
+			if tc.blocked != "" {
+				drop := rules[128].(map[string]any)
+				if len(drop) != 3 || drop["action"] != "reject" || drop["method"] != "drop" || !reflect.DeepEqual(drop["network"], []any{tc.blocked}) {
+					t.Fatal("incorrect terminal transport guard")
+				}
+				route["rules"] = rules[:128]
+				if err := issued(); err != nil {
+					t.Fatal("previously issued document refused", err)
+				}
+			}
+			route["rules"] = append(rules[:128:128], rules[0])
+			if err := issued(); err == nil {
+				t.Fatal("129th portable rule accepted")
+			}
+			route["rules"] = append(rules, rules[0], rules[0])
+			if err := issued(); err == nil {
+				t.Fatal("oversized runtime rule list accepted")
+			}
+			s.Rules = append(s.Rules, RouteRule{ID: "extra", MatchAll: true, Action: "reject"})
+			if _, err := CompileNetwork(graph, s); err == nil {
+				t.Fatal("portable rule limit exceeded")
+			}
+		})
+	}
+}
+
 func TestNetworkSettingsClosedDecodeAndDocumentBounds(t *testing.T) {
 	base, _ := json.Marshal(networkBase())
 	for _, raw := range []string{"null", "[]", "{", string(base) + "{}", strings.TrimSuffix(string(base), "}") + `,"setup_key":"forbidden"}`, strings.Replace(string(base), `"schemaVersion":1`, `"schemaVersion":1,"schemaVersion":1`, 1), strings.TrimSuffix(string(base), "}") + `,"rules":[null]}`, strings.Repeat("x", 262145)} {

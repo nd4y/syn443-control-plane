@@ -340,3 +340,23 @@ DEBUG worker diagnostics remain available; unrelated changes are not called its 
 All builds run in GitHub Actions. Physical USB/Wi-Fi and privacy/cleanup evidence
 remain separate. No production secret, provider URL, identity file or raw device
 log belongs in source, fixtures, Issues, Actions artifacts or releases.
+
+
+## Default proxy transport
+
+The network compiler appends a terminal UDP drop for a TCP-only default proxy.
+A UDP-only VLESS default gets the corresponding TCP drop. Destination and
+application exceptions keep their authored priority, including an explicit
+alternate that carries UDP. A VLESS exit carrying UDP through an HTTP entry
+supports both transports and needs no extra rule. The signed engine document
+contains the drop, so the Android client can explain it using the issued rules.
+The control panel draft preview evaluates the rules supplied by the editor
+before outbound resolution.
+
+The portable limit is 128 authored rules. At the 129th position the adaptive
+reader accepts only the exact terminal drop implied by the final outbound.
+Inputs issued using the earlier limit still work. Compiler fixtures exercise
+both protocol directions and the full rule budget. The PostgreSQL publisher
+test reads the terminal UDP rule from the verified device-bound envelope.
+Full per-transport traffic and address-family checks on supported physical
+devices remain open for AC08.

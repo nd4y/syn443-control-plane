@@ -755,8 +755,13 @@
     {
       "id": "PROTO-01",
       "text": "Каждый профиль и цепочка объявляют возможности TCP/UDP, IPv4/IPv6, DNS через путь, типы транспорта и поддерживаемые параметры. Невыполнимые комбинации отвергаются до публикации. Для не поддержанного UDP указывается block либо явный отдельный маршрут; скрытый выход напрямую запрещён.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/configuration/graph.go",
+        "internal/configuration/network_test.go",
+        "internal/deviceprovisioning/network_postgres_test.go",
+        "docs/implementation-status.md#default-proxy-transport"
+      ]
     },
     {
       "id": "PROTO-02",
@@ -3066,8 +3071,13 @@
     {
       "id": "AC08",
       "specRow": " Каждый заявленный протокол и транспорт | TCP/DNS/TLS/UDP только по заявленной матрице, unsupported не теряется молча |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/configuration/graph.go",
+        "internal/configuration/network_test.go",
+        "internal/deviceprovisioning/network_postgres_test.go",
+        "docs/implementation-status.md#default-proxy-transport"
+      ]
     },
     {
       "id": "AC09",

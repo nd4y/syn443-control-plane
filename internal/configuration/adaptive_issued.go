@@ -599,12 +599,21 @@ func adaptiveIssuedRoute(raw []byte, compiled CompiledGraph) error {
 	if !ok {
 		return ErrInvalid
 	}
-	if _, exists := compiled.Capabilities[final]; !exists {
+	capability, exists := compiled.Capabilities[final]
+	if !exists {
 		return ErrInvalid
 	}
 	rules, ok := root["rules"].([]any)
-	if !ok || len(rules) > 128 {
+	if !ok || len(rules) > 129 {
 		return ErrInvalid
+	}
+	// 128 portable rules may be followed by exactly the compiler's terminal
+	// drop. Previously issued documents with at most 128 rules remain valid.
+	if len(rules) == 129 {
+		drop := finalTransportDrop(capability)
+		if drop == nil || !adaptiveIssuedEqual(rules[128], drop) {
+			return ErrInvalid
+		}
 	}
 	for i, value := range rules {
 		node, ok := value.(map[string]any)
