@@ -460,6 +460,28 @@ jobs:
       - run: go build -o bin/syn443-policy-sign ./cmd/policy-sign && go build -o bin/syn443-policy-serve ./cmd/policy-serve
       - run: python3 tools/smoke_policy.py bin/syn443-policy-serve bin/syn443-policy-sign
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: Require release metadata outcomes and package the offline operator tool
+        id: apk-release-scan
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          jq -es 'map(select(.Action == "pass" and .Package == "github.com/nd4y/syn443-control-plane/internal/bootstrap")) | map(.Test) | contains(["TestAPKReleaseAuthenticatesRecipientTimesAndJournal","TestAPKReleaseClosedManifestAndCompatibility"])' exit-country-core-tests.jsonl
+          jq -es 'any(.[]; .Action == "pass" and .Package == "github.com/nd4y/syn443-control-plane/cmd/apk-release" and .Test == "TestAPKReleaseOfflineCommandChecksApprovedReceiptsAndFinalFile")' exit-country-core-tests.jsonl
+          mkdir -p dist/apk-release
+          go build -trimpath -ldflags='-s -w -buildid=' -o dist/apk-release/apk-release ./cmd/apk-release
+          git rev-parse HEAD > dist/apk-release/SOURCE.txt
+          (cd dist/apk-release && sha256sum apk-release > SHA256SUMS)
+          python3 tools/check_compiled_url_shapes.py dist/apk-release
+          python3 tools/check_public_data.py dist/apk-release
+          bash tools/scan_secrets.sh dist/apk-release
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.apk-release-scan.outcome == 'success'
+        with:
+          name: apk-release-linux-amd64
+          path: dist/apk-release/
+          if-no-files-found: error
+          retention-days: 14
       - name: Build control-plane runtime artifacts
         env:
           CGO_ENABLED: '0'
