@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"reflect"
 	"strings"
-
-	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
 
 // MergeNetworkPlan checks the document the device will receive and the individual
@@ -39,6 +37,28 @@ func MergeNetworkPlan(ctx context.Context, layers []Layer) (Effective, NetworkPl
 
 // Map entries are user-defined IDs. Struct members must match their wire names,
 // and arrays are replaced as a whole under the existing patch contract.
+func portableMember(typ reflect.Type, field string) reflect.Type {
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+	switch typ.Kind() {
+	case reflect.Map:
+		return typ.Elem()
+	case reflect.Struct:
+		for i := 0; i < typ.NumField(); i++ {
+			member := typ.Field(i)
+			name, _, _ := strings.Cut(member.Tag.Get("json"), ",")
+			if name == "" {
+				name = member.Name
+			}
+			if member.IsExported() && name != "-" && name == field {
+				return member.Type
+			}
+		}
+	}
+	return nil
+}
+
 func checkPortableField(ctx context.Context, field string, values ...json.RawMessage) error {
 	parts, err := path(field)
 	if err != nil {
@@ -46,27 +66,8 @@ func checkPortableField(ctx context.Context, field string, values ...json.RawMes
 	}
 	typ := reflect.TypeFor[NetworkPlan]()
 	for _, part := range parts {
-		for typ.Kind() == reflect.Pointer {
-			typ = typ.Elem()
-		}
-		switch typ.Kind() {
-		case reflect.Map:
-			typ = typ.Elem()
-		case reflect.Struct:
-			var child reflect.Type
-			for i := 0; i < typ.NumField(); i++ {
-				member := typ.Field(i)
-				name, _, _ := strings.Cut(member.Tag.Get("json"), ",")
-				if member.IsExported() && name == part {
-					child = member.Type
-					break
-				}
-			}
-			if child == nil {
-				return ErrInvalid
-			}
-			typ = child
-		default:
+		typ = portableMember(typ, part)
+		if typ == nil {
 			return ErrInvalid
 		}
 	}
@@ -78,32 +79,53 @@ func checkPortableField(ctx context.Context, field string, values ...json.RawMes
 			continue
 		}
 		fragment, err := value(raw)
-		if err != nil {
-			return err
-		}
-		shape, err := json.Marshal(portableShape(fragment))
-		if err != nil || identity.DecodeConfiguration(shape, reflect.New(typ).Interface()) != nil {
+		if err != nil || !portableValue(typ, fragment) {
 			return ErrInvalid
 		}
 	}
 	return ctx.Err()
 }
 
-// Historical layers can use different numeric lexemes and fractional defaults
-// superseded by a later layer. Check the JSON type here. The effective document
-// still goes through the exact integer, range and semantic checks above.
-func portableShape(fragment any) any {
-	switch v := fragment.(type) {
-	case json.Number:
-		return 0
-	case map[string]any:
-		for name, item := range v {
-			v[name] = portableShape(item)
-		}
-	case []any:
-		for i, item := range v {
-			v[i] = portableShape(item)
-		}
+// Check only JSON member names and kinds in individual layers. Numeric lexemes,
+// partial objects and method-specific semantics are resolved by the complete
+// effective plan. Never rewrite the original bytes stored in the layer.
+func portableValue(typ reflect.Type, fragment any) bool {
+	if fragment == nil {
+		return true
 	}
-	return fragment
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+	kind := typ.Kind()
+	switch v := fragment.(type) {
+	case map[string]any:
+		if kind != reflect.Struct && kind != reflect.Map {
+			return false
+		}
+		for name, item := range v {
+			child := portableMember(typ, name)
+			if child == nil || !portableValue(child, item) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		if kind != reflect.Slice && kind != reflect.Array {
+			return false
+		}
+		for _, item := range v {
+			if !portableValue(typ.Elem(), item) {
+				return false
+			}
+		}
+		return true
+	case string:
+		return kind == reflect.String
+	case bool:
+		return kind == reflect.Bool
+	case json.Number:
+		return kind >= reflect.Int && kind <= reflect.Float64
+	default:
+		return false
+	}
 }

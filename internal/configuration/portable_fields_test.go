@@ -14,6 +14,7 @@ func TestPortableFieldsFollowTypedObjectsAndMapKeys(t *testing.T) {
 		{"/graph/netbird/identityEpoch", "2"},
 		{"/activation/timeoutSeconds", "30.125"},
 		{"/network/schemaVersion", "1e0"},
+		{"/network/routeChecks", `[{"outbound":"route","checks":[{"method":"https_status","target":"https://example.invalid/status","expected_status":204}]}]`},
 		{"/graph/netbird", "{\"mode\":\"direct\"}"},
 		{"/network/rules", "[{\"id\":\"rule\",\"match\":{\"domainSuffixes\":[\"example.invalid\"]}}]"},
 	} {
