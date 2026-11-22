@@ -49,6 +49,9 @@ func (*PreparedSelection) GoString() string { return "PreparedSourceSelection([r
 func (p *PreparedSelection) Dependencies() []SelectionDependency {
 	return append([]SelectionDependency{}, p.dependencies...)
 }
+func (p *PreparedSelection) ProfileReferences() []ProfileReference {
+	return append([]ProfileReference{}, p.refs...)
+}
 func (p *PreparedSelection) ValidUntil() int64 { return p.until }
 func (p *PreparedSelection) Profile(ref ProfileReference) (subscriptions.Profile, bool) {
 	value, ok := p.profiles[ref]

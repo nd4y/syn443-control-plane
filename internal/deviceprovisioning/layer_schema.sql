@@ -220,3 +220,18 @@ END; $$;
 REVOKE ALL ON FUNCTION managed_configuration_operation_consistency() FROM PUBLIC;
 DROP TRIGGER IF EXISTS managed_configuration_operation_commit_guard ON managed_configuration_operations;
 CREATE CONSTRAINT TRIGGER managed_configuration_operation_commit_guard AFTER INSERT ON managed_configuration_operations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION managed_configuration_operation_consistency();
+
+-- A matching marker proves that all actual references, including an empty
+-- selection, belong to this revision. Older writers naturally invalidate it.
+ALTER TABLE managed_configuration_heads ADD COLUMN IF NOT EXISTS indexed_profile_revision bigint NOT NULL DEFAULT 0;
+ALTER TABLE managed_configuration_heads ADD COLUMN IF NOT EXISTS profile_retry_after_ms bigint NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS managed_configuration_refs_pending ON managed_configuration_heads(profile_retry_after_ms,device) WHERE indexed_profile_revision<>revision;
+CREATE TABLE IF NOT EXISTS managed_configuration_profile_refs(
+ device text NOT NULL REFERENCES managed_configuration_heads(device) ON DELETE CASCADE,
+ source_id text NOT NULL,profile_id text NOT NULL,PRIMARY KEY(device,source_id,profile_id)
+);
+CREATE INDEX IF NOT EXISTS managed_configuration_refs_source ON managed_configuration_profile_refs(source_id,profile_id);
+CREATE OR REPLACE VIEW catalog_published_references AS
+ SELECT r.source_id,r.profile_id FROM managed_configuration_profile_refs r JOIN managed_configuration_heads h USING(device)
+ WHERE h.indexed_profile_revision=h.revision
+ UNION ALL SELECT NULL::text,NULL::text WHERE EXISTS(SELECT 1 FROM managed_configuration_heads WHERE indexed_profile_revision<>revision);

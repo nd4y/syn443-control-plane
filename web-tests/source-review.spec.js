@@ -135,3 +135,35 @@ test('source editor forgets a late selection when the listed owner changes',asyn
  await expect(page.locator('#source-external')).toHaveValue('');
  await expect(page.locator('#sources li')).toHaveCount(0);
 });
+
+test('dependency preview keeps a source draft and distinguishes unknown from unused profiles',async({page,request})=>{
+ let detail={...boundSource,routeDependencies:{profileIds:['selected-profile'],incomplete:false}};
+ await page.route('**/control/action',async route=>{
+  const body=route.request().postDataJSON();
+  if(body.action==='source.list')return route.fulfill({json:{sources:[boundSource],next:''}});
+  if(body.action==='source.get')return route.fulfill({json:detail});
+  return route.fallback();
+ });
+ const edit=await sourceEditorPage(page,request);await edit.click();
+ const summary=page.locator('#source-dependencies-summary'),list=page.locator('#source-dependencies-profiles');
+ await expect(list.getByRole('listitem')).toHaveText('selected-profile');
+ await expect(summary).toContainText('замените эти профили');
+ const ids=Array.from({length:65},(_,index)=>'profile-'+String(index+1).padStart(2,'0'));
+ detail={...boundSource,routeDependencies:{profileIds:ids,incomplete:false}};
+ await page.locator('#source-dependencies-refresh').click();
+ await expect(list.getByRole('listitem')).toHaveCount(32);await page.locator('#source-dependencies-more').click();
+ await expect(list.getByRole('listitem')).toHaveCount(64);await page.locator('#source-dependencies-more').click();
+ await expect(list.getByRole('listitem')).toHaveCount(65);await expect(list.getByRole('listitem').last()).toHaveText('profile-65');
+ await expect(page.locator('#source-dependencies-more')).toBeHidden();
+ await page.locator('#source-name').fill('Unsaved source name');
+ detail={...boundSource,routeDependencies:{profileIds:[],incomplete:true}};
+ await page.locator('#source-dependencies-refresh').click();
+ await expect(list).toBeHidden();await expect(summary).toContainText('ещё проверяется');
+ await expect(summary).not.toContainText('не используются');
+ await expect(page.locator('#source-name')).toHaveValue('Unsaved source name');
+ detail={...boundSource,routeDependencies:{profileIds:[],incomplete:false}};
+ await page.locator('#source-dependencies-refresh').click();await expect(summary).toContainText('не используются');
+ detail={...boundSource,routeDependencies:{profileIds:['<invalid>'],incomplete:false}};
+ await page.locator('#source-dependencies-refresh').click();await expect(summary).toContainText('пока неизвестны');
+ await expect(list).toBeHidden();await page.locator('#new-source').click();await expect(page.locator('#source-dependencies')).toBeHidden();
+});

@@ -28,3 +28,6 @@ REVOKE INSERT(recorded_xid) ON managed_configuration_operations FROM syn443_cont
 GRANT INSERT(actor,family,request_id,action,body_hash,protocol_version,target_kind,target_id,disposition,effect_id,effect_revision,recorded_ms,backfill) ON managed_configuration_operations TO syn443_control_api;
 REVOKE UPDATE,DELETE ON managed_configuration_operations FROM syn443_control_api;
 REVOKE ALL ON managed_configuration_operation_counters FROM syn443_control_api,syn443_identity_publisher;
+
+GRANT SELECT,INSERT,DELETE ON managed_configuration_profile_refs TO syn443_identity_publisher;
+GRANT UPDATE(indexed_profile_revision,profile_retry_after_ms) ON managed_configuration_heads TO syn443_identity_publisher;

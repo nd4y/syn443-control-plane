@@ -180,8 +180,11 @@ func (p *ConfigurationPublisher) RunOnce(ctx context.Context, now time.Time) err
 	current := func() time.Time { return now.Add(time.Since(started)) }
 	s := &configurationWorkStore{Store: p.Store, Verifier: p.Verifier, Origin: p.Origin, AssuranceACR: p.AssuranceACR}
 	w, e := s.claim(ctx, current())
-	if e != nil || w.id == "" {
+	if e != nil {
 		return e
+	}
+	if w.id == "" {
+		return p.recoverProfileReferences(ctx, current())
 	}
 	e = p.process(ctx, s, w, current)
 	// Deterministic denial/conflict is terminal. Transient failure/cancellation
@@ -272,6 +275,6 @@ func (p *ConfigurationPublisher) process(ctx context.Context, s *configurationWo
 		if e := c.lock(ctx, tx, at); e != nil {
 			return nil, e
 		}
-		return c.snapshot.publish(ctx, tx, w, input.PreviewID, hash, at)
+		return c.snapshot.publish(ctx, tx, w, input.PreviewID, hash, at, c.fences)
 	})
 }
