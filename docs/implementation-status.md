@@ -17,7 +17,18 @@ The invitation link parser authenticates the service descriptor before discovery
 
 The NetBird broker issues credentials for a specific overlay and provider resource. Its management API updates and queries provider-side objects. Android separately verifies the embedded engine, route and traffic path. OVL-02 remains partial pending full lifecycle and device diagnostics acceptance. [Managed overlay](managed-overlay.md) · [Provider tests](../internal/netbirdapi/peers_test.go)
 
-The Android snapshot includes version 133. The source run passed 553 JVM tests and 622 cases on each of API 29, 35 and 37. It installed a signed higher-version fixture with ADB, checked the existing enrollment and sent real traffic through the restored VPN. The handset's latest observed installation was version 132. An authenticated VPN run on the current release and the end-to-end system-installer cancellation check remain open. [Android build and test evidence](https://github.com/nd4y/syn443-android/actions/runs/44990432637)
+The Android snapshot includes version 133. The source run passed 553 JVM tests and 622 cases on each of API 29, 35 and 37. It installed a signed higher-version fixture with ADB, checked the existing enrollment and sent real traffic through the restored VPN. An in-place update to version 133 preserved the enrolled pilot handset's identity. Four on-device package and DNS diagnostic checks passed. The device subsequently requested a fresh account login. Authenticated VPN recovery on this installation remains open. [Android source build and test evidence](https://github.com/nd4y/syn443-android/actions/runs/44990432637)
+
+A separate Android 15 hosted emulator opened the signed update through DocumentsUI, cancelled in the system package installer and verified that the enrolled policy still worked. The check completed in the APK job. [System installer check](https://github.com/nd4y/syn443-android/actions/runs/44998526541/job/137139114860)
+
+## Publication history and provider operations
+
+The publication worker commits a revision and its content hash atomically. Authorized history reads identify a prior revision even after another edit takes effect. The inventory relates the issued policy to the exact desired revision. A separate authenticated device report supplies the activation or rollback observation. The register records partial coverage of EDIT-08, EDIT-09 and AC32. End-to-end mobile publication with its author, initiating device, comment and subsequent recovery from a lost response still requires acceptance. [SQL publication tests](../internal/deviceprovisioning/layer_publisher_postgres_test.go) · [Inventory and history](../internal/deviceprovisioning/layer_inventory_postgres_test.go) · [Activation reports](../internal/enrollment/activation_status_postgres_test.go)
+
+The Remnawave adapter reads an assigned subscription. The NetBird adapter manages enrollment and revocation of objects whose ownership it can verify. Reserved x-ui, 3x-ui, Tailscale and ZeroTier resources stay inactive and cannot schedule provider work. The authenticated console rejects unsupported provider writes before contacting an upstream service. These checks provide server evidence for SRV-02, SRV-04 and AC42. Android capability display and unsupported chain selection have separate acceptance criteria. [Remnawave contract](../internal/remnawave/client_test.go) · [NetBird ownership](../internal/netbirdapi/peers_test.go) · [Reserved resources](../internal/catalog/resource_postgres_test.go) · [Console HTTP boundary](../internal/chatweb/control_test.go)
+
+## Previously recorded control-plane checks
+
 
 
 
