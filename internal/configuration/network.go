@@ -499,6 +499,19 @@ func dnsConditions(rule DNSRule) (map[string]any, error) {
 	return node, nil
 }
 
+// A final outbound with a single application transport gets an explicit drop
+// for its other transport. Earlier destination-specific routes keep precedence.
+func finalTransportDrop(cap GraphCapability) map[string]any {
+	if cap.TCP == cap.UDP {
+		return nil
+	}
+	network := "udp"
+	if !cap.TCP {
+		network = "tcp"
+	}
+	return map[string]any{"network": []string{network}, "action": "reject", "method": "drop"}
+}
+
 func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMessage, error) {
 	if settings.SchemaVersion != 1 || len(graph.Outbounds) < 1 || len(graph.Outbounds) > 64 || len(settings.Rules) > 128 || len(settings.DNSServers) > 16 || len(settings.DNSRules) > 64 {
 		return nil, ErrInvalid
@@ -524,6 +537,9 @@ func CompileNetwork(graph CompiledGraph, settings NetworkSettings) (json.RawMess
 			return nil, err
 		}
 		rules = append(rules, node)
+	}
+	if drop := finalTransportDrop(capability); drop != nil {
+		rules = append(rules, drop)
 	}
 	dnsServers := []any{map[string]any{"type": "local", "tag": "syn443_dns_system"}}
 	dnsIDs := map[string]bool{"system": true}

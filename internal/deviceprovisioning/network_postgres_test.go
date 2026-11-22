@@ -164,6 +164,22 @@ func TestSQLNetworkAuthorityCompilesApprovedLayersAuthorizedSnapshotsAndSignsAct
 	if !bytes.Equal(raw, prepared.EngineConfig) || verified.Activation.Checks[0].Target != "https://health.example.invalid/generate_204" {
 		t.Fatal("publisher substituted template or health")
 	}
+	var route struct {
+		Route struct {
+			Final string
+			Rules []struct {
+				Action, Method string
+				Network        []string
+			}
+		}
+	}
+	if err := json.Unmarshal(raw, &route); err != nil || route.Route.Final != "proxy" || len(route.Route.Rules) != 1 {
+		t.Fatal("signed HTTP default lost its explicit transport boundary", err)
+	}
+	drop := route.Route.Rules[0]
+	if drop.Action != "reject" || drop.Method != "drop" || !slices.Equal(drop.Network, []string{"udp"}) {
+		t.Fatal("signed HTTP policy did not drop unmatched UDP")
+	}
 	// Raw layer, target and snapshot data never appear through default diagnostics.
 	if strings.Contains(fmt.Sprintf("%v %#v", n.approved, n.approved), n.target.Device) {
 		t.Fatal("approval diagnostics")
