@@ -3070,8 +3070,12 @@
     {
       "id": "AC18",
       "specRow": " Telemetry batch повторён и доставлен не по порядку | Дедупликация, корректные версии/времена, подтверждение доставки |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/telemetry-ingest.md",
+        "internal/enrollment/telemetry_postgres_test.go",
+        ".github/workflows/ci.yml"
+      ]
     },
     {
       "id": "AC19",
