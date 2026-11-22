@@ -32,7 +32,7 @@ var fixtureAPI, fixturePublisher *sql.DB
 var fixtureBroker *sql.DB
 var fixtureAnalysis, fixtureTelemetryRetention, fixtureTelemetryReader *sql.DB
 var fixtureAPIDSN, fixturePublisherDSN, fixtureBrokerDSN, fixtureAnalysisDSN string
-var fixtureIngestDSN string
+var fixtureIngestDSN, fixtureTelemetryReaderDSN string
 var fixtureIngest *sql.DB
 var b64 = base64.RawURLEncoding
 
@@ -76,6 +76,8 @@ func TestMain(m *testing.M) {
 			fixtureBrokerDSN = copy.String()
 		} else if item.name == "syn443_telemetry_analysis" {
 			fixtureAnalysisDSN = copy.String()
+		} else if item.name == "syn443_telemetry_reader" {
+			fixtureTelemetryReaderDSN = copy.String()
 		} else if item.name == "syn443_telemetry_ingest" {
 			fixtureIngestDSN = copy.String()
 		}

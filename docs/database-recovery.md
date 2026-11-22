@@ -56,3 +56,13 @@ paths; these values do not belong in the dump, repository or CI.
 The CI drill does not recreate cluster roles, recover Keycloak or external
 provider state, measure production RPO/RTO, verify retention of backup copies,
 or accept an Android APK/data migration.
+
+## Upgrade from a prior schema
+
+The enrollment job reads the public identity and chat SQL from revision
+`136537e496fe` and populates a separate database with a synthetic binding,
+issued policy, chat attachment and hourly route counts. PostgreSQL restores
+the same custom-format dump into two empty databases. The current owner
+schema and roles are applied twice to one database. The test verifies the
+original key and bytes, the new column defaults and the aggregate reader's
+access. The second restore preserves the previous schema and data for rollback.
