@@ -1629,7 +1629,7 @@ $('route-replay-run').onclick=()=>work(async()=>{
  const epoch=replayEpoch,ttl=Number($('route-replay-ttl').value);
  const file=$('route-replay-file').files[0];
  if(!Number.isSafeInteger(ttl)||ttl<1||ttl>600000)throw Error('invalid');
- let body={source:'reference',trialTtlMs:ttl};
+ let body={source:'reference',trialTtlMs:ttl,includeClasses:true};
  if(file){
   if(file.size>255*1024)throw Error('size');
   const raw=await file.text();
@@ -1638,17 +1638,46 @@ $('route-replay-run').onclick=()=>work(async()=>{
   if(!Array.isArray(frames)||!frames.length||frames.length>64)throw Error('invalid');
   // Preserve the original JSON bytes as text so server-side duplicate-key
   // validation still sees the submitted fields after local structural checks.
-  body='{"source":"trace","trialTtlMs":'+ttl+',"frames":'+raw+'}';
+  body='{"source":"trace","trialTtlMs":'+ttl+',"includeClasses":true,"frames":'+raw+'}';
  }
  const report=await request('/control/route-replay',body);
  if(!authenticated||replayEpoch!==epoch)return;
  const labels={samePath:'Тот же маршрут',changedPath:'Выбран другой маршрут',lostPath:'Потерян доступный маршрут',gainedPath:'Появился доступный маршрут',neither:'В обоих случаях пути нет'};
  const keys=Object.keys(labels);
- if(!Number.isSafeInteger(report.frames)||report.frames<1||report.frames>64||
-  keys.some(k=>!Number.isSafeInteger(report[k])||report[k]<0)||keys.reduce((sum,k)=>sum+report[k],0)!==report.frames)throw Error('invalid');
- const list=document.createElement('ul');
- for(const key of keys){const row=document.createElement('li');row.textContent=labels[key]+' - '+report[key];list.append(row);}
- $('route-replay-result').replaceChildren('Проверено кадров - '+report.frames,list);
+ const classNames={RU:'Российский интернет',NON_RU:'Зарубежный интернет',INTERNAL:'Внутренняя сеть'};
+ const reasons={context_mismatch:'Изменилась конфигурация или сеть',disallowed:'Запрещён политикой',wrong_exit:'Другой класс выхода',
+  required_check_failed:'Обязательная проверка не прошла',hard_failure:'Подтверждённый отказ',stale_evidence:'Измерение устарело'};
+ const validTotals=row=>row&&Number.isSafeInteger(row.frames)&&row.frames>=1&&row.frames<=64&&
+  keys.every(k=>Number.isSafeInteger(row[k])&&row[k]>=0)&&keys.reduce((sum,k)=>sum+row[k],0)===row.frames;
+ if(!validTotals(report)||!report.byIntent||typeof report.byIntent!=='object'||Array.isArray(report.byIntent)||
+  Object.keys(report.byIntent).some(k=>!Object.hasOwn(classNames,k)))throw Error('invalid');
+ const countsList=(values,names,nonzero)=>{
+  const list=document.createElement('ul');
+  for(const [key,name] of Object.entries(names)){
+   if(nonzero&&!values[key])continue;
+   const li=document.createElement('li');li.textContent=name+' - '+values[key];list.append(li);
+  }
+  return list;
+ };
+ const sections=[],sum=Object.fromEntries(keys.map(k=>[k,0]));
+ for(const [intent,title] of Object.entries(classNames)){
+  if(!Object.hasOwn(report.byIntent,intent))continue;
+  const row=report.byIntent[intent],rejected=row?.trialRejected;
+  if(!validTotals(row)||!rejected||typeof rejected!=='object'||Array.isArray(rejected)||
+   Object.entries(rejected).some(([key,n])=>!Object.hasOwn(reasons,key)||!Number.isSafeInteger(n)||n<1)||
+   Object.values(rejected).reduce((a,b)=>a+b,0)>row.frames*64)throw Error('invalid');
+  for(const key of keys)sum[key]+=row[key];
+  const group=document.createElement('details'),summary=document.createElement('summary');
+  summary.textContent=title+' - кадров '+row.frames;
+  group.append(summary,countsList(row,labels,true));
+  const caption=document.createElement('p');
+  caption.textContent=Object.keys(rejected).length?'Причины отклонения кандидатов в пробном варианте':'Отклонено кандидатов - 0';
+  group.append(caption);
+  if(Object.keys(rejected).length)group.append(countsList(rejected,reasons,true));
+  sections.push(group);
+ }
+ if(keys.some(k=>sum[k]!==report[k]))throw Error('invalid');
+ $('route-replay-result').replaceChildren('Проверено кадров - '+report.frames,countsList(report,labels,false),...sections);
 });
 $('route-bounds-preview').onclick=()=>work(async()=>{
  const epoch=boundsEpoch,plan=routeDraft().value.adaptive;

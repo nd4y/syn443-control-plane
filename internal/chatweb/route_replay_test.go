@@ -36,8 +36,8 @@ func TestRouteReplayComparesIdenticalEvidenceAndCountsAllOutcomes(t *testing.T) 
 	}
 	frames := []json.RawMessage{frame(1000, 10), frame(1000, 600, 20), frame(1000, 500), frame(100, 200), frame(100, 999)}
 	before, _ := json.Marshal(frames)
-	got, err := replayRouteDecisions(context.Background(), frames, 500)
-	if err != nil || got != (replayReport{Frames: 5, Same: 1, Changed: 1, Lost: 1, Gained: 1, Neither: 1}) {
+	got, err := replayRouteDecisions(context.Background(), frames, 500, false)
+	if err != nil || got.ByIntent != nil || got.replayTotals != (replayTotals{Frames: 5, Same: 1, Changed: 1, Lost: 1, Gained: 1, Neither: 1}) {
 		t.Fatal(got, err)
 	}
 	after, _ := json.Marshal(frames)
@@ -46,7 +46,7 @@ func TestRouteReplayComparesIdenticalEvidenceAndCountsAllOutcomes(t *testing.T) 
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err = replayRouteDecisions(ctx, frames, 500); err == nil {
+	if _, err = replayRouteDecisions(ctx, frames, 500, true); err == nil {
 		t.Fatal("cancelled replay completed")
 	}
 }
@@ -92,5 +92,63 @@ func TestRouteReplayIsScopedReadOnlyAndRejectsMalformedOrOversizedTraces(t *test
 	s.sessions[cookie.Value].principal.Scope = "openid"
 	if w := webCall(s, endpoint, reference, cookie); w.Code != 403 {
 		t.Fatal(w.Code)
+	}
+}
+
+func TestRouteReplayAttributesOutcomesAndTrialRejectionsToMeasuredTrafficClasses(t *testing.T) {
+	reference, err := referenceFrames()
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err := decision.DecodeRequest(reference[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	frame := func(intent string, ages ...int64) json.RawMessage {
+		r := base
+		r.Intent, r.NowMs, r.EvidenceTtlMs = intent, 10000, 1000
+		r.Candidates = make([]decision.Candidate, 0, len(ages))
+		for i, age := range ages {
+			c := base.Candidates[i]
+			c.ExitClass, c.ObservedAtMs = intent, r.NowMs-age
+			r.Candidates = append(r.Candidates, c)
+		}
+		raw, err := json.Marshal(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	frames := []json.RawMessage{frame("RU", 500, 800), frame("NON_RU", 10), frame("INTERNAL")}
+	report, err := replayRouteDecisions(context.Background(), frames, 500, true)
+	if err != nil || report.Frames != 3 || len(report.ByIntent) != 3 {
+		t.Fatal(report, err)
+	}
+	ru, nonRU, internal := report.ByIntent["RU"], report.ByIntent["NON_RU"], report.ByIntent["INTERNAL"]
+	if ru.Lost != 1 || ru.Frames != 1 || len(ru.TrialRejected) != 1 || ru.TrialRejected["stale_evidence"] != 2 ||
+		nonRU.Same != 1 || len(nonRU.TrialRejected) != 0 || internal.Neither != 1 || len(internal.TrialRejected) != 0 {
+		t.Fatal("rejections must count candidates, outcomes must count frames", report)
+	}
+	s, _, p := webFixture(t)
+	s.config.ControlConsole = true
+	p.Scope = "syn443.control"
+	cookie := loginWeb(t, s)
+	frameBytes, err := json.Marshal(frames)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := json.Marshal(replayInput{Source: "trace", TrialTTL: 500, IncludeClasses: true, Frames: frameBytes})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := webCall(s, "/control/route-replay", string(input), cookie)
+	var after replayReport
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &after) != nil || after.ByIntent["RU"] == nil || after.ByIntent["RU"].TrialRejected["stale_evidence"] != 2 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	for _, private := range []string{base.Candidates[0].ID, base.Context.DependencyHash, base.MetricGroup} {
+		if strings.Contains(w.Body.String(), "\""+private+"\"") {
+			t.Fatal("private observation escaped replay")
+		}
 	}
 }
