@@ -12,6 +12,8 @@ func TestPortableFieldsFollowTypedObjectsAndMapKeys(t *testing.T) {
 	for _, test := range []struct{ field, value string }{
 		{"/graph/profiles/localState/profileId", "\"portable-profile\""},
 		{"/graph/netbird/identityEpoch", "2"},
+		{"/activation/timeoutSeconds", "30.125"},
+		{"/network/schemaVersion", "1e0"},
 		{"/graph/netbird", "{\"mode\":\"direct\"}"},
 		{"/network/rules", "[{\"id\":\"rule\",\"match\":{\"domainSuffixes\":[\"example.invalid\"]}}]"},
 	} {

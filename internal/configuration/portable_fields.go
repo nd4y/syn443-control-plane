@@ -74,9 +74,36 @@ func checkPortableField(ctx context.Context, field string, values ...json.RawMes
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if len(raw) != 0 && identity.DecodeConfiguration(raw, reflect.New(typ).Interface()) != nil {
+		if len(raw) == 0 {
+			continue
+		}
+		fragment, err := value(raw)
+		if err != nil {
+			return err
+		}
+		shape, err := json.Marshal(portableShape(fragment))
+		if err != nil || identity.DecodeConfiguration(shape, reflect.New(typ).Interface()) != nil {
 			return ErrInvalid
 		}
 	}
 	return ctx.Err()
+}
+
+// Historical layers can use different numeric lexemes and fractional defaults
+// superseded by a later layer. Check the JSON type here. The effective document
+// still goes through the exact integer, range and semantic checks above.
+func portableShape(fragment any) any {
+	switch v := fragment.(type) {
+	case json.Number:
+		return 0
+	case map[string]any:
+		for name, item := range v {
+			v[name] = portableShape(item)
+		}
+	case []any:
+		for i, item := range v {
+			v[i] = portableShape(item)
+		}
+	}
+	return fragment
 }

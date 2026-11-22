@@ -305,17 +305,23 @@ func TestPrivateDraftRetainsLastPortableRevisionAfterInvalidLayerChoice(t *testi
 	legacy := first
 	legacy.Proposal = draft.Proposal
 	legacy.Proposal.DraftRevision = first.Revision
+	receipt, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy.Revision++
+	legacy.Proposal.DraftRevision = legacy.Revision
 	raw, err := json.Marshal(legacy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := identity.Hash([]byte("portable initial"))
-	if _, err = fixtureOwner.Exec("UPDATE managed_configuration_drafts SET body_hash=$1,body=$2 WHERE actor=$3 AND id=$4",
-		configurationHash(raw), control.Store.Seal(raw, configurationDraftAAD(n.actor.ID, draft.ID, first.Revision)), n.actor.ID, draft.ID); err != nil {
+	if _, err = fixtureOwner.Exec("UPDATE managed_configuration_drafts SET revision=$1,body_hash=$2,body=$3 WHERE actor=$4 AND id=$5",
+		legacy.Revision, configurationHash(raw), control.Store.Seal(raw, configurationDraftAAD(n.actor.ID, draft.ID, legacy.Revision)), n.actor.ID, draft.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = fixtureOwner.Exec("UPDATE managed_configuration_draft_ops SET response=$1 WHERE actor=$2 AND request_id=$3",
-		control.Store.Seal(raw, configurationDraftOpAAD(n.actor.ID, request)), n.actor.ID, request); err != nil {
+		control.Store.Seal(receipt, configurationDraftOpAAD(n.actor.ID, request)), n.actor.ID, request); err != nil {
 		t.Fatal(err)
 	}
 	original := ConfigurationDraft{ID: first.ID, Proposal: first.Proposal}
@@ -325,10 +331,10 @@ func TestPrivateDraftRetainsLastPortableRevisionAfterInvalidLayerChoice(t *testi
 	if _, err := draftCall(t, n, control, "configuration.layers.draft.put", "portable initial", map[string]any{"draft": original}); !errors.Is(err, enrollment.ErrUnavailable) {
 		t.Fatal("legacy receipt replay", err)
 	}
-	original.Revision = first.Revision
-	original.Proposal.DraftRevision = first.Revision + 1
+	original.Revision = legacy.Revision
+	original.Proposal.DraftRevision = legacy.Revision + 1
 	fixed, err := draftCall(t, n, control, "configuration.layers.draft.put", "replace historical draft", map[string]any{"draft": original})
-	if err != nil || fixed.Revision != first.Revision+1 {
+	if err != nil || fixed.Revision != legacy.Revision+1 {
 		t.Fatal("portable repair", err)
 	}
 }
