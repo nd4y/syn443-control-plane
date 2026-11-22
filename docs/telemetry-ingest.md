@@ -14,6 +14,13 @@ The response acknowledges exactly the submitted event IDs in order, and is
 sent only after the transaction commits. A retry after response loss receives
 the same acknowledgement within the ingestion budget.
 
+A late batch keeps its original observation time, monotonic time, network epoch,
+build and policy and algorithm revisions. A retry keeps the first server receipt
+time. AC18 exercises a newer batch arriving before two older observations, then
+replays both batches through the signed device endpoint. The PostgreSQL test
+checks the ordered event IDs in every acknowledgment and the three stored rows.
+[Enrollment database tests](../internal/enrollment/telemetry_postgres_test.go)
+
 ### Capacity during reconnects
 
 When intake is enabled, each enrollment API instance reserves a separate pool
