@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/identity"
@@ -62,7 +63,9 @@ func serveTelemetry(w http.ResponseWriter, r *http.Request, store *Store, origin
 	}
 	receipt, err := store.receiveTelemetry(ctx, binding, token, proof, raw, now)
 	if errors.Is(err, telemetry.ErrBudget) {
-		w.Header().Set("Retry-After", "300")
+		// InsertBound charges the UTC hour of this same monotonic server time.
+		nextWindow := now.UTC().Truncate(time.Hour).Add(time.Hour)
+		w.Header().Set("Retry-After", strconv.FormatInt(nextWindow.Unix()-now.Unix(), 10))
 		http.Error(w, "telemetry_budget_exhausted", http.StatusTooManyRequests)
 		return
 	}
