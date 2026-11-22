@@ -136,14 +136,7 @@ func makeFixture() (fixtureDocument, error) {
 		for _, name := range sample.LayerNames {
 			input = append(input, layers[name])
 		}
-		effective, err := configuration.Merge(context.Background(), input, func(raw json.RawMessage) error {
-			_, err := configuration.DecodeNetworkPlan(raw)
-			return err
-		})
-		if err != nil {
-			return fixtureDocument{}, errFixture
-		}
-		plan, err := configuration.DecodeNetworkPlan(effective.Document)
+		effective, plan, err := configuration.MergeNetworkPlan(context.Background(), input)
 		if err != nil {
 			return fixtureDocument{}, errFixture
 		}

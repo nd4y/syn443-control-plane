@@ -71,14 +71,11 @@ func (p *ConfigurationPublisher) recoverProfileReferences(ctx context.Context, n
 			if bundle.Device != device || bundle.BaseRevision != revision-1 {
 				continue
 			}
-			_, err = configuration.Merge(ctx, bundle.Layers, func(raw json.RawMessage) error {
-				plan, err := configuration.DecodeNetworkPlan(raw)
-				if err != nil {
-					return err
-				}
+			var plan configuration.NetworkPlan
+			_, plan, err = configuration.MergeNetworkPlan(ctx, bundle.Layers)
+			if err == nil {
 				refs, err = networkSelectionReferences(plan)
-				return err
-			})
+			}
 			break
 		}
 	}

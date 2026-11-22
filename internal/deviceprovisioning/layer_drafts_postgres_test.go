@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nd4y/syn443-control-plane/internal/configuration"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 )
@@ -251,5 +252,83 @@ func TestPrivateDraftReplaySurvivesProposalExpiryAndQuotaIsBounded(t *testing.T)
 	encoded, _ := json.Marshal(d)
 	if len(encoded) == 0 || fmt.Sprint(d) != "ConfigurationDraft([redacted])" {
 		t.Fatal("draft diagnostics")
+	}
+}
+
+func TestPrivateDraftRetainsLastPortableRevisionAfterInvalidLayerChoice(t *testing.T) {
+	n, control, proposal := configurationControlFixture(t)
+	draft := ConfigurationDraft{ID: proposal.DraftID, Proposal: proposal}
+	first, err := draftCall(t, n, control, "configuration.layers.draft.put", "portable initial", map[string]any{"draft": draft})
+	if err != nil || first.Revision != 1 {
+		t.Fatal("initial portable revision", err)
+	}
+	draft.Revision = first.Revision
+	draft.Proposal.DraftRevision = first.Revision + 1
+	// This choice is never selected. The stored draft must still contain only portable fields.
+	layers := draft.Proposal.Bundles[0].Layers
+	var currentGraph json.RawMessage
+	for _, change := range layers[0].Changes {
+		if change.Path == "/graph" {
+			currentGraph = change.Value
+		}
+	}
+	if len(currentGraph) == 0 {
+		t.Fatal("missing baseline graph")
+	}
+	layers[0].Permissions = append(layers[0].Permissions, configuration.Permission{
+		Path: "/graph", Mode: "choice", Choices: []json.RawMessage{currentGraph, json.RawMessage(`{"netbird":{"deviceKey":"local-fixture"}}`)},
+	})
+	if _, err := configuration.Merge(context.Background(), layers, func(raw json.RawMessage) error {
+		_, err := configuration.DecodeNetworkPlan(raw)
+		return err
+	}); err != nil {
+		t.Fatal("the selected graph must remain valid", err)
+	}
+	if _, err := draftCall(t, n, control, "configuration.layers.draft.put", "nonportable choice", map[string]any{"draft": draft}); !errors.Is(err, enrollment.ErrDenied) {
+		t.Fatal("invalid draft was not rejected", err)
+	}
+	kept, err := draftCall(t, n, control, "configuration.layers.draft.get", "read retained portable", map[string]string{"id": draft.ID})
+	if err != nil || kept.Revision != first.Revision || kept.SavedAtMs != first.SavedAtMs {
+		t.Fatal("previous draft changed", err)
+	}
+	want, err := json.Marshal(first.Proposal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := json.Marshal(kept.Proposal)
+	if err != nil || !bytes.Equal(got, want) {
+		t.Fatal("stored proposal changed", err)
+	}
+
+	// Simulate the encrypted rows written by the earlier validator. Neither
+	// reading the draft nor replaying its old receipt may return the retained field.
+	legacy := first
+	legacy.Proposal = draft.Proposal
+	legacy.Proposal.DraftRevision = first.Revision
+	raw, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := identity.Hash([]byte("portable initial"))
+	if _, err = fixtureOwner.Exec("UPDATE managed_configuration_drafts SET body_hash=$1,body=$2 WHERE actor=$3 AND id=$4",
+		configurationHash(raw), control.Store.Seal(raw, configurationDraftAAD(n.actor.ID, draft.ID, first.Revision)), n.actor.ID, draft.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = fixtureOwner.Exec("UPDATE managed_configuration_draft_ops SET response=$1 WHERE actor=$2 AND request_id=$3",
+		control.Store.Seal(raw, configurationDraftOpAAD(n.actor.ID, request)), n.actor.ID, request); err != nil {
+		t.Fatal(err)
+	}
+	original := ConfigurationDraft{ID: first.ID, Proposal: first.Proposal}
+	if _, err := draftCall(t, n, control, "configuration.layers.draft.get", "legacy read", map[string]string{"id": draft.ID}); !errors.Is(err, enrollment.ErrUnavailable) {
+		t.Fatal("legacy draft read", err)
+	}
+	if _, err := draftCall(t, n, control, "configuration.layers.draft.put", "portable initial", map[string]any{"draft": original}); !errors.Is(err, enrollment.ErrUnavailable) {
+		t.Fatal("legacy receipt replay", err)
+	}
+	original.Revision = first.Revision
+	original.Proposal.DraftRevision = first.Revision + 1
+	fixed, err := draftCall(t, n, control, "configuration.layers.draft.put", "replace historical draft", map[string]any{"draft": original})
+	if err != nil || fixed.Revision != first.Revision+1 {
+		t.Fatal("portable repair", err)
 	}
 }

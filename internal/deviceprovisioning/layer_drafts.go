@@ -61,6 +61,11 @@ func (c *ConfigurationControl) getDraft(ctx context.Context, actor, id string, u
 	if e != nil || configurationHash(plain) != hash || identity.DecodeConfiguration(plain, &draft) != nil || draft.ID != id || draft.Revision != revision || draft.Proposal.DraftID != id || draft.Proposal.DraftRevision != revision || draft.SavedAtMs != saved || draft.Proposal.TargetKind != kind || draft.Proposal.TargetID != target {
 		return draft, enrollment.ErrUnavailable
 	}
+	// Previous releases validated only the effective document. Never return
+	// historical raw layers until their portable fields have also been checked.
+	if _, err := effectiveProposalHash(ctx, draft.Proposal); err != nil {
+		return ConfigurationDraft{}, enrollment.ErrUnavailable
+	}
 	if current().UnixMilli() >= expires || current().Unix() >= until {
 		return draft, enrollment.ErrDenied
 	}
@@ -133,6 +138,9 @@ func (c *ConfigurationControl) putDraftVersion(ctx context.Context, actor, reque
 		}
 		if current().Unix() >= until {
 			return draft, enrollment.ErrDenied
+		}
+		if _, err := effectiveProposalHash(ctx, saved.Proposal); err != nil {
+			return ConfigurationDraft{}, enrollment.ErrUnavailable
 		}
 		if e = layerACL(ctx, tx, actor, "configuration.drafts.write", kind, target, current().Unix()); e != nil {
 			return draft, e

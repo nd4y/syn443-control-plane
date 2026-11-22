@@ -121,7 +121,7 @@ func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device st
 				return r, e
 			}
 		}
-		effective, e := configuration.Merge(ctx, r.Layers, func(raw json.RawMessage) error { _, e := configuration.DecodeNetworkPlan(raw); return e })
+		effective, _, e := configuration.MergeNetworkPlan(ctx, r.Layers)
 		if e != nil || !networkMode(proposal.Mode) {
 			return r, enrollment.ErrUnavailable
 		}

@@ -597,11 +597,15 @@
     {
       "id": "CFG-02",
       "text": "Системные разрешения, приватный ключ идентичности NetBird, ключ устройства, счётчики, кэши и живые результаты проверок являются локальным состоянием, а не переносимым конфигом. Панель задаёт политику их использования и показывает соответствие, но не выдаёт разрешение Android от имени пользователя.",
-      "status": "planned",
+      "status": "partial",
       "evidence": [
         "docs/layered-configuration.md#shared-layer-and-recipient-authority",
-        "internal/deviceprovisioning/layer_catalog_postgres_test.go"
-      ]
+        "internal/deviceprovisioning/layer_catalog_postgres_test.go",
+        "internal/configuration/portable_fields.go",
+        "internal/configuration/portable_fields_test.go",
+        "internal/deviceprovisioning/layer_drafts_postgres_test.go"
+      ],
+      "remainingScope": "Portable layer paths, values and unused choices are checked before storing or returning raw configuration. Android permission consent, key continuity and desired/active convergence require separate device acceptance."
     },
     {
       "id": "CFG-03",
@@ -3039,8 +3043,13 @@
     {
       "id": "AC05",
       "specRow": " Публикация полной политики | Клиент показывает desired/active, применяет ровно разрешённые поля, сохраняет локальное состояние |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/configuration/portable_fields.go",
+        "internal/configuration/portable_fields_test.go",
+        "internal/deviceprovisioning/layer_drafts_postgres_test.go"
+      ],
+      "remainingScope": "Portable layer paths, values and unused choices are checked before storing or returning raw configuration. Android permission consent, key continuity and desired/active convergence require separate device acceptance."
     },
     {
       "id": "AC06",
