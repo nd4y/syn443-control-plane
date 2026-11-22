@@ -943,7 +943,12 @@ async function loadDevices(more=false,prefix=devicePrefix){
   }
   if(!more)$('device-rows').replaceChildren();$('device-rows').append(fragment);
   deviceIds=seen;devicesNext=page.next;$('more-devices').hidden=!devicesNext;
-  if(!devicesNext)for(const id of deviceFavorites)if(!seen.has(id))deviceFavorites.delete(id);
+  if(!devicesNext){
+   const searchedPrefix=prefix.toLowerCase();
+   for(const id of deviceFavorites){
+    if(id.toLowerCase().startsWith(searchedPrefix)&&!seen.has(id))deviceFavorites.delete(id);
+   }
+  }
   filterDevices();
  }catch(error){
   if(epoch!==devicesEpoch||!authenticated){if(['login','denied'].includes(error.message))throw error;return;}
