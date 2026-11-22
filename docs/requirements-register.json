@@ -2965,12 +2965,14 @@
     {
       "id": "AC01",
       "specRow": " Два пользователя и несколько устройств входят через Keycloak | У каждого своя выдача; попытка прочитать чужую отклоняется |",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
         "integration/keycloak/personal_issuance_test.go",
         "tools/test_keycloak.sh",
-        "tools/check_web_image_acceptance.py"
-      ]
+        "tools/check_web_image_acceptance.py",
+        "docs/implementation-status.md"
+      ],
+      "remainingScope": "The protected Control Plane integration checks both Keycloak users, three enrolled device keys, signed personal policy contents and rejection of all six wrong-key requests. Pilot handset and deployed panel acceptance are tracked separately."
     },
     {
       "id": "AC02",
@@ -2984,13 +2986,14 @@
     {
       "id": "AC03",
       "specRow": " Пустой/сломанный/HTML ответ источника | Последняя рабочая выдача сохранена, кандидат в quarantine, другие источники обновляются |",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
         "internal/catalog/store_postgres_test.go",
         "internal/deviceprovisioning/mixed_sources_postgres_test.go",
-        "web-tests/source-review.spec.js"
+        "web-tests/source-review.spec.js",
+        "docs/implementation-status.md"
       ],
-      "remainingScope": "SQL/TLS integration covers empty, malformed and HTML inputs, retention of the last published profiles and independent provider progress. The console distinguishes an unreadable response from a parsed candidate for manual review. Physical readback remains separate."
+      "remainingScope": "The Control Plane tests the real worker, database, personalized signed output and mobile console for all three invalid-response cases. Pilot handset consumption and live providers are separate acceptance stages."
     },
     {
       "id": "AC04",

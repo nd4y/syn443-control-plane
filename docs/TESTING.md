@@ -143,10 +143,12 @@ real publication and independent raw issued-program validation. Native ordinary
 and race streams also require real two-hop checks, per-leaf failure attribution,
 whole-plan substitution rejection, budget/cancellation and current-owner fences.
 
-The new capability remains unadvertised by normal enrollment until coordinated
-rollout. Source, CI, protected-main, installed-APK and real managed-profile gates
-are distinct. No composition fixture closes parallel/conditional/fallback plans,
-physical managed chains, LTE, battery, natural Doze or endurance acceptance.
+For a new install, check that enrollment advertises `route.check-plan.v2`.
+For an upgrade, check that the capability proposal references the device's
+current approved revision and that a repeated request has the same identity.
+Before a handset trial, confirm capability approval, publish its signed profile
+and exercise the configured checks on that handset.
+[Android negotiation tests](https://github.com/nd4y/syn443-android/blob/bc8a6d4cf62d0b640c6444c18a86bffe5a3f6649/core/identity/src/test/kotlin/io/syn443/identity/CapabilityNegotiationTest.kt)
 
 ## Small service reference load
 
