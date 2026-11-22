@@ -904,7 +904,7 @@ function Publication() {
       <pre id="layer-job"></pre>
       <div id="layer-review" hidden>
         <h3>Проверенное предложение</h3>
-        <pre id="layer-impact"></pre>
+        <div id="layer-impact" className="pf-v6-c-content"></div>
         <label>
           <input id="layer-confirm" type="checkbox" /> Проверил изменения и
           список затронутых устройств

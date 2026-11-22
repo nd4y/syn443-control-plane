@@ -1,5 +1,6 @@
 import {mergeDeviceProposal} from './layer-merge.js';
 const $=id=>document.getElementById(id);
+const networkModeLabels={home_wifi:'Домашний Wi-Fi',wifi:'Wi-Fi',cellular_restricted:'Мобильная сеть с ограничениями',cellular:'Мобильная сеть'};
 const sourceImportPath='/control/source/import';
 const sourceImportBytes=10*1024*1024;
 const jobStates={queued:'В очереди',running:'Выполняется',succeeded:'Завершено',failed:'Ошибка',cancelled:'Отменено',dead_letter:'Истёк срок или лимит повторов'};
@@ -8,7 +9,7 @@ let authenticated=false,busy=false,pending=null,revision=0,opened=null,next='',l
 let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='',sourceHistoryNext='';
 let reviewEpoch=0,reviewAvailable=false,sourceReview=null,reviewChanges=[],reviewOffset=0;
 let sourceSnapshotEpoch=0,sourceDetailLoading=false;
-let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null;
+let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null,layerReviewTimer=null;
 let layerComparison=null;
 let layerDraftInventory=null;
 let inventoryEpoch=0;
@@ -1133,9 +1134,8 @@ function showSourceSnapshot(source,view){
  if(!snapshot||!Array.isArray(view.profiles)||typeof snapshot.id!=='string'||
     (snapshot.sourceId!==undefined&&snapshot.sourceId!==source.id)||
     (source.activeSnapshot&&snapshot.id!==source.activeSnapshot))throw Error('conflict');
- const modes={home_wifi:'Домашний Wi-Fi',wifi:'Wi-Fi',cellular_restricted:'Мобильная сеть с ограничениями',cellular:'Мобильная сеть'};
  $('source-snapshot-name').textContent=source.name+' · '+source.id+' · v'+source.revision+' · '+snapshot.id;
- $('source-snapshot-modes').textContent=source.networkModes.map(mode=>modes[mode]||mode).join(', ');
+ $('source-snapshot-modes').textContent=source.networkModes.map(mode=>networkModeLabels[mode]||mode).join(', ');
  sourceDate('source-snapshot-time',snapshot.observedAt,'Неизвестно');
  sourceDate('source-snapshot-until',snapshot.validUntil,'Неизвестно');
  const quota=snapshot.quota,known=quota?.known===true;
@@ -1828,7 +1828,7 @@ void work(async()=>{
  await openLinkedDevice();
 });
 
-function clearLayerReview(){layerPreview=null;$('layer-confirm').checked=false;$('layer-review').hidden=true;$('layer-impact').textContent='';}
+function clearLayerReview(){clearTimeout(layerReviewTimer);layerReviewTimer=null;layerPreview=null;$('layer-confirm').checked=false;$('layer-review').hidden=true;$('layer-impact').textContent='';}
 function clearLayerComparison(){layerComparison=null;$('layer-comparison').hidden=true;$('layer-diff').textContent='';$('layer-conflicts').replaceChildren();}
 function clearDraftInventory(){layerDraftInventory=null;$('layer-saved').replaceChildren();$('layer-list-status').textContent='';}
 function clearLayers(){$('layer-discard-confirm').checked=false;layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearDraftInventory();clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
@@ -1962,9 +1962,64 @@ async function saveLayerDraft(){
 }
 function checkedLayerPreview(result){
  const p=result&&result.preview,saved=layerSaved?.proposal;
- if(!saved||!result||typeof result.previewId!=='string'||typeof result.ticket!=='string'||result.ticket.length<24||!p||p.schemaVersion!==1||p.draftId!==saved.draftId||p.draftRevision!==saved.draftRevision||p.targetKind!==saved.targetKind||p.targetId!==saved.targetId||p.mode!==saved.mode||!Number.isSafeInteger(p.expiresAtMs)||p.expiresAtMs<=Date.now()||p.expiresAtMs>Date.now()+180000||!Array.isArray(p.recipients)||p.recipients.length!==saved.bundles.length||!/^([0-9a-f]{64})$/.test(p.effectiveHash)||!/^([0-9a-f]{64})$/.test(p.dependencyHash))throw Error('invalid');
- const seen=new Set();for(const r of p.recipients){const bundle=saved.bundles.find(b=>b.device===r.device);if(!bundle||seen.has(r.device)||r.baseRevision!==bundle.baseRevision||r.baseHash!==bundle.baseHash)throw Error('invalid');seen.add(r.device);}
+ if(!saved||!result||!p||!Object.hasOwn(layerKindLabels,p.targetKind)||!Object.hasOwn(networkModeLabels,p.mode)||typeof result.previewId!=='string'||typeof result.ticket!=='string'||result.ticket.length<24||p.schemaVersion!==1||p.draftId!==saved.draftId||p.draftRevision!==saved.draftRevision||p.targetKind!==saved.targetKind||p.targetId!==saved.targetId||p.mode!==saved.mode||!Number.isSafeInteger(p.expiresAtMs)||p.expiresAtMs<=Date.now()||p.expiresAtMs>Date.now()+180000||!Array.isArray(p.recipients)||p.recipients.length!==saved.bundles.length||!/^([0-9a-f]{64})$/.test(p.effectiveHash)||!/^([0-9a-f]{64})$/.test(p.dependencyHash))throw Error('invalid');
+ const seen=new Set();for(const r of p.recipients){const bundle=saved.bundles.find(b=>b.device===r.device);if(!bundle||seen.has(r.device)||typeof r.owner!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(r.owner)||r.baseRevision!==bundle.baseRevision||r.baseHash!==bundle.baseHash)throw Error('invalid');seen.add(r.device);}
  return result;
+}
+const layerKindLabels={template:'Шаблон',group:'Группа',user:'Пользователь',device:'Устройство'};
+const layerSectionLabels={
+ graph:{profiles:'Профили подписок',netbird:'NetBird',chains:'Цепочки прокси',balancers:'Балансировщики'},
+ network:{dnsServers:'DNS-серверы',dnsRules:'Правила DNS',dnsFinal:'DNS по умолчанию',dnsStrategy:'Стратегия DNS',homeProof:'Признаки домашней сети',rules:'Правила маршрутизации',routeChecks:'Проверки маршрутов',routeFailover:'Резервные маршруты',modeSelection:'Выбор сети'},
+};
+const layerRootLabels={graph:'Маршруты и профили',network:'Сетевые настройки',adaptive:'Адаптивный выбор маршрута',activation:'Условия применения'};
+function reviewLayerSections(layer){
+ const labels=new Set();
+ for(const entry of [...(layer.changes||[]),...(layer.permissions||[])]){
+  const [,root,field]=entry.path.split('/');
+  const fields=Object.hasOwn(layerSectionLabels,root)?layerSectionLabels[root]:null;
+  const fallback=Object.hasOwn(layerRootLabels,root)?layerRootLabels[root]:'Другие настройки';
+  if(!fields||field){labels.add(fields&&Object.hasOwn(fields,field)?fields[field]:fallback);continue;}
+  labels.add(fallback);
+  if(entry.value&&typeof entry.value==='object')for(const [key,label] of Object.entries(fields)){
+   if(Object.hasOwn(entry.value,key))labels.add(label);
+  }
+ }
+ return Array.from(labels);
+}
+function showLayerImpact(result,proposal){
+ const p=result.preview,container=$('layer-impact');
+ container.replaceChildren();
+ function element(parent,tag,text){const child=document.createElement(tag);child.textContent=text;parent.append(child);return child;}
+ element(container,'p',layerKindLabels[p.targetKind]+' · '+p.targetId+' · '+networkModeLabels[p.mode]);
+ element(container,'h4','Затронутые устройства ('+p.recipients.length+')');
+ const list=element(container,'ul','');
+ const byDevice=new Map(proposal.bundles.map(bundle=>[bundle.device,bundle]));
+ for(const recipient of p.recipients){
+  const item=textItem(list,recipient.device+' · владелец '+recipient.owner+' · '+(recipient.baseRevision?'исходная версия '+recipient.baseRevision:'первая конфигурация'));
+  const layers=byDevice.get(recipient.device).layers.map(layer=>({layer,labels:reviewLayerSections(layer)}));
+  const labels=new Set(layers.flatMap(item=>item.labels));
+  if(labels.size)element(item,'p','Разделы предложения · '+[...labels].join(', '));
+  const details=element(item,'details','');
+  element(details,'summary','Слои и разделы конфигурации ('+layers.length+')');
+  const sections=element(details,'ul','');
+  for(const {layer,labels} of layers){
+   textItem(sections,layerKindLabels[layer.kind]+' '+layer.id+' · версия '+layer.revision+(labels.length?' · '+labels.join(', '):''));
+  }
+ }
+ const until=new Date(p.expiresAtMs);
+ const time=element(container,'time','Проверка действует до '+until.toLocaleTimeString('ru-RU'));
+ time.dateTime=until.toISOString();
+ const fingerprint=element(container,'details','');
+ element(fingerprint,'summary','Контрольные суммы проверки');
+ element(fingerprint,'p','Конфигурация · '+p.effectiveHash);
+ element(fingerprint,'p','Зависимости · '+p.dependencyHash);
+ clearTimeout(layerReviewTimer);
+ layerReviewTimer=setTimeout(()=>{
+  if(layerPreview!==result)return;
+  const visible=$('layer-review').getClientRects().length>0;
+  clearLayerReview();layerControls();
+  if(visible)status('Срок проверки истёк. Запросите новую проверку перед публикацией.');
+ },Math.max(0,p.expiresAtMs-Date.now()));
 }
 async function pollLayerJob(){
  if(!layerJob)throw Error('invalid');const job=layerJob,view=await action('configuration.request.get',{id:job.id});
@@ -1974,7 +2029,7 @@ async function pollLayerJob(){
  layerJob=null;clearLayerReview();
  if(view.state==='ready'&&job.kind==='layer-preview'){
   if(!layerUnchanged())throw Error('invalid');layerPreview=checkedLayerPreview(view.result);
-  const p=layerPreview.preview;$('layer-impact').textContent=JSON.stringify({targetKind:p.targetKind,targetId:p.targetId,mode:p.mode,recipients:p.recipients.map(r=>({device:r.device,owner:r.owner,baseRevision:r.baseRevision,baseHash:r.baseHash})),effectiveHash:p.effectiveHash,dependencyHash:p.dependencyHash,expiresAt:inventoryDate(p.expiresAtMs),proposal:layerSaved.proposal},null,2);
+  showLayerImpact(layerPreview,layerSaved.proposal);
   $('layer-review').hidden=false;status('Проверка сервера завершена. Просмотрите предложение и адресатов, затем подтвердите публикацию.');return;
  }
  if(view.state==='published'&&job.kind==='layer-publish'){
