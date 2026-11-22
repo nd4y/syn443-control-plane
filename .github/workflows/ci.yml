@@ -24,6 +24,8 @@ jobs:
       - run: python3 -m unittest discover -s tools -p 'test_public_data.py'
       - run: python3 tools/check_public_data.py --history
       - run: bash tools/scan_secrets.sh
+      - name: Verify scanner reuse and rejection of corrupt cached bytes
+        run: bash tools/test_scanner_cache.sh
   documents:
     needs: public-data
     runs-on: ubuntu-24.04
