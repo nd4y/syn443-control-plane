@@ -1538,8 +1538,12 @@
     {
       "id": "CHECK-04",
       "text": "Планировщик использует пассивные сигналы и объединённые лёгкие проверки. Начальный ориентир активного пути - 60 секунд при недостатке свежих данных, резервов - 5 минут; policy может выбирать другие интервалы внутри безопасных пределов. В стабильном idle частота снижается. Изменение сети или потеря рабочего пути запускает ограниченную event-driven диагностику. Постоянный wakelock и полный перебор каталога запрещены.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-adaptive-runtime.md"
+      ],
+      "implementationScope": "Protected Android API 29, 35 and 37 results verify bounded maintenance and recovery reserves, deduplication of passive hints and sustained maintenance of 16 groups under a simulated clock.",
+      "remainingScope": "Measure natural idle, battery and radio costs on physical devices and verify runtime configuration of separate active/reserve cadences, alongside full common admission under load."
     },
     {
       "id": "CHECK-05",
