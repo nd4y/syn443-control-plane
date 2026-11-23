@@ -21,7 +21,9 @@ test('device inventory pagination is explicit and fits a narrow keyboard scroll 
  await reset(request,{devicePages:true});await page.setViewportSize({width:360,height:800});await page.goto(origin);
  await expect(page.locator('#device-rows tr')).toHaveCount(32);
  await expect(page.locator('#more-devices')).toBeEnabled();
+ await page.locator('#policy-incidents-title').click();await expect(page.locator('#policy-incidents-scope')).toContainText('Выдана политика: 32.');
  await page.locator('#more-devices').click();await expect(page.locator('#device-rows tr')).toHaveCount(33);
+ await expect(page.locator('#policy-incidents-scope')).toContainText('Выдана политика: 33.');
  await expect(page.locator('#more-devices')).toBeHidden();
  await page.locator('#devices-region').focus();await expect(page.locator('#devices-region')).toBeFocused();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -234,7 +236,7 @@ test('reported rollback expires from the visible list and attention filter witho
  await page.clock.fastForward(1);await expect(rows.first()).toBeHidden();await expect(rows.last()).toBeVisible();
  await filter.selectOption('all');await expect(rows.first()).toContainText('Архивный отчёт · Откат');
  await page.clock.setSystemTime(new Date('2027-01-02T00:00:00Z'));await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
- await expect(rows.last()).toContainText('Архивный отчёт');expect(calls).toBe(1);
+ await expect(rows.last()).toContainText('Архивный отчёт');await expect(page.locator('#policy-incidents-title')).toContainText('актуальных отчётов нет');expect(calls).toBe(1);
 });
 
 test('legacy device catalog keeps an explicitly dated snapshot and never retries denied access',async({page,request})=>{
@@ -248,7 +250,40 @@ test('legacy device catalog keeps an explicitly dated snapshot and never retries
    report:{state:'reported',policyRevision:2,activePolicyRevision:2,outcome:'committed',receivedAtMs:1799999999999}}]}});
  });
  await page.goto(origin);await expect(page.locator('#device-rows tr')).toContainText('при загрузке');
+ await page.locator('#policy-incidents-title').click();await expect(page.locator('#policy-incidents-title')).toContainText('актуальных отчётов нет');
+ expect(await page.locator('#policy-incidents-rows td').allTextContents()).toEqual(['1','0','Нет данных','0','0','1']);
  expect(payloads).toEqual([{after:'',includeReportExpiry:true},{after:''}]);
  deny=true;await page.locator('#refresh-devices').click();await expect(page.locator('#device-rows')).toBeEmpty();
+ await expect(page.locator('#policy-incidents')).toBeHidden();await expect(page.locator('#policy-incidents-rows')).toBeEmpty();
  await expect.poll(()=>payloads.length).toBe(3);expect(payloads.at(-1)).toEqual({after:'',includeReportExpiry:true});
+});
+
+test('policy incidence groups use observed denominators across an attention filter on a phone',async({page,request})=>{
+ await reset(request);await page.setViewportSize({width:360,height:800});let reads=0;
+ await page.route('**/control/action',async route=>{
+  if(route.request().postDataJSON().action!=='configuration.devices.list')return route.continue();
+  reads++;
+  const now=1800000000000;
+  const row=(device,policyRevision,state,outcome)=>({device,policyRevision,desiredRevision:0,
+   ...(state==='reported'?{reportValidUntilMs:now+120000}:{}),
+   report:outcome?{state,policyRevision:state==='historical'?1:policyRevision,activePolicyRevision:1,outcome,receivedAtMs:now-1000}:{state,activePolicyRevision:0}});
+  return route.fulfill({json:{reportExpiry:true,observedAtMs:now,next:'',devices:[
+   row('a-one',9,'reported','degraded'),row('a-two',9,'reported','committed'),row('b-one',9,'historical','rolled_back'),
+   row('c-one',8,'awaiting_report'),row('d-one',0,'not_issued')]}});
+ });
+ await page.goto(origin);const summary=page.locator('#policy-incidents-title');
+ await expect(summary).toHaveText('Проблемы применения: 1 из 2 устройств с актуальным отчётом');
+ await summary.click();const groups=page.locator('#policy-incidents-rows tr');
+ await expect(groups).toHaveCount(2);
+ expect(await groups.nth(0).locator('th,td').allTextContents()).toEqual(['9','3','2','1','1','0','0']);
+ expect(await groups.nth(1).locator('th,td').allTextContents()).toEqual(['8','1','0','Нет данных','0','1','0']);
+ await expect(page.locator('#policy-incidents-scope')).toContainText('Выдана политика: 4. Без выданной политики: 1.');
+ const filter=page.getByLabel('Показать',{exact:true});await filter.selectOption('attention');
+ await expect(page.locator('#device-rows tr:visible')).toHaveCount(1);await expect(summary).toContainText('1 из 2');
+ await page.locator('#device-search').fill('c-one');await expect(summary).toContainText('актуальных отчётов нет');
+ await expect(groups).toHaveCount(1);await expect(groups).toContainText('Нет данных');
+ await page.locator('#device-search').fill('');await filter.selectOption('all');
+ await page.getByRole('button',{name:'Избранное для a-two',exact:true}).click();await filter.selectOption('favorites');
+ await expect(summary).toContainText('0 из 1');await expect(groups).toHaveCount(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(reads).toBe(1);
 });

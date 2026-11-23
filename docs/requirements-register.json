@@ -2045,8 +2045,14 @@
     {
       "id": "OWN-05",
       "text": "Панель группирует инциденты по source/entry/check endpoint/app/engine/policy revision, с числом affected и denominator eligible/observed/stale устройств. Нет телеметрии - unknown, не healthy. Общий outage check endpoint не объявляет все proxy exit неисправными; массовая правка начинается с bounded test cohort.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/device-inventory.md",
+        "internal/deviceprovisioning/device_inventory_postgres_test.go",
+        "web-tests/control-devices.spec.js"
+      ],
+      "implementationScope": "Applied-policy issues are counted for the authorized loaded scope and can be inspected by per-device issuance ordinal, with separate observed, affected, historical, waiting, unissued and legacy unknown counts.",
+      "remainingScope": "Cross-device identification of a common policy release, fleet-scale source, entry, check-target, application and engine incident grouping, common-cause attribution and bounded rollout from the incident remain open."
     },
     {
       "id": "OWN-06",

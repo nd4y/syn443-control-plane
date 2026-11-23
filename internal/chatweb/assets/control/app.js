@@ -901,6 +901,8 @@ function showInventory(view){
 }
 function clearDevices(dropPreferences=false){
  devicesEpoch++;clearTimeout(reportExpiryTimer);reportExpiries.clear();
+ $('policy-incidents').hidden=true;$('policy-incidents').open=false;
+ $('policy-incidents-title').textContent='Применение политик';$('policy-incidents-scope').textContent='';$('policy-incidents-rows').replaceChildren();
  devicesNext='';deviceIds=new Set();$('device-rows').replaceChildren();$('devices-status').textContent='';$('devices-region').hidden=true;$('more-devices').hidden=true;
  if(dropPreferences){
   devicePrefix='';
@@ -917,15 +919,53 @@ function deviceSearchControls(){
  $('clear-device-prefix').hidden=!devicePrefix;
  $('clear-device-prefix').disabled=blocked;
 }
+function renderPolicyIncidents(groups,unissued){
+ const panel=$('policy-incidents'),body=$('policy-incidents-rows');
+ body.replaceChildren();
+ let issued=0,observed=0,affected=0;
+ const rows=document.createDocumentFragment();
+ const groupOrder=panel.open?[...groups].sort(([a],[b])=>b-a):groups;
+ for(const [version,counts] of groupOrder){
+  issued+=counts.total;observed+=counts.current;affected+=counts.affected;
+  if(!panel.open)continue;
+  const tr=document.createElement('tr'),heading=document.createElement('th');
+  heading.scope='row';heading.textContent=String(version);tr.append(heading);
+  for(const value of [counts.total,counts.current,counts.current?counts.affected:'Нет данных',counts.historical,counts.waiting,counts.snapshot]){
+   const cell=document.createElement('td');cell.textContent=String(value);tr.append(cell);
+  }
+  rows.append(tr);
+ }
+ body.append(rows);panel.hidden=issued+unissued===0;
+ $('policy-incidents-title').textContent=observed?
+  `Проблемы применения: ${affected} из ${observed} устройств с актуальным отчётом`:
+  'Применение политик: актуальных отчётов нет';
+ $('policy-incidents-scope').textContent=`Среди загруженных устройств в выборке: ${issued+unissued}. Выдана политика: ${issued}. Без выданной политики: ${unissued}.`;
+}
 function filterDevices(){
  const query=$('device-search').value.trim().toLowerCase(),mode=$('device-filter').value;
- let visible=0;
+ const policyGroups=new Map();let unissued=0,visible=0;
  for(const row of $('device-rows').children){
   const id=row.dataset.id;
   const matchesMode=mode==='all'||mode==='attention'&&row.dataset.attention==='true'||mode==='favorites'&&deviceFavorites.has(id);
-  row.hidden=!matchesMode||!id.toLowerCase().includes(query);
+  const matchesQuery=id.toLowerCase().includes(query);
+  row.hidden=!matchesMode||!matchesQuery;
+  if(matchesQuery&&(mode!=='favorites'||deviceFavorites.has(id))){
+   const version=Number(row.dataset.policyRevision);
+   if(!version)unissued++;
+   else{
+    const counts=policyGroups.get(version)??{total:0,current:0,affected:0,historical:0,waiting:0,snapshot:0};
+    counts.total++;
+    if(row.dataset.reportState==='reported'){
+     counts.current++;if(row.dataset.attention==='true')counts.affected++;
+    }else if(row.dataset.reportState==='historical')counts.historical++;
+    else if(row.dataset.reportState==='snapshot')counts.snapshot++;
+    else counts.waiting++;
+    policyGroups.set(version,counts);
+   }
+  }
   if(!row.hidden)visible++;
  }
+ renderPolicyIncidents(policyGroups,unissued);
  $('devices-region').hidden=visible===0;
  $('device-filters').hidden=!deviceIds.size&&!devicePrefix;
  deviceSearchControls();
@@ -971,7 +1011,7 @@ function expireDeviceReports(){
   const remaining=Math.min(receipt.mono-performance.now(),receipt.wall-Date.now());
   if(remaining>0){next=Math.min(next,remaining);continue;}
   tr.cells[3].textContent=deviceReportStates.historical+' · '+deviceOutcomes[receipt.outcome];
-  tr.dataset.attention='false';reportExpiries.delete(tr);changed=true;
+  tr.dataset.attention='false';tr.dataset.reportState='historical';reportExpiries.delete(tr);changed=true;
  }
  if(changed)filterDevices();
  if(Number.isFinite(next)&&!document.hidden)reportExpiryTimer=setTimeout(expireDeviceReports,Math.min(2147483647,Math.max(1,Math.ceil(next))));
@@ -1019,6 +1059,8 @@ async function loadDevices(more=false,prefix=devicePrefix){
    open.onclick=()=>work(async()=>{$('inventory-device').value=row.device;await loadInventory();});
    cell.append(open,favoriteButton(row.device));tr.append(cell);
    tr.dataset.id=row.device;tr.dataset.attention=String(row.report.state==='reported'&&['degraded','rolled_back'].includes(row.report.outcome));
+   tr.dataset.policyRevision=String(row.policyRevision);
+   tr.dataset.reportState=row.report.state==='reported'&&!page.reportExpiry?'snapshot':row.report.state;
    const report=row.report;const snapshot=report.state==='reported'&&!page.reportExpiry?' · при загрузке '+inventoryDate(page.observedAtMs):'';
    const label=report.outcome?`${deviceReportStates[report.state]} · ${deviceOutcomes[report.outcome]}${snapshot}`:deviceReportStates[report.state];
    for(const value of [row.desiredRevision?String(row.desiredRevision):'Слои не назначены',row.policyRevision?String(row.policyRevision):'Не выдана',label,report.receivedAtMs?inventoryDate(report.receivedAtMs):'—']){const td=document.createElement('td');td.textContent=value;tr.append(td);}
@@ -1621,6 +1663,7 @@ $('clear-device-prefix').onclick=()=>work(async()=>{
  $('device-search').value='';await loadDevices(false,'');if(authenticated)$('device-search').focus();
 });
 $('device-filter').onchange=filterDevices;
+$('policy-incidents').ontoggle=()=>{if(authenticated&&deviceIds.size)filterDevices();};
 $('refresh-devices').onclick=()=>work(()=>loadDevices());
 $('invite-reauth').onclick=()=>{
  if(!authenticated||!reauthenticationAvailable||busy)return;
