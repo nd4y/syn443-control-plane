@@ -2028,10 +2028,12 @@
         "docs/examples/first-device-reference-plans.json",
         "internal/configuration/reference_plans_test.go",
         "web-tests/control-layer.spec.js",
-        "internal/chatweb/assets/control/app.js"
+        "internal/chatweb/assets/control/app.js",
+        "internal/configuration/group_review.go",
+        "internal/chatweb/group_review_test.go"
       ],
       "implementationScope": "The blank single-device editor creates separate invited and personal plans. An invited plan uses only its chosen internet profile and resolver. A personal plan adds expressly assigned NetBird, private DNS and routing references. Local inputs and recipient bindings are per draft.",
-      "remainingScope": "Group transfer with effective private dependencies and upstream least-privilege acceptance remain open."
+      "remainingScope": "Effective overlay, overlay DNS and home proof are reviewed per group or template recipient. Other private dependencies, upstream least-privilege and real operator/device acceptance remain open."
     },
     {
       "id": "OWN-02",

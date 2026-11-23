@@ -281,12 +281,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	action := strings.TrimPrefix(r.URL.Path, "/chat/")
 	allowed := map[string]bool{"self": true, "inbox": true, "incident/lookup": true, "messages": true, "send": true, "read": true, "uploads/begin": true, "uploads/part": true, "uploads/status": true, "uploads/complete": true, "uploads/cancel": true, "download": true}
 	sourceImport := s.config.ControlConsole && r.URL.Path == "/control/source/import"
+	groupImpact := s.config.ControlConsole && r.URL.Path == "/control/group-network-impact"
 	cohorts := s.config.ControlConsole && r.URL.Path == "/control/rollout-preview"
 	bounds := s.config.ControlConsole && r.URL.Path == "/control/route-bounds"
 	profileCheck := s.config.ControlConsole && r.URL.Path == "/control/route-check-profile"
 	replay := s.config.ControlConsole && r.URL.Path == "/control/route-replay"
 	explain := s.config.ControlConsole && r.URL.Path == "/control/route-explanation"
-	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport || bounds || profileCheck || replay || explain || cohorts)
+	control := s.config.ControlConsole && (r.URL.Path == "/control/action" || sourceImport || bounds || profileCheck || replay || explain || cohorts || groupImpact)
 	if !control && (s.config.ControlConsole && s.config.ChatAPIOrigin == "" || !strings.HasPrefix(r.URL.Path, "/chat/") || !allowed[action]) {
 		fail(w, 404)
 		return
@@ -332,10 +333,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, 413)
 		return
 	}
-	if explain {
+	if explain || groupImpact {
 		defer clear(raw)
 	}
-	if control && !bounds && !profileCheck && !replay && !explain && !cohorts && !validConsoleAction(raw, sourceImport) {
+	if control && !bounds && !profileCheck && !replay && !explain && !cohorts && !groupImpact && !validConsoleAction(raw, sourceImport) {
 		fail(w, 400)
 		return
 	}
@@ -369,6 +370,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if control {
 		if !v.principal.HasScope("syn443.control") {
 			fail(w, 403)
+			return
+		}
+		if groupImpact {
+			reviewGroupNetworkImpact(ctx, w, raw)
 			return
 		}
 		if cohorts {
