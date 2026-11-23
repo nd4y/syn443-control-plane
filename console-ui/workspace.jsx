@@ -126,6 +126,17 @@ function Devices() {
         </Button>
       </div>
       <p id="devices-status" role="status" aria-atomic="true"></p>
+      <details id="policy-incidents" hidden>
+        <summary id="policy-incidents-title">Применение политик</summary>
+        <p id="policy-incidents-scope"></p>
+        <div className="device-list-scroll" role="region" aria-label="Отчёты по номеру выдачи на устройстве" tabIndex={0}>
+          <table>
+            <caption>Номер выдачи считается отдельно на каждом устройстве</caption>
+            <thead><tr><th scope="col">Номер выдачи</th><th scope="col">Устройств</th><th scope="col">Актуальных отчётов</th><th scope="col">С проблемами</th><th scope="col">Архивных</th><th scope="col">Ожидается отчёт</th><th scope="col">Срок неизвестен</th></tr></thead>
+            <tbody id="policy-incidents-rows"></tbody>
+          </table>
+        </div>
+      </details>
       <div id="devices-region" className="device-list-scroll" role="region" aria-label="Доступные устройства" tabIndex={0} hidden>
         <table className="pf-v6-c-table pf-m-compact">
           <caption>Доступные устройства. Отчёт об активации не подтверждает текущее подключение.</caption>
