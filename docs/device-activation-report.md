@@ -43,3 +43,10 @@ Apply the owner enrollment schema and roles before configuration roles.
 
 The web tests exercise reported rollback, pending reports and historical
 rendering. Android-to-panel acceptance on a physical device remains separate.
+
+An open configuration card requests the remaining lifetime of a current
+receipt. The server reads the policy deadline from the same authorized device
+transaction. At expiry the badge and metadata both identify the receipt as
+historical. The browser includes request time in the deadline and checks its
+clocks when the tab becomes visible again. An older server returns a snapshot
+identified as the result at load time. The transition at expiry runs locally.

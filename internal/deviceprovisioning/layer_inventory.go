@@ -20,7 +20,13 @@ type ConfigurationRevision struct {
 	Hash     string `json:"hash"`
 }
 
+type ReportTiming struct {
+	ObservedAtMs int64 `json:"observedAtMs"`
+	ValidUntilMs int64 `json:"validUntilMs"`
+}
+
 type ConfigurationInventory struct {
+	ReportTiming      *ReportTiming          `json:"reportTiming,omitempty"`
 	Previous          *ConfigurationRevision `json:"previous,omitempty"`
 	baseHash          string
 	Device            string                   `json:"device"`
@@ -51,13 +57,13 @@ type ConfigurationActivation struct {
 func (ConfigurationInventory) String() string   { return "ConfigurationInventory([redacted])" }
 func (ConfigurationInventory) GoString() string { return "ConfigurationInventory([redacted])" }
 
-func (c *ConfigurationControl) inventory(ctx context.Context, actor, device string, authorityUntil int64, now time.Time) (ConfigurationInventory, error) {
-	return c.inventoryAt(ctx, actor, device, 0, "", authorityUntil, now)
+func (c *ConfigurationControl) inventory(ctx context.Context, actor, device string, includeReportExpiry bool, authorityUntil int64, now time.Time) (ConfigurationInventory, error) {
+	return c.inventoryAt(ctx, actor, device, 0, "", includeReportExpiry, authorityUntil, now)
 }
 
 // Historical reads have the same live identity, grant and per-layer ACL gates
 // as current reads. A caller must bind the expected immutable revision/hash.
-func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device string, revision int64, hash string, authorityUntil int64, now time.Time) (ConfigurationInventory, error) {
+func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device string, revision int64, hash string, includeReportExpiry bool, authorityUntil int64, now time.Time) (ConfigurationInventory, error) {
 	r := ConfigurationInventory{Device: device, State: "unassigned", Layers: []configuration.Layer{}, Historical: revision > 0}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -188,6 +194,20 @@ func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device st
 	}
 	if e = tx.Commit(); e != nil {
 		return r, enrollment.ErrUnavailable
+	}
+	observed := current()
+	if observed.Unix() >= min(authorityUntil, accountUntil) {
+		return ConfigurationInventory{}, enrollment.ErrDenied
+	}
+	if r.Activation != nil && r.Activation.State == "reported" {
+		if publicationUntil <= observed.Unix() {
+			r.Activation.State = "historical"
+		} else if includeReportExpiry {
+			if publicationUntil > 9007199254740991/1000 {
+				return ConfigurationInventory{}, enrollment.ErrUnavailable
+			}
+			r.ReportTiming = &ReportTiming{ObservedAtMs: observed.UnixMilli(), ValidUntilMs: publicationUntil * 1000}
+		}
 	}
 	return r, nil
 }

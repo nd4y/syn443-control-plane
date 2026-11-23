@@ -12,7 +12,7 @@ let sourceSnapshotEpoch=0,sourceDetailLoading=false;
 let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null,layerReviewTimer=null;
 let layerComparison=null;
 let layerDraftInventory=null;
-let inventoryEpoch=0;
+let inventoryEpoch=0,cardReceipt=null,cardReceiptTimer;
 let historyRequest=null;
 let sourceShares=null;
 let providerContext=null,providerEpoch=0;
@@ -546,7 +546,7 @@ function controls(){
  drawRouteChecks();
 }
 function clearInventory(){
- inventoryEpoch++;
+ inventoryEpoch++;clearTimeout(cardReceiptTimer);cardReceipt=null;
  historyRequest?.abort();historyRequest=null;
  $('inventory-history').open=false;$('inventory-history').hidden=true;$('inventory-history-load').disabled=false;
  $('inventory-history-status').textContent='';$('inventory-history-diff').replaceChildren();
@@ -686,7 +686,7 @@ async function checkReauthentication(){
  else $('reauthentication-status').textContent='Свежий вход с подтверждением ещё не получен. Завершите вход в новой вкладке или повторите его.';
 }
 function textItem(list,text){const item=document.createElement('li');item.textContent=text;list.append(item);return item;}
-function inventoryPair(list,name,value){const term=document.createElement('dt');term.textContent=name;const detail=document.createElement('dd');detail.textContent=value;list.append(term,detail);}
+function inventoryPair(list,name,value){const term=document.createElement('dt');term.textContent=name;const detail=document.createElement('dd');detail.textContent=value;list.append(term,detail);return detail;}
 function showIssuedPaths(issued){
  const rows=issued.outbounds,byTag=new Map(),validTag=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(v);
  const labels={direct:'Прямое соединение',block:'Блокировка',http:'HTTP',socks:'SOCKS',ssh:'SSH',vless:'VLESS',
@@ -804,7 +804,18 @@ async function saveProvider(){
 }
 function inventoryOrigin(origin){return origin&&typeof origin==='object'&&!Array.isArray(origin)&&typeof origin.layerId==='string'&&typeof origin.kind==='string'&&Number.isSafeInteger(origin.revision)&&origin.revision>=0;}
 function inventoryDate(milliseconds){const date=new Date(milliseconds);if(!Number.isFinite(date.getTime()))throw Error('invalid');return date.toISOString();}
-function showInventory(view){
+function expireCardReceipt(){
+ clearTimeout(cardReceiptTimer);
+ if(!cardReceipt)return;
+ const remaining=Math.min(cardReceipt.mono-performance.now(),cardReceipt.wall-Date.now());
+ if(remaining<=0){
+  inventoryBadge('inventory-report',cardReceipt.historical,'warning');
+  cardReceipt.detail.textContent=cardReceipt.historical;cardReceipt=null;
+ }else if(!document.hidden){
+  cardReceiptTimer=setTimeout(expireCardReceipt,Math.min(2147483647,Math.ceil(remaining)));
+ }
+}
+function showInventory(view,startMono,startWall){
  if(!view||typeof view!=='object'||Array.isArray(view)||view.historical)throw Error('invalid');
  const {device,owner,state,revision,hash,policyRevision,layers,effective}=view;
  if(typeof device!=='string'||!device||device.length>64||typeof owner!=='string'||!['assigned','unassigned','expired'].includes(state)||!Number.isSafeInteger(revision)||revision<0||typeof hash!=='string'||hash.length>64||!Number.isSafeInteger(policyRevision)||policyRevision<0||!Array.isArray(layers)||effective!==undefined&&effective!==null&&(typeof effective!=='object'||Array.isArray(effective)))throw Error('invalid');
@@ -824,14 +835,21 @@ function showInventory(view){
   if(typeof view.publicationSource!=='string'||!Object.hasOwn(labels,view.publicationSource))throw Error('invalid');
   inventoryPair(meta,'Источник выданной политики',labels[view.publicationSource]);
  }
- const report=view.activation;
+ const report=view.activation,timing=view.reportTiming;
+ if(Object.hasOwn(view,'reportTiming')&&(
+  !closedObject(timing,['observedAtMs','validUntilMs'])||report?.state!=='reported'||
+  !Number.isSafeInteger(timing.observedAtMs)||timing.observedAtMs<1||
+  !Number.isSafeInteger(timing.validUntilMs)||timing.validUntilMs<=timing.observedAtMs
+ ))throw Error('invalid');
  if(report){
   if(!['not_issued','awaiting_report','reported','historical'].includes(report.state))throw Error('invalid');
   if(['reported','historical'].includes(report.state)){
    const outcomes={committed:'Применена',degraded:'Применена с ограничениями',rolled_back:'Откат'};
    if(!Object.hasOwn(outcomes,report.outcome)||!Number.isSafeInteger(report.policyRevision)||report.policyRevision<1||!Number.isSafeInteger(report.activePolicyRevision)||report.activePolicyRevision<0||!Number.isSafeInteger(report.receivedAtMs)||report.receivedAtMs<1)throw Error('invalid');
-   const historical=report.state==='historical'?' · предыдущая или истёкшая выдача':'';
-   const summary=`${outcomes[report.outcome]} · политика ${report.policyRevision}${historical}`;
+   if(report.state==='reported'&&report.policyRevision!==policyRevision)throw Error('invalid');
+   const result=`${outcomes[report.outcome]} · политика ${report.policyRevision}`;
+   const historical=result+' · предыдущая или истёкшая выдача';
+   const summary=report.state==='historical'?historical:timing?result:result+' · при загрузке карточки';
    const tone=report.state==='historical'?'warning':{committed:'success',degraded:'warning',rolled_back:'danger'}[report.outcome];
    inventoryBadge('inventory-report',summary,tone);
    const time=$('inventory-report-time');
@@ -840,7 +858,12 @@ function showInventory(view){
     year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short',
    }).format(report.receivedAtMs);
    time.hidden=false;
-   inventoryPair(meta,'Отчёт устройства',summary);
+   const detail=inventoryPair(meta,'Отчёт устройства',summary);
+   if(timing){
+    const duration=timing.validUntilMs-timing.observedAtMs;
+    cardReceipt={mono:startMono+duration,wall:startWall+duration,historical,detail};
+    expireCardReceipt();
+   }
    inventoryPair(meta,'Версия по отчёту',report.activePolicyRevision?String(report.activePolicyRevision):'Нет');
    inventoryPair(meta,'Получен',inventoryDate(report.receivedAtMs));
   }else{
@@ -1156,10 +1179,16 @@ async function loadInventory(){
  const epoch=inventoryEpoch;
  $('inventory-status').textContent='Загружаем конфигурацию…';
  try{
-  const view=await action('configuration.inventory.get',{id:device});
+  const startMono=performance.now(),startWall=Date.now();
+  let view;
+  try{view=await action('configuration.inventory.get',{id:device,includeReportExpiry:true});}
+  catch(error){
+   if(error.message!=='invalid'||epoch!==inventoryEpoch||!authenticated||$('inventory-device').value.trim()!==device)throw error;
+   view=await action('configuration.inventory.get',{id:device});
+  }
   if(epoch!==inventoryEpoch||!authenticated||$('inventory-device').value.trim()!==device)return;
   if(view?.device!==device)throw Error('invalid');
-  showInventory(view);
+  showInventory(view,startMono,startWall);
   $('devices-disclosure').open=false;
   $('inventory-view').focus({preventScroll:true});
   layerInventory=structuredClone(view);
@@ -1674,6 +1703,8 @@ $('reauthentication-check').onclick=()=>work(checkReauthentication);
 $('refresh-runtime').onclick=()=>work(loadRuntime);
 document.addEventListener('visibilitychange',syncRuntimeVisibility);
 document.addEventListener('visibilitychange',expireDeviceReports);
+document.addEventListener('visibilitychange',expireCardReceipt);
+window.addEventListener('pageshow',expireCardReceipt);
 $('more-devices').onclick=()=>work(()=>loadDevices(true));
 $('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>work(()=>sources(true));$('inventory-form').onsubmit=event=>{event.preventDefault();if(authenticated&&!pending)void work(loadInventory);};
 $('inventory-device').oninput=()=>{

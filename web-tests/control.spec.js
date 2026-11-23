@@ -16,6 +16,44 @@ async function openIssuedPaths(page,request,issued){
  await page.goto(origin+'/#device=device-a');
  await page.getByText('Настройки выданной политики',{exact:true}).click();
 }
+test('an opened phone card ages its report at the policy deadline without another read',async({page,request})=>{
+ await reset(request);await page.setViewportSize({width:360,height:800});
+ await page.clock.install({time:new Date('2027-01-01T12:00:00Z')});await page.clock.pauseAt(new Date('2027-01-01T12:01:00Z'));
+ let reads=0;
+ await page.route('**/control/action',async route=>{
+  const op=route.request().postDataJSON();if(op.action!=='configuration.inventory.get')return route.continue();
+  reads++;expect(op.payload.includeReportExpiry).toBe(true);
+  const upstream=await route.fetch(),body=await upstream.json();
+  body.reportTiming={observedAtMs:1800000000000,validUntilMs:1800000010000};
+  if(reads===1)await page.clock.fastForward(4000);
+  await route.fulfill({response:upstream,json:body});
+ });
+ await page.goto(origin+'/#device=device-a');const badge=page.locator('#inventory-report');
+ await expect(badge).toHaveText('Откат · политика 23');
+ await page.clock.fastForward(5999);await expect(badge).toHaveAttribute('data-tone','danger');
+ await page.clock.fastForward(1);await expect(badge).toContainText('истёкшая выдача');
+ await expect(badge).toHaveAttribute('data-tone','warning');await expect(page.locator('#inventory-meta')).toContainText('истёкшая выдача');
+ expect(reads).toBe(1);
+ await page.locator('#load-inventory').click();await expect(badge).toHaveText('Откат · политика 23');
+ await page.clock.setSystemTime(new Date('2027-01-02T12:00:00Z'));await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+ await expect(badge).toContainText('истёкшая выдача');expect(reads).toBe(2);
+});
+
+test('legacy device card attributes a snapshot and clears it after denial without retry',async({page,request})=>{
+ await reset(request);let denied=false;const payloads=[];
+ await page.route('**/control/action',async route=>{
+  const op=route.request().postDataJSON();if(op.action!=='configuration.inventory.get')return route.continue();
+  payloads.push(op.payload);
+  if(denied||op.payload.includeReportExpiry)return route.fulfill({status:denied?403:400,json:{}});
+  return route.continue();
+ });
+ await page.goto(origin+'/#device=device-a');const badge=page.locator('#inventory-report');
+ await expect(badge).toHaveText('Откат · политика 23 · при загрузке карточки');
+ expect(payloads).toEqual([{id:'device-a',includeReportExpiry:true},{id:'device-a'}]);
+ denied=true;await page.locator('#load-inventory').click();await expect(page.locator('#inventory-view')).toBeHidden();
+ await expect(badge).toBeEmpty();expect(payloads).toHaveLength(3);expect(payloads.at(-1)).toEqual({id:'device-a',includeReportExpiry:true});
+});
+
 test('phone displays configured entry and exit in network order and leaves balancer choice to device',async({page,request})=>{
  await openIssuedPaths(page,request,{routeFinal:'last',outbounds:[
   {tag:'last',type:'vless',detour:'middle'},{tag:'start',type:'http'},{tag:'middle',type:'ssh',detour:'start'},

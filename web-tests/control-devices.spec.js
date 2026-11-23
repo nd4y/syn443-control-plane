@@ -251,7 +251,7 @@ test('legacy device catalog keeps an explicitly dated snapshot and never retries
  });
  await page.goto(origin);await expect(page.locator('#device-rows tr')).toContainText('при загрузке');
  await page.locator('#policy-incidents-title').click();await expect(page.locator('#policy-incidents-title')).toContainText('актуальных отчётов нет');
- expect(await page.locator('#policy-incidents-rows td').allTextContents()).toEqual(['1','0','Нет данных','0','0','1']);
+ await expect(page.locator('#policy-incidents-rows td')).toHaveText(['1','0','Нет данных','0','0','1']);
  expect(payloads).toEqual([{after:'',includeReportExpiry:true},{after:''}]);
  deny=true;await page.locator('#refresh-devices').click();await expect(page.locator('#device-rows')).toBeEmpty();
  await expect(page.locator('#policy-incidents')).toBeHidden();await expect(page.locator('#policy-incidents-rows')).toBeEmpty();

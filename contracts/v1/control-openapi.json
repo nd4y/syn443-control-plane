@@ -1901,6 +1901,10 @@
                     "minLength": 1,
                     "maxLength": 64,
                     "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  },
+                  "includeReportExpiry": {
+                    "const": true,
+                    "description": "Request the server observation time and policy lease deadline for a current activation receipt. Older requests and historical receipts omit reportTiming."
                   }
                 },
                 "required": [

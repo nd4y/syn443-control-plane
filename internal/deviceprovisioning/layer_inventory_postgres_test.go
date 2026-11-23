@@ -123,6 +123,53 @@ func TestConfigurationInventorySeparatesCurrentAndHistoricalDeviceReports(t *tes
 	}
 }
 
+func TestDeviceCardNegotiatesExpiryOnlyForACurrentReceipt(t *testing.T) {
+	n, c, _, _ := layerPublisherFixture(t)
+	read := func(payload map[string]any, label string) (ConfigurationInventory, error) {
+		raw, token, proof := configurationCall(t, n, c, "configuration.inventory.get", identity.Hash([]byte(label)), payload)
+		result, err := c.Dispatch(context.Background(), token, proof, raw, n.f.now)
+		if err != nil {
+			return ConfigurationInventory{}, err
+		}
+		return result.(ConfigurationInventory), nil
+	}
+	id := n.target.Device
+	current := map[string]any{"id": id, "includeReportExpiry": true}
+	until := n.f.now.Add(time.Minute).Unix()
+	if _, err := fixtureOwner.Exec(`UPDATE identity_devices SET offline_until=$2,publication_grant_hash=$3 WHERE id=$1`, id, until, n.target.GrantHash); err != nil {
+		t.Fatal(err)
+	}
+	pending, err := read(current, "awaiting card receipt")
+	if err != nil || pending.Activation == nil || pending.Activation.State != "awaiting_report" || pending.ReportTiming != nil {
+		t.Fatal("unexpected pending card timing", err)
+	}
+	if _, err := fixtureOwner.Exec(`INSERT INTO identity_policy_activation VALUES($1,1,$2,1,'committed',1,$3)`, id, identity.Hash([]byte("card receipt")), n.f.now.UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	legacy, err := read(map[string]any{"id": id}, "legacy card receipt")
+	if err != nil || legacy.Activation.State != "reported" || legacy.ReportTiming != nil {
+		t.Fatal("legacy wire shape changed", err)
+	}
+	view, err := read(current, "timed card receipt")
+	if err != nil || view.Activation.State != "reported" || view.ReportTiming == nil ||
+		view.ReportTiming.ValidUntilMs != until*1000 || view.ReportTiming.ObservedAtMs < n.f.now.UnixMilli() ||
+		view.ReportTiming.ObservedAtMs >= view.ReportTiming.ValidUntilMs {
+		t.Fatal("wrong policy receipt deadline", err)
+	}
+	for i, invalid := range []any{false, nil, "true"} {
+		if _, err := read(map[string]any{"id": id, "includeReportExpiry": invalid}, fmt.Sprintf("invalid timing request %d", i)); err == nil {
+			t.Fatal("invalid opt-in accepted")
+		}
+	}
+	if _, err := fixtureOwner.Exec(`UPDATE identity_devices SET offline_until=$2 WHERE id=$1`, id, n.f.now.Unix()); err != nil {
+		t.Fatal(err)
+	}
+	expired, err := read(current, "expired card receipt")
+	if err != nil || expired.Activation.State != "historical" || expired.ReportTiming != nil {
+		t.Fatal("expired lease still has current receipt timing", err)
+	}
+}
+
 func TestConfigurationInventoryBindsIssuedPolicyToExactApprovedRevision(t *testing.T) {
 	n, c, proposal, publisher := layerPublisherFixture(t)
 	ctx := context.Background()
@@ -222,7 +269,7 @@ func TestConfigurationInventoryRequiresLiveDeviceParentACLAndCipherIntegrity(t *
 			case "expired-session":
 				until = at.Unix()
 			}
-			if _, e := c.inventory(ctx, n.actor.ID, n.target.Device, until, at); e == nil {
+			if _, e := c.inventory(ctx, n.actor.ID, n.target.Device, false, until, at); e == nil {
 				t.Fatal("unsafe desired view admitted", kind)
 			}
 			for _, column := range []string{"active", "approved", "request_body", "receipt", "owner", "jkt"} {
