@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import {test,expect} from '@playwright/test';
 const origin='http://127.0.0.1:17851';
 async function state(request){return (await request.post(origin+'/fixture/state',{data:{}})).json();}
@@ -307,3 +308,52 @@ for(const [kind,target,width] of [['device','device-a',1200],['group','group-a',
   expect((await state(request)).operations).toBe(0);
  });
 }
+
+const referencePlans=JSON.parse(readFileSync(new URL('../docs/examples/first-device-reference-plans.json',import.meta.url),'utf8'));
+const commonReference={source:'source-a',profile:'source-a_vless',health:'https://health.example.invalid/generate_204',dns:'resolver.example.invalid'};
+const homeReference={management:'https://overlay.example.invalid',overlay:'personal',resource:'overlay-cloud',network:'network-a',epoch:'2',suffix:'home.example.invalid',prefix:'192.0.2.0/24'};
+async function newReference(page,request){
+ await request.post(origin+'/fixture/reset',{data:{}});
+ await page.setViewportSize({width:393,height:850});await page.goto(origin+'/#draft-title');
+ await page.locator('#new-draft').click();await page.locator('#target-id').fill('device-a');
+ await page.locator('#reference-inputs summary').click();
+}
+async function fillReference(page,fields){
+ for(const [name,value] of Object.entries(fields))await page.locator('#reference-'+name).fill(value);
+}
+for(const kind of ['invited','personal']){
+ test(`phone creates an independent ${kind} reference plan without saving`,async({page,request})=>{
+  await newReference(page,request);await fillReference(page,commonReference);
+  if(kind==='personal'){
+   await page.locator('#reference-kind').selectOption('personal');
+   await fillReference(page,homeReference);
+   await page.locator('#reference-prefix').fill('192.0.2.1/24');await page.locator('#reference-apply').click();
+   await expect(page.locator('#reference-prefix')).toBeFocused();await expect(page.locator('#plan')).toHaveValue('');
+   await page.locator('#reference-prefix').fill(homeReference.prefix);
+  }
+  await page.locator('#reference-apply').click();
+  expect(JSON.parse(await page.locator('#plan').inputValue())).toEqual(referencePlans[kind]);
+  await expect(page.locator('#target-id')).toBeDisabled();await expect(page.locator('#target-kind')).toBeDisabled();
+  await expect(page.locator('#reference-inputs')).toBeHidden();
+  expect((await state(request)).operations).toBe(0);
+  await page.locator('#new-draft').click();
+  await expect(page.locator('#plan')).toHaveValue('');await expect(page.locator('#target-id')).toBeEnabled();
+  await page.locator('#target-id').fill('device-b');await page.locator('#reference-inputs summary').click();
+  await expect(page.locator('#reference-kind')).toHaveValue('invited');
+  for(const name of [...Object.keys(commonReference),...Object.keys(homeReference)])await expect(page.locator('#reference-'+name)).toHaveValue('');
+ });
+}
+test('reference wizard clears private input when the recipient or template changes',async({page,request})=>{
+ await newReference(page,request);await fillReference(page,commonReference);
+ await page.locator('#reference-kind').selectOption('personal');await fillReference(page,homeReference);
+ await page.locator('#reference-kind').selectOption('invited');
+ for(const name of Object.keys(homeReference))await expect(page.locator('#reference-'+name)).toHaveValue('');
+ await page.locator('#target-id').fill('device-b');
+ await page.locator('#reference-inputs summary').click();
+ for(const name of Object.keys(commonReference))await expect(page.locator('#reference-'+name)).toHaveValue('');
+ await page.locator('#target-kind').selectOption('group');await expect(page.locator('#reference-inputs')).toBeHidden();
+ await page.locator('#plan').fill('{"existing":true}');
+ await page.locator('#target-kind').selectOption('device');
+ await expect(page.locator('#reference-inputs')).toBeHidden();
+ await expect(page.locator('#plan')).toHaveValue('{"existing":true}');expect((await state(request)).operations).toBe(0);
+});

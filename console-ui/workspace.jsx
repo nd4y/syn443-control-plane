@@ -1,3 +1,4 @@
+import {Fragment} from 'react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -485,6 +486,43 @@ function Sources() {
   );
 }
 
+function ReferencePlanInputs() {
+  const input = (name, label, length, inputMode = 'text') => (
+    <Fragment key={name}>
+      <label htmlFor={'reference-' + name}>{label}</label>
+      <TextInput id={'reference-' + name} inputMode={inputMode} maxLength={length} autoComplete="off" />
+    </Fragment>
+  );
+  return (
+    <details id="reference-inputs" hidden>
+      <summary>Начальный план для устройства</summary>
+      <fieldset id="reference-controls" disabled>
+        <legend>Настройки первого плана</legend>
+        <label htmlFor="reference-kind">Назначение устройства</label>
+        <Select id="reference-kind" defaultValue="invited">
+          <option value="invited">Приглашённый пользователь</option>
+          <option value="personal">Личное устройство администратора с NetBird</option>
+        </Select>
+        {input('source', 'ID разрешённого источника подписки', 48)}
+        {input('profile', 'ID интернет-профиля в источнике', 128)}
+        {input('health', 'HTTPS-адрес проверки с ответом 204', 2048, 'url')}
+        {input('dns', 'Имя DNS-сервера с поддержкой TLS через интернет-профиль', 253)}
+        <fieldset id="reference-personal" hidden disabled>
+          <legend>Личная сеть NetBird</legend>
+          {input('management', 'HTTPS-адрес сервера управления', 2048, 'url')}
+          {input('overlay', 'ID оверлея', 64)}
+          {input('resource', 'ID назначенного ресурса NetBird', 64)}
+          {input('network', 'ID сети NetBird', 64)}
+          {input('epoch', 'Версия идентичности NetBird', 16, 'numeric')}
+          {input('suffix', 'Внутренний DNS-суффикс', 253)}
+          {input('prefix', 'Сеть за NetBird в формате IPv4/CIDR', 18)}
+        </fieldset>
+        <Button id="reference-apply" variant="secondary" type="button">Подготовить план</Button>
+      </fieldset>
+    </details>
+  );
+}
+
 function Drafts() {
   return (
     <PageSection
@@ -537,6 +575,7 @@ function Drafts() {
           SHA-256 исходной версии (для версии 0 оставьте пустым)
         </label>
         <TextInput id="base-hash" autoComplete="off" maxLength={64} />
+        <ReferencePlanInputs />
         <label htmlFor="plan">План сети, JSON</label>
         <TextArea
           resizeOrientation="vertical"
