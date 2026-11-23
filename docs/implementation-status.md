@@ -8,7 +8,7 @@ Assigning a profile requires a device with the approved capability. CHK-04 and
 AC58 still require broader expression support and checks on an enrolled handset.
 [Android capability negotiation](https://github.com/nd4y/syn443-android/pull/135)
 
-Snapshot updated on 2026-11-22. Specification 0.9 contains 292 requirements and 98 acceptance
+Snapshot updated on 2026-11-23. Specification 0.9 contains 292 requirements and 98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
 
@@ -38,7 +38,7 @@ The invitation link parser authenticates the service descriptor before discovery
 
 The NetBird broker issues credentials for a specific overlay and provider resource. Its management API updates and queries provider-side objects. Android separately verifies the embedded engine, route and traffic path. OVL-02 remains partial pending full lifecycle and device diagnostics acceptance. [Managed overlay](managed-overlay.md) · [Provider tests](../internal/netbirdapi/peers_test.go)
 
-The Android register pins version 135. GitHub Actions passed 553 JVM tests and 641 tests on each of API 29, 35 and 37. The signed upgrade fixture exercised version 135 to 136. Six measured recoveries after an ingress or egress proxy failure ranged from 8.946 to 10.964 seconds. The normal release APK and the system package installer cancellation were verified separately. [Protected Android run](https://github.com/nd4y/syn443-android/actions/runs/45037062087)
+The earlier Android v135 checkpoint covered installation and proxy recovery. GitHub Actions passed 553 JVM tests and 641 tests on each of API 29, 35 and 37. The signed upgrade fixture exercised version 135 to 136. Six measured recoveries after an ingress or egress proxy failure ranged from 8.946 to 10.964 seconds. The normal release APK and the system package installer cancellation were verified separately. [Protected Android run](https://github.com/nd4y/syn443-android/actions/runs/45037062087)
 
 The last verified physical installation was version 133. The source run passed 553 JVM tests and 622 cases on each of API 29, 35 and 37. It installed a signed higher-version fixture with ADB, checked the existing enrollment and sent real traffic through the restored VPN. An in-place update to version 133 preserved the enrolled pilot handset's identity. Four on-device package and DNS diagnostic checks passed. The device subsequently requested a fresh account login. Authenticated VPN recovery on this installation remains open. [Android source build and test evidence](https://github.com/nd4y/syn443-android/actions/runs/44990432637)
 
@@ -376,3 +376,15 @@ covers ordered route previews with missing hostname evidence, keyboard
 navigation and hourly telemetry report selection. Eight browser cases and eight
 server cases verify those changes, including the PostgreSQL authorization and
 ingestion paths. Pilot deployment and signed-in device readback are separate.
+
+## Hourly telemetry and published configuration changes
+
+The hourly report shows the 95th percentile of measured durations. Historical
+buckets without duration observations keep an empty value. The SQL and browser
+checks include a measured zero. [Protected telemetry run](https://github.com/nd4y/syn443-control-plane/actions/runs/45084255210)
+
+On a device card, an authorized operator can compare a publication with its
+recorded predecessor. The panel rechecks access to each version and lists
+changed settings and inheritance paths. The hosted SQL and browser tests cover
+a concurrent publication, expired rights and a switch to another device.
+Acceptance in a deployed administrator session remains open. [Protected publication history run](https://github.com/nd4y/syn443-control-plane/actions/runs/45088340198)

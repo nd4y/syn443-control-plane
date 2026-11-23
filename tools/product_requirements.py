@@ -106,6 +106,8 @@ def main():
     android = json.loads(args.android_register.read_text(encoding="utf-8"))
     rows = compare(android, control)
     revision = (ROOT / "docs/android-register-revision.txt").read_text().strip()
+    if control.get("evidenceSnapshot", {}).get("androidSource") != revision:
+        parser.error("the control register and the combined report must pin the same Android revision")
     report = markdown(control["specVersion"], revision, rows)
     snapshot = ROOT / "docs/product-requirements.md"
     if args.write:
