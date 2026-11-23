@@ -2079,8 +2079,14 @@
     {
       "id": "OWN-06",
       "text": "Для пилота предусмотрена явная миграция с текущего NekoBox: private checkpoint, preview импорта подписок/маршрутов, тест персональных RU/NON_RU/INTERNAL назначений, отдельное enrollment нового устройства и проверенный возврат к прежнему клиенту. Identity keys не клонируются между устройствами, original app/settings не заменяются скрыто. Выпуск 1.0 сохраняет все обязательные протоколы; проверяемые внутренние итерации и ранний Android gate не являются урезанием конечного объёма.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "tools/nekobox_migration_preview.py",
+        "tools/test_nekobox_migration_preview.py",
+        "docs/nekobox-migration.md"
+      ],
+      "implementationScope": "Local v1 export preview classifies profiles, chains, groups and rule actions without accessing device or provider or displaying input values.",
+      "remainingScope": "Physical transfer of enrolled user configuration, class-specific traffic tests and rollback acceptance remain open."
     },
     {
       "id": "MOB-01",
