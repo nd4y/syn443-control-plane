@@ -1195,8 +1195,14 @@
     {
       "id": "ALG-11",
       "text": "Поиск ограничен временем шага, числом кандидатов/соединений, трафиком, памятью и параллелизмом. Сначала last-known-good, затем доступные простые пути и обоснованные цепочки; при неудаче фронтир расширяется. Поиск не создаёт декартово произведение всех профилей и hops в памяти. Ограничение полного допустимого пространства, шаблонов и фронтира задаётся ARC-05, а общая конкуренция всех jobs - ARC-06.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/deviceprovisioning/adaptive_network_postgres_test.go",
+        "internal/configuration/adaptive_compile_test.go",
+        "docs/adaptive-catalogue-snapshot.md"
+      ],
+      "implementationScope": "The actual publisher signs the full bounded catalogue and keeps the previous policy on overflow. The Android coordinator resumes a large search across policy intervals and respects its probe quota.",
+      "remainingScope": "Measure memory, traffic and concurrent jobs under real routed load on supported devices."
     },
     {
       "id": "ALG-12",
@@ -2759,10 +2765,11 @@
         "docs/invitations.md",
         "internal/invitation/store_postgres_test.go",
         "internal/invitation/boundaries_postgres_test.go",
-        "internal/enrollment/invited_postgres_test.go"
+        "internal/enrollment/invited_postgres_test.go",
+        "internal/deviceprovisioning/invitations_postgres_test.go"
       ],
-      "implementationScope": "Repeated issue, claim and completion recover the original outcome; wrong-key, expired and revoked requests cannot obtain a session.",
-      "remainingScope": "Exercise interrupted enrollment with the real overlay broker and verify its peer count."
+      "implementationScope": "The real TLS fixture lost responses after claim and completion. Retrying the same body with the same device key and a fresh proof recovered the claim and one normal session. Wrong-key, expired and revoked requests remain denied.",
+      "remainingScope": "Repeat interrupted enrollment on Android and verify an actual NetBird peer is not registered twice."
     },
     {
       "id": "BOOT-12",
@@ -3335,8 +3342,12 @@
     {
       "id": "AC35",
       "specRow": " Разрыв соединения и повтор claim тем же ключом | Одна device registration/сессия, идемпотентный результат, нет повторной регистрации NetBird |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/deviceprovisioning/invitations_postgres_test.go",
+        "docs/invitations.md"
+      ],
+      "remainingScope": "Real TLS response loss, same-key recovery and one PostgreSQL device/session are covered. Physical Android QR recovery and real NetBird peer counts remain open."
     },
     {
       "id": "AC36",
@@ -3570,8 +3581,13 @@
     {
       "id": "AC67",
       "specRow": " 500профилей и ограниченное пространство цепочек | Нет декартового взрыва/потери хвоста; превышенный graph отклонён до публикации, маленький допустимый граф покрыт полностью |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/deviceprovisioning/adaptive_network_postgres_test.go",
+        "internal/configuration/adaptive_compile_test.go",
+        "docs/adaptive-catalogue-snapshot.md"
+      ],
+      "remainingScope": "The publisher signs all 500 adaptive profiles and rejects a 501-profile successor. The Android coordinator reaches the last candidate with synthetic outcomes. Physical throughput and resource acceptance remain open."
     },
     {
       "id": "AC68",
@@ -3872,7 +3888,7 @@
     "date": "2026-11-23",
     "inventory": "docs/implementation-status.md",
     "androidSource": "3030a749badca337d2a541d77480259779de9a8c",
-    "controlPlaneSource": "807159824b4528ecfb7db593d17f7e37dc9e2271",
-    "scope": "Merged Android v154 adds route-proof and shared-endpoint checks verified on API 29, 35 and 37 in Actions 45129640638. Control Plane Actions 45132591838 passed the previous protected evidence snapshot. Physical useful traffic, deployment and carrier cases retain separate acceptance."
+    "controlPlaneSource": "fc93e2a78758f73e977ebc4bbc2231a15361afbb",
+    "scope": "Protected Android v154 and the prior delivery evidence remain pinned. Added protected invitation transport recovery and scoped signed-catalogue and Android frontier evidence. Physical useful traffic, large-load device resource checks and carrier cases retain separate acceptance."
   }
 }

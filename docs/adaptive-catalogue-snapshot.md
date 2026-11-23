@@ -39,3 +39,17 @@ required before acceptance.
 The accepted configuration schema and device capabilities are unchanged. Signed
 graph issuance/preview, shared scheduling/memory, client integration and physical
 alternative-chain acceptance remain open; this module is not a completed M4.
+
+## Capacity at publication and route search
+
+The PostgreSQL fixture signs all 500 adaptive profiles and 32 static profiles
+for the addressed device. It compares the engine bytes before and after
+signing. A successor with 501 adaptive profiles is rejected. The publisher
+retains the exact signed policy and revision and records a bounded retry.
+See the [publisher test](https://github.com/nd4y/syn443-control-plane/actions/runs/45186428910).
+
+The Android coordinator reached the last of 500 candidates on API 29, 35 and
+37 with worst-case synthetic probe outcomes. The test exercises periodic
+policy renewal and the hourly probe limit. Physical traffic and resource
+use at this load still need measurement.
+See the [three Android reports](https://github.com/nd4y/syn443-android/actions/runs/45143061923).

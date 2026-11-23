@@ -86,3 +86,17 @@ missing fields, wrong methods and over-budget bodies are rejected. The signer's
 private approval receipt also bounds the final commit by the administrator's
 access-token/MFA/proof lifetime, including time spent waiting for row locks.
 Online device policy refresh is requested within5minutes, rather than30minutes.
+
+## Recovery after the HTTP response is lost
+
+The PostgreSQL fixture sends real TLS requests to the enrollment API. It closes
+the connection after the claim transaction commits and before the response
+reaches the client. A repeat uses the same device key and request bytes with a
+fresh DPoP proof. It recovers the same pending claim and pairing code.
+
+The fixture uses the normal publisher, then repeats the same network failure
+after session completion. The client receives the original session on retry.
+The database has one approved device and one session. A different completion
+request conflicts and revocation prevents the original request from restoring
+access. Physical Android QR recovery and the NetBird peer count remain open.
+See the [protected PostgreSQL run](https://github.com/nd4y/syn443-control-plane/actions/runs/45187407160).
