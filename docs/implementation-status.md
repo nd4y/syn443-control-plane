@@ -61,6 +61,35 @@ The [service protocol eligibility source](operation-outcome-reconciliation.md#se
 
 ## Current accepted checkpoint
 
+### Android v153, group review and NekoBox migration - 2026-11-23
+
+Android source verification passed eight jobs and 669 cases each on APIs 29,
+35 and 37. On every emulator, a test application request received HTTP 204
+on the primary route, HTTP 503 immediately after its failure and HTTP 204
+after autonomous selection of the permitted reserve. An unassigned target
+stayed unavailable. The nine cold starts with a known configuration took
+1.624-2.011 seconds, and six two-hop recovery samples took 8.938-10.960 seconds.
+[Exact Android source CI](https://github.com/nd4y/syn443-android/actions/runs/45118116822).
+
+An enrolled emulator also lost access to the shared identity, policy and
+telemetry endpoint. The application proved a TCP refusal from its own UID,
+continued traffic after controller and engine replacement under the same
+offline lease, and accepted a fresh signed revision after restoration. The
+named test passed on all three APIs. The separate Control Plane process test
+covers issuance from an already signed policy with the publisher stopped and
+bounded retry advice for pending work.
+[Android outage scenario](https://github.com/nd4y/syn443-android/blob/c8d3f2a97341cc4e82d3cbd546b8015db3e0faac/tools/run_enrolled_vpn.py) ·
+[Control Plane protected CI](https://github.com/nd4y/syn443-control-plane/actions/runs/45124585220).
+
+The console now compares effective NetBird, overlay DNS and home-network proof
+for each group or template recipient before presenting publication confirmation.
+The local NekoBox preview inventories portable exports and prints aggregate
+categories without exposing values.
+[Group review verification](https://github.com/nd4y/syn443-control-plane/pull/172) ·
+[NekoBox preview](nekobox-migration.md) ·
+[Protected migration CI](https://github.com/nd4y/syn443-control-plane/actions/runs/45128516329).
+
+
 ### Home-network policy, operator console and Android v120
 
 An administrator can assign a TLS endpoint to a specific device's adaptive policy and edit or remove it from the console draft on a phone. Three named Go cases verify policy decoding, compilation and the target's separate capability. The two phone-sized browser cases preserve neighboring settings, reject invalid input and clear unfinished edits when changing target. The server policy passed the protected run. The console form passed its pull-request run. [Policy CI](https://github.com/nd4y/syn443-control-plane/actions/runs/44943758656) · [Console CI](https://github.com/nd4y/syn443-control-plane/actions/runs/44944162657)
