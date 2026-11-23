@@ -1,7 +1,13 @@
 import copy
+import io
+import json
+import tempfile
 import unittest
+from contextlib import redirect_stderr
+from pathlib import Path
+from unittest.mock import patch
 
-from product_requirements import compare, markdown
+from product_requirements import compare, main, markdown
 
 
 def item(id_, status):
@@ -18,6 +24,21 @@ class ProductRequirementsTests(unittest.TestCase):
         self.control = copy.deepcopy(self.android)
         self.control["requirements"] = [item(f"T-{i}{j}", c) for i in range(len(statuses))
                                         for j, c in enumerate(statuses)]
+
+    def test_generator_rejects_a_different_android_revision_before_writing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            docs = root / "docs"
+            docs.mkdir()
+            android = root / "android.json"
+            android.write_text(json.dumps(self.android))
+            (docs / "android-register-revision.txt").write_text("a" * 40)
+            control = dict(self.control, evidenceSnapshot={"androidSource": "b" * 40})
+            (docs / "requirements-register.json").write_text(json.dumps(control))
+            with patch("product_requirements.ROOT", root), patch("sys.argv", ["register", str(android), "--write"]):
+                with self.assertRaises(SystemExit), redirect_stderr(io.StringIO()):
+                    main()
+            self.assertFalse((docs / "product-requirements.md").exists())
 
     def test_component_acceptance_counts_keep_each_side_and_section_separate(self):
         self.android["acceptanceCases"] = [{"id": "AC01", "specRow": "row", "status": "planned", "evidence": []}]

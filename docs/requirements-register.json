@@ -3795,10 +3795,10 @@
     "verified": "All clauses and required acceptance proved for the declared scope."
   },
   "evidenceSnapshot": {
-    "date": "2026-11-22",
+    "date": "2026-11-23",
     "inventory": "docs/implementation-status.md",
-    "androidSource": "08618a199b0f8613ecc14a1cad8db482c13039c6",
-    "controlPlaneSource": "eec158a772e404c622797afcec82905895635f73",
-    "scope": "Records publication history, client activation reports and provider capabilities. Android v133 installation, hosted installer tests and authenticated VPN recovery have separate acceptance evidence."
+    "androidSource": "caaeb2824d38b3b297123357b9e201ed49182048",
+    "controlPlaneSource": "e22f03d88656daf1e5a53a11b1ba1b3eeb742293",
+    "scope": "Hosted Android v142 route recovery and install evidence, hourly duration p95, and scoped comparison of two immutable assigned publications. Device acceptance and active server deployment are tracked separately."
   }
 }
