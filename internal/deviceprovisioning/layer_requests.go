@@ -200,8 +200,9 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 	}
 	if envelope.Action == "configuration.devices.list" {
 		var input struct {
-			After  string          `json:"after"`
-			Prefix json.RawMessage `json:"prefix"`
+			After               string          `json:"after"`
+			Prefix              json.RawMessage `json:"prefix"`
+			IncludeReportExpiry json.RawMessage `json:"includeReportExpiry"`
 		}
 		if identity.DecodeConfiguration(envelope.Payload, &input) != nil {
 			return nil, enrollment.ErrDenied
@@ -210,7 +211,10 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 		if input.Prefix != nil && (json.Unmarshal(input.Prefix, &prefix) != nil || !configurationObjectID.MatchString(prefix)) {
 			return nil, enrollment.ErrDenied
 		}
-		return c.deviceInventory(ctx, actor, input.After, prefix, envelope.RequestID, authorityUntil, now)
+		if input.IncludeReportExpiry != nil && string(input.IncludeReportExpiry) != "true" {
+			return nil, enrollment.ErrDenied
+		}
+		return c.deviceInventory(ctx, actor, input.After, prefix, envelope.RequestID, input.IncludeReportExpiry != nil, authorityUntil, now)
 	}
 	if envelope.Action == "configuration.history.get" {
 		var input struct {
