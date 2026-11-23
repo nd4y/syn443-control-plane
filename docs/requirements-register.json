@@ -923,8 +923,15 @@
     {
       "id": "OVL-04",
       "text": "Нет предположения, что API интеграция означает наличие туннеля: для будущего провайдера отдельно потребуются server adapter и совместимый embedded Android engine/adapter. Нужны capability negotiation, проверка лицензии, ресурсов, сетевого стека и взаимодействия с единым VpnService до включения реализации.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/managed-overlay.md#admitting-an-additional-overlay-provider",
+        "internal/catalog/resource_postgres_test.go",
+        "internal/overlay/identity_test.go",
+        "internal/resources/resource_test.go"
+      ],
+      "implementationScope": "Server resource and credential admission reject the reserved overlay providers. The pinned Android build rejects their managed identities and cannot report NetBird health on their behalf. The admission checklist makes a separate server adapter, packaged licensed engine and device capability explicit.",
+      "remainingScope": "Engine-specific resource measurements, network-stack compatibility and single-VpnService acceptance apply when a future provider is implemented. No additional provider is activated."
     },
     {
       "id": "OVL-05",
@@ -1485,8 +1492,14 @@
     {
       "id": "ROUTE-06",
       "text": "Для назначений задаётся traffic class: RU, NON_RU, INTERNAL либо явно описанный иной класс. Если российский трафик туннелируется, требуется разрешённый выход в РФ; зарубежный - разрешённый зарубежный выход. В белых списках российская входная нода может быть первым переходом к обоим классам, но не подменяет зарубежный конечный выход. Direct разрешается отдельным правилом. Источник/свежесть данных о выходе и прикладные проверки показываются отдельно; доступность российского/зарубежного сайта не доказывает страну выхода.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/configuration/exit_country_test.go",
+        "internal/deviceprovisioning/exit_country_postgres_test.go",
+        "internal/policy/exit_country_test.go"
+      ],
+      "implementationScope": "A public exit-country check carries the expected RU or NON_RU class and requires device-negotiated, key-bound settings. Ambiguous evidence is rejected. The compiler prevents a public country check from proving an INTERNAL-only route.",
+      "remainingScope": "Correct destinations and usable alternate chains across all assigned traffic classes, other configured classes and real restricted networks require their own acceptance."
     },
     {
       "id": "CHECK-01",
@@ -2909,8 +2922,15 @@
     {
       "id": "SEC-08",
       "text": "Общая egress policy охватывает subscription fetch, ResourceAdapter/test connection, server jobs и клиентские probes. Проверяются schemes/methods/ports, hostname и фактический IPv4/IPv6 адрес после DNS и каждого redirect, без DNS rebinding и cross-origin credentials forwarding. Loopback, локальные control APIs и cloud metadata запрещены; private/internal targets доступны только конкретному явно назначенному ресурсу/домашнему endpoint и контексту сети, не глобальному allowPrivate. Есть device/user/target/fleet quotas; массовое сканирование сети не разрешается профилем проверки.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/egress/transport.go",
+        "internal/egress/transport_test.go",
+        "internal/subscriptions/fetch_test.go",
+        "internal/catalog/resource_postgres_test.go"
+      ],
+      "implementationScope": "The server transport checks each resolved address on each new connection and enforces TLS, origin and explicit address boundaries. Subscription redirects are revalidated and cross-origin credentials/cache are excluded. The worker exercises HTTPS revalidation and credential failure.",
+      "remainingScope": "Equivalent client-probe and job coverage across every integration, plus end-to-end device, user, target and fleet quotas, remains outstanding."
     },
     {
       "id": "SEC-09",
@@ -3544,8 +3564,14 @@
     {
       "id": "AC72",
       "specRow": " Metadata/loopback SSRF через Resource API-test/probe/redirect/DNS rebinding | Общий egress policy блокирует обход; разрешённый частный home target работает только в своём scope |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/egress/transport_test.go",
+        "internal/subscriptions/fetch_test.go",
+        "internal/catalog/resource_postgres_test.go"
+      ],
+      "implementationScope": "Protected server tests exercise address, DNS-answer and redirect validation as well as a real worker HTTPS failure. The recorded scope is the server transport.",
+      "remainingScope": "Revalidate device-side probes and the real assigned private home target in its permitted context. The complete multi-component acceptance case remains open."
     },
     {
       "id": "AC73",
@@ -3804,7 +3830,7 @@
     "date": "2026-11-23",
     "inventory": "docs/implementation-status.md",
     "androidSource": "caaeb2824d38b3b297123357b9e201ed49182048",
-    "controlPlaneSource": "e22f03d88656daf1e5a53a11b1ba1b3eeb742293",
-    "scope": "Hosted Android v142 route recovery and install evidence, hourly duration p95, and scoped comparison of two immutable assigned publications. Device acceptance and active server deployment are tracked separately."
+    "controlPlaneSource": "117877f3dcae664e3f3fa1506eb5de157d02e735",
+    "scope": "Hosted Android v142 route recovery, install and reserved-provider denial; protected Control Plane report expiry, public exit-class binding, server egress checks and resource admission. Live pilot and handset acceptance are separate."
   }
 }

@@ -50,3 +50,24 @@ must be idempotent. A config/transport change does not itself create another SDK
 identity. Generation/lease fences prevent late responses from reviving a logged-out
 identity. A corrupt/unknown local record blocks activation instead of reusing an
 operator SDK key or silently enrolling another peer.
+
+## Admitting an additional overlay provider
+
+A resource adapter establishes management access. The device separately needs an
+embedded engine that can carry traffic inside the application's single Android
+VpnService. Registering a management endpoint or naming a provider in a policy
+does not establish either capability. Tailscale and ZeroTier reserve names only.
+
+| Review before enabling a provider | Required evidence |
+| --- | --- |
+| Management and enrollment | A scoped server adapter can issue and revoke a credential for the intended device and provider network. An unavailable adapter remains ineligible. |
+| Embedded Android module | Pin its source and license in the engine lock, retain redistribution notices and verify the packaged ABIs in the release APK. |
+| Device eligibility | The installed device advertises the exact provider capability. The signed addressed policy and credential match its service, account, device, resource and identity epoch. |
+| Android networking | The module shares the existing TUN and socket protection. Exercise its DNS, IPv4/IPv6 capabilities, cancellation, owner death and reconnection with application traffic. |
+| Resource and release acceptance | Measure memory, wakeups, network use and recovery on supported devices. An older or incompatible device keeps its working assignment. |
+
+The current catalog tests reject activation and credentials for placeholder
+providers. Android's provider-status test returns their unavailable state without
+reading a running NetBird connection. Protected results are available from the
+[Control Plane suite](https://github.com/nd4y/syn443-control-plane/actions/runs/45096827956)
+and the [Android suite](https://github.com/nd4y/syn443-android/actions/runs/45070035378).
