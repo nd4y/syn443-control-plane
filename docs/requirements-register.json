@@ -2648,8 +2648,13 @@
     {
       "id": "BOOT-01",
       "text": "Рабочий VPN продолжает работать при недоступных панели, телеметрии и Keycloak в пределах действующего конфига и offline policy. Телеметрия не стоит в критическом пути пользовательского соединения.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md",
+        "internal/enrollment/process_postgres_test.go"
+      ],
+      "implementationScope": "On three enrolled emulators, the app retained useful VPN traffic through loss of management and telemetry connectivity, plus abrupt controller death, then accepted a new signed revision on recovery. The API separately delivers an already issued policy through a stopped publisher.",
+      "remainingScope": "Repeat with an authorized current physical device and verify all real management paths within the offline lease."
     },
     {
       "id": "BOOT-02",
@@ -3501,9 +3506,10 @@
       "status": "partial",
       "evidence": [
         "internal/enrollment/process_postgres_test.go",
-        "tools/test_enrollment.sh"
+        "tools/test_enrollment.sh",
+        "docs/implementation-status.md"
       ],
-      "implementationScope": "With the frontend absent, real HTTP and TLS API processes deliver the previously signed device policy after the publisher stops and after the API restarts. Unpublished work returns HTTP 202 with bounded retry advice. The original signed expiry still applies.",
+      "implementationScope": "With the frontend absent, real HTTP and TLS API processes deliver the previously signed device policy after the publisher stops and after the API restarts. Unpublished work returns HTTP 202 with bounded retry advice. The original signed expiry still applies. Exact Android source CI also removed the shared management, identity and telemetry endpoint. Real TUN application traffic survived controller and engine replacement under the cached lease, then accepted a new signed revision after reconnection.",
       "remainingScope": "Live frontend interruption, additional asynchronous queues and autonomous physical-device operation during the combined outage remain open."
     },
     {
@@ -3844,8 +3850,8 @@
   "evidenceSnapshot": {
     "date": "2026-11-23",
     "inventory": "docs/implementation-status.md",
-    "androidSource": "caaeb2824d38b3b297123357b9e201ed49182048",
-    "controlPlaneSource": "117877f3dcae664e3f3fa1506eb5de157d02e735",
-    "scope": "Hosted Android v142 route recovery, install and reserved-provider denial; protected Control Plane report expiry, public exit-class binding, server egress checks and resource admission. Live pilot and handset acceptance are separate."
+    "androidSource": "c8d3f2a97341cc4e82d3cbd546b8015db3e0faac",
+    "controlPlaneSource": "76b24a2482ec3a1962851215b5bb9eb8d9d4914c",
+    "scope": "Merged Android v153 source and the protected Control Plane migration preview report. Android source CI 45118116822 verified API 29, 35 and 37. Control Plane Actions 45124585220 and 45128516329 verified group review and the local NekoBox preview. Physical acceptance and deployment are tracked separately."
   }
 }
