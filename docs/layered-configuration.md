@@ -520,3 +520,11 @@ uses the same ordered layer merge and digest as the publisher without contacting
 a VPN provider. If the comparison fails, the operator can retry the job status
 while the original preview remains valid. Upstream resource grants are checked
 independently when the publisher prepares and commits the configuration.
+
+The group review can also show DNS servers configured with a literal private or
+local address and active routes whose entire prefix fits within a private or
+local address range. It includes RFC1918, ULA, loopback, link-local and shared
+carrier ranges. A default route, a broad overlapping prefix or a block rule
+does not count. Domain names require their own validation. The response
+contains two Boolean fields for this optional review. Addresses and route
+prefixes stay out of the response.

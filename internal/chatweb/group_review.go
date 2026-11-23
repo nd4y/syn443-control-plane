@@ -10,14 +10,15 @@ import (
 
 func reviewGroupNetworkImpact(ctx context.Context, w http.ResponseWriter, raw []byte) {
 	var input struct {
-		Bundles       []configuration.LayerBundle `json:"bundles"`
-		EffectiveHash string                      `json:"effectiveHash"`
+		Bundles                []configuration.LayerBundle `json:"bundles"`
+		EffectiveHash          string                      `json:"effectiveHash"`
+		IncludeLiteralNetworks bool                        `json:"includeLiteralNetworks"`
 	}
 	if identity.DecodeConfiguration(raw, &input) != nil {
 		fail(w, http.StatusBadRequest)
 		return
 	}
-	impacts, err := configuration.ReviewGroupNetworkImpact(ctx, input.Bundles, input.EffectiveHash)
+	impacts, err := configuration.ReviewGroupNetworkImpact(ctx, input.Bundles, input.EffectiveHash, input.IncludeLiteralNetworks)
 	if err != nil {
 		fail(w, http.StatusBadRequest)
 		return
