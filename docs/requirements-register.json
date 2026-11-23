@@ -2023,8 +2023,15 @@
     {
       "id": "OWN-01",
       "text": "Эталонные шаблоны отдельно описывают личное устройство администратора и обычного приглашённого пользователя. Личный INTERNAL/home/NetBird ресурс, private DNS или интеграционный credential не наследуется друзьями/коллегами через случайное клонирование admin-конфига. Перед переносом в группу preview показывает recipients и приватные зависимости; least privilege сохраняется на upstream.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/examples/first-device-reference-plans.json",
+        "internal/configuration/reference_plans_test.go",
+        "web-tests/control-layer.spec.js",
+        "internal/chatweb/assets/control/app.js"
+      ],
+      "implementationScope": "The blank single-device editor creates separate invited and personal plans. An invited plan uses only its chosen internet profile and resolver. A personal plan adds expressly assigned NetBird, private DNS and routing references. Local inputs and recipient bindings are per draft.",
+      "remainingScope": "Group transfer with effective private dependencies and upstream least-privilege acceptance remain open."
     },
     {
       "id": "OWN-02",

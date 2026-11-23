@@ -98,6 +98,78 @@ function validProbeHTTPS(target){
   return url.port!=='0'&&!url.hostname.endsWith('.');
  }catch{return false;}
 }
+const referenceFields=['source','profile','health','dns'];
+const personalFields=['management','overlay','resource','network','epoch','suffix','prefix'];
+let referenceTarget=null,referenceRecipient=null;
+function resetReferenceFields(fields){
+ for(const field of fields)$('reference-'+field).value='';
+}
+function currentReferenceTarget(){
+ if(!authenticated||opened||referenceRecipient||revision!==0||$('plan').value.trim()||$('target-kind').value!=='device'||
+    !deviceID.test($('target-id').value)||$('base-revision').value!=='0'||$('base-hash').value)return null;
+ return profileSubject();
+}
+function updateReferenceForm(){
+ const target=currentReferenceTarget();
+ if(target!==referenceTarget){
+  resetReferenceFields([...referenceFields,...personalFields]);
+  $('reference-kind').value='invited';$('reference-inputs').open=false;referenceTarget=target;
+ }
+ $('reference-inputs').hidden=target===null;
+ $('reference-controls').disabled=target===null||busy||!!pending;
+ const personal=$('reference-kind').value==='personal';
+ $('reference-personal').hidden=!personal;$('reference-personal').disabled=!personal;
+}
+function referenceDomain(value){
+ const labels=value.split('.');
+ return value.length<=253&&labels.length>=2&&labels.every(label=>/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))&&/[a-z]/.test(labels.at(-1));
+}
+function referencePrefix(value){
+ const parts=value.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/);
+ if(!parts||parts.slice(1).some(part=>String(Number(part))!==part))return false;
+ const octets=parts.slice(1,5).map(Number),bits=Number(parts[5]);
+ return octets.every(o=>o<=255)&&bits>=1&&bits<=32&&octets.reduce((address,octet)=>address*256+octet,0)%2**(32-bits)===0;
+}
+function buildReferencePlan(){
+ const field=(key,validate,message)=>{
+  const el=$('reference-'+key),value=el.value.trim();
+  if(!validate(value)){el.focus();throw Error(message);}
+  return value;
+ };
+ const sourceId=field('source',v=>/^[A-Za-z0-9_-]{1,48}$/.test(v),'Введите ID источника подписки.');
+ const profileId=field('profile',v=>/^[A-Za-z0-9_-]{1,128}$/.test(v),'Введите ID профиля из выбранного источника.');
+ const target=field('health',v=>validProbeHTTPS(v)&&!v.includes('?'),'Введите HTTPS-адрес проверки без параметров.');
+ const resolver=field('dns',referenceDomain,'Введите имя TLS-сервера DNS.');
+ const graph={profiles:{internet:{sourceId,profileId}},chains:{},balancers:{},final:'internet'};
+ const network={schemaVersion:1,requiredNetworks:['tcp'],dnsServers:{resolver:{transport:'tls',address:resolver,port:853,serverName:resolver,outbound:'internet'}},dnsFinal:'resolver',dnsStrategy:'prefer_ipv4'};
+ if($('reference-kind').value==='personal'){
+  const managementUrl=field('management',v=>validProbeHTTPS(v)&&new URL(v).origin===v,'Введите HTTPS-адрес сервера NetBird без пути и параметров.');
+  const overlayId=field('overlay',v=>deviceID.test(v),'Введите ID оверлея.');
+  const resourceId=field('resource',v=>deviceID.test(v),'Введите ID ресурса NetBird.');
+  const networkId=field('network',v=>deviceID.test(v),'Введите ID сети NetBird.');
+  const epoch=field('epoch',v=>/^[1-9]\d{0,15}$/.test(v)&&Number.isSafeInteger(Number(v)),'Введите положительную версию идентичности.');
+  const suffix=field('suffix',referenceDomain,'Введите внутренний DNS-суффикс без точки в начале и конце.');
+  const prefix=field('prefix',referencePrefix,'Введите адрес сети IPv4 с длиной префикса от 1 до 32.');
+  graph.netbird={tag:'home',overlayId,resourceId,networkId,identityEpoch:Number(epoch),managementUrl,mode:'direct'};
+  network.dnsServers.home={transport:'netbird',outbound:'home'};
+  network.dnsRules=[{id:'private-names',match:{domainSuffixes:[suffix]},server:'home'}];
+  network.rules=[{id:'private-network',ipPrefixes:[prefix],matchAll:false,action:'route',outbound:'home'}];
+ }
+ return {schemaVersion:1,graph,network,activation:{timeoutSeconds:60,allowDegraded:false,checks:[{id:'internet',type:'https_204',target,required:true}]}};
+}
+$('reference-kind').onchange=()=>{resetReferenceFields(personalFields);updateReferenceForm();};
+$('reference-apply').onclick=()=>{
+ if(busy||pending||!referenceTarget||currentReferenceTarget()!==referenceTarget)return;
+ try{
+  const plan=buildReferencePlan();
+  referenceRecipient=$('target-id').value;
+  if(!$('draft-id').value.trim())$('draft-id').value=crypto.randomUUID();
+  $('plan').value=JSON.stringify(plan,null,2);
+  $('plan').dispatchEvent(new Event('input',{bubbles:true}));controls();$('plan').focus();
+  status('План подготовлен для выбранного устройства. Проверьте настройки и сохраните черновик.');
+ }catch(error){status(error.message,'error');}
+};
+
 function routeDraft(){
  const value=JSON.parse($('plan').value),graph=value.graph,network=value.network;
  if(!graph||!network||Array.isArray(graph)||Array.isArray(network)||typeof graph!=='object'||typeof network!=='object')throw Error('invalid');
@@ -248,6 +320,7 @@ function selectProbeEntry(subject,path,tags){
  $('route-check-required').checked=entry?.required===true;
 }
 function drawRouteChecks(){
+ updateReferenceForm();
  const draft=authenticated?$('plan').value:null;
  const subject=profileSubject(), changed=homeDocument!==draft||homeSubject!==subject;
  homeDocument=draft;homeSubject=subject;
@@ -532,6 +605,7 @@ function controls(){
  for(const button of $('source-shares-list').querySelectorAll('button'))button.disabled=sharesBlocked;
  $('more-sources').disabled=busy||!authenticated||!next||!!pending;
  for(const id of ['inventory-device',...formFields])$(id).disabled=busy||!authenticated||!!pending;
+ if(referenceRecipient){$('target-kind').disabled=true;$('target-id').disabled=true;}
  $('owner').disabled=!authenticated||!!pending||busy&&!sourceDetailLoading;
  $('pending').hidden=!pending;for(const id of ['retry-save','discard-save'])$(id).disabled=busy||!authenticated;
  if(pending&&['layer-preview','layer-publish','layer-discard'].includes(pendingKind))$('discard-save').disabled=true;
@@ -567,7 +641,7 @@ function erase(){
  window.dispatchEvent(new Event('syn443-console-session-ended'));
  reauthenticationAvailable=false;reauthenticationNeeded=false;reauthenticationIssuer='';reauthenticationFocus=false;
  clearCohortPreview();$('cohort-device').value='';
- resetReplay();clearDevices(true);clearInventory();clearLayers();clearTelemetry();pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
+ resetReplay();clearDevices(true);clearInventory();clearLayers();clearTelemetry();referenceRecipient=null;pending=null;revision=0;opened=null;next='';listedOwner='';clearSource();
  for(const id of ['owner','inventory-device','draft-id','target-id','base-hash','plan','route-check-target','route-check-ip','route-check-country-class'])$(id).value='';
  $('target-kind').value='device';$('base-revision').value='0';$('draft-version').textContent='Новый черновик';
  clearSourceSnapshot();
@@ -1297,7 +1371,7 @@ function openLinkedDevice(){
 }
 function showDraft(draft){
  if(!Number.isSafeInteger(draft.revision)||draft.revision<1)throw Error('invalid');
- opened={id:draft.id,kind:draft.targetKind,target:draft.targetId};revision=draft.revision;
+ referenceRecipient=null;opened={id:draft.id,kind:draft.targetKind,target:draft.targetId};revision=draft.revision;
  selectProbeEntry(null,'',null);
  $('draft-id').value=draft.id;$('target-kind').value=draft.targetKind;$('target-id').value=draft.targetId;
  $('base-revision').value=String(draft.baseRevision);$('base-hash').value=draft.baseHash;$('plan').value=JSON.stringify(draft.plan,null,2);$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';
@@ -1381,6 +1455,7 @@ async function sources(more=false){
 }
 async function openDraft(){const id=$('draft-id').value.trim();if(!id)throw Error('invalid');showDraft(await action('configuration.draft.get',{id}));status('Личный черновик загружен. VPN не изменён.');}
 async function save(){
+ if(referenceRecipient&&($('target-kind').value!=='device'||$('target-id').value!==referenceRecipient))throw Error('invalid');
  if(pending)throw Error('invalid');
  const id=$('draft-id').value.trim(),kind=$('target-kind').value,target=$('target-id').value.trim(),base=Number($('base-revision').value);
  if(!id||!target||!Number.isSafeInteger(base)||base<0||opened&&(opened.id!==id||opened.kind!==kind||opened.target!==target))throw Error('invalid');
@@ -1743,10 +1818,10 @@ addEventListener('hashchange',()=>{
  setNavExpanded(false);
  if(authenticated&&!pending&&linkedDevice())void work(openLinkedDevice);
 });$('open-draft').onclick=()=>work(openDraft);
-$('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
+$('new-draft').onclick=()=>work(async()=>{referenceRecipient=null;revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
 $('plan').oninput=()=>{selectProbeEntry(null,'',null);drawRouteChecks();layerControls();};
-for(const id of ['draft-id','target-id','target-kind'])$(id).addEventListener('input',()=>{drawRouteChecks();layerControls();});
+for(const id of ['draft-id','target-id','target-kind','base-revision','base-hash'])$(id).addEventListener('input',()=>{drawRouteChecks();layerControls();});
 const connectionFields=['domain','address','application','network','port','dnsType'];
 function resetExplanation(clearInputs){
  explanationEpoch++;
@@ -2082,7 +2157,7 @@ function clearDraftInventory(){layerDraftInventory=null;$('layer-saved').replace
 function clearLayers(){$('layer-discard-confirm').checked=false;layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearDraftInventory();clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
 function layerUnchanged(){return !!layerSaved&&$('layer-id').value.trim()===layerSaved.id&&$('layer-proposal').value===layerSaved.text;}
 function planMatchesFirstDevice(device){
- return device?.state==='unassigned' && $('target-kind').value==='device' &&
+ return device?.state==='unassigned' && (!referenceRecipient||referenceRecipient===device.device) && $('target-kind').value==='device' &&
   $('target-id').value.trim()===device.device && (!opened || opened.kind==='device' && opened.target===device.device);
 }
 function layerControls(){

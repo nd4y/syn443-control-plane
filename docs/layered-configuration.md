@@ -503,3 +503,7 @@ not implemented. Pure merge and browser conflict scenarios are added to Actions.
 ### First configuration for a device
 
 Open the plan editor from the selected device to prepare its first configuration. A blank device plan receives that recipient automatically. Staging requires a matching device recipient both in the editor and on any previously opened saved draft. Select a new draft to prepare an independent configuration for another device. Staging stays local until the operator saves the proposal and requests the server preview.
+
+In a blank device draft, enter the recipient, then open **Начальный план для устройства**. Choose the invited-user plan for internet access through an assigned subscription profile. Specify a DNS-over-TLS server reachable through that profile and an HTTPS endpoint that returns 204. The personal-device plan also requires identifiers for an assigned NetBird resource, its management origin and identity epoch, an internal DNS suffix and a private IPv4 prefix. It uses the direct NetBird underlay for that network. The editor accepts no setup key or provider credential in either template.
+
+Preparing a plan fills the editable document and binds it to that device. Starting a new draft clears its inputs. Saving, checking its recipients and publishing remain explicit actions. The [two example documents](examples/first-device-reference-plans.json) use synthetic identifiers and DNS names. The browser suite compares both generated plans to those documents, which the configuration compiler also exercises.
