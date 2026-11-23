@@ -3896,8 +3896,8 @@
   "evidenceSnapshot": {
     "date": "2026-11-23",
     "inventory": "docs/implementation-status.md",
-    "androidSource": "3030a749badca337d2a541d77480259779de9a8c",
-    "controlPlaneSource": "fc93e2a78758f73e977ebc4bbc2231a15361afbb",
-    "scope": "Protected Android v154 and the prior delivery evidence remain pinned. Added protected invitation transport recovery and scoped signed-catalogue and Android frontier evidence. Physical useful traffic, large-load device resource checks and carrier cases retain separate acceptance."
+    "androidSource": "2d53273deacb931c3a44080a75e7c690fbff7232",
+    "controlPlaneSource": "24748cca60fa4a3a691e4c782fbdb7df7b28d035",
+    "scope": "Reviewed Android v157 has an exact successful eight-job source report, one matching merged tree and 676 emulator cases on each of API 29, 35 and 37. Android v156 has a completed protected CI and actual historical APK migration. Protected v157 acceptance and physical traffic remain separate."
   }
 }
