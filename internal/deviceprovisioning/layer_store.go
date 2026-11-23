@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	_ "embed"
 	"encoding/hex"
-	"encoding/json"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/configuration"
@@ -21,12 +20,7 @@ var ConfigurationSchema string
 //go:embed layer_roles.sql
 var ConfigurationRoles string
 
-type LayerBundle struct {
-	Device       string                `json:"device"`
-	BaseRevision int64                 `json:"baseRevision"`
-	BaseHash     string                `json:"baseHash"`
-	Layers       []configuration.Layer `json:"layers"`
-}
+type LayerBundle = configuration.LayerBundle
 
 // LayerProposal is portable, credential-free input. No field supplies the
 // actual owner, device key, account grant or advertised capabilities.
@@ -42,8 +36,6 @@ type LayerProposal struct {
 
 func (LayerProposal) String() string   { return "ConfigurationProposal([redacted])" }
 func (LayerProposal) GoString() string { return "ConfigurationProposal([redacted])" }
-func (LayerBundle) String() string     { return "ConfigurationLayerBundle([redacted])" }
-func (LayerBundle) GoString() string   { return "ConfigurationLayerBundle([redacted])" }
 
 func configurationHash(raw []byte) string {
 	sum := sha256.Sum256(raw)
@@ -53,28 +45,14 @@ func configurationHash(raw []byte) string {
 // effectiveProposalHash validates every recipient's complete inherited layers.
 // The preview hashes portable effective values, not native profile credentials.
 func effectiveProposalHash(ctx context.Context, proposal LayerProposal) (string, error) {
-	if ctx == nil || len(proposal.Bundles) < 1 || len(proposal.Bundles) > 64 || !networkMode(proposal.Mode) {
+	if !networkMode(proposal.Mode) {
 		return "", enrollment.ErrDenied
 	}
-	type value struct{ Device, Hash string }
-	values := make([]value, 0, len(proposal.Bundles))
-	seen := map[string]bool{}
-	for _, bundle := range proposal.Bundles {
-		if bundle.Device == "" || seen[bundle.Device] {
-			return "", enrollment.ErrDenied
-		}
-		seen[bundle.Device] = true
-		effective, _, e := configuration.MergeNetworkPlan(ctx, bundle.Layers)
-		if e != nil {
-			return "", e
-		}
-		values = append(values, value{bundle.Device, configurationHash(effective.Document)})
-	}
-	raw, e := json.Marshal(values)
-	if e != nil {
+	digest, err := configuration.EffectiveNetworkPlanHash(ctx, proposal.Bundles)
+	if err != nil {
 		return "", enrollment.ErrDenied
 	}
-	return configurationHash(raw), nil
+	return digest, nil
 }
 
 // SQLNetworkLayers is a read/fence authority for already approved immutable

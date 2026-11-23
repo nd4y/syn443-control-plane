@@ -728,7 +728,7 @@ $('telemetry-form').onsubmit=event=>{
   }
  });
 };
-async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({timeout:'Сервер не ответил вовремя. Повторите действие.',anonymous:'Войдите с административной учётной записью.',login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',reauth:'Для операции нужно подтвердить вход. Правки и подготовленный запрос остаются в этой вкладке.',popup:'Разрешите новую вкладку для Keycloak и повторите подтверждение входа.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',controlShare:'Для одного идентификатора раскатки задайте одинаковую долю контрольной группы.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.',error.message==='anonymous'?'info':'danger');}finally{busy=false;controls();if(reauthenticationFocus&&authenticated){reauthenticationFocus=false;$('reauthentication-title').focus();}}}
+async function work(fn){if(busy)return;busy=true;controls();try{await fn();}catch(error){status(({groupImpact:'Не удалось сверить итоговые настройки устройств. Повторите проверку задания перед публикацией.',timeout:'Сервер не ответил вовремя. Повторите действие.',anonymous:'Войдите с административной учётной записью.',login:'Сессия завершена. Войдите снова.',denied:'Доступ отозван или недостаточно прав.',reauth:'Для операции нужно подтвердить вход. Правки и подготовленный запрос остаются в этой вкладке.',popup:'Разрешите новую вкладку для Keycloak и повторите подтверждение входа.',conflict:'Версия изменилась. Откройте текущий черновик перед новой правкой.',controlShare:'Для одного идентификатора раскатки задайте одинаковую долю контрольной группы.',invalid:'Проверьте поля и структуру данных.',size:'Данные превышают допустимый размер.',importSize:'Файл подписки или запрос превышает допустимый размер.'})[error.message]||'Сервер недоступен. Правка остаётся только в памяти этой вкладки.',error.message==='anonymous'?'info':'danger');}finally{busy=false;controls();if(reauthenticationFocus&&authenticated){reauthenticationFocus=false;$('reauthentication-title').focus();}}}
 
 function sessionCapabilities(value){
  if(!value||value.authenticated!==true)throw Error('invalid');
@@ -2317,7 +2317,22 @@ function reviewLayerSections(layer){
  }
  return Array.from(labels);
 }
-function showLayerImpact(result,proposal){
+async function groupNetworkImpact(preview,proposal){
+ if(!['group','template'].includes(preview.targetKind))return null;
+ const result=await request('/control/group-network-impact',{bundles:proposal.bundles,effectiveHash:preview.effectiveHash});
+ if(!result||result.effectiveHash!==preview.effectiveHash||!Array.isArray(result.recipients)||
+    result.recipients.length!==preview.recipients.length)throw Error('groupImpact');
+ const impacts=new Map();
+ for(const entry of result.recipients){
+  if(!entry||Object.keys(entry).sort().join(',')!=='device,homeProof,netbird,overlayDns'||
+     !['homeProof','netbird','overlayDns'].every(key=>typeof entry[key]==='boolean')||
+     impacts.has(entry.device))throw Error('groupImpact');
+  impacts.set(entry.device,entry);
+ }
+ if(preview.recipients.some(recipient=>!impacts.has(recipient.device)))throw Error('groupImpact');
+ return impacts;
+}
+function showLayerImpact(result,proposal,impacts){
  const p=result.preview,container=$('layer-impact');
  container.replaceChildren();
  function element(parent,tag,text){const child=document.createElement(tag);child.textContent=text;parent.append(child);return child;}
@@ -2327,6 +2342,15 @@ function showLayerImpact(result,proposal){
  const byDevice=new Map(proposal.bundles.map(bundle=>[bundle.device,bundle]));
  for(const recipient of p.recipients){
   const item=textItem(list,recipient.device+' · владелец '+recipient.owner+' · '+(recipient.baseRevision?'исходная версия '+recipient.baseRevision:'первая конфигурация'));
+  if(impacts){
+   const impact=impacts.get(recipient.device);
+   const names=[];
+   if(impact.netbird)names.push('NetBird');
+   if(impact.overlayDns)names.push('DNS через NetBird');
+   if(impact.homeProof)names.push('проверка домашней сети');
+   element(item,'p',names.length?'В итоговой конфигурации: '+names.join(', '):
+     'NetBird, DNS через NetBird и проверка домашней сети не заданы.');
+  }
   const layers=byDevice.get(recipient.device).layers.map(layer=>({layer,labels:reviewLayerSections(layer)}));
   const labels=new Set(layers.flatMap(item=>item.labels));
   if(labels.size)element(item,'p','Разделы предложения · '+[...labels].join(', '));
@@ -2357,12 +2381,27 @@ async function pollLayerJob(){
  if(view.id!==job.id||!['queued','running','ready','published','rejected','expired','cancelled'].includes(view.state))throw Error('invalid');
  $('layer-job').textContent=JSON.stringify({id:view.id,state:view.state,error:view.error||''},null,2);
  if(['queued','running'].includes(view.state)){status('Задание ещё выполняется.');return;}
- layerJob=null;clearLayerReview();
+ clearLayerReview();
  if(view.state==='ready'&&job.kind==='layer-preview'){
-  if(!layerUnchanged())throw Error('invalid');layerPreview=checkedLayerPreview(view.result);
-  showLayerImpact(layerPreview,layerSaved.proposal);
+  if(!layerUnchanged()){layerJob=null;throw Error('invalid');}
+  const saved=layerSaved;
+  let result;
+  try{result=checkedLayerPreview(view.result);}catch(error){layerJob=null;throw error;}
+  let impacts;
+  try{impacts=await groupNetworkImpact(result.preview,saved.proposal);}
+  catch(error){
+   if(!authenticated||['login','denied'].includes(error.message))throw error;
+   throw Error('groupImpact');
+  }
+  if(layerJob!==job||layerSaved!==saved||!layerUnchanged()||result.preview.expiresAtMs<=Date.now()){
+   if(layerJob===job)layerJob=null;
+   throw Error('invalid');
+  }
+  layerJob=null;layerPreview=result;
+  showLayerImpact(result,saved.proposal,impacts);
   $('layer-review').hidden=false;status('Проверка сервера завершена. Просмотрите предложение и адресатов, затем подтвердите публикацию.');return;
  }
+ layerJob=null;
  if(view.state==='published'&&job.kind==='layer-publish'){
   layerInventory=null;layerSaved=null;$('layer-result').textContent='Желаемая конфигурация опубликована. Активация Android ещё не подтверждена. Перед следующей правкой загрузите актуальную конфигурацию устройства.';status('Желаемые версии опубликованы атомарно. Подтверждение активации устройства проверяется отдельно.');return;
  }

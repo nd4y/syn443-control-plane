@@ -507,3 +507,16 @@ Open the plan editor from the selected device to prepare its first configuration
 In a blank device draft, enter the recipient, then open **Начальный план для устройства**. Choose the invited-user plan for internet access through an assigned subscription profile. Specify a DNS-over-TLS server reachable through that profile and an HTTPS endpoint that returns 204. The personal-device plan also requires identifiers for an assigned NetBird resource, its management origin and identity epoch, an internal DNS suffix and a private IPv4 prefix. It uses the direct NetBird underlay for that network. The editor accepts no setup key or provider credential in either template.
 
 Preparing a plan fills the editable document and binds it to that device. Starting a new draft clears its inputs. Saving, checking its recipients and publishing remain explicit actions. The [two example documents](examples/first-device-reference-plans.json) use synthetic identifiers and DNS names. The browser suite compares both generated plans to those documents, which the configuration compiler also exercises.
+
+## Effective group network dependencies
+
+Before an operator can confirm a group or template publication in the web console,
+the console checks the effective network settings of every device against the
+effective hash from its current server preview. The panel lists a configured
+NetBird connection, NetBird DNS and authenticated home network proof separately
+for each recipient. A device override can remove an inherited dependency.
+The review returns only device identifiers and three Boolean fields. The server
+uses the same ordered layer merge and digest as the publisher without contacting
+a VPN provider. If the comparison fails, the operator can retry the job status
+while the original preview remains valid. Upstream resource grants are checked
+independently when the publisher prepares and commits the configuration.
