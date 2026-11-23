@@ -91,3 +91,19 @@ The publisher requires independent enrollment capability `network.mode-selection
 and emits the closed `network_mode` object in a key-bound adaptive policy. A
 device without this capability retains its previous policy. Android enforcement
 and pilot acceptance are tracked separately in the device register.
+
+## Probe pacing and recovery reserve
+
+Routine work reserves starts for recovery. The current budget allows at most
+six routine starts per rolling minute and 96 per rolling hour. Including
+recovery, the maximum is eight per minute and 128 per hour. Maintenance
+starts at a one-minute interval for one group and increases as groups share
+the budget. Duplicate or stale passive hints cannot start another probe or
+mark a path ready.
+
+The protected Android matrix exercises 16 groups over two hours of simulated
+time. Regular checks keep running and the reserved budget remains available
+for recovery. All three API reports also cover the rejection of stale hints.
+Device battery and radio wakeups, natural idle, and policy-configurable
+pacing controls still need separate verification.
+See the [Android reports](https://github.com/nd4y/syn443-android/actions/runs/45143061923).
