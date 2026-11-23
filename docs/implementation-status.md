@@ -8,9 +8,20 @@ Assigning a profile requires a device with the approved capability. CHK-04 and
 AC58 still require broader expression support and checks on an enrolled handset.
 [Android capability negotiation](https://github.com/nd4y/syn443-android/pull/135)
 
-Snapshot updated on 2026-11-23. Specification 0.9 contains 292 requirements and 98 acceptance
+Snapshot updated on 2026-11-24. Specification 0.9 contains 292 requirements and 98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
+
+## Embedded engine build identification (MOD-07)
+
+Android v158 shows the source revisions of the embedded sing-box and NetBird
+modules in Diagnostics. The local archive includes both full revisions.
+The Android build checks those values against the native lock and the actual
+debug, release and upgrade packages. Diagnostics reads this metadata from
+the installed APK. The reviewed Android run passed all eight checks,
+including the display and archive tests on API 29, 35 and 37.
+The Control Plane device inventory and complete engine compatibility matrix
+remain open. [Android review and test evidence](https://github.com/nd4y/syn443-android/actions/runs/45262510774).
 
 ## Personal policies (AC01)
 
