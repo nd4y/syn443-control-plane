@@ -214,14 +214,28 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 	}
 	if envelope.Action == "configuration.history.get" {
 		var input struct {
-			ID       string `json:"id"`
-			Revision int64  `json:"revision"`
-			Hash     string `json:"hash"`
+			ID              string          `json:"id"`
+			Revision        int64           `json:"revision"`
+			Hash            string          `json:"hash"`
+			IncludePrevious json.RawMessage `json:"includePrevious,omitempty"`
 		}
 		if identity.DecodeConfiguration(envelope.Payload, &input) != nil || !configurationObjectID.MatchString(input.ID) || input.Revision < 1 || input.Revision > 9007199254740991 || !configurationBodyHash.MatchString(input.Hash) {
 			return nil, enrollment.ErrDenied
 		}
-		return c.inventoryAt(ctx, actor, input.ID, input.Revision, input.Hash, authorityUntil, now)
+		if input.IncludePrevious != nil && string(input.IncludePrevious) != "true" {
+			return nil, enrollment.ErrDenied
+		}
+		view, err := c.inventoryAt(ctx, actor, input.ID, input.Revision, input.Hash, authorityUntil, now)
+		if err != nil {
+			return nil, err
+		}
+		if input.IncludePrevious != nil && view.Revision > 1 {
+			if !configurationBodyHash.MatchString(view.baseHash) {
+				return nil, enrollment.ErrUnavailable
+			}
+			view.Previous = &ConfigurationRevision{Revision: view.Revision - 1, Hash: view.baseHash}
+		}
+		return view, nil
 	}
 	if envelope.Action == "configuration.request.get" {
 		var input struct {

@@ -6,7 +6,7 @@ function canonical(value){
  if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';
  return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}';
 }
-const equal=(a,b)=>canonical(a)===canonical(b);
+export const equal=(a,b)=>canonical(a)===canonical(b);
 const clone=value=>value===undefined?undefined:structuredClone(value);
 const own=(layer,device)=>layer.id===device&&['device','local'].includes(layer.kind);
 function indexed(items){

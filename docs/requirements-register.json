@@ -1962,8 +1962,12 @@
         "internal/deviceprovisioning/layer_publisher_postgres_test.go",
         "internal/deviceprovisioning/layer_inventory_postgres_test.go",
         "internal/deviceprovisioning/layer_store_postgres_test.go",
-        "docs/implementation-status.md#publication-history-and-provider-operations"
-      ]
+        "docs/implementation-status.md#publication-history-and-provider-operations",
+        "internal/deviceprovisioning/layer_inventory.go",
+        "web-tests/control-layer.spec.js"
+      ],
+      "implementationScope": "The device card can compare two immutable published configurations using the verified predecessor for that recipient and independent current authorization for both historical reads. Changes include field origins, restrictions, network mode and approval deadline.",
+      "remainingScope": "Author, initiating-device and publication-comment display for the complete audit trail."
     },
     {
       "id": "EDIT-09",

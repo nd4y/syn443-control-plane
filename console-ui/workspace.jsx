@@ -197,6 +197,12 @@ function Devices() {
           </a>
           <Button id="refresh-runtime" variant="secondary" isDisabled>Обновить состояние</Button>
         </div>
+        <details id="inventory-history" hidden>
+          <summary>Последние изменения конфигурации</summary>
+          <Button id="inventory-history-load" variant="secondary">Сравнить опубликованные версии</Button>
+          <p id="inventory-history-status" role="status" aria-atomic="true"></p>
+          <ul id="inventory-history-diff"></ul>
+        </details>
         <details id="inventory-issued-settings" hidden>
           <summary>Настройки выданной политики</summary>
           <p>Последняя политика, подписанная сервером. Учётные данные и адреса проверок скрыты.</p>

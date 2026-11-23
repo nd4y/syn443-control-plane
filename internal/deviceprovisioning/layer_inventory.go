@@ -15,7 +15,14 @@ import (
 // A device view never returns the complete multi-recipient proposal or native
 // source credentials. Revision/hash describe desired server configuration;
 // PolicyRevision is issued policy history, not a claim of Android activation.
+type ConfigurationRevision struct {
+	Revision int64  `json:"revision"`
+	Hash     string `json:"hash"`
+}
+
 type ConfigurationInventory struct {
+	Previous          *ConfigurationRevision `json:"previous,omitempty"`
+	baseHash          string
 	Device            string                   `json:"device"`
 	Owner             string                   `json:"owner"`
 	State             string                   `json:"state"`
@@ -112,6 +119,7 @@ func (c *ConfigurationControl) inventoryAt(ctx context.Context, actor, device st
 			}
 			selected = true
 			r.Layers = bundle.Layers
+			r.baseHash = bundle.BaseHash
 		}
 		if !selected {
 			return r, enrollment.ErrUnavailable

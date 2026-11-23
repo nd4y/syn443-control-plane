@@ -2072,6 +2072,10 @@
                   "hash": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "includePrevious": {
+                    "const": true,
+                    "description": "Return the immutable predecessor reference for this device when present. Reading it requires a separate authorized historical request."
                   }
                 }
               }
