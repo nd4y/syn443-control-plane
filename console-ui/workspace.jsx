@@ -870,8 +870,8 @@ function Publication() {
         версий и полный список затронутых устройств.
       </p>
       <div id="layer-first-device" hidden>
-        <p>Для первой конфигурации подготовьте переносимый план в разделе «Черновики». Здесь можно скопировать его в новый личный черновик слоёв.</p>
-        <a href="#draft-title">Открыть планы</a>
+        <p id="layer-first-recipient"></p>
+        <a id="layer-first-plan" href="#draft-title">Открыть планы</a>
         <label htmlFor="layer-first-mode">Режим первой конфигурации</label>
         <Select id="layer-first-mode" defaultValue="wifi">
           <option value="home_wifi">Домашний Wi-Fi</option>

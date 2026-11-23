@@ -499,3 +499,7 @@ or publishing; the ordinary draft CAS, new preview and explicit publication stil
 apply. If the head changes again, the publisher rejects that stale base. Shared
 targets require full-impact manual proposals; automatic multi-device rebasing is
 not implemented. Pure merge and browser conflict scenarios are added to Actions.
+
+### First configuration for a device
+
+Open the plan editor from the selected device to prepare its first configuration. A blank device plan receives that recipient automatically. Staging requires a matching device recipient both in the editor and on any previously opened saved draft. Select a new draft to prepare an independent configuration for another device. Staging stays local until the operator saves the proposal and requests the server preview.
