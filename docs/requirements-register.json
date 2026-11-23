@@ -3632,7 +3632,7 @@
         "internal/enrollment/store_postgres_test.go",
         "internal/enrollment/session_boundary_postgres_test.go"
       ],
-      "remainingScope": "The disposable PostgreSQL tests reject replayed status proofs, unauthorized key substitution and revoked invitations. They classify reuse after refresh rotation and retain the original identity on exact retries. A lost Android Keystore key and the complete concurrent claim/approval sequence on an enrolled handset remain open."
+      "remainingScope": "The disposable PostgreSQL tests reject replayed status proofs, unauthorized key substitution and revoked invitations. They overlap a competing claim with rightful approval and verify the original key remains bound. They classify reuse after refresh rotation and retain the original identity on exact retries. A lost Android Keystore key and this sequence on an enrolled handset remain open."
     },
     {
       "id": "AC71",

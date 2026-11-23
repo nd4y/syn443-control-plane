@@ -768,7 +768,8 @@ jobs:
                 "TestSQLClaimSeatQuotaKeySubstitutionAndStatusBoundaries",
                 "TestSQLRevokedUncompletedDeviceReleasesItsSeatBeforeExpiry",
                 "TestSQLInvitationReservesOneKeyAndNeedsSeparateApprovalBeforeSessions",
-                "TestSQLInvitationWrongKeyExpiryMFAAndRevocation"
+                "TestSQLInvitationWrongKeyExpiryMFAAndRevocation",
+                "TestSQLCompetingClaimCannotChangeKeyDuringApproval"
               ]) and passed("deviceprovisioning"; [
                 "TestSQLInvitationToPublisherToNormalSessionAndCancellation",
                 "TestSQLExistingKeyCannotBeReassignedByInvitation"
