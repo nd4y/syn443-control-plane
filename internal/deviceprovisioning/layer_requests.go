@@ -191,12 +191,16 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 	}
 	if envelope.Action == "configuration.inventory.get" {
 		var input struct {
-			ID string `json:"id"`
+			ID                  string          `json:"id"`
+			IncludeReportExpiry json.RawMessage `json:"includeReportExpiry"`
 		}
 		if identity.DecodeConfiguration(envelope.Payload, &input) != nil || !configurationObjectID.MatchString(input.ID) {
 			return nil, enrollment.ErrDenied
 		}
-		return c.inventory(ctx, actor, input.ID, authorityUntil, now)
+		if input.IncludeReportExpiry != nil && string(input.IncludeReportExpiry) != "true" {
+			return nil, enrollment.ErrDenied
+		}
+		return c.inventory(ctx, actor, input.ID, input.IncludeReportExpiry != nil, authorityUntil, now)
 	}
 	if envelope.Action == "configuration.devices.list" {
 		var input struct {
@@ -229,7 +233,7 @@ func (c *ConfigurationControl) Dispatch(ctx context.Context, token, proof string
 		if input.IncludePrevious != nil && string(input.IncludePrevious) != "true" {
 			return nil, enrollment.ErrDenied
 		}
-		view, err := c.inventoryAt(ctx, actor, input.ID, input.Revision, input.Hash, authorityUntil, now)
+		view, err := c.inventoryAt(ctx, actor, input.ID, input.Revision, input.Hash, false, authorityUntil, now)
 		if err != nil {
 			return nil, err
 		}
