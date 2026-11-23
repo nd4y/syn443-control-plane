@@ -761,8 +761,14 @@ function Drafts() {
               Эта доля совместимых устройств останется на базовой версии даже при полной раскатке.
               Для общей контрольной группы укажите одинаковые идентификатор и долю.
             </p>
+            <label>
+              <input id="route-rollout-pause" type="checkbox" aria-describedby="route-rollout-pause-help" /> Приостановить выпуск настройки проверок
+            </label>
+            <p id="route-rollout-pause-help">
+              После публикации устройства получат базовую версию. Доли групп сохранятся.
+            </p>
             <Button id="route-rollout-save" type="button" variant="secondary">
-              Применить долю к черновику
+              Применить к черновику
             </Button>
             <p>
               Сохраняйте идентификатор при изменении доли, чтобы не менять
@@ -822,8 +828,14 @@ function Drafts() {
               Эта доля совместимых устройств останется на базовой версии даже при полной раскатке.
               Для общей контрольной группы укажите одинаковые идентификатор и долю.
             </p>
+            <label>
+              <input id="route-decision-pause" type="checkbox" aria-describedby="route-decision-pause-help" /> Приостановить выпуск версии алгоритма
+            </label>
+            <p id="route-decision-pause-help">
+              После публикации устройства получат базовую версию. Доли групп сохранятся.
+            </p>
             <Button id="route-decision-save" type="button" variant="secondary">
-              Применить долю для алгоритма к черновику
+              Применить к черновику
             </Button>
           </div>
           <div id="cohort-preview" hidden>

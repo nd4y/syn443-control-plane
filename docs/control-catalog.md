@@ -249,6 +249,17 @@ some devices. Decision and cooldown rollouts can share a control group by using
 the same ID and reserved share. Their treatment assignments remain independent.
 A zero treatment share stops the rollout for the next approved policy.
 
+### Pause a rollout
+
+Select the pause control in the route draft for the algorithm or the reserve
+probe setting, then apply it to the draft. The group preview accounts for the
+pause before publication. A paused rollout sends the baseline configuration to
+devices outside the permanent control group. The group ID and both percentages
+stay in the draft. Clear the pause and publish a new approved revision to
+resume using the same predefined groups. Devices apply the change when they
+receive the approved policy. Existing publication and authorization checks
+apply to both operations.
+
 In the route draft editor, enter the rollout percentages and a device ID, then
 choose **Проверить группу**. Each configured feature reports its own treatment,
 permanent control or unselected baseline assignment. The preview accepts

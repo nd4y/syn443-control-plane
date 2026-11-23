@@ -1175,6 +1175,31 @@ test('phone previews treatment baseline and permanent control from unsaved field
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.operations).toBe(0);expect(state.calls).not.toContain('configuration.publish');
 });
+test('phone pauses and resumes the draft algorithm without changing either share',async({page,request})=>{
+ await openCohortDraft(page,request);
+ const id=page.getByLabel('ID устройства для предпросмотра группы');
+ const run=page.getByRole('button',{name:'Проверить группу'});
+ const paused=page.getByRole('checkbox',{name:'Приостановить выпуск версии алгоритма'});
+ const result=page.locator('#cohort-result'),planField=page.locator('#plan'),requests=[];
+ await page.route('**/control/rollout-preview',async route=>{
+  const body=route.request().postDataJSON();requests.push(body);
+  await route.fulfill({json:{decision:body.decision.paused?'baseline':'treatment',probeCooldown:'baseline'}});
+ });
+ const original=JSON.parse(await planField.inputValue()).network.routeFailover.decisionRollout;
+ await id.fill('synthetic-a');await run.click();
+ await expect(result).toContainText('Алгоритм переключения - тестовая версия');
+ await paused.check();await expect(result).toBeEmpty();
+ await run.click();await expect(result).toContainText('Алгоритм переключения - базовая версия вне контрольной группы');
+ expect(requests[1].decision).toEqual({...original,paused:true});
+ await page.locator('#route-decision-save').click();
+ await expect(paused).toBeChecked();
+ expect(JSON.parse(await planField.inputValue()).network.routeFailover.decisionRollout).toEqual({...original,paused:true});
+ await paused.uncheck();await page.locator('#route-decision-save').click();
+ await expect(paused).not.toBeChecked();
+ expect(JSON.parse(await planField.inputValue()).network.routeFailover.decisionRollout).toEqual(original);
+ const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
+ expect(state.operations).toBe(0);expect(state.calls).not.toContain('configuration.publish');
+});
 test('phone drops a late cohort preview after a change of target',async({page,request})=>{
  await openCohortDraft(page,request);
  let entered,release;const started=new Promise(ok=>entered=ok),gate=new Promise(ok=>release=ok);

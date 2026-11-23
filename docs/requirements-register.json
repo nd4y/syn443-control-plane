@@ -1422,8 +1422,14 @@
     {
       "id": "RLP-08",
       "text": "Релиз можно pause/rollback/disable с отдельными полномочиями и аудитом. Откат создаёт новую серверную revision, ссылающуюся на разрешённый предыдущий bundle. На устройстве предусмотрен локальный rollback по watchdog/циклам деградации даже при недоступном control plane; это не обход отзыва credentials.",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/control-catalog.md#pause-a-rollout",
+        "internal/configuration/control_cohort_test.go",
+        "internal/deviceprovisioning/network_postgres_test.go",
+        "web-tests/control.spec.js"
+      ],
+      "remainingScope": "Dedicated release roles, independent disable and rollback to a known bundle, and on-device watchdog rollback."
     },
     {
       "id": "RLP-09",

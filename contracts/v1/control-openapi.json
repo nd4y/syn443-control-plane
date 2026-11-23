@@ -2723,6 +2723,10 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 10000
+                  },
+                  "paused": {
+                    "type": "boolean",
+                    "description": "Keep the configured shares and control group, and serve the baseline outside control until resumed."
                   }
                 }
               },
@@ -2752,6 +2756,10 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 10000
+                  },
+                  "paused": {
+                    "type": "boolean",
+                    "description": "Keep the configured shares and control group, and serve the baseline outside control until resumed."
                   }
                 }
               },

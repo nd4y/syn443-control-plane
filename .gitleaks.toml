@@ -384,3 +384,10 @@ condition = "AND"
 paths = ['''^contracts/lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"control-openapi\.json": "4412befff7d0ea4a56e541172ead8a297d13f575edb91a8a9dc67483b02c6898",?\s*$''']
+
+[[rules.allowlists]]
+description = "Recomputed SHA-256 of the public rollout pause OpenAPI contract"
+condition = "AND"
+paths = ['''^contracts/lock\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"control-openapi\.json": "2559f3731780ab973151e7cd85e7df650f2a82aacd5aa0ae526524c63d1723c5",?\s*$''']
