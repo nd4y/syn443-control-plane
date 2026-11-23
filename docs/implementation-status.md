@@ -61,6 +61,22 @@ The [service protocol eligibility source](operation-outcome-reconciliation.md#se
 
 ## Current accepted checkpoint
 
+### Android v154 route checks - 2026-11-23
+
+The current named check can show a path as working only after the required
+predicates have valid evidence. A missing, contradictory or prior-revision
+result remains incomplete. Changes to the revision, method, exit predicate
+or physical-network generation require a new observation. An ordinary HTTPS
+success establishes reachability. The exit class requires its own result.
+
+The Android test suite also rejects ICMP and UDP named checks on a concrete
+TCP-only chain. After unexpected HTTP responses on every eligible route,
+no path enters cooldown without a verified comparison. Once the permitted
+reserve responds, repeated fresh comparisons permit a switch. All four
+named outcomes passed on APIs 29, 35 and 37, at 672 instrumented cases each.
+[Android v154 source CI](https://github.com/nd4y/syn443-android/actions/runs/45129640638).
+
+
 ### Android v153, group review and NekoBox migration - 2026-11-23
 
 Android source verification passed eight jobs and 669 cases each on APIs 29,
