@@ -4,8 +4,8 @@ Specification 0.9. Each item appears once. The columns show which component regi
 
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Requirements | 292 | 124 | 59 | 81 | 28 |
-| Acceptance scenarios | 98 | 21 | 13 | 21 | 43 |
+| Requirements | 292 | 125 | 58 | 81 | 28 |
+| Acceptance scenarios | 98 | 21 | 13 | 23 | 41 |
 
 ## Component acceptance
 
@@ -14,9 +14,9 @@ Each cell counts items at that exact status in the component register. Scenarios
 | Scope | Component | Planned | Partial | Implemented | Verified |
 | --- | --- | ---: | ---: | ---: | ---: |
 | Requirements | Android | 109 | 183 | 0 | 0 |
-| Requirements | Control Plane | 87 | 205 | 0 | 0 |
+| Requirements | Control Plane | 86 | 206 | 0 | 0 |
 | Acceptance scenarios | Android | 64 | 33 | 0 | 1 |
-| Acceptance scenarios | Control Plane | 56 | 37 | 0 | 5 |
+| Acceptance scenarios | Control Plane | 54 | 39 | 0 | 5 |
 
 ## Requirement families
 
@@ -36,7 +36,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 | MODE | 5 | 2 | 3 | 0 | 0 |
 | AUTO | 10 | 0 | 9 | 0 | 1 |
 | REC | 6 | 6 | 0 | 0 | 0 |
-| ALG | 24 | 0 | 18 | 1 | 5 |
+| ALG | 24 | 1 | 17 | 1 | 5 |
 | BAD | 10 | 0 | 8 | 0 | 2 |
 | RLP | 10 | 4 | 0 | 4 | 2 |
 | ROUTE | 6 | 1 | 2 | 2 | 1 |
