@@ -1,0 +1,123 @@
+{
+  "invited": {
+    "schemaVersion": 1,
+    "graph": {
+      "profiles": {
+        "internet": {
+          "sourceId": "source-a",
+          "profileId": "source-a_vless"
+        }
+      },
+      "chains": {},
+      "balancers": {},
+      "final": "internet"
+    },
+    "network": {
+      "schemaVersion": 1,
+      "requiredNetworks": [
+        "tcp"
+      ],
+      "dnsServers": {
+        "resolver": {
+          "transport": "tls",
+          "address": "resolver.example.invalid",
+          "port": 853,
+          "serverName": "resolver.example.invalid",
+          "outbound": "internet"
+        }
+      },
+      "dnsFinal": "resolver",
+      "dnsStrategy": "prefer_ipv4"
+    },
+    "activation": {
+      "timeoutSeconds": 60,
+      "allowDegraded": false,
+      "checks": [
+        {
+          "id": "internet",
+          "type": "https_204",
+          "target": "https://health.example.invalid/generate_204",
+          "required": true
+        }
+      ]
+    }
+  },
+  "personal": {
+    "schemaVersion": 1,
+    "graph": {
+      "profiles": {
+        "internet": {
+          "sourceId": "source-a",
+          "profileId": "source-a_vless"
+        }
+      },
+      "chains": {},
+      "balancers": {},
+      "final": "internet",
+      "netbird": {
+        "tag": "home",
+        "overlayId": "personal",
+        "resourceId": "overlay-cloud",
+        "networkId": "network-a",
+        "identityEpoch": 2,
+        "managementUrl": "https://overlay.example.invalid",
+        "mode": "direct"
+      }
+    },
+    "network": {
+      "schemaVersion": 1,
+      "requiredNetworks": [
+        "tcp"
+      ],
+      "dnsServers": {
+        "resolver": {
+          "transport": "tls",
+          "address": "resolver.example.invalid",
+          "port": 853,
+          "serverName": "resolver.example.invalid",
+          "outbound": "internet"
+        },
+        "home": {
+          "transport": "netbird",
+          "outbound": "home"
+        }
+      },
+      "dnsFinal": "resolver",
+      "dnsStrategy": "prefer_ipv4",
+      "dnsRules": [
+        {
+          "id": "private-names",
+          "match": {
+            "domainSuffixes": [
+              "home.example.invalid"
+            ]
+          },
+          "server": "home"
+        }
+      ],
+      "rules": [
+        {
+          "id": "private-network",
+          "ipPrefixes": [
+            "192.0.2.0/24"
+          ],
+          "matchAll": false,
+          "action": "route",
+          "outbound": "home"
+        }
+      ]
+    },
+    "activation": {
+      "timeoutSeconds": 60,
+      "allowDegraded": false,
+      "checks": [
+        {
+          "id": "internet",
+          "type": "https_204",
+          "target": "https://health.example.invalid/generate_204",
+          "required": true
+        }
+      ]
+    }
+  }
+}
