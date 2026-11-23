@@ -3130,8 +3130,11 @@
     {
       "id": "AC07",
       "specRow": " Падение на этапах применения | После запуска целостный конфиг, ограниченный откат, нет повторной регистрации NetBird |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/android-failure-acceptance.md#rollback-after-policy-failure"
+      ],
+      "remainingScope": "Crash at every application checkpoint and no second NetBird registration on the original device."
     },
     {
       "id": "AC08",
@@ -3195,8 +3198,11 @@
     {
       "id": "AC17",
       "specRow": " Панель/IdP/телеметрия недоступны, очередь полна | Рабочий VPN в пределах lease сохранён, очередь ограничена, потери событий учтены |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/android-failure-acceptance.md#control-channel-outage"
+      ],
+      "remainingScope": "Separate IdP and telemetry exhaustion, durable accounting for discarded events, and current physical pilot readback."
     },
     {
       "id": "AC18",
@@ -3214,8 +3220,11 @@
     {
       "id": "AC19",
       "specRow": " Секреты во вложенном JSON, URL paths, serviceName и crash text | Обычные логи/бандл не содержат тестовых секретов |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/android-failure-acceptance.md#diagnostic-privacy"
+      ],
+      "remainingScope": "Physical export and the full ordinary logging and authorized remote support paths."
     },
     {
       "id": "AC20",
@@ -3609,8 +3618,11 @@
     {
       "id": "AC75",
       "specRow": " Explicit Stop/force-stop/reboot locked/другой VPN/APK update | Нет неожиданного auto-start или двух host generations, NeedsUnlock/revoke отражены, identity и permitted intent сохранены |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/android-failure-acceptance.md#android-owner-lifecycle"
+      ],
+      "remainingScope": "Combined physical lifecycle on the current APK with its original binding and permitted intent."
     },
     {
       "id": "AC76",
@@ -3633,8 +3645,11 @@
     {
       "id": "AC79",
       "specRow": " Прерванный/поддельный APK update, отмена установки и плохая engine migration | Рабочая permitted конфигурация/identity сохраняются; forward recovery проверен, Android downgrade не единственный план |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/android-failure-acceptance.md#apk-upgrade"
+      ],
+      "remainingScope": "Interrupted or counterfeit update on device and forward recovery following an incompatible engine migration."
     },
     {
       "id": "AC80",
