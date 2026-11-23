@@ -256,6 +256,95 @@ func TestSQLInvitationReservesOneKeyAndNeedsSeparateApprovalBeforeSessions(t *te
 	}
 }
 
+func TestSQLCompetingClaimCannotChangeKeyDuringApproval(t *testing.T) {
+	f := newFixture(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+
+	issued := f.issue(t)
+	claim, _ := f.claim(t, issued)
+	invite, err := bootstrap.AuthenticateLink(issued.Link, f.root, bootstrap.Floor{}, f.now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	claimID, _ := random()
+	otherClaim, _ := json.Marshal(Claim{claimID, invite.Code, identity.PublicJWK(&other.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}})
+	otherProof := signed(t, other, invite.Descriptor.APIOrigin+"/v1/invitations/claim", "", "", otherClaim, f.now)
+
+	thumb, _ := identity.PublicJWK(&f.phone.PublicKey).Thumbprint()
+	approval, _ := json.Marshal(Approval{claim.ID, claim.Version, thumb, claim.PairCode})
+	approvalID, _ := random()
+	approvalBody, _ := json.Marshal(Envelope{1, "invite.approve", approvalID, approval})
+	approvalProof := signed(t, f.key, f.admin.ControlOrigin+"/v1/control/action", token, "", approvalBody, f.now)
+
+	lock, err := fixtureOwner.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Rollback()
+	var owner string
+	if err := lock.QueryRowContext(ctx, "SELECT owner FROM identity_accounts WHERE owner=$1 FOR UPDATE", f.owner).Scan(&owner); err != nil {
+		t.Fatal(err)
+	}
+
+	replacement := make(chan error, 1)
+	go func() {
+		_, err := f.device.Claim(ctx, "service-a", invite.Descriptor.APIOrigin, otherClaim, otherProof, f.now)
+		replacement <- err
+	}()
+	type approvalResult struct {
+		value any
+		err   error
+	}
+	published := make(chan approvalResult, 1)
+	go func() {
+		value, err := f.admin.Dispatch(ctx, token, approvalProof, approvalBody, f.now)
+		published <- approvalResult{value, err}
+	}()
+
+	// Observe both real restricted roles waiting on the production account lock
+	// before releasing the transactions. Arrival order after that is immaterial.
+	deadline := time.Now().Add(8 * time.Second)
+	for {
+		var waiting int
+		err := fixtureOwner.QueryRowContext(ctx, "SELECT count(DISTINCT usename) FROM pg_stat_activity WHERE usename IN ('syn443_identity_api','syn443_control_api') AND wait_event_type='Lock' AND query LIKE 'SELECT enabled,device_limit,valid_until,grant_hash FROM identity_accounts%FOR UPDATE'").Scan(&waiting)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if waiting == 2 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("claim and approval did not overlap on the account lock")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := lock.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-replacement; !errors.Is(err, ErrConflict) {
+		t.Fatal("competing key did not receive conflict", err)
+	}
+	result := <-published
+	view, ok := result.value.(View)
+	if result.err != nil || !ok || view.State != "provisioning" || view.Version != claim.Version+1 {
+		t.Fatal("original claimant was not the only approved device candidate", result.err)
+	}
+
+	var storedThumb, storedApproval string
+	var deviceCreated, sessionCreated bool
+	if err := fixtureOwner.QueryRowContext(ctx, "SELECT claim_jkt,approval_request,device IS NOT NULL,EXISTS(SELECT 1 FROM identity_sessions) FROM managed_invitations WHERE id=$1", claim.ID).Scan(&storedThumb, &storedApproval, &deviceCreated, &sessionCreated); err != nil {
+		t.Fatal(err)
+	}
+	if storedThumb != thumb || storedApproval != approvalID || deviceCreated || sessionCreated {
+		t.Fatal("competing key changed the claim or received an early device/session")
+	}
+}
+
 func TestSQLInvitationWrongKeyExpiryMFAAndRevocation(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()

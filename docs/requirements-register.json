@@ -3367,8 +3367,13 @@
     {
       "id": "AC37",
       "specRow": " Перехват QR другим ключом, отзыв и перепривязка | Без сверки/одобрения администратором секреты не выданы; код не появляется в логах/telemetry; чужой ключ не завершает прежний claim |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/invitation/store_postgres_test.go",
+        "internal/invitation/boundaries_postgres_test.go",
+        "internal/deviceprovisioning/invitations_postgres_test.go"
+      ],
+      "remainingScope": "PostgreSQL tests bind the claim to the first approved key, reject key substitution and revoked invitations, and exercise the independent publisher and ordinary session exchange. Physical QR interception, the complete rebind path and end-to-end diagnostic redaction remain open."
     },
     {
       "id": "AC38",
@@ -3514,8 +3519,14 @@
     {
       "id": "AC58",
       "specRow": " All/any/quorum и staged/parallel/fallback планы | Предикаты, criticality, short-circuit и общий deadline выполняются точно, противоречивые планы отклонены |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/route-check-profiles-v2.md",
+        "internal/routecheck/plan_test.go",
+        "internal/configuration/check_plan_test.go",
+        "internal/deviceprovisioning/check_plan_postgres_test.go"
+      ],
+      "remainingScope": "The locked contract, compiler and publisher cover all/any/quorum, sequential stages, mandatory gates, finite deadlines and invalid expressions. Parallel stages, explicit conditional/fallback branches and managed handset acceptance remain open."
     },
     {
       "id": "AC59",
@@ -3613,8 +3624,15 @@
     {
       "id": "AC70",
       "specRow": " Replay device request, refresh reuse, ключ утрачен; QR claim/approve race | DPoP/key/audience/status и anti-replay проверены; approval связан с точным key, чужой claim/старыйID не регистрируются |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/invitation/store_postgres_test.go",
+        "internal/invitation/boundaries_postgres_test.go",
+        "internal/deviceprovisioning/invitations_postgres_test.go",
+        "internal/enrollment/store_postgres_test.go",
+        "internal/enrollment/session_boundary_postgres_test.go"
+      ],
+      "remainingScope": "The disposable PostgreSQL tests reject replayed status proofs, unauthorized key substitution and revoked invitations. They overlap a competing claim with rightful approval and verify the original key remains bound. They classify reuse after refresh rotation and retain the original identity on exact retries. A lost Android Keystore key and this sequence on an enrolled handset remain open."
     },
     {
       "id": "AC71",
