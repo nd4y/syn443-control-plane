@@ -50,6 +50,7 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
       - run: python3 -m unittest discover -s tools -p 'test_product_requirements.py'
+      - run: python3 -m unittest discover -s tools -p 'test_nekobox_migration_preview.py'
       - run: python3 -m unittest discover -s tools -p 'test_overlay_image.py'
       - run: python3 -m unittest discover -s tools -p 'test_web_image_acceptance.py'
       - run: python3 tools/product_requirements.py .android-register/docs/requirements-register.json --csv "${RUNNER_TEMP}/product-requirements.csv"

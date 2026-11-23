@@ -4,7 +4,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Requirements | 292 | 121 | 58 | 81 | 32 |
+| Requirements | 292 | 121 | 58 | 82 | 31 |
 | Acceptance scenarios | 98 | 21 | 5 | 16 | 56 |
 
 ## Component acceptance
@@ -14,7 +14,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 | Scope | Component | Planned | Partial | Implemented | Verified |
 | --- | --- | ---: | ---: | ---: | ---: |
 | Requirements | Android | 113 | 179 | 0 | 0 |
-| Requirements | Control Plane | 90 | 202 | 0 | 0 |
+| Requirements | Control Plane | 89 | 203 | 0 | 0 |
 | Acceptance scenarios | Android | 72 | 26 | 0 | 0 |
 | Acceptance scenarios | Control Plane | 61 | 32 | 0 | 5 |
 
@@ -46,7 +46,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 | LOG | 7 | 6 | 0 | 0 | 1 |
 | UI | 1 | 1 | 0 | 0 | 0 |
 | EDIT | 12 | 5 | 1 | 3 | 3 |
-| OWN | 6 | 1 | 1 | 3 | 1 |
+| OWN | 6 | 1 | 1 | 4 | 0 |
 | MOB | 8 | 4 | 1 | 3 | 0 |
 | CHAT | 15 | 15 | 0 | 0 | 0 |
 | SRV | 4 | 0 | 0 | 4 | 0 |
