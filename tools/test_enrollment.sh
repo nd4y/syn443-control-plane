@@ -62,7 +62,7 @@ if [[ "${1:-}" == capacity ]]; then
   export SYN443_CAPACITY_ENGINE="$tls_dir/capacity-engine.json"
   export SYN443_CAPACITY_REPORT="$RUNNER_TEMP/small-service-capacity.json"
   go test -count=1 -tags capacity -run '^TestExportCapacityEngineFrom500CompiledProfiles$' ./internal/configuration
-  go test -count=1 -timeout=7m -tags 'postgres capacity' -run '^(TestCapacityKeepsEveryScheduledOutcomeInEachPercentile|TestSmallServiceCapacityWithIssuedPoliciesAndDurableTelemetry)$' -v ./internal/enrollment
+  go test -count=1 -timeout=7m -tags 'postgres capacity' -run '^(TestCapacityKeepsEveryScheduledOutcomeInEachPercentile|TestCapacityOutcomeSeparatesHTTPTransportAndInvalidReceipts|TestSmallServiceCapacityWithIssuedPoliciesAndDurableTelemetry)$' -v ./internal/enrollment
   exit 0
 fi
 # Exercise actual prior published SQL, including previous defaults and indexes.

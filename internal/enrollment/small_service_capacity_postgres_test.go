@@ -9,8 +9,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -36,21 +38,35 @@ type capacityDevice struct {
 }
 
 type capacityResult struct {
-	Elapsed time.Duration
-	Valid   bool
+	Elapsed    time.Duration
+	Outcome    string
+	HTTPStatus int
 }
 
 type capacitySummary struct {
-	Scheduled int    `json:"scheduled"`
-	Verified  int    `json:"verified"`
-	P95Ms     *int64 `json:"p95Ms"`
+	Scheduled    int            `json:"scheduled"`
+	Verified     int            `json:"verified"`
+	P95Ms        *int64         `json:"p95Ms"`
+	Outcomes     map[string]int `json:"outcomes"`
+	HTTPStatuses map[int]int    `json:"httpStatuses"`
 }
 
 func summarizeCapacity(samples []capacityResult) capacitySummary {
-	s := capacitySummary{Scheduled: len(samples)}
+	s := capacitySummary{Scheduled: len(samples), Outcomes: map[string]int{}, HTTPStatuses: map[int]int{}}
 	values := make([]time.Duration, 0, len(samples))
 	for _, r := range samples {
-		if r.Valid && r.Elapsed > 0 {
+		outcome := r.Outcome
+		if outcome == "" {
+			outcome = "not_observed"
+		}
+		if outcome == "verified" && r.Elapsed <= 0 {
+			outcome = "invalid_elapsed"
+		}
+		s.Outcomes[outcome]++
+		if r.HTTPStatus > 0 {
+			s.HTTPStatuses[r.HTTPStatus]++
+		}
+		if outcome == "verified" {
 			s.Verified++
 			values = append(values, r.Elapsed)
 		}
@@ -68,13 +84,32 @@ func summarizeCapacity(samples []capacityResult) capacitySummary {
 func TestCapacityKeepsEveryScheduledOutcomeInEachPercentile(t *testing.T) {
 	v := make([]capacityResult, 100)
 	for i := range v {
-		v[i] = capacityResult{time.Duration(i+1) * time.Millisecond, true}
+		v[i] = capacityResponse{code: http.StatusOK, elapsed: time.Duration(i+1) * time.Millisecond}.sample(true)
 	}
 	if got := summarizeCapacity(v); got.P95Ms == nil || *got.P95Ms != 95 {
 		t.Fatal(got)
 	}
-	v[99].Valid = false
-	if got := summarizeCapacity(v); got.P95Ms != nil || got.Scheduled != 100 || got.Verified != 99 {
+	v[99] = capacityResponse{code: http.StatusOK, elapsed: time.Millisecond}.sample(false)
+	if got := summarizeCapacity(v); got.P95Ms != nil || got.Scheduled != 100 || got.Verified != 99 || got.Outcomes["invalid_payload"] != 1 || got.HTTPStatuses[200] != 100 {
+		t.Fatal(got)
+	}
+}
+
+func TestCapacityOutcomeSeparatesHTTPTransportAndInvalidReceipts(t *testing.T) {
+	samples := []capacityResult{
+		{}, {Outcome: "verified", HTTPStatus: 200},
+		capacityResponse{code: 200, elapsed: time.Millisecond}.sample(true),
+		capacityResponse{code: 200, elapsed: time.Millisecond}.sample(false),
+		capacityResponse{code: 429, elapsed: time.Millisecond}.sample(false),
+		capacityResponse{code: 503, elapsed: time.Millisecond}.sample(false),
+		capacityResponse{failure: "timeout", elapsed: time.Second}.sample(false),
+		capacityResponse{failure: "transport", elapsed: time.Millisecond}.sample(false),
+		capacityResponse{code: 200, failure: "body_read", elapsed: time.Millisecond}.sample(false),
+		capacityResponse{code: 200, failure: "body_oversize", elapsed: time.Millisecond}.sample(false),
+	}
+	got := summarizeCapacity(samples)
+	want := map[string]int{"not_observed": 1, "invalid_elapsed": 1, "verified": 1, "invalid_payload": 1, "http_error": 2, "timeout": 1, "transport": 1, "body_read": 1, "body_oversize": 1}
+	if got.Scheduled != len(samples) || got.Verified != 1 || got.P95Ms != nil || !maps.Equal(got.Outcomes, want) || !maps.Equal(got.HTTPStatuses, map[int]int{200: 5, 429: 1, 503: 1}) {
 		t.Fatal(got)
 	}
 }
@@ -84,6 +119,23 @@ type capacityResponse struct {
 	raw     []byte
 	nonce   string
 	elapsed time.Duration
+	failure string
+}
+
+// Publish only closed categories and response codes from the synthetic server.
+func (r capacityResponse) sample(verified bool) capacityResult {
+	outcome := r.failure
+	if outcome == "" {
+		switch {
+		case r.code != http.StatusOK:
+			outcome = "http_error"
+		case !verified:
+			outcome = "invalid_payload"
+		default:
+			outcome = "verified"
+		}
+	}
+	return capacityResult{Elapsed: r.elapsed, Outcome: outcome, HTTPStatus: r.code}
 }
 
 // The caller measures complete HTTP response bytes. Client-side signature and
@@ -102,15 +154,23 @@ func (d capacityDevice) request(t *testing.T, origin, method, path, token, nonce
 	start := time.Now()
 	res, err := d.client.Do(req)
 	if err != nil {
-		return capacityResponse{elapsed: time.Since(start)}
+		failure := "transport"
+		var networkErr net.Error
+		if errors.As(err, &networkErr) && networkErr.Timeout() {
+			failure = "timeout"
+		}
+		return capacityResponse{elapsed: time.Since(start), failure: failure}
 	}
 	defer res.Body.Close()
 	const limit = 700_000
 	raw, err := io.ReadAll(io.LimitReader(res.Body, limit+1))
-	if err != nil || len(raw) > limit {
-		return capacityResponse{elapsed: time.Since(start)}
+	if err != nil {
+		return capacityResponse{code: res.StatusCode, elapsed: time.Since(start), failure: "body_read"}
 	}
-	return capacityResponse{res.StatusCode, raw, res.Header.Get("DPoP-Nonce"), time.Since(start)}
+	if len(raw) > limit {
+		return capacityResponse{code: res.StatusCode, elapsed: time.Since(start), failure: "body_oversize"}
+	}
+	return capacityResponse{code: res.StatusCode, raw: raw, nonce: res.Header.Get("DPoP-Nonce"), elapsed: time.Since(start)}
 }
 
 func TestSmallServiceCapacityWithIssuedPoliciesAndDurableTelemetry(t *testing.T) {
@@ -218,7 +278,7 @@ func TestSmallServiceCapacityWithIssuedPoliciesAndDurableTelemetry(t *testing.T)
 			r := device.request(t, server.URL, http.MethodGet, "/v1/device/policy", device.session.AccessToken, device.session.Nonce, nil)
 			thumb, _ := identity.PublicJWK(&device.key.PublicKey).Thumbprint()
 			cfg, proofErr := policy.VerifyBound(string(r.raw), f.api.Roots, device.session.DeviceID, thumb, time.Now())
-			read[i] = capacityResult{r.elapsed, r.code == 200 && proofErr == nil && cfg.ContentHash == wantHash && cfg.Revision == 1}
+			read[i] = r.sample(proofErr == nil && cfg.ContentHash == wantHash && cfg.Revision == 1)
 			ids := make([]string, 8)
 			batch := telemetry.Batch{SchemaVersion: 1, Session: random(), Build: 65, AlgorithmRevision: 1, PolicyRevision: 1}
 			for j := range ids {
@@ -232,7 +292,7 @@ func TestSmallServiceCapacityWithIssuedPoliciesAndDurableTelemetry(t *testing.T)
 			}
 			ack := device.request(t, server.URL, http.MethodPost, telemetryPath, device.session.AccessToken, device.session.Nonce, body)
 			var receipt telemetry.Receipt
-			post[i] = capacityResult{ack.elapsed, ack.code == 200 && json.Unmarshal(ack.raw, &receipt) == nil && slices.Equal(receipt.EventIDs, ids)}
+			post[i] = ack.sample(json.Unmarshal(ack.raw, &receipt) == nil && slices.Equal(receipt.EventIDs, ids))
 		}()
 	}
 	ready.Wait()
