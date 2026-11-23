@@ -5,14 +5,17 @@ package deviceprovisioning
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"crypto/ecdsa"
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
@@ -34,13 +37,18 @@ func (f *fixture) bridge(t *testing.T) (*Invitations, enrollment.Grant, *enrollm
 func (f *fixture) approved(t *testing.T) invitation.ClaimState {
 	t.Helper()
 	state, _ := f.claim(t, f.issue(t))
+	f.approve(t, state)
+	return state
+}
+
+func (f *fixture) approve(t *testing.T, state invitation.ClaimState) {
+	t.Helper()
 	thumb, _ := identity.PublicJWK(&f.phone.PublicKey).Thumbprint()
 	if _, e := f.adminCall(t, "invite.approve", invitation.Approval{ID: state.ID, Version: state.Version, Thumbprint: thumb, PairCode: state.PairCode}); e != nil {
 		t.Fatal(e)
 	}
-	return state
 }
-func (f *fixture) deviceCall(t *testing.T, store *enrollment.Store, path string, state invitation.ClaimState, id string) ([]byte, int) {
+func (f *fixture) invitationAPI(t *testing.T, store *enrollment.Store) *enrollment.API {
 	t.Helper()
 	roots := map[string]*ecdsa.PublicKey{"fixture-root": &f.key.PublicKey}
 	api, e := enrollment.NewAPI(store, f.v, "https://api.example.invalid", roots, false)
@@ -49,6 +57,12 @@ func (f *fixture) deviceCall(t *testing.T, store *enrollment.Store, path string,
 	}
 	api.Clock = func() time.Time { return f.now }
 	api.Invitations = &invitation.DeviceService{Store: f.device, Identity: store, Origin: "https://api.example.invalid", ServiceID: "service-a"}
+	return api
+}
+
+func (f *fixture) deviceCall(t *testing.T, store *enrollment.Store, path string, state invitation.ClaimState, id string) ([]byte, int) {
+	t.Helper()
+	api := f.invitationAPI(t, store)
 	body, _ := json.Marshal(invitation.DeviceRequest{ID: state.ID, RequestID: id})
 	proof := signed(t, f.phone, "https://api.example.invalid"+path, "", state.Nonce, body, f.now)
 	request := httptest.NewRequest("POST", "https://api.example.invalid"+path, bytes.NewReader(body))
@@ -59,11 +73,80 @@ func (f *fixture) deviceCall(t *testing.T, store *enrollment.Store, path string,
 	api.ServeHTTP(response, request)
 	return response.Body.Bytes(), response.Code
 }
+
+// Close the actual TLS connection after the real API has committed, before
+// sending its first response. Retry the same body with a new DPoP proof.
+func (f *fixture) retryAfterDroppedInvitationReply(t *testing.T, api *enrollment.API, path, nonce string, body []byte) []byte {
+	t.Helper()
+	committed := make(chan *httptest.ResponseRecorder, 1)
+	var dropped atomic.Bool
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if !dropped.CompareAndSwap(false, true) {
+			api.ServeHTTP(w, request)
+			return
+		}
+		reply := httptest.NewRecorder()
+		api.ServeHTTP(reply, request)
+		committed <- reply
+		panic(http.ErrAbortHandler)
+	}))
+	defer server.Close()
+	client := server.Client()
+	client.Timeout = 12 * time.Second
+	send := func() (*http.Response, error) {
+		t.Helper()
+		request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL+path, bytes.NewReader(body))
+		if err != nil {
+			t.Fatal("invitation TLS fixture request", err)
+		}
+		request.Close = true
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("DPoP", signed(t, f.phone, api.Origin+path, "", nonce, body, f.now))
+		return client.Do(request)
+	}
+	response, err := send()
+	if response != nil {
+		response.Body.Close()
+	}
+	if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatal("expected TLS connection to close before the first HTTP response")
+	}
+	var first *httptest.ResponseRecorder
+	select {
+	case first = <-committed:
+	default:
+		t.Fatal("connection closed before the real handler finished")
+	}
+	if first.Code != http.StatusOK {
+		t.Fatal("first request did not commit before its response was dropped", first.Code)
+	}
+	response, err = send()
+	if err != nil {
+		t.Fatal("invitation retry transport failed")
+	}
+	defer response.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(response.Body, 8193))
+	if err != nil || response.StatusCode != http.StatusOK || len(data) > 8192 || !bytes.Equal(data, first.Body.Bytes()) {
+		t.Fatal("retry changed the committed invitation response", response.StatusCode)
+	}
+	return data
+}
+
 func TestSQLInvitationToPublisherToNormalSessionAndCancellation(t *testing.T) {
 	f := newFixture(t)
 	bridge, g, api := f.bridge(t)
 	ctx := context.Background()
-	state := f.approved(t)
+	deviceAPI := f.invitationAPI(t, api)
+	origin, claim := f.decodeClaim(t, f.issue(t))
+	if origin != deviceAPI.Origin {
+		t.Fatal("signed invitation and server origin differ")
+	}
+	claimReply := f.retryAfterDroppedInvitationReply(t, deviceAPI, "/v1/invitations/claim", "", claim)
+	var state invitation.ClaimState
+	if json.Unmarshal(claimReply, &state) != nil || state.State != "pending_approval" || state.Version != 2 {
+		t.Fatal("lost claim response changed the invitation reservation")
+	}
+	f.approve(t, state)
 	id, _ := random()
 	if _, code := f.deviceCall(t, api, "/v1/invitations/complete", state, id); code != 202 {
 		t.Fatal("session before device publication", code)
@@ -89,9 +172,10 @@ func TestSQLInvitationToPublisherToNormalSessionAndCancellation(t *testing.T) {
 	if e := p.RunOnce(ctx, f.now); e != nil {
 		t.Fatal(e)
 	}
-	body, code := f.deviceCall(t, api, "/v1/invitations/complete", state, id)
-	if code != 200 {
-		t.Fatal("approved completion", code, string(body))
+	finish, _ := json.Marshal(invitation.DeviceRequest{ID: state.ID, RequestID: id})
+	body := f.retryAfterDroppedInvitationReply(t, deviceAPI, "/v1/invitations/complete", state.Nonce, finish)
+	if e := fixtureOwner.QueryRow(`SELECT count(*) FROM identity_sessions`).Scan(&sessions); e != nil || sessions != 1 {
+		t.Fatal("completion retry created more than one session", e)
 	}
 	var completed invitation.Completion
 	if json.Unmarshal(body, &completed) != nil {
