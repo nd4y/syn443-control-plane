@@ -754,7 +754,26 @@ jobs:
         run: |
           set -euo pipefail
           GOFLAGS=-json bash tools/test_invitations.sh | tee exit-country-postgres-tests.jsonl
-          jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/invitation" and .Action == "pass")) | map(.Test) | contains(["TestSQLIssueLostReplyAndConflictingOperations","TestSQLClaimSeatQuotaKeySubstitutionAndStatusBoundaries","TestSQLRevokedUncompletedDeviceReleasesItsSeatBeforeExpiry"])' exit-country-postgres-tests.jsonl
+          jq -es '
+            . as $stream
+            | def passed($package; $roots):
+                [$stream[] | select(.Package == ("github.com/nd4y/syn443-control-plane/internal/" + $package)
+                  and (.Action == "run" or .Action == "pass" or .Action == "fail" or .Action == "skip" or .Action == "error"))]
+                | . as $events
+                | ([$events[] | select((.Test // "") == "") | .Action] == ["pass"])
+                  and all($roots[];
+                    . as $name | [$events[] | select(.Test == $name) | .Action] == ["run", "pass"]);
+              passed("invitation"; [
+                "TestSQLIssueLostReplyAndConflictingOperations",
+                "TestSQLClaimSeatQuotaKeySubstitutionAndStatusBoundaries",
+                "TestSQLRevokedUncompletedDeviceReleasesItsSeatBeforeExpiry",
+                "TestSQLInvitationReservesOneKeyAndNeedsSeparateApprovalBeforeSessions",
+                "TestSQLInvitationWrongKeyExpiryMFAAndRevocation"
+              ]) and passed("deviceprovisioning"; [
+                "TestSQLInvitationToPublisherToNormalSessionAndCancellation",
+                "TestSQLExistingKeyCannotBeReassignedByInvitation"
+              ])
+          ' exit-country-postgres-tests.jsonl
           python3 tools/check_exit_country_evidence.py exit-country-postgres-tests.jsonl --stage postgres
           jq -es 'map(select(.Package == "github.com/nd4y/syn443-control-plane/internal/deviceprovisioning" and .Action == "pass")) | map(.Test) | contains(["TestSQLPublishedReferencesProtectSourceUntilRouteReplacement","TestSQLRecoversLegacyConfigurationReferencesWithoutRenewal/static","TestSQLRecoversLegacyConfigurationReferencesWithoutRenewal/adaptive","TestConfigurationPublisherRollsBackFailureAtEveryPersistentBoundary/managed_configuration_profile_refs"])' exit-country-postgres-tests.jsonl
           python3 tools/check_adaptive_runtime_evidence.py exit-country-postgres-tests.jsonl --stage postgres
@@ -831,6 +850,12 @@ jobs:
           jq -es '[.[] | select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestPackagedTelemetryProcessReceivesBoundEvents/unread_receipt_survives_restart_and_newer_batch" and .Action != "output") | .Action] == ["run","pass"]' session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestActualManagedAPIPublisherAndProviderWorkerProcesses/readiness_preserves_pending_provider_work/container_role_checks" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           python3 tools/check_session_boundary_evidence.py session-boundary-postgres-tests.jsonl
+          jq -es '
+            [.[] | select(.Package == "github.com/nd4y/syn443-control-plane/internal/enrollment"
+              and .Test == "TestRefreshRotationReuseAndRevoke"
+              and (.Action == "run" or .Action == "pass" or .Action == "fail" or .Action == "skip" or .Action == "error"))
+              | .Action] == ["run", "pass"]
+          ' session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestHistoricalSQLUpgradePreservesDeviceConversationAndRollback" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestTelemetryReportCountsOnlyKnownDecisionsWithoutRawRevisionAccess" and .Action == "pass")' session-boundary-postgres-tests.jsonl
           jq -es 'any(.[]; .Package == "github.com/nd4y/syn443-control-plane/internal/enrollment" and .Test == "TestSQLIncidentLookupRequiresLiveGrantAndRejectsCollisionsAndForeignThreads" and .Action == "pass")' session-boundary-postgres-tests.jsonl
