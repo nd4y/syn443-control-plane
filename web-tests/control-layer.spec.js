@@ -173,11 +173,11 @@ test('unassigned device can stage its first layer draft from an explicit plan',a
  await page.locator('#load-inventory').click();
  await page.getByRole('link',{name:'Открыть публикацию'}).click();
  const first=page.locator('#layer-first-from-plan'),proposal=page.locator('#layer-proposal');
- await expect(first).toBeEnabled();
- await first.click();
- await expect(page.locator('#status')).toContainText('Проверьте поля');
+ await expect(first).toBeDisabled();
+ await expect(page.locator('#layer-first-recipient')).toContainText('device-unassigned');
  await expect(proposal).toHaveValue('');
  await page.getByRole('link',{name:'Открыть планы'}).click();
+ await expect(page.locator('#target-id')).toHaveValue('device-unassigned');
  const plan={
   schemaVersion:1,
   graph:{profiles:{},chains:{},balancers:{},final:'direct'},
@@ -263,3 +263,42 @@ test('publication comparison clears denied, stale and wrong-device history',asyn
  release();
  await expect(status).toBeEmpty();await expect(page.locator('#inventory-history-diff li')).toHaveCount(0);
 });
+
+for(const [kind,target,width] of [['device','device-a',1200],['group','group-a',393]]){
+ test(`first-device staging keeps an opened ${kind} plan bound to its recipient`,async({page,request})=>{
+  await request.post(origin+'/fixture/reset',{data:{}});
+  await page.setViewportSize({width,height:850});
+  const saved={id:'saved-source',targetKind:kind,targetId:target,revision:1,baseRevision:0,baseHash:'',
+   plan:{schemaVersion:1,graph:{profiles:{private:{sourceId:'source-a',profileId:'profile-a'}},chains:{},balancers:{},final:'private'},
+    network:{schemaVersion:1,requiredNetworks:['tcp'],dnsFinal:'system',dnsStrategy:'prefer_ipv4'},
+    activation:{timeoutSeconds:30,checks:[{id:'internet',type:'https_204',target:'https://health.example.invalid/generate_204',required:true}]}}};
+  await page.route('**/control/action',async route=>{
+   const operation=route.request().postDataJSON();
+   if(operation.action==='configuration.draft.get'&&operation.payload.id===saved.id)
+    return route.fulfill({status:200,contentType:'application/json',json:saved});
+   return route.fallback();
+  });
+  await page.goto(origin);
+  await page.locator('#inventory-device').fill('device-unassigned');
+  await page.locator('#load-inventory').click();
+  await page.getByRole('link',{name:'Открыть публикацию'}).click();
+  await page.locator('#layer-first-plan').click();
+  await page.locator('#draft-id').fill(saved.id);
+  await page.locator('#open-draft').click();
+  await expect(page.locator('#draft-version')).toContainText('Версия черновика: 1');
+  await page.getByRole('link',{name:'Публикация',exact:true}).click();
+  const first=page.locator('#layer-first-from-plan');
+  await expect(first).toBeDisabled();
+  await expect(page.locator('#layer-first-recipient')).toContainText('device-unassigned');
+  await page.locator('#layer-first-plan').click();
+  await expect(page.locator('#target-id')).toHaveValue(target);
+  await expect(page.locator('#target-kind')).toHaveValue(kind);
+  expect(JSON.parse(await page.locator('#plan').inputValue())).toEqual(saved.plan);
+  await page.locator('#target-kind').selectOption('device');
+  await page.locator('#target-id').fill('device-unassigned');
+  await page.getByRole('link',{name:'Публикация',exact:true}).click();
+  await expect(first).toBeDisabled();
+  await expect(page.locator('#layer-proposal')).toHaveValue('');
+  expect((await state(request)).operations).toBe(0);
+ });
+}

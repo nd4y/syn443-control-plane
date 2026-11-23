@@ -1745,8 +1745,8 @@ addEventListener('hashchange',()=>{
 });$('open-draft').onclick=()=>work(openDraft);
 $('new-draft').onclick=()=>work(async()=>{revision=0;opened=null;$('draft-id').value=crypto.randomUUID();$('target-kind').value='device';$('target-id').value='';$('base-revision').value='0';$('base-hash').value='';$('plan').value='';$('route-check-target').value='';$('route-check-ip').value='';$('route-check-country-class').value='';$('draft-version').textContent='Новый черновик';status('Новый личный черновик. Выберите адресата и заполните план.');});
 $('draft-form').onsubmit=event=>{event.preventDefault();work(save);};$('retry-save').onclick=()=>work(retry);
-$('plan').oninput=()=>{selectProbeEntry(null,'',null);drawRouteChecks();};
-for(const id of ['draft-id','target-id','target-kind'])$(id).addEventListener('input',drawRouteChecks);
+$('plan').oninput=()=>{selectProbeEntry(null,'',null);drawRouteChecks();layerControls();};
+for(const id of ['draft-id','target-id','target-kind'])$(id).addEventListener('input',()=>{drawRouteChecks();layerControls();});
 const connectionFields=['domain','address','application','network','port','dnsType'];
 function resetExplanation(clearInputs){
  explanationEpoch++;
@@ -2081,14 +2081,22 @@ function clearLayerComparison(){layerComparison=null;$('layer-comparison').hidde
 function clearDraftInventory(){layerDraftInventory=null;$('layer-saved').replaceChildren();$('layer-list-status').textContent='';}
 function clearLayers(){$('layer-discard-confirm').checked=false;layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearDraftInventory();clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
 function layerUnchanged(){return !!layerSaved&&$('layer-id').value.trim()===layerSaved.id&&$('layer-proposal').value===layerSaved.text;}
+function planMatchesFirstDevice(device){
+ return device?.state==='unassigned' && $('target-kind').value==='device' &&
+  $('target-id').value.trim()===device.device && (!opened || opened.kind==='device' && opened.target===device.device);
+}
 function layerControls(){
  const disabled=busy||!authenticated||!!pending;
  for(const id of ['layer-id','layer-proposal','layer-load','layer-save','layer-confirm'])$(id).disabled=disabled||!!layerJob;
  $('layer-from-device').disabled=disabled||!!layerJob||!layerInventory||layerInventory.state==='unassigned';
  const first=layerInventory?.state==='unassigned';
  $('layer-first-device').hidden=!first;
+ const matches=planMatchesFirstDevice(layerInventory);
+ $('layer-first-recipient').textContent=first?(matches
+  ? `Первый черновик будет создан для устройства ${layerInventory.device}.`
+  : `Подготовьте план для устройства ${layerInventory.device}. Для другого получателя создайте отдельный черновик.`):'';
  $('layer-first-mode').disabled=disabled||!!layerJob;
- $('layer-first-from-plan').disabled=disabled||!!layerJob||!first||
+ $('layer-first-from-plan').disabled=disabled||!!layerJob||!matches||!$('plan').value.trim()||
   !!$('layer-proposal').value.trim()&&!layerUnchanged();
  $('layer-preview').disabled=disabled||!layerUnchanged()||!!layerJob;
  $('layer-poll').disabled=disabled||!layerJob;
@@ -2161,7 +2169,7 @@ function editDeviceLayer(){
 }
 function firstDeviceLayer(){
  const v=layerInventory,mode=$('layer-first-mode').value;
- if(v?.state!=='unassigned'||!['home_wifi','wifi','cellular_restricted','cellular'].includes(mode)||
+ if(!planMatchesFirstDevice(v)||!['home_wifi','wifi','cellular_restricted','cellular'].includes(mode)||
    $('layer-proposal').value.trim()&&!layerUnchanged())throw Error('invalid');
  let plan;
  try{plan=routeDraft().value;}catch{throw Error('invalid');}
@@ -2286,6 +2294,13 @@ async function pollLayerJob(){
  status(view.error==='configuration_conflict'?'Конфликт исходной версии. Сохранённый черновик сохранён; загрузите актуальную конфигурацию и сравните изменения.':'Задание отклонено или истекло. Изменения не подтверждены; проверьте права, источники и исходные версии.');
 }
 $('layer-from-device').onclick=()=>work(async()=>editDeviceLayer());
+$('layer-first-plan').addEventListener('click',()=>{
+ if(layerInventory?.state==='unassigned' && !opened && !$('plan').value.trim() &&
+    $('target-kind').value==='device' && !$('target-id').value.trim()){
+  $('target-id').value=layerInventory.device;
+  drawRouteChecks();layerControls();
+ }
+});
 $('layer-first-from-plan').onclick=()=>work(async()=>firstDeviceLayer());
 $('layer-load').onclick=()=>work(loadLayerDraft);$('layer-save').onclick=()=>work(saveLayerDraft);
 $('layer-id').oninput=$('layer-proposal').oninput=()=>{clearLayerReview();clearLayerComparison();layerControls();};
