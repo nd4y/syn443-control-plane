@@ -3850,8 +3850,8 @@
   "evidenceSnapshot": {
     "date": "2026-11-23",
     "inventory": "docs/implementation-status.md",
-    "androidSource": "c8d3f2a97341cc4e82d3cbd546b8015db3e0faac",
-    "controlPlaneSource": "76b24a2482ec3a1962851215b5bb9eb8d9d4914c",
-    "scope": "Merged Android v153 source and the protected Control Plane migration preview report. Android source CI 45118116822 verified API 29, 35 and 37. Control Plane Actions 45124585220 and 45128516329 verified group review and the local NekoBox preview. Physical acceptance and deployment are tracked separately."
+    "androidSource": "3030a749badca337d2a541d77480259779de9a8c",
+    "controlPlaneSource": "807159824b4528ecfb7db593d17f7e37dc9e2271",
+    "scope": "Merged Android v154 adds route-proof and shared-endpoint checks verified on API 29, 35 and 37 in Actions 45129640638. Control Plane Actions 45132591838 passed the previous protected evidence snapshot. Physical useful traffic, deployment and carrier cases retain separate acceptance."
   }
 }
