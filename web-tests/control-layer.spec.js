@@ -81,11 +81,12 @@ test('empty private layer draft inventory preserves an unsaved proposal and does
 test('group publication review shows each owner and the network dependencies declared for that device',async({page,request})=>{
  const proposal=await start(page,request);
  await page.route('**/control/group-network-impact',route=>{
-  const {effectiveHash,bundles}=route.request().postDataJSON();
+  const {effectiveHash,bundles,includeLiteralNetworks}=route.request().postDataJSON();
+  expect(includeLiteralNetworks).toBe(true);
   expect(bundles.map(bundle=>bundle.device)).toEqual(['device-a','device-b']);
   return route.fulfill({json:{effectiveHash,recipients:[
-   {device:'device-b',netbird:true,overlayDns:true,homeProof:false},
-   {device:'device-a',netbird:false,overlayDns:false,homeProof:false},
+   {device:'device-b',netbird:true,overlayDns:true,homeProof:false,literalNetworks:{dnsAddress:true,routePrefix:true}},
+   {device:'device-a',netbird:false,overlayDns:false,homeProof:false,literalNetworks:{dnsAddress:false,routePrefix:false}},
   ]}});
  });
  await page.setViewportSize({width:360,height:800});
@@ -102,8 +103,8 @@ test('group publication review shows each owner and the network dependencies dec
  await expect(review.getByRole('heading',{name:'Затронутые устройства (2)'})).toBeVisible();
  const rows=review.locator(':scope > ul > li');
  await expect(rows).toHaveCount(2);
- await expect(rows.nth(0)).toContainText('NetBird, DNS через NetBird и проверка домашней сети не заданы.');
- await expect(rows.nth(1)).toContainText('В итоговой конфигурации: NetBird, DNS через NetBird');
+ await expect(rows.nth(0)).toContainText('В этих категориях частные зависимости не заданы.');
+ await expect(rows.nth(1)).toContainText('В итоговой конфигурации: NetBird, DNS через NetBird, DNS по частному адресу, маршруты к частным подсетям');
  await expect(rows.nth(0)).toContainText('device-a · владелец synthetic-user · исходная версия 7');
  await expect(rows.nth(1)).toContainText('device-b · владелец synthetic-second · первая конфигурация');
  await expect(rows.nth(0).getByText('Разделы предложения',{exact:false})).toContainText('Профили подписок');
@@ -122,13 +123,14 @@ test('group review can retry a mismatched impact without publishing or recreatin
  let attempt=0;
  await page.route('**/control/group-network-impact',route=>{
   const {effectiveHash}=route.request().postDataJSON();
-  const recipient={device:'device-a',netbird:false,overlayDns:false,homeProof:false};
+  const recipient={device:'device-a',netbird:false,overlayDns:false,homeProof:false,literalNetworks:{dnsAddress:false,routePrefix:false}};
   attempt++;
   return route.fulfill({json:{effectiveHash:attempt===1?'0'.repeat(64):effectiveHash,
-   recipients:[attempt===2?{...recipient,device:'another-device'}:recipient]}});
+   recipients:[attempt===2?{...recipient,device:'another-device'}:
+    attempt===3?{...recipient,literalNetworks:{dnsAddress:'private-address',routePrefix:false}}:recipient]}});
  });
  await save(page);await preview(page);
- for(let failure=1;failure<=2;failure++){
+ for(let failure=1;failure<=3;failure++){
   await expect(page.getByText('Не удалось сверить итоговые настройки устройств.',{exact:false})).toBeVisible();
   await expect(page.locator('#layer-review')).toBeHidden();
   await expect(page.locator('#layer-publish')).toBeDisabled();

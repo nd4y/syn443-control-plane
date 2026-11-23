@@ -2,7 +2,6 @@ package configuration
 
 import (
 	"context"
-
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -58,15 +57,16 @@ func inspectEffectivePlans(ctx context.Context, bundles []LayerBundle, inspect f
 // GroupNetworkImpact contains categories only. It is derived from the effective
 // documents presented by the caller. It cannot grant access to any resource.
 type GroupNetworkImpact struct {
-	Device     string `json:"device"`
-	NetBird    bool   `json:"netbird"`
-	OverlayDNS bool   `json:"overlayDns"`
-	HomeProof  bool   `json:"homeProof"`
+	Device          string                `json:"device"`
+	NetBird         bool                  `json:"netbird"`
+	OverlayDNS      bool                  `json:"overlayDns"`
+	HomeProof       bool                  `json:"homeProof"`
+	LiteralNetworks *LiteralNetworkImpact `json:"literalNetworks,omitempty"`
 }
 
 // ReviewGroupNetworkImpact compares the review to the effective hash from the
 // user's current signed preview. It never fetches a source or takes a DB lock.
-func ReviewGroupNetworkImpact(ctx context.Context, bundles []LayerBundle, expected string) ([]GroupNetworkImpact, error) {
+func ReviewGroupNetworkImpact(ctx context.Context, bundles []LayerBundle, expected string, includeLiteralNetworks bool) ([]GroupNetworkImpact, error) {
 	if !previewDigest.MatchString(expected) || len(bundles) > 64 {
 		return nil, ErrInvalid
 	}
@@ -83,6 +83,10 @@ func ReviewGroupNetworkImpact(ctx context.Context, bundles []LayerBundle, expect
 				impact.OverlayDNS = true
 				break
 			}
+		}
+		if includeLiteralNetworks {
+			literal := reviewLiteralNetworks(plan.Network)
+			impact.LiteralNetworks = &literal
 		}
 		impacts = append(impacts, impact)
 	})

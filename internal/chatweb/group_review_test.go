@@ -22,6 +22,18 @@ func TestGroupReviewChecksEffectivePlansAndNeverFetchesPrivateResources(t *testi
 	if err := json.Unmarshal(raw, &plans); err != nil {
 		t.Fatal(err)
 	}
+	network, err := configuration.DecodeNetworkSettings(plans["personal"]["network"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := network.DNSServers["resolver"]
+	server.Address = "127.0.0.1"
+	network.DNSServers["resolver"] = server
+	network.Rules[0].IPPrefixes = []string{"fd00:1::/64"}
+	plans["personal"]["network"], err = json.Marshal(network)
+	if err != nil {
+		t.Fatal(err)
+	}
 	template := configuration.Layer{ID: "template-a", Kind: "template", Revision: 1}
 	for _, field := range []string{"schemaVersion", "graph", "network", "activation"} {
 		template.Changes = append(template.Changes, configuration.Change{Path: "/" + field, Operation: "set", Value: plans["personal"][field]})
@@ -69,6 +81,11 @@ func TestGroupReviewChecksEffectivePlansAndNeverFetchesPrivateResources(t *testi
 	want := `{"effectiveHash":"` + digest + `","recipients":[{"device":"device-a","netbird":true,"overlayDns":true,"homeProof":false},{"device":"device-b","netbird":false,"overlayDns":false,"homeProof":false}]}`
 	if got.Code != 200 || strings.TrimSpace(got.Body.String()) != want {
 		t.Fatalf("incorrect projection: %d %s", got.Code, got.Body.String())
+	}
+	extended := strings.TrimSuffix(body(digest), "}") + `,"includeLiteralNetworks":true}`
+	want = `{"effectiveHash":"` + digest + `","recipients":[{"device":"device-a","netbird":true,"overlayDns":true,"homeProof":false,"literalNetworks":{"dnsAddress":true,"routePrefix":true}},{"device":"device-b","netbird":false,"overlayDns":false,"homeProof":false,"literalNetworks":{"dnsAddress":false,"routePrefix":false}}]}`
+	if got := webCall(s, path, extended, session); got.Code != 200 || strings.TrimSpace(got.Body.String()) != want {
+		t.Fatalf("unexpected literal review: %d %s", got.Code, got.Body.String())
 	}
 	if got := webCall(s, path, body(strings.Repeat("a", 64)), session); got.Code != 400 {
 		t.Fatal("mismatched manifest", got.Code)

@@ -2319,14 +2319,16 @@ function reviewLayerSections(layer){
 }
 async function groupNetworkImpact(preview,proposal){
  if(!['group','template'].includes(preview.targetKind))return null;
- const result=await request('/control/group-network-impact',{bundles:proposal.bundles,effectiveHash:preview.effectiveHash});
+ const result=await request('/control/group-network-impact',{bundles:proposal.bundles,effectiveHash:preview.effectiveHash,includeLiteralNetworks:true});
  if(!result||result.effectiveHash!==preview.effectiveHash||!Array.isArray(result.recipients)||
     result.recipients.length!==preview.recipients.length)throw Error('groupImpact');
  const impacts=new Map();
  for(const entry of result.recipients){
-  if(!entry||Object.keys(entry).sort().join(',')!=='device,homeProof,netbird,overlayDns'||
+  if(!entry||Object.keys(entry).sort().join(',')!=='device,homeProof,literalNetworks,netbird,overlayDns'||
      !['homeProof','netbird','overlayDns'].every(key=>typeof entry[key]==='boolean')||
-     impacts.has(entry.device))throw Error('groupImpact');
+     impacts.has(entry.device)||!entry.literalNetworks||
+     Object.keys(entry.literalNetworks).sort().join(',')!=='dnsAddress,routePrefix'||
+     !['dnsAddress','routePrefix'].every(key=>typeof entry.literalNetworks[key]==='boolean'))throw Error('groupImpact');
   impacts.set(entry.device,entry);
  }
  if(preview.recipients.some(recipient=>!impacts.has(recipient.device)))throw Error('groupImpact');
@@ -2348,8 +2350,10 @@ function showLayerImpact(result,proposal,impacts){
    if(impact.netbird)names.push('NetBird');
    if(impact.overlayDns)names.push('DNS через NetBird');
    if(impact.homeProof)names.push('проверка домашней сети');
+   if(impact.literalNetworks.dnsAddress)names.push('DNS по частному адресу');
+   if(impact.literalNetworks.routePrefix)names.push('маршруты к частным подсетям');
    element(item,'p',names.length?'В итоговой конфигурации: '+names.join(', '):
-     'NetBird, DNS через NetBird и проверка домашней сети не заданы.');
+     'В этих категориях частные зависимости не заданы.');
   }
   const layers=byDevice.get(recipient.device).layers.map(layer=>({layer,labels:reviewLayerSections(layer)}));
   const labels=new Set(layers.flatMap(item=>item.labels));
