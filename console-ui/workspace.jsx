@@ -505,7 +505,7 @@ function ReferencePlanInputs() {
         </Select>
         {input('source', 'ID разрешённого источника подписки', 48)}
         {input('profile', 'ID интернет-профиля в источнике', 128)}
-        {input('health', 'HTTPS-адрес проверки с ответом 204', 2048, 'url')}
+        {input('health', 'URL подтверждения подключения (HTTPS 204)', 2048, 'url')}
         {input('dns', 'Имя DNS-сервера с поддержкой TLS через интернет-профиль', 253)}
         <fieldset id="reference-personal" hidden disabled>
           <legend>Личная сеть NetBird</legend>
