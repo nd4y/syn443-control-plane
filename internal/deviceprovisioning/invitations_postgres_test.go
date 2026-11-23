@@ -19,6 +19,7 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/enrollment"
 	"github.com/nd4y/syn443-control-plane/internal/identity"
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
+	"github.com/nd4y/syn443-control-plane/internal/policy"
 )
 
 func (f *fixture) bridge(t *testing.T) (*Invitations, enrollment.Grant, *enrollment.Store) {
@@ -216,6 +217,104 @@ func TestSQLInvitationToPublisherToNormalSessionAndCancellation(t *testing.T) {
 		t.Fatal("lost cancellation reply", code)
 	}
 }
+
+type unavailableInvitationVerifier struct {
+	client *http.Client
+	url    string
+}
+
+func (v unavailableInvitationVerifier) Verify(ctx context.Context, _ string, _ time.Time) (identity.Principal, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, v.url, nil)
+	if err != nil {
+		return identity.Principal{}, err
+	}
+	reply, err := v.client.Do(request)
+	if err != nil {
+		return identity.Principal{}, err
+	}
+	defer reply.Body.Close()
+	if reply.StatusCode != http.StatusServiceUnavailable {
+		return identity.Principal{}, errors.New("expected IdP fixture to be unavailable")
+	}
+	return identity.Principal{}, enrollment.ErrUnavailable
+}
+
+func TestSQLApprovedInvitationRetrievesBoundPolicyWhileIdPResponds503(t *testing.T) {
+	f := newFixture(t)
+	bridge, _, store := f.bridge(t)
+	state := f.approved(t)
+	if err := bridge.Prepare(t.Context(), f.now); err != nil {
+		t.Fatal(err)
+	}
+	publisher := enrollment.Publisher{Store: bridge.Identity, Verifier: f.v, Grants: bridge.Grants, Key: f.key,
+		KeyID: "fixture-root", Origin: "https://api.example.invalid", InvitationApproval: bridge}
+	if err := publisher.RunOnce(t.Context(), f.now); err != nil {
+		t.Fatal(err)
+	}
+	var lookups atomic.Int32
+	identityProvider := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.NotFound(w, r)
+			return
+		}
+		lookups.Add(1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer identityProvider.Close()
+	api := f.invitationAPI(t, store)
+	idpClient := identityProvider.Client()
+	idpClient.Timeout = 5 * time.Second
+	api.Verifier = unavailableInvitationVerifier{client: idpClient, url: identityProvider.URL}
+	server := httptest.NewTLSServer(api)
+	defer server.Close()
+	client := server.Client()
+	client.Timeout = 12 * time.Second
+	call := func(method, path, access, nonce string, input []byte) (int, string, []byte) {
+		t.Helper()
+		request, err := http.NewRequestWithContext(t.Context(), method, server.URL+path, bytes.NewReader(input))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(input) > 0 {
+			request.Header.Set("Content-Type", "application/json")
+		}
+		if access != "" {
+			request.Header.Set("Authorization", "DPoP "+access)
+		}
+		request.Header.Set("DPoP", signedMethod(t, f.phone, method, api.Origin+path, access, nonce, input, f.now))
+		response, err := client.Do(request)
+		if err != nil {
+			t.Fatal("enrollment API did not remain available")
+		}
+		defer response.Body.Close()
+		body, err := io.ReadAll(io.LimitReader(response.Body, (1<<20)+1))
+		if err != nil || len(body) > 1<<20 {
+			t.Fatal("could not read a bounded enrollment response")
+		}
+		return response.StatusCode, response.Header.Get("Content-Type"), body
+	}
+	if got, _, _ := call(http.MethodPost, "/v1/devices/enroll", token, "", []byte(`{}`)); got != http.StatusUnauthorized || lookups.Load() != 1 {
+		t.Fatal("ordinary enrollment did not exercise the unavailable IdP", got, lookups.Load())
+	}
+	id, _ := random()
+	finish, _ := json.Marshal(invitation.DeviceRequest{ID: state.ID, RequestID: id})
+	code, _, body := call(http.MethodPost, "/v1/invitations/complete", "", state.Nonce, finish)
+	var completed invitation.Completion
+	if code != http.StatusOK || json.Unmarshal(body, &completed) != nil || completed.Session.DeviceID == "" {
+		t.Fatal("approved invitation did not complete during the IdP outage", code)
+	}
+	session := completed.Session
+	code, format, signedPolicy := call(http.MethodGet, "/v1/device/policy", session.AccessToken, session.Nonce, nil)
+	if code != http.StatusOK || format != "application/jose" || lookups.Load() != 1 {
+		t.Fatal("signed policy did not remain available independently of the IdP", code, lookups.Load())
+	}
+	thumb, _ := identity.PublicJWK(&f.phone.PublicKey).Thumbprint()
+	roots := map[string]*ecdsa.PublicKey{"fixture-root": &f.key.PublicKey}
+	if value, err := policy.VerifyBound(string(signedPolicy), roots, session.DeviceID, thumb, f.now.Add(3*time.Second)); err != nil || value.Revision != 1 {
+		t.Fatal("the returned policy did not verify for the original device key")
+	}
+}
+
 func TestSQLPublisherRechecksRevocationAndFailureBackoff(t *testing.T) {
 	f := newFixture(t)
 	bridge, _, _ := f.bridge(t)

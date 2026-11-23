@@ -100,3 +100,14 @@ The database has one approved device and one session. A different completion
 request conflicts and revocation prevents the original request from restoring
 access. Physical Android QR recovery and the NetBird peer count remain open.
 See the [protected PostgreSQL run](https://github.com/nd4y/syn443-control-plane/actions/runs/45187407160).
+
+## Completing an approved invitation during an IdP outage
+
+An approved invitation with a published policy can complete while the identity
+provider is unavailable. The GitHub Actions test uses two separate TLS
+listeners. Ordinary enrollment contacts the IdP and receives its simulated
+HTTP 503. The invitation then completes through the enrollment API with the
+original device key. The device obtains an ordinary DPoP session and verifies
+the signature and audience of the fetched policy. No additional IdP request
+occurs. Mobile error handling when the enrollment API itself is unreachable
+remains a separate test. See the [PostgreSQL result](https://github.com/nd4y/syn443-control-plane/actions/runs/45201243766).

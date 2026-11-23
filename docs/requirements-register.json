@@ -2809,9 +2809,10 @@
       "evidence": [
         "docs/invitations.md",
         "internal/invitation/publication_postgres_test.go",
-        "internal/enrollment/invited_postgres_test.go"
+        "internal/enrollment/invited_postgres_test.go",
+        "internal/deviceprovisioning/invitations_postgres_test.go"
       ],
-      "implementationScope": "The ordinary key-bound session requires a committed authorized device policy and shares the OIDC revocation and generation fences.",
+      "implementationScope": "The ordinary key-bound session requires a committed authorized device policy and shares the OIDC revocation and generation fences. An already published invitation completes and obtains a device-bound policy during an IdP outage.",
       "remainingScope": "Verify subsequent phone policy refresh and administrator separation for a newly invited pilot device."
     },
     {
@@ -3352,8 +3353,12 @@
     {
       "id": "AC36",
       "specRow": " Keycloak недоступен, enrollment API доступен | Одобренное приглашение получает конфиг без IdP; недоступный enrollment объясняется как сеть, а не ошибка Keycloak |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/invitations.md",
+        "internal/deviceprovisioning/invitations_postgres_test.go"
+      ],
+      "remainingScope": "The approved, published invitation completed with the original key and fetched a verified policy during a real simulated HTTP 503 from the IdP. Android device UX when the enrollment API itself is unavailable and a publication still awaits IdP verification remain open."
     },
     {
       "id": "AC37",

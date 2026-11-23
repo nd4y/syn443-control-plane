@@ -158,9 +158,17 @@ const token = "synthetic-administrative-access-token"
 
 func signed(t *testing.T, key *ecdsa.PrivateKey, uri, token, nonce string, raw []byte, now time.Time) string {
 	t.Helper()
+	return signedMethod(t, key, "POST", uri, token, nonce, raw, now)
+}
+
+func signedMethod(t *testing.T, key *ecdsa.PrivateKey, method, uri, token, nonce string, raw []byte, now time.Time) string {
+	t.Helper()
 	header, _ := json.Marshal(map[string]any{"alg": "ES256", "typ": "dpop+jwt", "jwk": identity.PublicJWK(&key.PublicKey)})
 	jti, _ := random()
-	claims := identity.ProofClaims{Jti: jti, Htm: "POST", Htu: uri, Iat: now.Unix(), Nonce: nonce, RequestHash: identity.Hash(raw)}
+	claims := identity.ProofClaims{Jti: jti, Htm: method, Htu: uri, Iat: now.Unix(), Nonce: nonce}
+	if method == "POST" {
+		claims.RequestHash = identity.Hash(raw)
+	}
 	if token != "" {
 		claims.Ath = identity.Hash([]byte(token))
 	}
