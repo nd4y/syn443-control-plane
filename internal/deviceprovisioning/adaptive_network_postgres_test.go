@@ -234,9 +234,49 @@ func TestSQLAdaptiveAuthoritySelectsTheEntire500Plus32UnionWithoutFallback(t *te
 	}
 	var catalogue map[string]json.RawMessage
 	decoded, err := base64.RawURLEncoding.Strict().DecodeString(engine.Adaptive.Catalogue)
-	if err != nil || json.Unmarshal(decoded, &catalogue) != nil || len(catalogue) != 500 {
+	if err != nil || json.Unmarshal(decoded, &catalogue) != nil || len(catalogue) != 500 || len(catalogue["hop-499"]) == 0 {
 		t.Fatal("full private catalogue missing from actual prepared policy", err)
 	}
+	t.Run("signs_all_five_hundred_profiles", func(t *testing.T) {
+		if err := n.publisher.RunOnce(ctx, n.f.now); err != nil {
+			t.Fatal(err)
+		}
+		verified := verifyAdaptivePublication(t, n, 2)
+		issued, err := base64.RawURLEncoding.Strict().DecodeString(verified.EngineConfigB64)
+		if err != nil || !bytes.Equal(issued, prepared.EngineConfig) {
+			t.Fatal("the complete prepared catalogue did not survive actual signing", err)
+		}
+	})
+	if t.Failed() {
+		return
+	}
+	t.Run("oversize_keeps_previous_signed_policy", func(t *testing.T) {
+		var previous []byte
+		if err := fixtureOwner.QueryRow(`SELECT publication FROM identity_devices WHERE id=$1 AND revision=2 AND approved`, n.target.Device).Scan(&previous); err != nil || len(previous) == 0 {
+			t.Fatal("missing signed policy before the over-limit candidate", err)
+		}
+		oversize := adaptiveAuthorityPlan(t, refs[:501])
+		oversize.Graph.Profiles = plan.Graph.Profiles
+		configureAdaptiveNetworkFixture(t, &n, oversize)
+		now := n.f.now.Add(time.Second)
+		n.target.CurrentRevision = 2
+		if candidate, err := n.authority.Prepare(ctx, n.target, now); err == nil || candidate != nil {
+			t.Fatal("over-limit catalogue entered actual publication preparation")
+		}
+		if _, err := fixtureOwner.Exec(`UPDATE identity_devices SET refresh_after=0,retry_after=0 WHERE id=$1`, n.target.Device); err != nil {
+			t.Fatal(err)
+		}
+		if err := n.publisher.RunOnce(ctx, now); err != nil {
+			t.Fatal("publisher did not record the candidate refusal", err)
+		}
+		var revision, retryAfter int64
+		var current []byte
+		var code string
+		if err := fixtureOwner.QueryRow(`SELECT revision,publication,publication_error,retry_after FROM identity_devices WHERE id=$1 AND approved`, n.target.Device).Scan(&revision, &current, &code, &retryAfter); err != nil ||
+			revision != 2 || !bytes.Equal(current, previous) || code == "" || retryAfter <= now.Unix() {
+			t.Fatal("over-limit refresh replaced the previous signed policy or failed to schedule a bounded retry", err)
+		}
+	})
 }
 
 func TestSQLAdaptiveAuthorityRejectsDowngradesForeignKeysAndLateSourceChanges(t *testing.T) {
