@@ -50,3 +50,22 @@ AC79 includes [normal system installer cancellation](https://github.com/nd4y/syn
 - `enrolledHistoricalUpgradeKeepsOriginalBindingAndPayload`
 
 A counterfeit or interrupted update on device and forward recovery after an incompatible engine migration still need end-to-end evidence.
+
+## Reviewed Android v157 and protected v156
+
+Android v156 passed the protected matrix on API 29, 35 and 37. Each report
+contained 675 checks, including actual HTTP exchanges through the recovered
+tunnel after Wi-Fi loss. One API 35 job repeated the download after GitHub
+returned HTTP 503 before emulator launch. The same protected build also
+passed the historical v154 to v156 APK update.
+
+The reviewed v157 source passed 676 checks on each of those APIs. With
+the owner diagnostics grant active, `syn443ctl config-render` returns the
+current running configuration summary and reports `unavailable` after Stop.
+Ordinary applications with their own UID remain outside both ADB providers.
+The configuration summary includes counts and protocol names. Full managed
+export and import are still partial in AC23.
+
+- [Protected v156 matrix](https://github.com/nd4y/syn443-android/actions/runs/45194104558)
+- [Actual older-APK migration](https://github.com/nd4y/syn443-android/actions/runs/45223559650)
+- [Reviewed v157 source matrix](https://github.com/nd4y/syn443-android/actions/runs/45204433857)
