@@ -204,3 +204,62 @@ test('unassigned device can stage its first layer draft from an explicit plan',a
  expect(saved.layerDrafts).toHaveLength(1);
  expect(saved.calls).not.toContain('configuration.publish');
 });
+
+async function openPublishedHistory(page,request){
+ await request.post(origin+'/fixture/reset',{data:{runtimeSecondDevice:true}});
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(origin+'/#inventory-title');
+ await expect(page.locator('#load-inventory')).toBeEnabled();
+ await page.locator('#inventory-device').fill('device-a');
+ await page.locator('#load-inventory').click();
+ await page.locator('#inventory-history summary').click();
+}
+function publishedView(revision){
+ const newer=revision===7;
+ const layer={kind:'device',layerId:'device-a',revision:2};
+ return {device:'device-a',owner:'synthetic-user',historical:true,state:'assigned',revision,
+  hash:(newer?'a':'b').repeat(64),currentRevision:7,mode:newer?'wifi':'home_wifi',approvalUntilMs:1800003600000,
+  ...(newer?{previous:{revision:6,hash:'b'.repeat(64)}}:{}),
+  effective:{document:{network:{dnsStrategy:newer?'ipv6_only':'ipv4_only'}},fields:{'/network/dnsStrategy':layer},restrictions:[]}};
+}
+test('mobile device card compares two bound publications without saving or publishing',async({page,request})=>{
+ await openPublishedHistory(page,request);
+ const reads=[];
+ await page.route('**/control/action',async route=>{
+  const body=route.request().postDataJSON();
+  if(body.action!=='configuration.history.get')return route.continue();
+  reads.push(body.payload);
+  await route.fulfill({json:publishedView(body.payload.revision)});
+ });
+ await page.locator('#inventory-history-load').click();
+ await expect(page.locator('#inventory-history-status')).toHaveText('Версии 6 → 7. Изменений: 2.');
+ await expect(page.locator('#inventory-history-diff li')).toHaveText(['Изменено · /network/dnsStrategy','Изменено · Режим сети']);
+ expect(reads).toEqual([{id:'device-a',revision:7,hash:'a'.repeat(64),includePrevious:true},{id:'device-a',revision:6,hash:'b'.repeat(64)}]);
+ const result=await state(request);expect(result.calls).not.toContain('configuration.publish');
+});
+test('publication comparison clears denied, stale and wrong-device history',async({page,request})=>{
+ await openPublishedHistory(page,request);
+ let response='denied',arrived,release;
+ const waiting=new Promise(done=>{arrived=done;});
+ const pause=new Promise(done=>{release=done;});
+ await page.route('**/control/action',async route=>{
+  const body=route.request().postDataJSON();
+  if(body.action!=='configuration.history.get')return route.continue();
+  if(body.payload.revision===7)return route.fulfill({json:publishedView(7)});
+  if(response==='denied')return route.fulfill({status:404,body:'{}'});
+  if(response==='wrong')return route.fulfill({json:{...publishedView(6),device:'device-b'}});
+  if(response==='advanced')return route.fulfill({json:{...publishedView(6),currentRevision:8}});
+  arrived();await pause;
+  await route.fulfill({json:publishedView(6)}).catch(()=>{});
+ });
+ const load=page.locator('#inventory-history-load'), status=page.locator('#inventory-history-status');
+ await load.click();await expect(status).toContainText('Нет доступа');
+ response='wrong';await load.click();await expect(status).toContainText('Не удалось сравнить');
+ response='advanced';await load.click();await expect(status).toContainText('новая версия');
+ await expect(page.locator('#inventory-history-diff li')).toHaveCount(0);
+ response='delayed';await load.click();await waiting;
+ await page.locator('#inventory-device').fill('device-b');await page.locator('#load-inventory').click();
+ await expect(page.locator('#inventory-status')).toHaveText('Конфигурация загружена.');
+ release();
+ await expect(status).toBeEmpty();await expect(page.locator('#inventory-history-diff li')).toHaveCount(0);
+});

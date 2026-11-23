@@ -252,15 +252,38 @@ func TestConfigurationHistoryBindsImmutableBaseWhileRecheckingLiveAuthority(t *t
 	if e := publisher.RunOnce(context.Background(), n.f.now.Add(time.Second)); e != nil {
 		t.Fatal(e)
 	}
-	call := func(revision int64, hash string) (ConfigurationInventory, error) {
+	call := func(revision int64, hash string, include ...any) (ConfigurationInventory, error) {
 		t.Helper()
-		raw, token, proof := configurationCall(t, n, c, "configuration.history.get", identity.Hash([]byte(fmt.Sprintf("history %d %s", revision, hash))), map[string]any{"id": n.target.Device, "revision": revision, "hash": hash})
+		payload := map[string]any{"id": n.target.Device, "revision": revision, "hash": hash}
+		if len(include) > 0 {
+			payload["includePrevious"] = include[0]
+		}
+		raw, token, proof := configurationCall(t, n, c, "configuration.history.get", identity.Hash([]byte(fmt.Sprintf("history %d %s %v", revision, hash, include))), payload)
 		v, e := c.Dispatch(context.Background(), token, proof, raw, n.f.now)
 		if e != nil {
 			return ConfigurationInventory{}, e
 		}
 		return v.(ConfigurationInventory), nil
 	}
+	t.Run("explicit predecessor follows the verified bundle only", func(t *testing.T) {
+		head, err := call(2, second.Preview.DraftHash, true)
+		if err != nil || head.Previous == nil || head.Previous.Revision != 1 || head.Previous.Hash != first.Preview.DraftHash {
+			t.Fatal("wrong predecessor", err)
+		}
+		prior, err := call(head.Previous.Revision, head.Previous.Hash, true)
+		if err != nil || prior.Previous != nil || prior.Device != n.target.Device {
+			t.Fatal("incorrect first revision", err)
+		}
+		legacy, err := call(2, second.Preview.DraftHash)
+		if err != nil || legacy.Previous != nil {
+			t.Fatal("unsolicited history reference", err)
+		}
+		for _, invalid := range []any{false, nil, "true", 1} {
+			if _, err = call(2, second.Preview.DraftHash, invalid); !errors.Is(err, enrollment.ErrDenied) {
+				t.Fatal("unexpected history option", invalid, err)
+			}
+		}
+	})
 	old, e := call(1, first.Preview.DraftHash)
 	if e != nil || !old.Historical || old.Revision != 1 || old.CurrentRevision != 2 || old.Hash != first.Preview.DraftHash || len(old.Layers) != 1 || old.Effective == nil {
 		t.Fatal("immutable historical base", e)
@@ -282,5 +305,8 @@ func TestConfigurationHistoryBindsImmutableBaseWhileRecheckingLiveAuthority(t *t
 	}
 	if _, e = call(1, first.Preview.DraftHash); !errors.Is(e, enrollment.ErrDenied) {
 		t.Fatal("historical rights survived live withdrawal", e)
+	}
+	if _, e = call(2, second.Preview.DraftHash, true); !errors.Is(e, enrollment.ErrDenied) {
+		t.Fatal("predecessor reference survived withdrawal", e)
 	}
 }

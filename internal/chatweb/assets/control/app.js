@@ -1,4 +1,4 @@
-import {mergeDeviceProposal} from './layer-merge.js';
+import {equal,mergeDeviceProposal} from './layer-merge.js';
 const $=id=>document.getElementById(id);
 const networkModeLabels={home_wifi:'Домашний Wi-Fi',wifi:'Wi-Fi',cellular_restricted:'Мобильная сеть с ограничениями',cellular:'Мобильная сеть'};
 const sourceImportPath='/control/source/import';
@@ -13,6 +13,7 @@ let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJo
 let layerComparison=null;
 let layerDraftInventory=null;
 let inventoryEpoch=0;
+let historyRequest=null;
 let sourceShares=null;
 let providerContext=null,providerEpoch=0;
 let providerEdit=null;
@@ -544,6 +545,9 @@ function controls(){
 }
 function clearInventory(){
  inventoryEpoch++;
+ historyRequest?.abort();historyRequest=null;
+ $('inventory-history').open=false;$('inventory-history').hidden=true;$('inventory-history-load').disabled=false;
+ $('inventory-history-status').textContent='';$('inventory-history-diff').replaceChildren();
  clearRuntime();
  $('issued-path').hidden=true;
  $('issued-path-select').onchange=null;
@@ -1008,6 +1012,69 @@ async function loadDevices(more=false,prefix=devicePrefix){
   if(['login','denied'].includes(error.message))throw error;
  }
 }
+function historicalFields(view, expected, device, owner) {
+ if(view?.historical!==true||view.device!==device||view.owner!==owner||view.revision!==expected.revision||
+    view.hash!==expected.hash||!Number.isSafeInteger(view.currentRevision)||view.currentRevision<view.revision||
+    !['assigned','expired'].includes(view.state)||!Object.hasOwn(networkModeLabels,view.mode)||
+    !Number.isSafeInteger(view.approvalUntilMs)||view.approvalUntilMs<1)throw Error('invalid');
+ const value=view.effective;
+ const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+ if(!object(value?.document)||!object(value.fields)||!Array.isArray(value.restrictions??[]))throw Error('invalid');
+ const validPath=p=>typeof p==='string'&&p.length<=512&&/^([/][A-Za-z][A-Za-z0-9_-]{0,63}){1,16}$/.test(p);
+ const fields=new Map([['Режим сети',view.mode],['Срок назначения',view.approvalUntilMs]]);
+ for(const [path,origin] of Object.entries(value.fields)){
+  if(!validPath(path)||!inventoryOrigin(origin))throw Error('invalid');
+  let setting=value.document;
+  for(const part of path.slice(1).split('/')){
+   if(!object(setting)||!Object.hasOwn(setting,part))throw Error('invalid');
+   setting=setting[part];
+  }
+  fields.set(path,{setting,origin});
+ }
+ for(const row of value.restrictions??[]){
+  const path=row?.permission?.path;
+  if(!validPath(path)||!inventoryOrigin(row.origin))throw Error('invalid');
+  const key='Ограничения '+path;
+  fields.set(key,[...(fields.get(key)??[]),row]);
+ }
+ return fields;
+}
+$('inventory-history-load').onclick=async()=>{
+ const selected=layerInventory, epoch=inventoryEpoch;
+ if(!authenticated||!selected||selected.revision<2||historyRequest)return;
+ const controller=new AbortController();historyRequest=controller;
+ const current=()=>authenticated&&historyRequest===controller&&inventoryEpoch===epoch&&layerInventory===selected;
+ const output=$('inventory-history-status'), list=$('inventory-history-diff');
+ list.replaceChildren();output.textContent='Загружаем опубликованные версии…';$('inventory-history-load').disabled=true;
+ try {
+  const {device,owner,revision,hash}=selected;
+  const read=payload=>action('configuration.history.get',{id:device,...payload},controller.signal);
+  const head=await read({revision,hash,includePrevious:true});
+  if(!current())return;
+  const after=historicalFields(head,{revision,hash},device,owner), prev=head.previous;
+  if(head.currentRevision!==revision)throw Error('conflict');
+  if(prev?.revision!==revision-1||typeof prev.hash!=='string'||!/^[0-9a-f]{64}$/.test(prev.hash))throw Error('invalid');
+  const prior=await read({revision:prev.revision,hash:prev.hash});
+  if(!current())return;
+  const before=historicalFields(prior,prev,device,owner);
+  if(prior.currentRevision!==revision)throw Error('conflict');
+  for(const path of [...new Set([...before.keys(),...after.keys()])].sort()){
+   if(equal(before.get(path),after.get(path)))continue;
+   const change=!before.has(path)?'Добавлено':!after.has(path)?'Удалено':'Изменено';
+   textItem(list,change+' · '+path);
+  }
+  output.textContent='Версии '+prev.revision+' → '+revision+'. '+(list.children.length?'Изменений: '+list.children.length+'.':'Настройки и их источники совпадают.');
+ }catch(error){
+  if(!current())return;
+  list.replaceChildren();
+  output.textContent=error.message==='conflict'?'Опубликована новая версия. Откройте карточку заново.':
+   error.message==='reauth'?'Для просмотра истории подтвердите вход.':
+   ['not_found','denied'].includes(error.message)?'Нет доступа к истории этой конфигурации.':'Не удалось сравнить версии. Повторите попытку.';
+ }finally{
+  if(current()){historyRequest=null;$('inventory-history-load').disabled=false;controls();
+   if(reauthenticationFocus){reauthenticationFocus=false;$('reauthentication-title').focus();}}
+ }
+};
 async function loadInventory(){
  const device=$('inventory-device').value.trim();
  if(!deviceID.test(device))throw Error('invalid');
@@ -1022,6 +1089,7 @@ async function loadInventory(){
   $('devices-disclosure').open=false;
   $('inventory-view').focus({preventScroll:true});
   layerInventory=structuredClone(view);
+  $('inventory-history').hidden=view.revision<2;
   await loadRuntime();
   if(epoch!==inventoryEpoch)return;
   $('inventory-status').textContent='Конфигурация загружена.';
