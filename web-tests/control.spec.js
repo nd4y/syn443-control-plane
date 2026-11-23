@@ -1180,6 +1180,8 @@ test('phone pauses and resumes the draft algorithm without changing either share
  const id=page.getByLabel('ID устройства для предпросмотра группы');
  const run=page.getByRole('button',{name:'Проверить группу'});
  const paused=page.getByRole('checkbox',{name:'Приостановить выпуск версии алгоритма'});
+ const apply=page.getByRole('button',{name:'Применить настройку алгоритма к черновику',exact:true});
+ await expect(page.getByRole('button',{name:'Применить настройку проверок к черновику',exact:true})).toBeVisible();
  const result=page.locator('#cohort-result'),planField=page.locator('#plan'),requests=[];
  await page.route('**/control/rollout-preview',async route=>{
   const body=route.request().postDataJSON();requests.push(body);
@@ -1191,10 +1193,10 @@ test('phone pauses and resumes the draft algorithm without changing either share
  await paused.check();await expect(result).toBeEmpty();
  await run.click();await expect(result).toContainText('Алгоритм переключения - базовая версия вне контрольной группы');
  expect(requests[1].decision).toEqual({...original,paused:true});
- await page.locator('#route-decision-save').click();
+ await apply.click();
  await expect(paused).toBeChecked();
  expect(JSON.parse(await planField.inputValue()).network.routeFailover.decisionRollout).toEqual({...original,paused:true});
- await paused.uncheck();await page.locator('#route-decision-save').click();
+ await paused.uncheck();await apply.click();
  await expect(paused).not.toBeChecked();
  expect(JSON.parse(await planField.inputValue()).network.routeFailover.decisionRollout).toEqual(original);
  const state=await(await request.post(origin+'/fixture/state',{data:{}})).json();

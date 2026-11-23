@@ -768,7 +768,7 @@ function Drafts() {
               После публикации устройства получат базовую версию. Доли групп сохранятся.
             </p>
             <Button id="route-rollout-save" type="button" variant="secondary">
-              Применить к черновику
+              Применить настройку проверок к черновику
             </Button>
             <p>
               Сохраняйте идентификатор при изменении доли, чтобы не менять
@@ -835,7 +835,7 @@ function Drafts() {
               После публикации устройства получат базовую версию. Доли групп сохранятся.
             </p>
             <Button id="route-decision-save" type="button" variant="secondary">
-              Применить к черновику
+              Применить настройку алгоритма к черновику
             </Button>
           </div>
           <div id="cohort-preview" hidden>
