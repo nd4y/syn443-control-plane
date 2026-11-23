@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	_ "embed"
 	"encoding/hex"
-	"encoding/json"
 	"time"
 
 	"github.com/nd4y/syn443-control-plane/internal/configuration"
