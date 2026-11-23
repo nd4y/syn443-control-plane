@@ -3914,7 +3914,7 @@
   "evidenceSnapshot": {
     "date": "2026-11-23",
     "inventory": "docs/implementation-status.md",
-    "androidSource": "2d53273deacb931c3a44080a75e7c690fbff7232",
+    "androidSource": "f708b202d2d6dc3ae15965a568d399ac3a4b3652",
     "controlPlaneSource": "24748cca60fa4a3a691e4c782fbdb7df7b28d035",
     "scope": "Reviewed Android v157 has an exact successful eight-job source report, one matching merged tree and 676 emulator cases on each of API 29, 35 and 37. Android v156 has a completed protected CI and actual historical APK migration. Protected v157 acceptance and physical traffic remain separate."
   }
