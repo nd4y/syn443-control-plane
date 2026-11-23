@@ -190,7 +190,7 @@ func (f *fixture) issue(t *testing.T) invitation.Issued {
 	}
 	return value.(invitation.Issued)
 }
-func (f *fixture) claim(t *testing.T, issued invitation.Issued) (invitation.ClaimState, []byte) {
+func (f *fixture) decodeClaim(t *testing.T, issued invitation.Issued) (string, []byte) {
 	t.Helper()
 	link, e := bootstrap.AuthenticateLink(issued.Link, f.root, bootstrap.Floor{}, f.now)
 	if e != nil {
@@ -198,8 +198,14 @@ func (f *fixture) claim(t *testing.T, issued invitation.Issued) (invitation.Clai
 	}
 	id, _ := random()
 	raw, _ := json.Marshal(invitation.Claim{id, link.Code, identity.PublicJWK(&f.phone.PublicKey), []string{"engine-config.v1", "tun.lease.v1", "policy.keybound.v2"}})
-	proof := signed(t, f.phone, link.Descriptor.APIOrigin+"/v1/invitations/claim", "", "", raw, f.now)
-	state, e := f.device.Claim(context.Background(), "service-a", link.Descriptor.APIOrigin, raw, proof, f.now)
+	return link.Descriptor.APIOrigin, raw
+}
+
+func (f *fixture) claim(t *testing.T, issued invitation.Issued) (invitation.ClaimState, []byte) {
+	t.Helper()
+	origin, raw := f.decodeClaim(t, issued)
+	proof := signed(t, f.phone, origin+"/v1/invitations/claim", "", "", raw, f.now)
+	state, e := f.device.Claim(context.Background(), "service-a", origin, raw, proof, f.now)
 	if e != nil {
 		t.Fatal(e)
 	}
