@@ -5,7 +5,7 @@ Specification 0.9. Each item appears once. The columns show which component regi
 | Scope | Total | Both | Android only | Control Plane only | Neither |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Requirements | 292 | 121 | 58 | 80 | 33 |
-| Acceptance scenarios | 98 | 21 | 5 | 15 | 57 |
+| Acceptance scenarios | 98 | 21 | 5 | 16 | 56 |
 
 ## Component acceptance
 
@@ -16,7 +16,7 @@ Each cell counts items at that exact status in the component register. Scenarios
 | Requirements | Android | 113 | 179 | 0 | 0 |
 | Requirements | Control Plane | 91 | 201 | 0 | 0 |
 | Acceptance scenarios | Android | 72 | 26 | 0 | 0 |
-| Acceptance scenarios | Control Plane | 62 | 31 | 0 | 5 |
+| Acceptance scenarios | Control Plane | 61 | 32 | 0 | 5 |
 
 ## Requirement families
 

@@ -3564,8 +3564,14 @@
     {
       "id": "AC72",
       "specRow": " Metadata/loopback SSRF через Resource API-test/probe/redirect/DNS rebinding | Общий egress policy блокирует обход; разрешённый частный home target работает только в своём scope |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "internal/egress/transport_test.go",
+        "internal/subscriptions/fetch_test.go",
+        "internal/catalog/resource_postgres_test.go"
+      ],
+      "implementationScope": "Protected server tests exercise address, DNS-answer and redirect validation as well as a real worker HTTPS failure. The recorded scope is the server transport.",
+      "remainingScope": "Revalidate device-side probes and the real assigned private home target in its permitted context. The complete multi-component acceptance case remains open."
     },
     {
       "id": "AC73",
