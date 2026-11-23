@@ -13,9 +13,25 @@ type DeviceRollout struct {
 	ID                 string              `json:"id"`
 	BasisPoints        *int                `json:"basisPoints"`
 	ControlBasisPoints rolloutControlShare `json:"controlBasisPoints,omitempty"`
+	Paused             rolloutPause        `json:"paused,omitempty"`
 }
 
 type rolloutControlShare int
+
+type rolloutPause bool
+
+// A null or malformed draft value must not silently resume a rollout.
+func (pause *rolloutPause) UnmarshalJSON(raw []byte) error {
+	switch string(raw) {
+	case "true":
+		*pause = true
+	case "false":
+		*pause = false
+	default:
+		return ErrInvalid
+	}
+	return nil
+}
 
 // An absent holdout preserves existing assignments. An explicit null or a
 // malformed percentage must not silently remove an operator's holdout.
@@ -69,7 +85,7 @@ func (r DeviceRollout) assignment(domain, device string) Cohort {
 	if r.ControlBasisPoints > 0 && r.bucket("syn443/rollout-control/v1", device) < int(r.ControlBasisPoints) {
 		return CohortControl
 	}
-	if r.bucket(domain, device) < *r.BasisPoints {
+	if !r.Paused && r.bucket(domain, device) < *r.BasisPoints {
 		return CohortTreatment
 	}
 	return CohortBaseline

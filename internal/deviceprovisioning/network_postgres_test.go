@@ -356,6 +356,26 @@ func TestSQLInternalFailoverCannotUseProfilesApprovedForAnotherMode(t *testing.T
 			}
 		}
 	})
+	t.Run("explicit_pause_preserves_graph_and_stops_treatment_for_both_features", func(t *testing.T) {
+		defer func() { changes[2].Value = explicitDecision }()
+		const selector = `"decisionRevision":"m4-confirmed-v1"`
+		for _, phase := range []struct {
+			pause          string
+			wantsTreatment bool
+		}{{`,"paused":true`, false}, {`,"paused":false`, true}} {
+			changes[2].Value = bytes.Replace(explicitDecision, []byte(selector),
+				[]byte(selector+`,"decisionRollout":{"id":"fixture-pause","basisPoints":10000`+phase.pause+
+					`},"probeCooldown":true,"probeCooldownRollout":{"id":"fixture-pause","basisPoints":10000`+phase.pause+`}`), 1)
+			result, err := n.authority.Prepare(ctx, target, n.f.now)
+			if err != nil || result == nil ||
+				(result.AlgorithmRevision == policy.ConfirmedFailoverAlgorithm) != phase.wantsTreatment ||
+				slices.Contains(result.RequiredCapabilities, policy.RouteDecision) != phase.wantsTreatment ||
+				slices.Contains(result.RequiredCapabilities, policy.ReserveProbeCooldown) != phase.wantsTreatment ||
+				!bytes.Equal(result.EngineConfig, prepared.EngineConfig) {
+				t.Fatal("paused or resumed policy crossed treatment eligibility or changed the engine graph", err)
+			}
+		}
+	})
 	for _, point := range []string{"0", "10000"} {
 		changes[2].Value = bytes.Replace(explicitDecision, []byte(`"decisionRevision":"m4-confirmed-v1"`),
 			[]byte(`"decisionRevision":"m4-confirmed-v1","decisionRollout":{"id":"synthetic-algorithm","basisPoints":`+point+`}`), 1)

@@ -22,7 +22,13 @@ func TestDraftRolloutPreviewRequiresControlScopeAndNeverReadsADevice(t *testing.
 	if got.Code != 200 || strings.TrimSpace(got.Body.String()) != `{"decision":"treatment"}` {
 		t.Fatalf("unexpected preview: %d %s", got.Code, got.Body.String())
 	}
+	paused := strings.Replace(request, "\"basisPoints\":10000", "\"basisPoints\":10000,\"paused\":true", 1)
+	got = webCall(s, path, paused, console)
+	if got.Code != 200 || strings.TrimSpace(got.Body.String()) != "{\"decision\":\"baseline\"}" {
+		t.Fatalf("paused preview selected treatment: %d", got.Code)
+	}
 	for _, invalid := range []string{
+		`{"device":"synthetic-a","decision":{"id":"a","basisPoints":10000,"paused":null}}`,
 		`{"device":"synthetic-a"}`,
 		`{"device":"synthetic-a","decision":{"id":"a","basisPoints":null}}`,
 		`{"device":"synthetic-a","decision":{"id":"a","basisPoints":1},"decision":{"id":"b","basisPoints":0}}`,

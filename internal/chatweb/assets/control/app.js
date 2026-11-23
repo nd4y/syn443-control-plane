@@ -420,19 +420,21 @@ function drawDeviceRollout(prefix,existing){
  $(prefix+'-id').value=valid?existing.id:'';
  $(prefix+'-share').value=valid?String(existing.basisPoints/100):'';
  $(prefix+'-control').value=valid&&Number.isSafeInteger(existing.controlBasisPoints)?String(existing.controlBasisPoints/100):'';
+ $(prefix+'-pause').checked=valid&&existing.paused===true;
 }
 function rolloutFields(prefix){
  const share=$(prefix+'-share'),control=$(prefix+'-control');
- return {id:$(prefix+'-id').value.trim(),share:share.value,control:control.value,valid:share.validity.valid&&control.validity.valid};
+ return {id:$(prefix+'-id').value.trim(),share:share.value,control:control.value,paused:$(prefix+'-pause').checked,valid:share.validity.valid&&control.validity.valid};
 }
 function readDeviceRollout(fields){
- const {id,share,control,valid}=fields;
+ const {id,share,control,paused,valid}=fields;
  if(!valid)throw Error('invalid');
- if(!id&&!share&&!control)return null;
+ if(!id&&!share&&!control&&!paused)return null;
  const percentage=value=>/^\d{1,3}(\.\d{1,2})?$/.test(value)&&Number(value)<=100;
  if(!/^[a-z0-9][a-z0-9._-]{0,47}$/.test(id)||!percentage(share)||(control&&!percentage(control)))throw Error('invalid');
  const result={id,basisPoints:Math.round(Number(share)*100)};
  if(control!=='')result.controlBasisPoints=Math.round(Number(control)*100);
+ if(paused)result.paused=true;
  return result;
 }
 const cohortFeatures=[
@@ -441,7 +443,7 @@ const cohortFeatures=[
 ];
 function enteredCohorts(){
  return cohortFeatures.filter(({prefix,section})=>!$(section).hidden&&
-  ['id','share','control'].some(field=>$(prefix+'-'+field).value!==''));
+  ($(prefix+'-pause').checked||['id','share','control'].some(field=>$(prefix+'-'+field).value!=='')));
 }
 function clearCohortPreview(){
  cohortRequest?.abort();cohortRequest=null;
@@ -1987,7 +1989,7 @@ $('route-reserve-cooldown').onchange=()=>{
   applyRouteChecks(state);
  });
 };
-for(const id of ['cohort-device',...cohortFeatures.flatMap(({prefix})=>['id','share','control'].map(field=>prefix+'-'+field))]){
+for(const id of ['cohort-device',...cohortFeatures.flatMap(({prefix})=>['id','share','control','pause'].map(field=>prefix+'-'+field))]){
  $(id).addEventListener('input',()=>{clearCohortPreview();updateCohortButton();});
 }
 $('cohort-run').onclick=async()=>{

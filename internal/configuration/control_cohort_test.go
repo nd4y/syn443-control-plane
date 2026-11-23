@@ -65,3 +65,47 @@ func TestDraftCohortsMatchPublicationAndDistinguishPermanentControl(t *testing.T
 		t.Fatal("distinct cohorts not independent")
 	}
 }
+
+func TestExplicitPausePreservesRolloutSharesAndControlMembership(t *testing.T) {
+	points := 10000
+	published := DeviceRollout{ID: "fixture-canary", BasisPoints: &points, ControlBasisPoints: 2873}
+	paused := published
+	paused.Paused = true
+	for _, device := range []string{"synthetic-a", "synthetic-b"} {
+		before, err := PreviewDeviceRollouts(device, &published, &published)
+		if err != nil {
+			t.Fatal(err)
+		}
+		during, err := PreviewDeviceRollouts(device, &paused, &published)
+		want := CohortBaseline
+		if before["decision"] == CohortControl {
+			want = CohortControl
+		}
+		if err != nil || during["decision"] != want || during["probeCooldown"] != before["probeCooldown"] ||
+			paused.IncludesDecision(device) || paused.IncludesProbeCooldown(device) {
+			t.Fatal("pause changed the control or unrelated feature", err)
+		}
+		bytes, err := json.Marshal(paused)
+		var decoded DeviceRollout
+		if err != nil || json.Unmarshal(bytes, &decoded) != nil || !decoded.Paused ||
+			decoded.BasisPoints == nil || *decoded.BasisPoints != points ||
+			decoded.ControlBasisPoints != published.ControlBasisPoints || decoded.ID != published.ID {
+			t.Fatal("saved pause lost its shares or identity")
+		}
+		decoded.Paused = false
+		after, err := PreviewDeviceRollouts(device, &decoded, &published)
+		if err != nil || before["decision"] != after["decision"] {
+			t.Fatal("resuming changed the original cohort", err)
+		}
+	}
+}
+
+func TestInvalidPauseCannotEnableTreatment(t *testing.T) {
+	for _, raw := range []string{"null", `"false"`, "0", "[]", "{}"} {
+		var rollout DeviceRollout
+		request := "{\"id\":\"fixture-canary\",\"basisPoints\":10000,\"paused\":" + raw + "}"
+		if json.Unmarshal([]byte(request), &rollout) == nil {
+			t.Fatal("invalid pause state accepted")
+		}
+	}
+}
