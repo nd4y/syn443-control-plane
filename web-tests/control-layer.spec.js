@@ -268,6 +268,11 @@ for(const [kind,target,width] of [['device','device-a',1200],['group','group-a',
  test(`first-device staging keeps an opened ${kind} plan bound to its recipient`,async({page,request})=>{
   await request.post(origin+'/fixture/reset',{data:{}});
   await page.setViewportSize({width,height:850});
+  async function openPublication(){
+   const menu=page.locator('#console-nav-toggle');
+   if(await menu.isVisible() && await menu.getAttribute('aria-expanded')==='false')await menu.click();
+   await page.getByRole('link',{name:'Публикация',exact:true}).click();
+  }
   const saved={id:'saved-source',targetKind:kind,targetId:target,revision:1,baseRevision:0,baseHash:'',
    plan:{schemaVersion:1,graph:{profiles:{private:{sourceId:'source-a',profileId:'profile-a'}},chains:{},balancers:{},final:'private'},
     network:{schemaVersion:1,requiredNetworks:['tcp'],dnsFinal:'system',dnsStrategy:'prefer_ipv4'},
@@ -286,7 +291,7 @@ for(const [kind,target,width] of [['device','device-a',1200],['group','group-a',
   await page.locator('#draft-id').fill(saved.id);
   await page.locator('#open-draft').click();
   await expect(page.locator('#draft-version')).toContainText('Версия черновика: 1');
-  await page.getByRole('link',{name:'Публикация',exact:true}).click();
+  await openPublication();
   const first=page.locator('#layer-first-from-plan');
   await expect(first).toBeDisabled();
   await expect(page.locator('#layer-first-recipient')).toContainText('device-unassigned');
@@ -296,7 +301,7 @@ for(const [kind,target,width] of [['device','device-a',1200],['group','group-a',
   expect(JSON.parse(await page.locator('#plan').inputValue())).toEqual(saved.plan);
   await page.locator('#target-kind').selectOption('device');
   await page.locator('#target-id').fill('device-unassigned');
-  await page.getByRole('link',{name:'Публикация',exact:true}).click();
+  await openPublication();
   await expect(first).toBeDisabled();
   await expect(page.locator('#layer-proposal')).toHaveValue('');
   expect((await state(request)).operations).toBe(0);
