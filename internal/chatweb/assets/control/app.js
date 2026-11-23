@@ -18,6 +18,8 @@ let sourceShares=null;
 let providerContext=null,providerEpoch=0;
 let providerEdit=null;
 let devicesNext='',devicePrefix='',deviceIds=new Set(),devicesEpoch=0;
+const reportExpiries=new Map();
+let reportExpiryTimer;
 const deviceFavorites=new Set();
 let reauthenticationAvailable=false,reauthenticationNeeded=false,reauthenticationIssuer='',reauthenticationFocus=false;
 let runtimeReport=null,runtimeDeadline=0,runtimeTimer=null,runtimeEpoch=0;
@@ -898,7 +900,7 @@ function showInventory(view){
  $('inventory-view').hidden=false;
 }
 function clearDevices(dropPreferences=false){
- devicesEpoch++;
+ devicesEpoch++;clearTimeout(reportExpiryTimer);reportExpiries.clear();
  devicesNext='';deviceIds=new Set();$('device-rows').replaceChildren();$('devices-status').textContent='';$('devices-region').hidden=true;$('more-devices').hidden=true;
  if(dropPreferences){
   devicePrefix='';
@@ -960,6 +962,20 @@ const deviceReportStates={not_issued:'Политика не выдана',awaiti
 const deviceOutcomes={committed:'Применена',degraded:'Применена частично',rolled_back:'Откат'};
 const closedObject=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
 const safeRevision=v=>Number.isSafeInteger(v)&&v>=0;
+// Both clocks are anchored before the request. A slow reply or a sleeping tab
+// must not grant a new lease. Once expired, a row stays historical until reload.
+function expireDeviceReports(){
+ clearTimeout(reportExpiryTimer);
+ let next=Infinity,changed=false;
+ for(const [tr,receipt] of reportExpiries){
+  const remaining=Math.min(receipt.mono-performance.now(),receipt.wall-Date.now());
+  if(remaining>0){next=Math.min(next,remaining);continue;}
+  tr.cells[3].textContent=deviceReportStates.historical+' · '+deviceOutcomes[receipt.outcome];
+  tr.dataset.attention='false';reportExpiries.delete(tr);changed=true;
+ }
+ if(changed)filterDevices();
+ if(Number.isFinite(next)&&!document.hidden)reportExpiryTimer=setTimeout(expireDeviceReports,Math.min(2147483647,Math.max(1,Math.ceil(next))));
+}
 async function loadDevices(more=false,prefix=devicePrefix){
  if(prefix&&!deviceID.test(prefix))throw Error('invalid');
  const after=more?devicesNext:'';
@@ -969,17 +985,28 @@ async function loadDevices(more=false,prefix=devicePrefix){
  $('devices-disclosure').open=true;
  $('devices-status').textContent='Загружаем устройства…';
  try{
-  const page=await action('configuration.devices.list',prefix?{after,prefix}:{after});
+  const payload=prefix?{after,prefix}:{after};
+  const startMono=performance.now(),startWall=Date.now();
+  let page;
+  try{page=await action('configuration.devices.list',{...payload,includeReportExpiry:true});}
+  catch(error){
+   // Older control schemas reject the optional field before dispatch.
+   if(error.message!=='invalid'||epoch!==devicesEpoch||!authenticated)throw error;
+   page=await action('configuration.devices.list',payload);
+  }
   if(epoch!==devicesEpoch||!authenticated)return;
-  if(!closedObject(page,['devices','next','observedAtMs'])||!Array.isArray(page.devices)||page.devices.length>32||typeof page.next!=='string'||page.next&&!deviceID.test(page.next)||!Number.isSafeInteger(page.observedAtMs)||page.observedAtMs<1)throw Error('invalid');
+  if(!closedObject(page,['devices','next','observedAtMs','reportExpiry'])||Object.hasOwn(page,'reportExpiry')&&page.reportExpiry!==true||!Array.isArray(page.devices)||page.devices.length>32||typeof page.next!=='string'||page.next&&!deviceID.test(page.next)||!Number.isSafeInteger(page.observedAtMs)||page.observedAtMs<1)throw Error('invalid');
   const seen=more?new Set(deviceIds):new Set();let previous=after;
   for(const row of page.devices){
-   if(!closedObject(row,['device','policyRevision','desiredRevision','report'])||typeof row.device!=='string'||!deviceID.test(row.device)||row.device<=previous||seen.has(row.device)||!safeRevision(row.policyRevision)||!safeRevision(row.desiredRevision))throw Error('invalid');
+   if(!closedObject(row,['device','policyRevision','desiredRevision','report','reportValidUntilMs'])||typeof row.device!=='string'||!deviceID.test(row.device)||row.device<=previous||seen.has(row.device)||!safeRevision(row.policyRevision)||!safeRevision(row.desiredRevision))throw Error('invalid');
    const report=row.report;
    if(!closedObject(report,['state','policyRevision','outcome','activePolicyRevision','receivedAtMs'])||!Object.hasOwn(deviceReportStates,report.state)||!safeRevision(report.activePolicyRevision)||!safeRevision(report.policyRevision??0)||!safeRevision(report.receivedAtMs??0))throw Error('invalid');
    if(['historical','reported'].includes(report.state)){
     if(!Object.hasOwn(deviceOutcomes,report.outcome)||!report.policyRevision||!report.receivedAtMs||report.state==='reported'&&report.policyRevision!==row.policyRevision)throw Error('invalid');
    }else if(report.policyRevision||report.outcome||report.receivedAtMs||report.activePolicyRevision||report.state==='not_issued'&&row.policyRevision!==0||report.state==='awaiting_report'&&row.policyRevision===0)throw Error('invalid');
+   if(page.reportExpiry===true&&report.state==='reported'){
+    if(!Number.isSafeInteger(row.reportValidUntilMs)||row.reportValidUntilMs<=page.observedAtMs)throw Error('invalid');
+   }else if(Object.hasOwn(row,'reportValidUntilMs'))throw Error('invalid');
    if(prefix&&!row.device.toLowerCase().startsWith(prefix.toLowerCase()))throw Error('invalid');
    previous=row.device;seen.add(row.device);
   }
@@ -992,8 +1019,13 @@ async function loadDevices(more=false,prefix=devicePrefix){
    open.onclick=()=>work(async()=>{$('inventory-device').value=row.device;await loadInventory();});
    cell.append(open,favoriteButton(row.device));tr.append(cell);
    tr.dataset.id=row.device;tr.dataset.attention=String(row.report.state==='reported'&&['degraded','rolled_back'].includes(row.report.outcome));
-   const report=row.report;const label=report.outcome?`${deviceReportStates[report.state]} · ${deviceOutcomes[report.outcome]}`:deviceReportStates[report.state];
+   const report=row.report;const snapshot=report.state==='reported'&&!page.reportExpiry?' · при загрузке '+inventoryDate(page.observedAtMs):'';
+   const label=report.outcome?`${deviceReportStates[report.state]} · ${deviceOutcomes[report.outcome]}${snapshot}`:deviceReportStates[report.state];
    for(const value of [row.desiredRevision?String(row.desiredRevision):'Слои не назначены',row.policyRevision?String(row.policyRevision):'Не выдана',label,report.receivedAtMs?inventoryDate(report.receivedAtMs):'—']){const td=document.createElement('td');td.textContent=value;tr.append(td);}
+   if(row.reportValidUntilMs){
+    const duration=row.reportValidUntilMs-page.observedAtMs;
+    reportExpiries.set(tr,{mono:startMono+duration,wall:startWall+duration,outcome:report.outcome});
+   }
    fragment.append(tr);
   }
   if(!more)$('device-rows').replaceChildren();$('device-rows').append(fragment);
@@ -1004,7 +1036,7 @@ async function loadDevices(more=false,prefix=devicePrefix){
     if(id.toLowerCase().startsWith(searchedPrefix)&&!seen.has(id))deviceFavorites.delete(id);
    }
   }
-  filterDevices();
+  expireDeviceReports();filterDevices();
  }catch(error){
   if(epoch!==devicesEpoch||!authenticated){if(['login','denied'].includes(error.message))throw error;return;}
   clearDevices(true);
@@ -1598,6 +1630,7 @@ $('reauthentication-start').onclick=()=>work(beginReauthentication);
 $('reauthentication-check').onclick=()=>work(checkReauthentication);
 $('refresh-runtime').onclick=()=>work(loadRuntime);
 document.addEventListener('visibilitychange',syncRuntimeVisibility);
+document.addEventListener('visibilitychange',expireDeviceReports);
 $('more-devices').onclick=()=>work(()=>loadDevices(true));
 $('load-sources').onclick=()=>work(()=>sources());$('more-sources').onclick=()=>work(()=>sources(true));$('inventory-form').onsubmit=event=>{event.preventDefault();if(authenticated&&!pending)void work(loadInventory);};
 $('inventory-device').oninput=()=>{

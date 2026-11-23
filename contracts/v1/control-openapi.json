@@ -1946,6 +1946,10 @@
                     "maxLength": 64,
                     "pattern": "^[A-Za-z0-9_-]{1,64}$",
                     "description": "Case-insensitive literal prefix of an authorized device ID, applied before cursor pagination."
+                  },
+                  "includeReportExpiry": {
+                    "const": true,
+                    "description": "Request reportExpiry=true and a reportValidUntilMs lease boundary on each currently reported device. Absence preserves the original inventory representation."
                   }
                 }
               }

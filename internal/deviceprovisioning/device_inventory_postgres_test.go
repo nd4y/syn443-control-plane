@@ -131,12 +131,33 @@ func TestDeviceInventorySeparatesReportedHistoricalAndUnissuedPolicies(t *testin
 	if e != nil || len(page.Devices) != 1 || page.Devices[0].Report.State != "reported" || page.Devices[0].Report.Outcome != "committed" || page.Devices[0].DesiredRevision != 0 {
 		t.Fatal("report metadata confused desired configuration or connectivity", e)
 	}
+	rawLegacy, e := json.Marshal(page)
+	if e != nil || strings.Contains(string(rawLegacy), "reportExpiry") || strings.Contains(string(rawLegacy), "reportValidUntilMs") {
+		t.Fatal("legacy device inventory changed representation", e)
+	}
+	timedPage := func() DeviceInventory {
+		t.Helper()
+		raw, token, proof := configurationCall(t, n, c, "configuration.devices.list", identity.Hash([]byte("timed inventory list")), map[string]bool{"includeReportExpiry": true})
+		value, err := c.Dispatch(context.Background(), token, proof, raw, n.f.now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value.(DeviceInventory)
+	}
+	timed := timedPage()
+	if !timed.ReportExpiry || len(timed.Devices) != 1 || timed.Devices[0].ReportValidUntilMs != n.f.now.Add(time.Hour).Unix()*1000 {
+		t.Fatal("negotiated current receipt omitted its exact policy boundary")
+	}
 	if _, e = fixtureOwner.Exec(`UPDATE identity_devices SET offline_until=$2 WHERE id=$1`, n.target.Device, n.f.now.Unix()); e != nil {
 		t.Fatal(e)
 	}
 	page, e = listDevices(t, n, c, "")
 	if e != nil || page.Devices[0].Report.State != "historical" {
 		t.Fatal("expired publication presented as a current report", e)
+	}
+	timed = timedPage()
+	if len(timed.Devices) != 1 || timed.Devices[0].Report.State != "historical" || timed.Devices[0].ReportValidUntilMs != 0 {
+		t.Fatal("expired report supplied a usable lease")
 	}
 	seedConfigurationDevice(t, storedLayersFixture{n: n}, "unissued-device", true)
 	page, e = listDevices(t, n, c, "")
@@ -160,15 +181,15 @@ func TestDeviceInventorySeparatesReportedHistoricalAndUnissuedPolicies(t *testin
 func TestDeviceInventoryRefusesExpiredAuthorityCancellationAndUnauditedReads(t *testing.T) {
 	n, c, _ := deviceInventoryFixture(t)
 	request := identity.Hash([]byte("device-list-boundary"))
-	if _, e := c.deviceInventory(context.Background(), n.actor.ID, "", "", request, n.f.now.Unix(), n.f.now); !errors.Is(e, enrollment.ErrDenied) {
+	if _, e := c.deviceInventory(context.Background(), n.actor.ID, "", "", request, false, n.f.now.Unix(), n.f.now); !errors.Is(e, enrollment.ErrDenied) {
 		t.Fatal("expired authority", e)
 	}
-	if _, e := c.deviceInventory(nil, n.actor.ID, "", "", request, n.f.now.Unix()+300, n.f.now); !errors.Is(e, enrollment.ErrUnavailable) {
+	if _, e := c.deviceInventory(nil, n.actor.ID, "", "", request, false, n.f.now.Unix()+300, n.f.now); !errors.Is(e, enrollment.ErrUnavailable) {
 		t.Fatal("missing context", e)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, e := c.deviceInventory(ctx, n.actor.ID, "", "", request, n.f.now.Unix()+300, n.f.now); !errors.Is(e, enrollment.ErrUnavailable) {
+	if _, e := c.deviceInventory(ctx, n.actor.ID, "", "", request, false, n.f.now.Unix()+300, n.f.now); !errors.Is(e, enrollment.ErrUnavailable) {
 		t.Fatal("cancelled discovery", e)
 	}
 	if _, e := fixtureOwner.Exec(`REVOKE INSERT ON catalog_audit FROM syn443_control_api`); e != nil {
@@ -192,7 +213,7 @@ func TestDeviceInventoryRechecksAuthorityAfterWaitingForDeviceLock(t *testing.T)
 	}
 	done := make(chan error, 1)
 	go func() {
-		_, e := c.deviceInventory(context.Background(), n.actor.ID, "", "", identity.Hash([]byte("delayed device list")), n.f.now.Unix()+1, n.f.now)
+		_, e := c.deviceInventory(context.Background(), n.actor.ID, "", "", identity.Hash([]byte("delayed device list")), false, n.f.now.Unix()+1, n.f.now)
 		done <- e
 	}()
 	deadline := time.Now().Add(time.Second)

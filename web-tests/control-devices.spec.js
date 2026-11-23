@@ -54,7 +54,7 @@ test('issued algorithm metadata has its own line and cannot keep stale device da
 });
 
 test('device inventory refuses malformed oversized duplicate and substituted metadata atomically',async({page,request})=>{
- for(const invalidDeviceList of ['duplicate','extra','cursor','oversize','revision','report','order']){
+ for(const invalidDeviceList of ['duplicate','extra','cursor','oversize','revision','report','order','missing-expiry','archive-expiry']){
   await reset(request,{invalidDeviceList});await page.goto(origin);
   await expect(page.locator('#devices-status')).toHaveText('Сервер вернул некорректный список. Устройства скрыты.');
   await expect(page.locator('#device-rows')).toBeEmpty();await expect(page.locator('#devices-region')).toBeHidden();
@@ -162,7 +162,7 @@ test('full inventory prefix search finds a later authorized device without walki
  await page.goto(origin);await expect(page.locator('#device-rows tr')).toHaveCount(32);
  const search=page.locator('#device-search');await search.fill('DEVICE-A');await search.press('Enter');
  await expect(page.locator('#device-rows tr')).toHaveCount(1);await expect(page.locator('#devices-status')).toContainText('В базе выбран префикс «DEVICE-A»');
- expect(lists).toEqual([{after:''},{after:'',prefix:'DEVICE-A'}]);await expect(page.locator('#more-devices')).toBeHidden();
+ expect(lists).toEqual([{after:'',includeReportExpiry:true},{after:'',prefix:'DEVICE-A',includeReportExpiry:true}]);await expect(page.locator('#more-devices')).toBeHidden();
  await search.fill('absent');await page.locator('#search-all-devices').click();
  await expect(page.locator('#devices-status')).toContainText('Доступных устройств с началом ID «absent» нет');
  await expect(search).toBeVisible();await page.locator('#clear-device-prefix').click();await expect(page.locator('#device-rows tr')).toHaveCount(32);
@@ -214,4 +214,41 @@ test('remote device search rejects an answer belonging to a different prefix',as
  await page.locator('#device-search').fill('other');await page.locator('#search-all-devices').click();
  await expect(page.locator('#devices-status')).toContainText('Сервер вернул некорректный список');
  await expect(page.locator('#device-rows')).toBeEmpty();await expect(page.locator('#inventory-view')).toBeHidden();
+});
+
+test('reported rollback expires from the visible list and attention filter without another request',async({page,request})=>{
+ await reset(request);await page.setViewportSize({width:360,height:800});
+ await page.clock.install({time:new Date('2027-01-01T12:00:00Z')});await page.clock.pauseAt(new Date('2027-01-01T12:01:00Z'));
+ let calls=0;
+ await page.route('**/control/action',async route=>{
+  const op=route.request().postDataJSON();if(op.action!=='configuration.devices.list')return route.continue();
+  calls++;expect(op.payload.includeReportExpiry).toBe(true);
+  const observedAtMs=1800000000000;
+  const row=(device,duration)=>({device,policyRevision:3,desiredRevision:2,reportValidUntilMs:observedAtMs+duration,
+   report:{state:'reported',outcome:'rolled_back',policyRevision:3,activePolicyRevision:2,receivedAtMs:observedAtMs-900}});
+  return route.fulfill({json:{devices:[row('device-a',10000),row('device-b',20000)],next:'',observedAtMs,reportExpiry:true}});
+ });
+ await page.goto(origin);const rows=page.locator('#device-rows tr'),filter=page.getByLabel('Показать',{exact:true});
+ await expect(rows).toHaveCount(2);await filter.selectOption('attention');await expect(rows.first()).toBeVisible();
+ await page.clock.fastForward(9999);await expect(rows.first()).toContainText('Отчёт о выданной политике');
+ await page.clock.fastForward(1);await expect(rows.first()).toBeHidden();await expect(rows.last()).toBeVisible();
+ await filter.selectOption('all');await expect(rows.first()).toContainText('Архивный отчёт · Откат');
+ await page.clock.setSystemTime(new Date('2027-01-02T00:00:00Z'));await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+ await expect(rows.last()).toContainText('Архивный отчёт');expect(calls).toBe(1);
+});
+
+test('legacy device catalog keeps an explicitly dated snapshot and never retries denied access',async({page,request})=>{
+ await reset(request);
+ let deny=false;const payloads=[];
+ await page.route('**/control/action',async route=>{
+  const op=route.request().postDataJSON();if(op.action!=='configuration.devices.list')return route.continue();
+  payloads.push(op.payload);
+  if(deny||op.payload.includeReportExpiry)return route.fulfill({status:deny?403:400,json:{}});
+  return route.fulfill({json:{next:'',observedAtMs:1800000000000,devices:[{device:'device-a',desiredRevision:1,policyRevision:2,
+   report:{state:'reported',policyRevision:2,activePolicyRevision:2,outcome:'committed',receivedAtMs:1799999999999}}]}});
+ });
+ await page.goto(origin);await expect(page.locator('#device-rows tr')).toContainText('при загрузке');
+ expect(payloads).toEqual([{after:'',includeReportExpiry:true},{after:''}]);
+ deny=true;await page.locator('#refresh-devices').click();await expect(page.locator('#device-rows')).toBeEmpty();
+ await expect.poll(()=>payloads.length).toBe(3);expect(payloads.at(-1)).toEqual({after:'',includeReportExpiry:true});
 });

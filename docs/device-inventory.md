@@ -64,3 +64,9 @@ balancers list their configured choices. The device supplies live selection
 evidence separately. Missing or circular references display an unknown order.
 The view reads the existing credential-free policy projection and clears when
 the operator changes devices or signs out.
+
+## Срок отчёта в списке устройств
+
+Панель запрашивает `includeReportExpiry: true` в `configuration.devices.list`. Сервер возвращает `reportExpiry: true` и `reportValidUntilMs` только для строк со статусом `reported`. В момент окончания срока выданной политики открытая строка становится архивной и выходит из фильтра проблем применения. Вкладка учитывает время ожидания ответа и проверяет срок при возвращении из фона. Для обновления состояния по новой политике администратор может обновить список.
+
+Старая панель получает прежнюю форму ответа. Если прежняя версия каталога отвергла новый параметр как некорректный запрос (HTTP 400), панель один раз читает тот же список без параметра и указывает момент наблюдения рядом с отчётом. Отказ в доступе завершает просмотр. Отчёт о применении политики сам по себе не подтверждает доступность VPN.

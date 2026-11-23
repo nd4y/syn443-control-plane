@@ -10,15 +10,17 @@ import (
 )
 
 type DeviceSummary struct {
-	Device          string                  `json:"device"`
-	PolicyRevision  int64                   `json:"policyRevision"`
-	DesiredRevision int64                   `json:"desiredRevision"`
-	Report          ConfigurationActivation `json:"report"`
+	Device             string                  `json:"device"`
+	PolicyRevision     int64                   `json:"policyRevision"`
+	DesiredRevision    int64                   `json:"desiredRevision"`
+	ReportValidUntilMs int64                   `json:"reportValidUntilMs,omitempty"`
+	Report             ConfigurationActivation `json:"report"`
 }
 
 type DeviceInventory struct {
 	Devices      []DeviceSummary `json:"devices"`
 	Next         string          `json:"next"`
+	ReportExpiry bool            `json:"reportExpiry,omitempty"`
 	ObservedAtMs int64           `json:"observedAtMs"`
 }
 
@@ -30,8 +32,8 @@ func (DeviceInventory) GoString() string { return "DeviceInventory([redacted])" 
 // Discovery uses precisely the authority required to open an individual card.
 // It exposes no account identifiers, configuration bodies or key material, and
 // does not infer current connectivity from a historical activation receipt.
-func (c *ConfigurationControl) deviceInventory(ctx context.Context, actor, after, prefix, request string, until int64, now time.Time) (DeviceInventory, error) {
-	result := DeviceInventory{Devices: []DeviceSummary{}, ObservedAtMs: now.UnixMilli()}
+func (c *ConfigurationControl) deviceInventory(ctx context.Context, actor, after, prefix, request string, includeExpiry bool, until int64, now time.Time) (DeviceInventory, error) {
+	result := DeviceInventory{Devices: []DeviceSummary{}, ObservedAtMs: now.UnixMilli(), ReportExpiry: includeExpiry}
 	if ctx == nil || c == nil || c.Store == nil || c.Store.DB == nil {
 		return result, enrollment.ErrUnavailable
 	}
@@ -112,11 +114,6 @@ func (c *ConfigurationControl) deviceInventory(ctx context.Context, actor, after
 		result.Devices = result.Devices[:32]
 		result.Next = result.Devices[31].Device
 	}
-	for i := range result.Devices {
-		if result.Devices[i].Report.State == "reported" && reportDeadlines[i] <= current().Unix() {
-			result.Devices[i].Report.State = "historical"
-		}
-	}
 	if _, e = tx.ExecContext(ctx, `INSERT INTO catalog_audit(actor,action,target,request_id,observed_at,before_hash,after_hash,outcome)
 	  VALUES($1,'configuration.devices.list','devices',$2,$3,'','','read')`, actor, request, current().Unix()); e != nil {
 		return result, enrollment.ErrUnavailable
@@ -126,6 +123,25 @@ func (c *ConfigurationControl) deviceInventory(ctx context.Context, actor, after
 	}
 	if e = tx.Commit(); e != nil {
 		return result, enrollment.ErrUnavailable
+	}
+	observed := current().Unix()
+	if observed >= min(until, earliest) {
+		return DeviceInventory{}, enrollment.ErrDenied
+	}
+	for i := range result.Devices {
+		row := &result.Devices[i]
+		if row.Report.State != "reported" {
+			continue
+		}
+		deadline := reportDeadlines[i]
+		if deadline <= observed {
+			row.Report.State = "historical"
+		} else if includeExpiry {
+			if deadline > 9007199254740991/1000 {
+				return DeviceInventory{}, enrollment.ErrUnavailable
+			}
+			row.ReportValidUntilMs = deadline * 1000
+		}
 	}
 	return result, nil
 }
