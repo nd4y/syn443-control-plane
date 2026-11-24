@@ -30,6 +30,14 @@ open. [Android review and test evidence](https://github.com/nd4y/syn443-android/
 
 Two independent test users signed in through Keycloak using authorization code flow with PKCE. They enrolled three devices and received distinct signed policies. Each device retrieved its own policy. The API rejected all six combinations that presented one device's token with another device's proof. This verifies the Control Plane scenario in hosted integration. Opening the pilot device from the deployed console uses a separate account and deployment. [Integration test](../integration/keycloak/personal_issuance_test.go) · [Protected run](https://github.com/nd4y/syn443-control-plane/actions/runs/45016543420)
 
+## Policy publisher restart after grant expiry
+
+The packaged worker starts with an expired grant and a valid grant for another
+owner in the same private configuration file. It records the expiry diagnostic.
+The fixture's API returns the eligible device's new signed policy over HTTP
+and verified TLS. The startup tests also cover an entirely expired grant set,
+duplicate owners and invalid active grants. [Operator procedure](enrollment-pilot.md#grant-expiry-and-cold-start) · [Protected process run](https://github.com/nd4y/syn443-control-plane/actions/runs/45474791888)
+
 ## Failed subscription refresh (AC03)
 
 In the PostgreSQL integration test, an HTTPS provider returned an empty body, a malformed URI and an HTML document on consecutive refreshes. Each time the worker retained the last usable source snapshot and advanced a second provider independently. The publisher then issued a signed policy containing the retained profiles. In the mobile console, the source card offers review only for a distinct parsed candidate. It also reports a failed first download when there are no published profiles. [Worker and publisher test](../internal/deviceprovisioning/mixed_sources_postgres_test.go) · [Mobile console tests](../web-tests/source-review.spec.js) · [Protected run](https://github.com/nd4y/syn443-control-plane/actions/runs/45021785780)

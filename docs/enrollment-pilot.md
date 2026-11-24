@@ -35,6 +35,23 @@ device policy signer remains mandatory. Explicit modes without a configuration
 and unknown values fail before unrelated startup. See
 [configuration queue ownership](configuration-worker.md#enrollment-worker-queue-ownership).
 
+### Grant expiry and cold start
+
+At startup the worker checks the grant issuer and rejects duplicate owners. It
+omits grants that have reached their deadline and logs
+`enrollment_worker_expired_grants_skipped` once if any were omitted. Every
+active grant still passes the existing policy and lifetime checks. An entirely
+expired file leaves the worker with an empty publication grant set. Before
+signing, the worker still requires an eligible device, an enabled account, a
+current deadline and a matching grant fingerprint.
+
+For restart acceptance, check the process state and restart counter across two
+observations. Docker can report `Running=true` while a container is restarting.
+Confirm that a previously enrolled eligible device receives a new signed revision
+and retains its key binding. The packaged process tests cover an expired and a
+valid grant together, including verified HTTP and TLS issuance.
+[Protected process evidence](https://github.com/nd4y/syn443-control-plane/actions/runs/45474791888)
+
 This initial schema targets a fresh pilot database; upgrades from an existing production identity schema, key rotation, retention/maintenance under prolonged load, full RBAC/admin sessions, offline logout reconciliation and invitation enrollment are pending. Do not deploy the pilot publicly as a complete service.
 
 ## Reproducible evidence
