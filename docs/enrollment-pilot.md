@@ -8,6 +8,16 @@ The native client uses an external browser, authorization code, S256 PKCE, exact
 
 The test-realm Android public client requires DPoP and includes the custom `syn443-api` access-token audience. Code and refresh credentials bind to the same P-256 key. The web fixture client remains a separate loopback OAuth conformance client. Neither realm role grants Keycloak administration or configuration access.
 
+Android requests `openid`. Its access token also needs `syn443.enroll` when a
+returning device registers newly supported capabilities. In an existing pilot
+realm, install `syn443.enroll` as an OpenID Connect client scope with **Include in
+token scope** enabled. Add it under **Assigned client scopes** as **Default** for
+the `syn443-android` client only, keeping its existing scopes. Use the existing
+realm and client so current device enrollments keep the same issuer, subject
+and key. Verify a fresh Android login yields the scope and the web client remains
+without it. The API still checks the pinned issuer and audience, proof of device
+key possession and the existing account and enrollment.
+
 `POST /v1/devices/enroll` requires the pinned Keycloak issuer, RS256 signature, API audience, Android authorized party, expiry, cnf.jkt and a fresh ES256 DPoP proof by that key. An owner-authored assignment and active-device limit are checked separately in PostgreSQL. Unknown users receive no common/example configuration. A server challenge nonce precedes enrollment. The registration body carries a random idempotency ID, public key and supported capabilities; POST proofs bind the exact raw body bytes using `req_hash` (SHA256/base64url extension). Do not normalize the body between retries.
 
 The response is a separate opaque device session: access at most ten minutes, absolute refresh family at most one day, both capped by the assignment. Tokens bind to the key; device ID is not a credential. Nonces, proof replay records, refresh hashes, idempotent replies and a monotonic maximum server-time fence survive API-process recreation. Refresh rotates both tokens and nonce. A fresh proof retry with the same request ID/body can recover a lost response for three minutes; a different request using an old refresh token revokes its family. Revoke uses its own durable receipt, so a matching fresh-proof retry can confirm an already completed action. Account/device expiry or revocation blocks further access. Offline client leases expire independently; upstream proxy/overlay revocation is not implemented here.

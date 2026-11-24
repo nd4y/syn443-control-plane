@@ -335,6 +335,14 @@ func TestIsolatedRealm(t *testing.T) {
 				if e != nil || p.Thumbprint != thumb || p.Subject != f.userID {
 					t.Fatal("mobile API audience/key binding")
 				}
+				if !p.HasScope("syn443.enroll") {
+					t.Fatal("mobile login with scope=openid lacks the default enrollment scope")
+				}
+			} else {
+				scope, _ := access["scope"].(string)
+				if (identity.Principal{Scope: scope}).HasScope("syn443.enroll") {
+					t.Fatal("web fixture received the Android enrollment scope")
+				}
 			}
 			roles := access["realm_access"].(map[string]any)["roles"].([]any)
 			found := false
