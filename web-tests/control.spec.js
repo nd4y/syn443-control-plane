@@ -934,6 +934,7 @@ test('device workspace is private until sign in and opens a safe linked device',
   await expect(engineBuild.getByText(revision,{exact:true})).toBeVisible();
  }
  await expect(engineBuild.getByRole('link')).toHaveAttribute('href','https://github.com/nd4y/syn443-android/tree/'+manifest.androidRevision);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await expect(page.locator('#inventory-device')).toHaveValue('device-a');
  await expect(page.locator('#inventory-issued')).toHaveText('Версия 23');
  await expect(page.locator('#inventory-report-time')).toHaveAttribute('datetime',/^20/);
