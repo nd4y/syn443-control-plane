@@ -1,0 +1,9 @@
+{
+  "androidRevision": "f708b202d2d6dc3ae15965a568d399ac3a4b3652",
+  "versionCode": 158,
+  "versionName": "0.9.130-engine-builds",
+  "engines": {
+    "sing-box": "f4cd71253d9ce90126dcd78d58dd7428a6e622a0",
+    "NetBird": "cf017119711184a0661062a0c8ac2043e4e8d411"
+  }
+}
