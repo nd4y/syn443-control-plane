@@ -1287,6 +1287,7 @@ function clearRuntime(){
  runtimeEpoch++;runtimeReport=null;runtimeDeadline=0;clearTimeout(runtimeTimer);runtimeTimer=null;
  for(const id of ['inventory-runtime','inventory-runtime-detail','inventory-runtime-time'])$(id).replaceChildren();
  $('inventory-runtime-time').hidden=true;$('inventory-runtime-time').removeAttribute('datetime');delete $('inventory-runtime').dataset.tone;
+ $('inventory-runtime-engines').hidden=true;
 }
 function checkedRuntime(view,device){
  const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join('|')===[...keys].sort().join('|');
@@ -1303,8 +1304,11 @@ function checkedRuntime(view,device){
 }
 function renderRuntime(){
  clearTimeout(runtimeTimer);runtimeTimer=null;
+ const engines=$('inventory-runtime-engines');
+ engines.hidden=true;
  if(!runtimeReport){$('inventory-runtime').textContent='Нет отчёта';$('inventory-runtime-detail').textContent='Клиент ещё не присылал состояние.';return;}
  const r=runtimeReport,recent=performance.now()<runtimeDeadline;
+ engines.hidden=!recent||String(r.build)!==$('android-engine-build').dataset.buildCode;
  const phase={off:'VPN выключен',starting:'Запуск VPN',online:'VPN включён',recovering:'Восстановление VPN',no_network:'Нет сети',blocked:'VPN заблокирован',unknown:'Состояние неизвестно'}[r.phase];
  const engine=!r.engineKnown?'состояние движка неизвестно':r.engineActive?'движок активен':'движок остановлен';
  $('inventory-runtime').textContent=recent?`Сообщено: ${phase}`:'Отчёт устарел';
@@ -1778,6 +1782,12 @@ $('invite-reauth').onclick=()=>{
 $('reauthentication-start').onclick=()=>work(beginReauthentication);
 $('reauthentication-check').onclick=()=>work(checkReauthentication);
 $('refresh-runtime').onclick=()=>work(loadRuntime);
+$('inventory-runtime-engines').onclick=()=>{
+ if(!runtimeVisible()||performance.now()>=runtimeDeadline)return;
+ const catalogue=$('android-engine-build');
+ catalogue.open=true;
+ catalogue.querySelector('summary').focus();
+};
 document.addEventListener('visibilitychange',syncRuntimeVisibility);
 document.addEventListener('visibilitychange',expireDeviceReports);
 document.addEventListener('visibilitychange',expireCardReceipt);
