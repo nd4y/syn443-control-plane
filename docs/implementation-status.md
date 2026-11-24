@@ -20,8 +20,10 @@ The Android build checks those values against the native lock and the actual
 debug, release and upgrade packages. Diagnostics reads this metadata from
 the installed APK. The reviewed Android run passed all eight checks,
 including the display and archive tests on API 29, 35 and 37.
-The Control Plane device inventory and complete engine compatibility matrix
-remain open. [Android review and test evidence](https://github.com/nd4y/syn443-android/actions/runs/45262510774).
+The Control Plane Devices workspace shows the verified Android release and
+both engine revisions. Its catalogue describes the reviewed APK. Device-reported
+versions, the complete compatibility matrix and live console acceptance remain
+open. [Android review and test evidence](https://github.com/nd4y/syn443-android/actions/runs/45262510774).
 
 ## Personal policies (AC01)
 

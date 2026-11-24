@@ -46,10 +46,15 @@ jobs:
           repository: nd4y/syn443-android
           ref: ${{ steps.android_register.outputs.revision }}
           path: .android-register
-          sparse-checkout: /docs/requirements-register.json
+          sparse-checkout: |
+            /docs/requirements-register.json
+            /app/build.gradle.kts
+            /native/engine-lock.json
           sparse-checkout-cone-mode: false
           persist-credentials: false
       - run: python3 -m unittest discover -s tools -p 'test_product_requirements.py'
+      - run: python3 -m unittest discover -s tools -p 'test_android_engine_build.py'
+      - run: python3 tools/android_engine_build.py .android-register
       - run: python3 -m unittest discover -s tools -p 'test_nekobox_migration_preview.py'
       - run: python3 -m unittest discover -s tools -p 'test_overlay_image.py'
       - run: python3 -m unittest discover -s tools -p 'test_web_image_acceptance.py'

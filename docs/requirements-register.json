@@ -129,10 +129,13 @@
       "text": "В первой версии новые бинарные версии модулей доставляются обновлением подписанного APK; приложение и панель показывают состав и версии движков. Provisioning может выбирать уже встроенный движок/режим, но не исполняет код по URL из конфигурации. Независимая загрузка исполняемых модулей без обновления APK не входит в 1.0.",
       "status": "partial",
       "evidence": [
-        "docs/implementation-status.md#evidence-index-and-register-semantics"
+        "docs/implementation-status.md#embedded-engine-build-identification-mod-07",
+        "console-ui/android-engine-build.json",
+        "tools/android_engine_build.py",
+        "web-tests/control.spec.js"
       ],
-      "implementationScope": "Embedded isolated adapters, source locks, alignment and reproducible native/Android tests.",
-      "remainingScope": "Complete capabilities/version/SBOM/release/update and physical acceptance."
+      "implementationScope": "Android diagnostics and the authenticated Control Plane workspace display the sing-box and NetBird revisions for the reviewed APK. The console inventory is checked against the exact Android source pin, original Gradle metadata and native engine lock.",
+      "remainingScope": "Device-reported inventory, the complete module compatibility and update matrix, and live console acceptance."
     },
     {
       "id": "MOD-08",

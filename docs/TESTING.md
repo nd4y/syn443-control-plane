@@ -1,5 +1,12 @@
 # Testing and release gates
 
+The Android engine catalogue in the Devices workspace uses the same source
+revision as the combined requirements register. When updating that pin, run
+`python3 tools/android_engine_build.py /path/to/pinned/android --write`.
+The documents job compares the bundled JSON with the Android Gradle metadata
+and native engine lock. The authenticated console test opens the catalogue
+at phone width and checks the package version and both exact engine revisions.
+
 The [read-only native owner-grant fingerprint command](owner-grant-fingerprint.md)
 adds six exact CLI roots to the existing complete Go race JSON stream. The
 source-bound gate requires every run/pass and one CLI-package completion without

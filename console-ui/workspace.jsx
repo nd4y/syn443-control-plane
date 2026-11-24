@@ -18,6 +18,7 @@ import {
 import { CaretDownIcon } from '@patternfly/react-icons';
 import { Support } from './support.jsx';
 import { Invitations } from './invitations.jsx';
+import androidEngineBuild from './android-engine-build.json';
 
 // The controller writes the native value when it loads or clears a draft.
 function Select(props) {
@@ -101,6 +102,21 @@ function Devices() {
       <p id="inventory-help">
         Откройте доступное устройство или введите его ID из приложения.
       </p>
+      <details id="android-engine-build">
+        <summary>Движки проверенной сборки Android</summary>
+        <p>Android {androidEngineBuild.versionName} · код {androidEngineBuild.versionCode}</p>
+        <DescriptionList isCompact>
+          {Object.entries(androidEngineBuild.engines).map(([name, revision]) => (
+            <DescriptionListGroup key={name}>
+              <DescriptionListTerm>{name}</DescriptionListTerm>
+              <DescriptionListDescription><code>{revision}</code></DescriptionListDescription>
+            </DescriptionListGroup>
+          ))}
+        </DescriptionList>
+        <p><a href={'https://github.com/nd4y/syn443-android/tree/' + androidEngineBuild.androidRevision}>
+          Исходники проверенной сборки
+        </a></p>
+      </details>
       <details id="devices-disclosure" open>
       <summary>Доступные устройства</summary>
       <Button id="refresh-devices" variant="secondary" isDisabled>

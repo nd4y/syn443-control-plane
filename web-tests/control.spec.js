@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {readFileSync} from 'node:fs';
 const origin='http://127.0.0.1:17851';
 const plan={schemaVersion:1,graph:{profiles:{proxy:{sourceId:'source-a',profileId:'profile-a'}},chains:{},balancers:{},final:'proxy'},network:{schemaVersion:1,requiredNetworks:['tcp'],dnsFinal:'system',dnsStrategy:'prefer_ipv4'},activation:{timeoutSeconds:30,checks:[{id:'internet',type:'https_204',target:'https://health.example.invalid/generate_204',required:true}]}};
 async function reset(request,body={}){await request.post(origin+'/fixture/reset',{data:body});}
@@ -912,16 +913,27 @@ test('mobile inventory separates layer assignment from an issued policy and clea
 
 test('device workspace is private until sign in and opens a safe linked device',async({page,request})=>{
  await reset(request);
+ await page.setViewportSize({width:360,height:800});
  await page.route('**/session',route=>route.fulfill({status:401,json:{}}));
  await page.goto(origin+'/#device=device-a');
  await expect(page.locator('#status')).toHaveText('Войдите с административной учётной записью.');
  await expect(page.locator('#login')).toBeEnabled();
  await expect(page.locator('#workspace')).toBeHidden();
+ const engineBuild=page.locator('#android-engine-build');
+ await expect(engineBuild).toBeHidden();
  let state=await(await request.post(origin+'/fixture/state',{data:{}})).json();
  expect(state.calls).not.toContain('configuration.inventory.get');
  await page.unroute('**/session');
  await page.reload();
  await expect(page.locator('#inventory-view')).toBeVisible();
+ const manifest=JSON.parse(readFileSync(new URL('../console-ui/android-engine-build.json',import.meta.url),'utf8'));
+ await engineBuild.locator('summary').click();
+ await expect(engineBuild).toContainText('Android '+manifest.versionName+' · код '+manifest.versionCode);
+ for(const [name,revision] of Object.entries(manifest.engines)){
+  await expect(engineBuild.getByText(name,{exact:true})).toBeVisible();
+  await expect(engineBuild.getByText(revision,{exact:true})).toBeVisible();
+ }
+ await expect(engineBuild.getByRole('link')).toHaveAttribute('href','https://github.com/nd4y/syn443-android/tree/'+manifest.androidRevision);
  await expect(page.locator('#inventory-device')).toHaveValue('device-a');
  await expect(page.locator('#inventory-issued')).toHaveText('Версия 23');
  await expect(page.locator('#inventory-report-time')).toHaveAttribute('datetime',/^20/);
