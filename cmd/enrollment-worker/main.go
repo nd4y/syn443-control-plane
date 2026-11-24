@@ -16,6 +16,29 @@ import (
 	"github.com/nd4y/syn443-control-plane/internal/invitation"
 )
 
+func activePublicationGrants(configured []enrollment.Grant, issuer string, now time.Time) (map[string]enrollment.Grant, error) {
+	seen := make(map[string]struct{}, len(configured))
+	active := make(map[string]enrollment.Grant, len(configured))
+	for _, grant := range configured {
+		if grant.Issuer != issuer || grant.Subject == "" || grant.Until <= 0 {
+			return nil, identity.ErrInvalid
+		}
+		owner := enrollment.Owner(grant.Issuer, grant.Subject)
+		if _, exists := seen[owner]; exists {
+			return nil, identity.ErrInvalid
+		}
+		seen[owner] = struct{}{}
+		if grant.Until <= now.Unix() {
+			continue
+		}
+		if err := grant.Validate(now); err != nil {
+			return nil, err
+		}
+		active[owner] = grant
+	}
+	return active, nil
+}
+
 func run() error {
 	configuration, e := readConfigurationStartup(os.Getenv, deviceprovisioning.ReadConfigurationRuntime)
 	if e != nil {
@@ -38,6 +61,13 @@ func run() error {
 	if identity.DecodeOperatorDocument(raw, &grants) != nil || len(grants) < 1 || len(grants) > 128 {
 		return identity.ErrInvalid
 	}
+	activeGrants, e := activePublicationGrants(grants, c.Issuer, time.Now())
+	if e != nil {
+		return e
+	}
+	if len(activeGrants) < len(grants) {
+		fmt.Fprintln(os.Stderr, "enrollment_worker_expired_grants_skipped")
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	check, cancelRole := context.WithTimeout(ctx, 5*time.Second)
@@ -54,17 +84,7 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	p := enrollment.Publisher{Store: store, Verifier: provider, Grants: map[string]enrollment.Grant{}, Key: key, KeyID: os.Getenv("SYN443_POLICY_KEY_ID"), Origin: c.Origin}
-	for _, g := range grants {
-		if g.Validate(time.Now()) != nil || g.Issuer != c.Issuer {
-			return identity.ErrInvalid
-		}
-		owner := enrollment.Owner(g.Issuer, g.Subject)
-		if _, exists := p.Grants[owner]; exists {
-			return identity.ErrInvalid
-		}
-		p.Grants[owner] = g
-	}
+	p := enrollment.Publisher{Store: store, Verifier: provider, Grants: activeGrants, Key: key, KeyID: os.Getenv("SYN443_POLICY_KEY_ID"), Origin: c.Origin}
 	var brokerRoots map[string]*ecdsa.PublicKey
 	if c.OverlayBrokerEnabled {
 		resources, err := enrollment.ReadBrokerPolicyResources(os.Getenv("SYN443_OVERLAY_POLICY_RESOURCES"))
