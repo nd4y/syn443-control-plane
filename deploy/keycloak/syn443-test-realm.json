@@ -22,6 +22,7 @@
   "adminEventsDetailsEnabled": false,
   "passwordPolicy": "length(16) and notUsername",
   "attributes": {
+    "CreateDefaultClientScopes": "true",
     "syn443.owner": "syn443-test-operator",
     "syn443.purpose": "integration-test"
   },
@@ -35,6 +36,16 @@
       }
     ]
   },
+  "clientScopes": [
+    {
+      "name": "syn443.enroll",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    }
+  ],
   "clients": [
     {
       "clientId": "syn443-android",
@@ -47,6 +58,15 @@
       "serviceAccountsEnabled": false,
       "redirectUris": [
         "syn443://oauth/callback"
+      ],
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles",
+        "web-origins",
+        "acr",
+        "basic",
+        "syn443.enroll"
       ],
       "webOrigins": [],
       "attributes": {
