@@ -278,7 +278,10 @@ func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool, managed ..
 	config.Database = fixturePublisherDSN
 	privateJSON(t, workerFile, config)
 	grantFile := filepath.Join(dir, "grants.json")
-	privateJSON(t, grantFile, []Grant{f.grant})
+	expired := f.grant
+	expired.Subject = "expired-fixture-owner"
+	expired.Until = f.now.Add(-time.Minute).Unix()
+	privateJSON(t, grantFile, []Grant{expired, f.grant})
 	keyFile := filepath.Join(dir, "signing.pem")
 	der, _ := x509.MarshalPKCS8PrivateKey(f.key)
 	if os.WriteFile(keyFile, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), 0600) != nil {
@@ -466,6 +469,9 @@ func actualAPIPublisherProcessesAndRestart(t *testing.T, secure bool, managed ..
 		}
 	}
 	stopWorker()
+	if !strings.Contains(workerLog.String(), "enrollment_worker_expired_grants_skipped") {
+		t.Fatal("the real worker did not report discarding the expired grant")
+	}
 	if !withBroker {
 		t.Run("ready_delivery_survives_publisher_outage_and_api_restart", func(t *testing.T) {
 			roots := map[string]*ecdsa.PublicKey{"fixture-root": &f.key.PublicKey}
