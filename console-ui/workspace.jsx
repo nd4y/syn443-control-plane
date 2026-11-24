@@ -180,6 +180,9 @@ function Devices() {
               <p id="inventory-runtime"></p>
               <small id="inventory-runtime-detail"></small>
               <time id="inventory-runtime-time" hidden></time>
+              <Button id="inventory-runtime-engines" variant="link" isInline hidden>
+                Версии движков сборки
+              </Button>
             </CardBody>
           </Card>
           <Card isCompact>
@@ -241,7 +244,7 @@ function Devices() {
           <ul id="inventory-restrictions"></ul>
         </details>
       </div>
-      <details id="android-engine-build">
+      <details id="android-engine-build" data-build-code={androidEngineBuild.versionCode}>
         <summary>Движки проверенной сборки Android</summary>
         <p>Android {androidEngineBuild.versionName} · код {androidEngineBuild.versionCode}</p>
         <DescriptionList isCompact>

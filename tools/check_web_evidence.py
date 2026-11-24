@@ -90,6 +90,8 @@ expected.update({
 })
 expected.update({
     'runtime observation is separately attributed and never invents an activation or mutation',
+    'a fresh matching device build opens the verified engine catalogue from its card',
+    'unrecognized expired and missing device builds never get a catalogue shortcut',
     'runtime observation expires locally without polling or refreshing a historical receipt',
     'runtime observation refuses substituted future extra contradictory and stale sample metadata',
     'runtime observation denial and session expiry erase cached state and private proposals',

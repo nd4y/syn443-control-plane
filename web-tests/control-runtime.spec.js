@@ -1,5 +1,7 @@
 import {test,expect} from '@playwright/test';
+import {readFileSync} from 'node:fs';
 const origin='http://127.0.0.1:17851';
+const reviewedBuild=JSON.parse(readFileSync(new URL('../console-ui/android-engine-build.json',import.meta.url),'utf8'));
 const state=async request=>(await request.post(origin+'/fixture/state',{data:{}})).json();
 async function open(page,request,options={}){
  await request.post(origin+'/fixture/reset',{data:options});await page.goto(origin);await page.reload();
@@ -17,6 +19,52 @@ test('runtime observation is separately attributed and never invents an activati
  expect(observed.calls.filter(x=>x==='configuration.runtime.get')).toHaveLength(1);
  expect(observed.calls).not.toContain('configuration.publish');expect(observed.operations).toBe(0);
  expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
+});
+test('a fresh matching device build opens the verified engine catalogue from its card',async({page,request})=>{
+ await page.setViewportSize({width:320,height:900});
+ await page.route('**/control/action',async route=>{
+  const operation=route.request().postDataJSON();
+  if(operation.action!=='configuration.runtime.get'||operation.payload.id!=='device-a')return route.fallback();
+  const response=await route.fetch(),view=await response.json();
+  view.report.build=reviewedBuild.versionCode;
+  return route.fulfill({response,json:view});
+ });
+ await open(page,request,{runtime:'recent',runtimeSecondDevice:true});
+ const reference=page.getByRole('button',{name:'Версии движков сборки',exact:true});
+ const catalogue=page.locator('#android-engine-build');
+ await expect(reference).toBeVisible();
+ await expect(catalogue).toHaveJSProperty('open',false);
+ await reference.click();
+ await expect(catalogue.locator('summary')).toBeFocused();
+ await expect(catalogue.locator('code')).toHaveText(Object.values(reviewedBuild.engines));
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+
+ await page.locator('#inventory-device').fill('device-b');
+ await page.getByRole('button',{name:'Открыть карточку',exact:true}).click();
+ await expect(page.locator('#inventory-runtime')).toHaveText('Сообщено: VPN включён');
+ await expect(reference).toBeHidden();
+ expect((await state(request)).operations).toBe(0);
+});
+test('unrecognized expired and missing device builds never get a catalogue shortcut',async({page,request})=>{
+ let build=reviewedBuild.versionCode+1;
+ await page.route('**/control/action',async route=>{
+  if(route.request().postDataJSON().action!=='configuration.runtime.get')return route.fallback();
+  const response=await route.fetch(),view=await response.json();
+  if(view.report)view.report.build=build;
+  return route.fulfill({response,json:view});
+ });
+ const reference=page.getByRole('button',{name:'Версии движков сборки',exact:true});
+ await open(page,request,{runtime:'recent'});
+ await expect(page.locator('#inventory-runtime')).toHaveText('Сообщено: VPN включён');
+ await expect(reference).toBeHidden();
+ build=reviewedBuild.versionCode;
+ await open(page,request,{runtime:'expires'});
+ await expect(reference).toBeVisible();
+ await expect(page.locator('#inventory-runtime')).toHaveText('Отчёт устарел',{timeout:5000});
+ await expect(reference).toBeHidden();
+ await open(page,request,{runtime:'none'});
+ await expect(page.locator('#inventory-runtime')).toHaveText('Нет отчёта');
+ await expect(reference).toBeHidden();
 });
 test('adaptive algorithm follows the current issued policy and ages with the active device report',async({page,request})=>{
  const algorithm='m4-graph-tcp-v1';
