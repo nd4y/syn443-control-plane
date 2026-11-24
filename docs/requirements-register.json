@@ -2956,6 +2956,7 @@
       "evidence": [
         "docs/managed-policy.md",
         "docs/enrollment-pilot.md",
+        "docs/enrollment-pilot.md#grant-expiry-and-cold-start",
         "docs/identity-lifecycle.md",
         "docs/implementation-status.md#evidence-index-and-register-semantics"
       ]
