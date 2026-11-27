@@ -44,7 +44,7 @@ During one physical Wi-Fi interruption, the Android client reported
 automatically on Wi-Fi reattachment. A fresh IPv4 HTTPS request returned
 `204` through the app-owned TUN before and after the interruption. The
 first-launch user allow/deny matrix, captive portal, check-endpoint
-failure and cellular scenarios remain separate acceptance cases.
+failure and cellular recovery still require verification.
 
 ## Policy publisher restart after grant expiry
 
