@@ -28,6 +28,7 @@ import (
 )
 
 var fixtureOwner, fixtureControl, fixtureDevice, fixtureSigner, fixtureSourceWorker *sql.DB
+var fixtureControlDSN string
 
 func TestMain(m *testing.M) {
 	u, e := url.Parse(os.Getenv("SYN443_TEST_DATABASE"))
@@ -63,6 +64,9 @@ func TestMain(m *testing.M) {
 		}
 		copy := *u
 		copy.User = url.UserPassword(item.name, password)
+		if item.target == &fixtureControl {
+			fixtureControlDSN = copy.String()
+		}
 		*item.target, e = sql.Open("pgx", copy.String())
 		if e != nil {
 			panic("role connection")

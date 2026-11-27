@@ -750,6 +750,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: '1.27.4'
@@ -777,7 +778,8 @@ jobs:
                 "TestSQLCompetingClaimCannotChangeKeyDuringApproval"
               ]) and passed("deviceprovisioning"; [
                 "TestSQLInvitationToPublisherToNormalSessionAndCancellation",
-                "TestSQLExistingKeyCannotBeReassignedByInvitation"
+                 "TestSQLExistingKeyCannotBeReassignedByInvitation",
+                 "TestHistoricalConfigurationRestorePreservesDraftReplayAndFencesOldWriter"
               ])
           ' exit-country-postgres-tests.jsonl
           python3 tools/check_exit_country_evidence.py exit-country-postgres-tests.jsonl --stage postgres
