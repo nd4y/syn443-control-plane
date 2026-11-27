@@ -10,6 +10,7 @@ let pendingKind='draft',sourceRevision=0,sourceIdentity=null,sourceJob='',source
 let reviewEpoch=0,reviewAvailable=false,sourceReview=null,reviewChanges=[],reviewOffset=0;
 let sourceSnapshotEpoch=0,sourceDetailLoading=false;
 let layerInventory=null,layerRevision=0,layerOpened=null,layerSaved=null,layerJob=null,layerPreview=null,layerReviewTimer=null;
+let layerPublishedEditor=null;
 let layerComparison=null;
 let layerDraftInventory=null;
 let inventoryEpoch=0,cardReceipt=null,cardReceiptTimer;
@@ -2166,9 +2167,10 @@ void work(async()=>{
 function clearLayerReview(){clearTimeout(layerReviewTimer);layerReviewTimer=null;layerPreview=null;$('layer-confirm').checked=false;$('layer-review').hidden=true;$('layer-impact').textContent='';}
 function clearLayerComparison(){layerComparison=null;$('layer-comparison').hidden=true;$('layer-diff').textContent='';$('layer-conflicts').replaceChildren();}
 function clearDraftInventory(){layerDraftInventory=null;$('layer-saved').replaceChildren();$('layer-list-status').textContent='';}
-function clearLayers(){$('layer-discard-confirm').checked=false;layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearDraftInventory();clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
-function layerUnchanged(){return !!layerSaved&&$('layer-id').value.trim()===layerSaved.id&&$('layer-proposal').value===layerSaved.text;}
-function hasUnsavedLayerProposal(){return !!$('layer-proposal').value.trim()&&!layerUnchanged();}
+function clearLayers(){$('layer-discard-confirm').checked=false;layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerPublishedEditor=null;layerJob=null;clearDraftInventory();clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
+function layerEditorMatches(baseline){return !!baseline&&$('layer-id').value.trim()===baseline.id&&$('layer-proposal').value===baseline.text;}
+function layerUnchanged(){return layerEditorMatches(layerSaved);}
+function hasUnsavedLayerProposal(){return !!$('layer-proposal').value.trim()&&!layerUnchanged()&&!layerEditorMatches(layerPublishedEditor);}
 function planMatchesFirstDevice(device){
  return device?.state==='unassigned' && (!referenceRecipient||referenceRecipient===device.device) && $('target-kind').value==='device' &&
   $('target-id').value.trim()===device.device && (!opened || opened.kind==='device' && opened.target===device.device);
@@ -2210,6 +2212,7 @@ function showLayerDraft(draft){
  $('layer-discard-confirm').checked=false;layerRevision=draft.revision;layerOpened={id:draft.id,kind:p.targetKind,target:p.targetId};
  $('layer-id').value=draft.id;$('layer-proposal').value=JSON.stringify(p,null,2);
  layerSaved={id:draft.id,proposal:structuredClone(p),text:$('layer-proposal').value};
+ layerPublishedEditor=null;
  layerJob=null;clearLayerReview();clearLayerComparison();$('layer-job').textContent='';$('layer-version').textContent=`Сохранённая версия слоёв: ${draft.revision}`;
 }
 async function loadLayerDraft(){
@@ -2270,7 +2273,7 @@ function firstDeviceLayer(){
  status('Первый черновик создан в редакторе. Сохраните его и запросите предварительную проверку.');
 }
 function setNewLayerDraft(device,mode,layers,approvalUntilMs){
- layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearLayerReview();clearLayerComparison();
+ layerRevision=0;layerOpened=null;layerSaved=null;layerPublishedEditor=null;layerJob=null;clearLayerReview();clearLayerComparison();
  const id=crypto.randomUUID();$('layer-id').value=id;
  $('layer-proposal').value=JSON.stringify({draftId:id,draftRevision:1,targetKind:'device',targetId:device.device,mode,approvalUntilMs,bundles:[{device:device.device,baseRevision:device.revision,baseHash:device.hash,layers}]},null,2);
  $('layer-version').textContent='Новый черновик слоёв';$('layer-job').textContent='';
@@ -2421,6 +2424,8 @@ async function pollLayerJob(){
  }
  layerJob=null;
  if(view.state==='published'&&job.kind==='layer-publish'){
+  // Compare the displayed editor with its saved text without retaining preview authority.
+  layerPublishedEditor=layerSaved&&{id:layerSaved.id,text:layerSaved.text};
   layerInventory=null;layerSaved=null;$('layer-result').textContent='Желаемая конфигурация опубликована. Активация Android ещё не подтверждена. Перед следующей правкой загрузите актуальную конфигурацию устройства.';status('Желаемые версии опубликованы атомарно. Подтверждение активации устройства проверяется отдельно.');return;
  }
  status(view.error==='configuration_conflict'?'Конфликт исходной версии. Сохранённый черновик сохранён; загрузите актуальную конфигурацию и сравните изменения.':'Задание отклонено или истекло. Изменения не подтверждены; проверьте права, источники и исходные версии.');

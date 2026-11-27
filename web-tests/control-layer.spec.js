@@ -33,7 +33,8 @@ test('starting a layer edit for another device preserves the unsaved draft',asyn
  await page.getByRole('link',{name:'Открыть публикацию'}).click();
  await expect(edit).toBeDisabled();
  await expect(hint).toBeVisible();
- await edit.dispatchEvent('click');
+ await page.evaluate(()=>document.getElementById('layer-from-device').onclick());
+ await expect(page.locator('#status')).toContainText('Проверьте поля и структуру данных.');
  await expect(editor).toHaveValue(text);
  await expect(draftId).toHaveValue(id);
  expect((await state(request)).operations).toBe(0);
@@ -51,6 +52,53 @@ test('starting a layer edit for another device preserves the unsaved draft',asyn
  expect(server.operations).toBe(1);
  expect(server.calls).not.toContain('configuration.preview.request');
  expect(server.calls).not.toContain('configuration.publish');
+});
+
+test('a published layer can be followed by a fresh device draft while later edits stay protected',async({page,request})=>{
+ await page.setViewportSize({width:390,height:844});
+ await start(page,request,{runtimeSecondDevice:true});
+ await save(page);
+ const editor=page.locator('#layer-proposal'),draftId=page.locator('#layer-id');
+ const edit=page.locator('#layer-from-device'),hint=page.locator('#layer-unsaved-hint');
+ const text=await editor.inputValue(),id=await draftId.inputValue();
+ await preview(page);
+ await page.locator('#layer-confirm').check();
+ await page.locator('#layer-publish').click();
+ await page.locator('#layer-poll').click();
+ await expect(page.locator('#layer-result')).toContainText('Желаемая конфигурация опубликована.');
+ await expect(editor).toHaveValue(text);
+ await expect(draftId).toHaveValue(id);
+ await expect(edit).toBeDisabled();
+ await expect(page.locator('#layer-preview')).toBeDisabled();
+ await expect(page.locator('#layer-publish')).toBeDisabled();
+
+ await page.locator('#console-nav-toggle').click();
+ await page.getByRole('link',{name:'Устройства',exact:true}).click();
+ await page.locator('#inventory-device').fill('device-b');
+ await page.locator('#load-inventory').click();
+ await expect(page.locator('#inventory-status')).toHaveText('Конфигурация загружена.');
+ await page.getByRole('link',{name:'Открыть публикацию'}).click();
+ await expect(edit).toBeEnabled();
+ await expect(hint).toBeHidden();
+ await expect(page.locator('#layer-preview')).toBeDisabled();
+ await expect(page.locator('#layer-publish')).toBeDisabled();
+
+ const changed=JSON.parse(text);
+ changed.approvalUntilMs++;
+ await editor.fill(JSON.stringify(changed,null,2));
+ await expect(edit).toBeDisabled();
+ await expect(hint).toBeVisible();
+ await editor.fill(text);
+ await expect(edit).toBeEnabled();
+ await edit.click();
+ const next=JSON.parse(await editor.inputValue());
+ expect(next).toMatchObject({targetKind:'device',targetId:'device-b',draftRevision:1});
+ expect(next.draftId).not.toBe(id);
+ await expect(edit).toBeDisabled();
+ const server=await state(request);
+ expect(server.operations).toBe(3);
+ expect(server.layerDrafts).toHaveLength(1);
+ expect(server.layerDrafts[0]).toMatchObject({id,proposal:{targetId:'device-a'}});
 });
 
 test('private layer discard requires confirmation and retains unsaved editor without publication',async({page,request})=>{
