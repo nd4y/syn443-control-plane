@@ -8,7 +8,7 @@ Assigning a profile requires a device with the approved capability. CHK-04 and
 AC58 still require broader expression support and checks on an enrolled handset.
 [Android capability negotiation](https://github.com/nd4y/syn443-android/pull/135)
 
-Snapshot updated on 2026-11-24. Specification 0.9 contains 292 requirements and 98 acceptance
+Snapshot updated on 2026-11-27. Specification 0.9 contains 292 requirements and 98 acceptance
 scenarios. Those numbers describe scope, not completed work or test counts.
 This document supersedes repository-wide readiness claims in historical stage notes.
 
@@ -29,6 +29,22 @@ open. [Android review and test evidence](https://github.com/nd4y/syn443-android/
 ## Personal policies (AC01)
 
 Two independent test users signed in through Keycloak using authorization code flow with PKCE. They enrolled three devices and received distinct signed policies. Each device retrieved its own policy. The API rejected all six combinations that presented one device's token with another device's proof. This verifies the Control Plane scenario in hosted integration. Opening the pilot device from the deployed console uses a separate account and deployment. [Integration test](../integration/keycloak/personal_issuance_test.go) · [Protected run](https://github.com/nd4y/syn443-control-plane/actions/runs/45016543420)
+
+## Managed reauthentication over Wi-Fi
+
+An existing Android v158 installation repeated the normal Keycloak login
+after the Android client received its default `syn443.enroll` scope. The
+handset received a fresh signed policy and verified it for the original
+device ID and key. The realm defaults and the web client's scopes were
+preserved. The [hosted Keycloak check](https://github.com/nd4y/syn443-control-plane/actions/runs/45489898686)
+also exercises scope issuance with a fresh login for each client.
+
+During one physical Wi-Fi interruption, the Android client reported
+`NoNetwork` and retained the same connection intent. It restored the VPN
+automatically on Wi-Fi reattachment. A fresh IPv4 HTTPS request returned
+`204` through the app-owned TUN before and after the interruption. The
+first-launch user allow/deny matrix, captive portal, check-endpoint
+failure and cellular recovery still require verification.
 
 ## Policy publisher restart after grant expiry
 
