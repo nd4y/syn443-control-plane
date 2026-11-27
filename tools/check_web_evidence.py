@@ -36,6 +36,8 @@ expected = {
     'group publication review shows each owner and the network dependencies declared for that device',
     'a confirmed publication review expires while the administrator is reading it',
     'layer editor preserves inheritance and requires explicit reviewed publication',
+    'starting a layer edit for another device preserves the unsaved draft',
+    'a published layer can be followed by a fresh device draft while later edits stay protected',
     'layer save lost acknowledgment replays one private revision and remains reopenable',
     'layer publication lost acknowledgment reuses operation even after terminal commit',
     'layer conflict mismatched preview and expiry never enable publication',
