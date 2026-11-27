@@ -197,6 +197,9 @@ test('group publication review shows each owner and the network dependencies dec
  await expect(rows.nth(1)).toContainText('Признаки домашней сети');await expect(rows.nth(1)).toContainText('NetBird');
  await expect(review).not.toContainText('dns.example.invalid');await expect(review).not.toContainText('synthetic-private-profile');
  await rows.nth(1).locator('summary').click();await expect(rows.nth(1).getByText('Шаблон template-a',{exact:false})).toBeVisible();
+ const confirmationScope='Публикация · Группа · guest-group · Устройств 2';
+ await expect(review.locator(':scope > :last-child')).toHaveText(confirmationScope);
+ await expect(page.locator('#layer-confirm')).toHaveAccessibleDescription(confirmationScope);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await expect(page.locator('#layer-publish')).toBeDisabled();expect((await state(request)).calls).not.toContain('configuration.publish');
 });
@@ -234,6 +237,7 @@ test('a confirmed publication review expires while the administrator is reading 
  await page.locator('#layer-confirm').check();await expect(page.locator('#layer-publish')).toBeEnabled();
  await page.clock.fastForward(125000);
  await expect(page.locator('#layer-review')).toBeHidden();await expect(page.locator('#layer-impact')).toBeEmpty();
+ await expect(page.locator('#layer-confirm')).not.toHaveAttribute('aria-describedby',/./);
  await expect(page.locator('#layer-publish')).toBeDisabled();await expect(page.locator('#layer-confirm')).not.toBeChecked();
  await expect(page.locator('#layer-preview')).toBeEnabled();expect((await state(request)).calls).not.toContain('configuration.publish');
 });
@@ -241,6 +245,7 @@ test('a confirmed publication review expires while the administrator is reading 
 test('layer editor preserves inheritance and requires explicit reviewed publication',async({page,request})=>{
  const proposal=await start(page,request);await save(page);await preview(page);
  await expect(page.locator('#layer-review')).toBeVisible();await expect(page.locator('#layer-impact')).toContainText('template-a');await expect(page.locator('#layer-impact')).toContainText('device-a');
+ await expect(page.locator('#layer-confirm')).toHaveAccessibleDescription('Публикация · Устройство · device-a · Устройств 1');
  await expect(page.locator('#layer-publish')).toBeDisabled();expect((await state(request)).calls).not.toContain('configuration.publish');
  await page.locator('#layer-confirm').check();await page.locator('#layer-publish').click();
  await expect(page.locator('#layer-proposal')).toBeDisabled();await page.locator('#layer-poll').click();

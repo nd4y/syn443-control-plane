@@ -2164,7 +2164,14 @@ void work(async()=>{
  await openLinkedDevice();
 });
 
-function clearLayerReview(){clearTimeout(layerReviewTimer);layerReviewTimer=null;layerPreview=null;$('layer-confirm').checked=false;$('layer-review').hidden=true;$('layer-impact').textContent='';}
+function clearLayerReview(){
+ clearTimeout(layerReviewTimer);layerReviewTimer=null;layerPreview=null;
+ const confirmation=$('layer-confirm');
+ confirmation.checked=false;
+ confirmation.removeAttribute('aria-describedby');
+ $('layer-review').hidden=true;
+ $('layer-impact').textContent='';
+}
 function clearLayerComparison(){layerComparison=null;$('layer-comparison').hidden=true;$('layer-diff').textContent='';$('layer-conflicts').replaceChildren();}
 function clearDraftInventory(){layerDraftInventory=null;$('layer-saved').replaceChildren();$('layer-list-status').textContent='';}
 function clearLayers(){$('layer-discard-confirm').checked=false;layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerPublishedEditor=null;layerJob=null;clearDraftInventory();clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
@@ -2355,7 +2362,8 @@ function showLayerImpact(result,proposal,impacts){
  const p=result.preview,container=$('layer-impact');
  container.replaceChildren();
  function element(parent,tag,text){const child=document.createElement(tag);child.textContent=text;parent.append(child);return child;}
- element(container,'p',layerKindLabels[p.targetKind]+' · '+p.targetId+' · '+networkModeLabels[p.mode]);
+ const recipientScope=layerKindLabels[p.targetKind]+' · '+p.targetId;
+ element(container,'p',recipientScope+' · '+networkModeLabels[p.mode]);
  element(container,'h4','Затронутые устройства ('+p.recipients.length+')');
  const list=element(container,'ul','');
  const byDevice=new Map(proposal.bundles.map(bundle=>[bundle.device,bundle]));
@@ -2389,6 +2397,9 @@ function showLayerImpact(result,proposal,impacts){
  element(fingerprint,'summary','Контрольные суммы проверки');
  element(fingerprint,'p','Конфигурация · '+p.effectiveHash);
  element(fingerprint,'p','Зависимости · '+p.dependencyHash);
+ const confirmationScope=element(container,'p','Публикация · '+recipientScope+' · Устройств '+p.recipients.length);
+ confirmationScope.id='layer-confirm-scope';
+ $('layer-confirm').setAttribute('aria-describedby',confirmationScope.id);
  clearTimeout(layerReviewTimer);
  layerReviewTimer=setTimeout(()=>{
   if(layerPreview!==result)return;
