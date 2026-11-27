@@ -3184,8 +3184,12 @@
     {
       "id": "AC11",
       "specRow": " Captive portal, нет сети, недоступный check endpoint | Правильная причина, нет бесконечного перебора или ложного Online |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#managed-reauthentication-over-wi-fi"
+      ],
+      "implementationScope": "On a physical enrolled Android v158 installation, one Wi-Fi outage reported NoNetwork with connection intent retained. Reattachment restored the VPN and fresh IPv4 HTTPS through the owned TUN.",
+      "remainingScope": "Verify captive portal, check-endpoint failure and bounded retries throughout all fault cases."
     },
     {
       "id": "AC12",
@@ -3286,8 +3290,13 @@
     {
       "id": "AC25",
       "specRow": " Первый запуск, разрешённый/запрещённый Keycloak user | Конфиг загружается автоматически только разрешённому; нет ручного ввода URL и выдачи чужого конфига |",
-      "status": "planned",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "docs/implementation-status.md#managed-reauthentication-over-wi-fi",
+        "integration/keycloak/keycloak_test.go"
+      ],
+      "implementationScope": "The Android test client gets the enrollment scope on a normal login. An already enrolled physical handset reauthenticated and received a fresh signed policy with the original ID and key.",
+      "remainingScope": "Exercise first launch for authorized and denied users, including automatic bootstrap and recipient-isolation checks on physical Android."
     },
     {
       "id": "AC26",
