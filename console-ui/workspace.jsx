@@ -956,6 +956,9 @@ function Publication() {
       <Button id="layer-from-device" variant="secondary" isDisabled>
         Править слой выбранного устройства
       </Button>
+      <p id="layer-unsaved-hint" hidden>
+        Сохраните текущий черновик или очистите поле предложения слоёв перед началом новой правки.
+      </p>
       <Button id="layer-list" variant="secondary" isDisabled>
         Сохранённые черновики текущего адресата
       </Button>

@@ -2168,14 +2168,17 @@ function clearLayerComparison(){layerComparison=null;$('layer-comparison').hidde
 function clearDraftInventory(){layerDraftInventory=null;$('layer-saved').replaceChildren();$('layer-list-status').textContent='';}
 function clearLayers(){$('layer-discard-confirm').checked=false;layerInventory=null;layerRevision=0;layerOpened=null;layerSaved=null;layerJob=null;clearDraftInventory();clearLayerReview();clearLayerComparison();for(const id of ['layer-id','layer-proposal'])$(id).value='';$('layer-job').textContent='';$('layer-version').textContent='Черновик слоёв не открыт';$('layer-result').textContent='Результат публикации не является подтверждением активации Android.';}
 function layerUnchanged(){return !!layerSaved&&$('layer-id').value.trim()===layerSaved.id&&$('layer-proposal').value===layerSaved.text;}
+function hasUnsavedLayerProposal(){return !!$('layer-proposal').value.trim()&&!layerUnchanged();}
 function planMatchesFirstDevice(device){
  return device?.state==='unassigned' && (!referenceRecipient||referenceRecipient===device.device) && $('target-kind').value==='device' &&
   $('target-id').value.trim()===device.device && (!opened || opened.kind==='device' && opened.target===device.device);
 }
 function layerControls(){
  const disabled=busy||!authenticated||!!pending;
+ const unsaved=hasUnsavedLayerProposal();
  for(const id of ['layer-id','layer-proposal','layer-load','layer-save','layer-confirm'])$(id).disabled=disabled||!!layerJob;
- $('layer-from-device').disabled=disabled||!!layerJob||!layerInventory||layerInventory.state==='unassigned';
+ $('layer-from-device').disabled=disabled||!!layerJob||!layerInventory||layerInventory.state==='unassigned'||unsaved;
+ $('layer-unsaved-hint').hidden=!layerInventory||!unsaved;
  const first=layerInventory?.state==='unassigned';
  $('layer-first-device').hidden=!first;
  const matches=planMatchesFirstDevice(layerInventory);
@@ -2183,8 +2186,7 @@ function layerControls(){
   ? `Первый черновик будет создан для устройства ${layerInventory.device}.`
   : `Подготовьте план для устройства ${layerInventory.device}. Для другого получателя создайте отдельный черновик.`):'';
  $('layer-first-mode').disabled=disabled||!!layerJob;
- $('layer-first-from-plan').disabled=disabled||!!layerJob||!matches||!$('plan').value.trim()||
-  !!$('layer-proposal').value.trim()&&!layerUnchanged();
+ $('layer-first-from-plan').disabled=disabled||!!layerJob||!matches||!$('plan').value.trim()||unsaved;
  $('layer-preview').disabled=disabled||!layerUnchanged()||!!layerJob;
  $('layer-poll').disabled=disabled||!layerJob;
  $('layer-publish').disabled=disabled||!!layerJob||!layerUnchanged()||!layerPreview||!$('layer-confirm').checked||layerPreview.preview.expiresAtMs<=Date.now();
@@ -2246,7 +2248,7 @@ $('layer-open-saved').onclick=()=>work(async()=>{
  showLayerDraft(saved);status('Сохранённая копия открыта. Проверьте правку перед сохранением и публикацией.');
 });
 function editDeviceLayer(){
- if(!layerInventory||layerInventory.state==='unassigned')throw Error('invalid');
+ if(!layerInventory||layerInventory.state==='unassigned'||hasUnsavedLayerProposal())throw Error('invalid');
  const v=structuredClone(layerInventory),layers=v.layers;
  let own=layers.find(layer=>layer.kind==='device'&&layer.id===v.device);
  if(own){if(own.revision>=Number.MAX_SAFE_INTEGER)throw Error('invalid');own.revision++;}
@@ -2257,7 +2259,7 @@ function editDeviceLayer(){
 function firstDeviceLayer(){
  const v=layerInventory,mode=$('layer-first-mode').value;
  if(!planMatchesFirstDevice(v)||!['home_wifi','wifi','cellular_restricted','cellular'].includes(mode)||
-   $('layer-proposal').value.trim()&&!layerUnchanged())throw Error('invalid');
+   hasUnsavedLayerProposal())throw Error('invalid');
  let plan;
  try{plan=routeDraft().value;}catch{throw Error('invalid');}
  if(plan.schemaVersion!==1||!['activation,graph,network,schemaVersion','activation,adaptive,graph,network,schemaVersion'].includes(Object.keys(plan).sort().join(','))||

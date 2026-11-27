@@ -16,6 +16,43 @@ async function start(page,request,options={}){
 async function save(page){await page.locator('#layer-save').click();await expect(page.locator('#layer-version')).toHaveText('Сохранённая версия слоёв: 1');}
 async function preview(page){await page.locator('#layer-preview').click();await expect(page.locator('#layer-poll')).toBeEnabled();await page.locator('#layer-poll').click();}
 
+test('starting a layer edit for another device preserves the unsaved draft',async({page,request})=>{
+ await page.setViewportSize({width:390,height:844});
+ await start(page,request,{runtimeSecondDevice:true});
+ const editor=page.locator('#layer-proposal'),draftId=page.locator('#layer-id');
+ const edit=page.locator('#layer-from-device'),hint=page.locator('#layer-unsaved-hint');
+ const text=await editor.inputValue(),id=await draftId.inputValue();
+ await expect(edit).toBeDisabled();
+ await expect(hint).toBeVisible();
+
+ await page.locator('#console-nav-toggle').click();
+ await page.getByRole('link',{name:'Устройства',exact:true}).click();
+ await page.locator('#inventory-device').fill('device-b');
+ await page.locator('#load-inventory').click();
+ await expect(page.locator('#inventory-status')).toHaveText('Конфигурация загружена.');
+ await page.getByRole('link',{name:'Открыть публикацию'}).click();
+ await expect(edit).toBeDisabled();
+ await expect(hint).toBeVisible();
+ await edit.dispatchEvent('click');
+ await expect(editor).toHaveValue(text);
+ await expect(draftId).toHaveValue(id);
+ expect((await state(request)).operations).toBe(0);
+
+ await save(page);
+ await expect(hint).toBeHidden();
+ await expect(edit).toBeEnabled();
+ await edit.click();
+ const next=JSON.parse(await editor.inputValue());
+ expect(next).toMatchObject({targetKind:'device',targetId:'device-b',draftRevision:1});
+ expect(next.draftId).not.toBe(id);
+ const server=await state(request);
+ expect(server.layerDrafts).toHaveLength(1);
+ expect(server.layerDrafts[0]).toMatchObject({id,proposal:{targetId:'device-a'}});
+ expect(server.operations).toBe(1);
+ expect(server.calls).not.toContain('configuration.preview.request');
+ expect(server.calls).not.toContain('configuration.publish');
+});
+
 test('private layer discard requires confirmation and retains unsaved editor without publication',async({page,request})=>{
  await start(page,request);await save(page);await page.locator('#layer-list').click();
  const edited=JSON.parse(await page.locator('#layer-proposal').inputValue());edited.mode='home_wifi';
