@@ -59,7 +59,7 @@ jobs:
       - run: python3 -m unittest discover -s tools -p 'test_overlay_image.py'
       - run: python3 -m unittest discover -s tools -p 'test_web_image_acceptance.py'
       - run: python3 tools/product_requirements.py .android-register/docs/requirements-register.json --csv "${RUNNER_TEMP}/product-requirements.csv"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: product-requirements
           path: ${{ runner.temp }}/product-requirements.csv
@@ -153,7 +153,7 @@ jobs:
           test -s dist/bootstrap-wire/bootstrap-wire-vectors.json
           python3 tools/check_public_data.py dist/bootstrap-wire
           bash tools/scan_secrets.sh dist/bootstrap-wire
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: bootstrap-wire-evidence
           path: dist/bootstrap-wire/bootstrap-wire-vectors.json
@@ -221,7 +221,7 @@ jobs:
           (cd dist/layer-wire && sha256sum fixture.json SOURCE.txt > SHA256SUMS)
           python3 tools/check_public_data.py dist/layer-wire
           bash tools/scan_secrets.sh dist/layer-wire
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: steps.layer-wire-scan.outcome == 'success'
         with:
           name: layer-wire-evidence
@@ -301,7 +301,7 @@ jobs:
           (cd dist/layer-projection && sha256sum projection-fixture.json SOURCE.txt > SHA256SUMS)
           python3 tools/check_public_data.py dist/layer-projection
           bash tools/scan_secrets.sh dist/layer-projection
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: steps.layer-projection-scan.outcome == 'success'
         with:
           name: layer-projection-evidence
@@ -453,7 +453,7 @@ jobs:
           PY
           python3 tools/check_public_data.py dist/layer-operation
           bash tools/scan_secrets.sh dist/layer-operation
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: steps.layer-operation-scan.outcome == 'success'
         with:
           name: layer-operation-evidence
@@ -483,7 +483,7 @@ jobs:
           python3 tools/check_compiled_url_shapes.py dist/apk-release
           python3 tools/check_public_data.py dist/apk-release
           bash tools/scan_secrets.sh dist/apk-release
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: steps.apk-release-scan.outcome == 'success'
         with:
           name: apk-release-linux-amd64
@@ -506,7 +506,7 @@ jobs:
           python3 tools/check_compiled_url_shapes.py dist/control-plane
           python3 tools/check_public_data.py dist/control-plane
           bash tools/scan_secrets.sh dist/control-plane
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: steps.runtime-scan.outcome == 'success'
         with:
           name: control-plane-linux-amd64
@@ -525,7 +525,7 @@ jobs:
           python3 tools/check_compiled_url_shapes.py dist/route-fixture
           python3 tools/check_public_data.py dist/route-fixture
           bash tools/scan_secrets.sh dist/route-fixture
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: steps.route-fixture-scan.outcome == 'success'
         with:
           name: route-fixture-linux-amd64
@@ -545,7 +545,7 @@ jobs:
           python3 tools/check_compiled_url_shapes.py dist/configuration-worker
           python3 tools/check_public_data.py dist/configuration-worker
           bash tools/scan_secrets.sh dist/configuration-worker
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: steps.configuration-worker-scan.outcome == 'success'
         with:
           name: configuration-worker-linux-amd64
@@ -562,7 +562,7 @@ jobs:
           cp internal/chatweb/assets/control/ui/* dist/console-ui/
           git rev-parse HEAD > dist/console-ui/SOURCE.txt
           (cd dist/console-ui && sha256sum -- *.js *.css *.woff2 *.svg > SHA256SUMS)
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: control-console-ui
           path: dist/console-ui/
@@ -586,7 +586,7 @@ jobs:
           test -s coverage.out && test -s dependency-inventory.json
           python3 tools/check_public_data.py coverage.out dependency-inventory.json
           bash tools/scan_secrets.sh coverage.out dependency-inventory.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         id: evidence-upload
         if: always() && steps.evidence-scan.outcome == 'success'
         with:
@@ -637,7 +637,7 @@ jobs:
           test -s catalog-coverage.out
           python3 tools/check_public_data.py catalog-coverage.out adaptive-catalog-postgres-tests.jsonl adaptive-catalog-postgres-tests.jsonl
           bash tools/scan_secrets.sh catalog-coverage.out adaptive-catalog-postgres-tests.jsonl adaptive-catalog-postgres-tests.jsonl
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always() && steps.catalog-scan.outcome == 'success'
         with:
           name: catalog-test-evidence
@@ -677,7 +677,7 @@ jobs:
           (cd "$RUNNER_TEMP/web-runtime-image" && sha256sum -c SHA256SUMS)
           python3 tools/check_public_data.py "$RUNNER_TEMP/web-runtime-image"
           bash tools/scan_secrets.sh "$RUNNER_TEMP/web-runtime-image"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: web-runtime-image-linux-amd64
           path: ${{ runner.temp }}/web-runtime-image/
@@ -719,7 +719,7 @@ jobs:
           test -s web-tests/results.xml
           python3 tools/check_public_data.py web-tests/results.xml
           bash tools/scan_secrets.sh web-tests/results.xml
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always() && steps.web-scan.outcome == 'success'
         with:
           name: support-web-test-evidence
@@ -732,7 +732,7 @@ jobs:
           done
           python3 tools/check_public_data.py web-tests/test-results/console-visual
           bash tools/scan_secrets.sh web-tests/test-results/console-visual
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: synthetic-console-visual-qa
           path: |
@@ -810,7 +810,7 @@ jobs:
           test -s provisioning-coverage.out
           python3 tools/check_public_data.py invitation-coverage.out provisioning-coverage.out
           bash tools/scan_secrets.sh invitation-coverage.out provisioning-coverage.out
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always() && steps.invitation-scan.outcome == 'success'
         with:
           name: invitation-test-evidence
@@ -901,7 +901,7 @@ jobs:
           ' "$file"
           python3 tools/check_public_data.py "$file"
           bash tools/scan_secrets.sh "$file"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ always() && steps.capacity-scan.outcome == 'success' }}
         with:
           name: small-service-capacity
@@ -924,19 +924,19 @@ jobs:
           (cd "$RUNNER_TEMP/telemetry-ingest-image" && sha256sum -c SHA256SUMS)
           python3 tools/check_public_data.py "$RUNNER_TEMP/telemetry-ingest-image"
           bash tools/scan_secrets.sh "$RUNNER_TEMP/telemetry-ingest-image"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: telemetry-ingest-image-linux-amd64
           path: ${{ runner.temp }}/telemetry-ingest-image/
           if-no-files-found: error
           retention-days: 14
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: overlay-worker-image-linux-amd64
           path: ${{ runner.temp }}/overlay-worker-image/
           if-no-files-found: error
           retention-days: 14
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: steps.enrollment-scan.outcome == 'success'
         with:
           name: enrollment-test-evidence
